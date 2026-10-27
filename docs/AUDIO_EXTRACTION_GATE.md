@@ -12,7 +12,7 @@
 
 The compatibility controller is explicitly transitional: `rust-radio-core::RadioController` has a different event/command API and should **not** replace the original until event-state equivalence and failure/retry tests prove parity. For now, `NativeRadioEngine` continues to use `compat_controller`.
 
-`NativeRadioEngine::start_internet(station_id, volume_percent, output_id)` is the explicit action opening a selected audio output and station worker. `NativeRadioEngine::stop()` requests cancellation and joins its playback worker. Stream receiver cancellation/join behavior still requires independent fault injection. Output selection is OS-managed, including already-paired Bluetooth. No microphone or RF transmission implementation.
+`NativeRadioEngine::start_internet(station_id, volume_percent, output_id)` is the explicit action opening a selected audio output and station worker. `NativeRadioEngine::stop()` requests cancellation and joins its playback worker; GUI hosts use `request_stop()` and `try_finish()`. Offline tests cover receiver cleanup and bounded startup/stream retries; live DNS/TLS cancellation still needs field validation. Output selection is OS-managed, including already-paired Bluetooth. No microphone or RF transmission implementation.
 
 ## Verification requirements
 

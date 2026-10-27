@@ -10,6 +10,8 @@ The short probe and sustained stream paths are intentionally separate. `probe::N
 
 Each connection has its own cancellation flag. Dropping its guard or byte reader cancels pending HTTP and queue work before joining the receiver, without stopping the user-authorized session needed for recovery. Pending async work is checked every 25 ms; existing connect and inactivity deadlines still apply. Offline regression tests cover stalled work, a full retained queue, reader/guard drop order, stale buffered bytes, fresh connections and session cancellation.
 
+Hosts that need recovery policy can use `net::open_station_classified()` and `error::TransportError`; the original `open_station()` keeps its string-error API. Connection/header and read failures, HTTP 408/429 and 5xx responses are transient. Invalid endpoints, playlists, content and other HTTP rejections are permanent. Playback shares a three-retry budget across startup and in-stream failures, waiting 1, 2 and 4 seconds; Stop interrupts those waits. Stream I/O failures during decoder probing also use that budget, while unsupported formats and output-device failures remain terminal.
+
 Live cancellation during DNS/TLS, device behavior, Pi hardware, dependency MSRV compatibility and source-host parity still require separate validation. These offline tests do not certify hardware playback.
 
 Remaining validation:

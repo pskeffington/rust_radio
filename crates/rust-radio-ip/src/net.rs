@@ -1,6 +1,7 @@
 //! Async native HTTPS radio receiver with bounded backpressure and cancellation.
 //! Network I/O runs outside the Symphonia worker and CPAL callback.
 
+use crate::error::TransportError;
 use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
@@ -110,11 +111,11 @@ impl Drop for NetworkGuard {
 
 /// Keep the in-flight future across polling deadlines. Cancelling drops that
 /// future, releasing pending HTTP requests, responses and backpressure waits.
-async fn until_cancelled(
-    work: impl Future<Output = Result<(), String>>,
+async fn until_cancelled<E>(
+    work: impl Future<Output = Result<(), E>>,
     cancelled: &AtomicBool,
     stopped: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<(), E> {
     let mut work = std::pin::pin!(work);
     loop {
         if cancelled.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
@@ -150,11 +151,23 @@ pub fn open_station(
     station_id: &str,
     cancelled: Arc<AtomicBool>,
 ) -> Result<(RadioInput, NetworkGuard), String> {
+    open_station_classified(station_id, cancelled).map_err(|error| error.to_string())
+}
+
+/// Start an approved stream, preserving structured errors for recovery policy.
+/// `open_station` remains available for hosts using its original string errors.
+pub fn open_station_classified(
+    station_id: &str,
+    cancelled: Arc<AtomicBool>,
+) -> Result<(RadioInput, NetworkGuard), TransportError> {
     if station_by_id(station_id).is_none() {
         return Err("Unapproved internet radio station".into());
     }
     let id = station_id.to_owned();
-    let (startup_tx, startup_rx) = mpsc::sync_channel::<Result<StreamHeaders, String>>(1);
+    if cancelled.load(Ordering::Acquire) {
+        return Err(TransportError::Cancelled);
+    }
+    let (startup_tx, startup_rx) = mpsc::sync_channel::<Result<StreamHeaders, TransportError>>(1);
     let (audio_tx, audio_rx) = mpsc::sync_channel(PENDING_CHUNKS);
     let error = Arc::new(Mutex::new(None));
     let worker_error = Arc::clone(&error);
@@ -167,7 +180,9 @@ pub fn open_station(
             let result = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .map_err(|e| format!("Radio network runtime unavailable: {e}"))
+                .map_err(|e| {
+                    TransportError::Permanent(format!("Radio network runtime unavailable: {e}"))
+                })
                 .and_then(|runtime| {
                     runtime.block_on(until_cancelled(
                         pump_station(&id, &worker_cancel, &startup_tx, &audio_tx),
@@ -179,7 +194,7 @@ pub fn open_station(
                 if !worker_cancel.load(Ordering::Acquire) && !worker_stopped.load(Ordering::Acquire)
                 {
                     *worker_error.lock().expect("Radio error mutex poisoned") =
-                        Some(message.clone());
+                        Some(message.to_string());
                     let _ = startup_tx.try_send(Err(message));
                 }
             }
@@ -193,17 +208,21 @@ pub fn open_station(
     let start = Instant::now();
     let headers = loop {
         if cancelled.load(Ordering::Acquire) {
-            return Err("Radio stopped before streaming began".into());
+            return Err(TransportError::Cancelled);
         }
         if start.elapsed() > STARTUP_DEADLINE {
-            return Err("Radio stream connection exceeded 35 seconds".into());
+            return Err(TransportError::Network(
+                "Radio stream connection exceeded 35 seconds".into(),
+            ));
         }
         match startup_rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Ok(info)) => break info,
             Ok(Err(reason)) => return Err(reason),
             Err(RecvTimeoutError::Timeout) => continue,
             Err(RecvTimeoutError::Disconnected) => {
-                return Err("Radio receiver stopped before HTTP response".into());
+                return Err(TransportError::Network(
+                    "Radio receiver stopped before HTTP response".into(),
+                ));
             }
         }
     };
@@ -227,9 +246,9 @@ pub fn open_station(
 async fn pump_station(
     station_id: &str,
     cancelled: &AtomicBool,
-    startup: &SyncSender<Result<StreamHeaders, String>>,
+    startup: &SyncSender<Result<StreamHeaders, TransportError>>,
     audio: &SyncSender<Vec<u8>>,
-) -> Result<(), String> {
+) -> Result<(), TransportError> {
     let broadcaster = station_by_id(station_id).ok_or("Unknown station")?;
     let mut next = ApprovedEndpoint::new(station_id, broadcaster.playlist_url)
         .map_err(|e| format!("Stream URL rejected: {e}"))?;
@@ -252,8 +271,8 @@ async fn pump_station(
             client.get(next.url()).header("Icy-MetaData", "1").send(),
         )
         .await
-        .map_err(|_| "Radio connect/header timeout".to_owned())?
-        .map_err(|e| format!("Radio HTTPS connection failed: {e}"))?;
+        .map_err(|_| TransportError::Network("Radio connect/header timeout".to_owned()))?
+        .map_err(|e| TransportError::Network(format!("Radio HTTPS connection failed: {e}")))?;
         let status = response.status();
         if status.is_redirection() {
             let location = response
@@ -267,7 +286,7 @@ async fn pump_station(
             continue;
         }
         if !status.is_success() {
-            return Err(format!("Radio server responded HTTP {status}"));
+            return Err(TransportError::http_status(status));
         }
         let content_type = response
             .headers()
@@ -297,8 +316,10 @@ async fn pump_station(
             loop {
                 let part = timeout(READ_DEADLINE, response.chunk())
                     .await
-                    .map_err(|_| "Radio playlist read timed out")?
-                    .map_err(|e| format!("Radio playlist read failed: {e}"))?;
+                    .map_err(|_| TransportError::Network("Radio playlist read timed out".into()))?
+                    .map_err(|e| {
+                        TransportError::Network(format!("Radio playlist read failed: {e}"))
+                    })?;
                 let Some(bytes) = part else { break };
                 if document.len().saturating_add(bytes.len()) > MAX_PLAYLIST_BYTES {
                     return Err("Radio playlist exceeds 16 KiB".into());
@@ -311,7 +332,9 @@ async fn pump_station(
             continue;
         }
         if !mime.starts_with("audio/") && mime != "application/octet-stream" {
-            return Err(format!("Server did not return an audio stream: {mime}"));
+            return Err(TransportError::Permanent(format!(
+                "Server did not return an audio stream: {mime}"
+            )));
         }
         let icy_header = response
             .headers()
@@ -334,10 +357,10 @@ async fn pump_station(
             }
             let piece = timeout(READ_DEADLINE, response.chunk())
                 .await
-                .map_err(|_| "Radio audio read inactivity timeout")?
-                .map_err(|e| format!("Radio audio read failed: {e}"))?;
+                .map_err(|_| TransportError::Network("Radio audio read inactivity timeout".into()))?
+                .map_err(|e| TransportError::Network(format!("Radio audio read failed: {e}")))?;
             let Some(piece) = piece else {
-                return Err("Radio stream ended".into());
+                return Err(TransportError::Network("Radio stream ended".into()));
             };
             for fragment in piece.chunks(CHUNK_SIZE) {
                 if !send_fragment(audio, fragment.to_vec(), cancelled).await {
@@ -544,6 +567,14 @@ mod tests {
     #[test]
     fn unapproved_station_never_starts_network_thread() {
         assert!(open_station("invalid-station", Arc::new(AtomicBool::new(false))).is_err());
+        assert!(matches!(
+            open_station_classified("invalid-station", Arc::new(AtomicBool::new(false))),
+            Err(TransportError::Permanent(_))
+        ));
+        assert!(matches!(
+            open_station_classified("skylab", Arc::new(AtomicBool::new(true))),
+            Err(TransportError::Cancelled)
+        ));
         let source = Cursor::new([1u8, 2u8]);
         assert_eq!(source.into_inner(), [1, 2]);
     }

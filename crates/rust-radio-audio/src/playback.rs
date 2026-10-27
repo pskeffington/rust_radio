@@ -8,6 +8,7 @@ use crate::output::NativeAudioOutput;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::pcm::PcmConverter;
 use rust_radio_core::recovery::{decide, FailureClass, RecoveryAction};
+use rust_radio_ip::error::TransportError;
 use rust_radio_ip::net as radio_net;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::sync::{
@@ -56,6 +57,25 @@ impl From<String> for PlaybackFailure {
 impl From<&str> for PlaybackFailure {
     fn from(message: &str) -> Self {
         Self::Permanent(message.to_owned())
+    }
+}
+
+impl From<TransportError> for PlaybackFailure {
+    fn from(error: TransportError) -> Self {
+        match error {
+            TransportError::Network(message) => Self::Network(message),
+            TransportError::Permanent(message) => Self::Permanent(message),
+            TransportError::Cancelled => Self::Permanent(error.to_string()),
+        }
+    }
+}
+
+fn probe_failure(error: DecodeError) -> PlaybackFailure {
+    match error {
+        DecodeError::IoError(error) => PlaybackFailure::Network(format!(
+            "Radio stream interrupted during format detection: {error}"
+        )),
+        error => PlaybackFailure::Permanent(format!("Unsupported radio stream format: {error}")),
     }
 }
 
@@ -272,7 +292,7 @@ fn signal(controller: &Arc<Mutex<RadioController>>, generation: u64, event: Play
         .event(generation, event);
 }
 
-/// Retry only a typed in-stream I/O failure. Device loss and invalid
+/// Retry typed connection and stream I/O failures. Device loss and invalid
 /// codecs remain terminal; session Stop overrides any scheduled retry.
 fn play_with_recovery(
     station_id: &str,
@@ -282,19 +302,37 @@ fn play_with_recovery(
     volume: Arc<AtomicU8>,
     output_id: &str,
 ) -> Result<(), PlaybackFailure> {
+    recover_attempts(
+        generation,
+        controller,
+        cancelled,
+        || {
+            decode_and_play(
+                station_id,
+                generation,
+                controller,
+                cancelled,
+                Arc::clone(&volume),
+                output_id,
+            )
+        },
+        |delay| interruptible_wait(cancelled, delay),
+    )
+}
+
+fn recover_attempts(
+    generation: u64,
+    controller: &Arc<Mutex<RadioController>>,
+    cancelled: &AtomicBool,
+    mut attempt: impl FnMut() -> Result<(), PlaybackFailure>,
+    mut wait: impl FnMut(Duration) -> bool,
+) -> Result<(), PlaybackFailure> {
     let mut attempted_retries = 0;
     loop {
         if cancelled.load(Ordering::Acquire) {
             return Ok(());
         }
-        let result = decode_and_play(
-            station_id,
-            generation,
-            controller,
-            cancelled,
-            Arc::clone(&volume),
-            output_id,
-        );
+        let result = attempt();
         let Err(error) = result else {
             return Ok(());
         };
@@ -311,7 +349,7 @@ fn play_with_recovery(
                 attempted_retries += 1;
                 // No audio callback, network thread or old PCM queue survives
                 // decode_and_play returning before we start this delay.
-                if !interruptible_wait(cancelled, delay) {
+                if !wait(delay) {
                     return Ok(());
                 }
             }
@@ -349,7 +387,8 @@ fn decode_and_play(
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
-    let (stream, _network_guard) = radio_net::open_station(station_id, Arc::clone(cancelled))?;
+    let (stream, _network_guard) =
+        radio_net::open_station_classified(station_id, Arc::clone(cancelled))?;
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
@@ -371,7 +410,7 @@ fn decode_and_play(
             &FormatOptions::default(),
             &MetadataOptions::default(),
         )
-        .map_err(|e| format!("Unsupported radio stream format: {e}"))?;
+        .map_err(probe_failure)?;
     let mut format = probed.format;
     let track = format
         .tracks()
@@ -560,6 +599,133 @@ pub fn run_demo(station_id: &str, duration_seconds: Option<u64>) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn recovery_controller() -> (Arc<Mutex<RadioController>>, u64) {
+        let mut controller = RadioController::default();
+        let generation = controller
+            .apply(RadioCommand::PlayInternet {
+                station_id: "skylab".into(),
+            })
+            .unwrap();
+        (Arc::new(Mutex::new(controller)), generation)
+    }
+
+    #[test]
+    fn transient_startup_failures_exhaust_exactly_three_retries() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let mut attempts = 0;
+        let mut delays = Vec::new();
+        let error = recover_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            || {
+                attempts += 1;
+                Err(TransportError::Network(format!("connect timeout {attempts}")).into())
+            },
+            |delay| {
+                assert_eq!(
+                    controller.lock().unwrap().state().state,
+                    PlaybackState::Recovering
+                );
+                delays.push(delay.as_secs());
+                true
+            },
+        )
+        .unwrap_err();
+        assert_eq!(attempts, 4);
+        assert_eq!(delays, [1, 2, 4]);
+        assert_eq!(error.message(), "connect timeout 4");
+    }
+
+    #[test]
+    fn temporary_startup_failure_can_recover_to_playing() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let mut attempts = 0;
+        recover_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            || {
+                attempts += 1;
+                if attempts == 1 {
+                    return Err(TransportError::Network("HTTP 503".into()).into());
+                }
+                let mut controller = controller.lock().unwrap();
+                assert!(controller.event(generation, PlaybackEvent::Connected));
+                assert!(controller.event(generation, PlaybackEvent::Buffered));
+                assert!(controller.event(generation, PlaybackEvent::PlaybackStarted));
+                Ok(())
+            },
+            |_| true,
+        )
+        .unwrap();
+        assert_eq!(attempts, 2);
+        assert_eq!(
+            controller.lock().unwrap().state().state,
+            PlaybackState::Playing
+        );
+    }
+
+    #[test]
+    fn stop_during_retry_prevents_another_attempt_and_stale_events() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let mut attempts = 0;
+        recover_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            || {
+                attempts += 1;
+                Err(TransportError::Network("connection refused".into()).into())
+            },
+            |_| {
+                cancelled.store(true, Ordering::Release);
+                controller
+                    .lock()
+                    .unwrap()
+                    .apply(RadioCommand::Stop)
+                    .unwrap();
+                false
+            },
+        )
+        .unwrap();
+        assert_eq!(attempts, 1);
+        let mut controller = controller.lock().unwrap();
+        assert_eq!(controller.state().state, PlaybackState::Stopped);
+        assert!(!controller.event(generation, PlaybackEvent::Connected));
+    }
+
+    #[test]
+    fn rejected_streams_and_device_failures_do_not_enter_recovery() {
+        for error in [
+            PlaybackFailure::from(TransportError::Permanent("HTTP 403".into())),
+            PlaybackFailure::Output("speaker unavailable".into()),
+            probe_failure(DecodeError::Unsupported("unsupported codec")),
+        ] {
+            let (controller, generation) = recovery_controller();
+            let mut error = Some(error);
+            let result = recover_attempts(
+                generation,
+                &controller,
+                &AtomicBool::new(false),
+                || Err(error.take().expect("Permanent failures must not retry")),
+                |_| panic!("Permanent failures must not wait to retry"),
+            );
+            assert!(result.is_err());
+        }
+        assert_eq!(
+            probe_failure(DecodeError::IoError(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "network disconnected during probe",
+            )))
+            .class(),
+            FailureClass::NetworkTransient
+        );
+    }
 
     fn completed_test_engine(panics: bool) -> NativeRadioEngine {
         let mut controller = RadioController::default();
