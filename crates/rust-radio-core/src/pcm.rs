@@ -50,7 +50,7 @@ impl PcmConverter {
         input: &[f32],
         mut emit: impl FnMut(&[f32]) -> bool,
     ) -> Result<bool, PcmError> {
-        if !input.len().is_multiple_of(self.source_channels) {
+        if input.len() % self.source_channels != 0 {
             return Err(PcmError::IncompleteFrame);
         }
         let step = self.source_rate as f64 / self.output_rate as f64;
