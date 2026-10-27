@@ -89,7 +89,8 @@ impl RadioController {
                 return Err(RadioError::UnknownStation);
             }
         }
-        if self.snapshot.state != SessionState::Stopped && self.snapshot.state != SessionState::Failed
+        if self.snapshot.state != SessionState::Stopped
+            && self.snapshot.state != SessionState::Failed
         {
             return Err(RadioError::AlreadyActive);
         }
@@ -126,7 +127,8 @@ impl RadioController {
                 | (SessionState::Playing, SessionState::Recovering)
                 | (SessionState::Recovering, SessionState::Buffering)
                 | (SessionState::Recovering, SessionState::Connecting)
-        ) || (state == SessionState::Failed && self.snapshot.state != SessionState::Stopped);
+        ) || (state == SessionState::Failed
+            && self.snapshot.state != SessionState::Stopped);
         if !allowed {
             return Err(RadioError::InvalidTransition);
         }
