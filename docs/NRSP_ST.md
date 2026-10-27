@@ -10,6 +10,9 @@ nRSP-ST, and enable its WebSocket server. Point this module at that SDRconnect
 host's API port, usually 5454. The radio's own network service is a different
 protocol. A device named NETRADIO on a router is not proof of a running API.
 SDRconnect setup and receiver selection remain operator actions.
+If the receiver does not start, use **Refresh Device List** in SDRconnect,
+select the nRSP-ST in IQ Lite mode, then press Start before starting this module.
+The refresh is an SDRconnect UI action, not a WebSocket command sent by the module.
 
 ```sh
 # Independent of SoapySDR and the USB SDRplay SDK:
@@ -77,14 +80,27 @@ I/Q subscriptions returned zero pairs in IQ Lite mode. Selecting Full IQ and
 attempting to start displayed SDRconnect's “Update Required” firmware notice;
 that mode could not be validated. No firmware was modified. The original IQ Lite
 selection and mute setting were restored, and the receiver was left stopped.
-Raw I/Q, native RF audio output, shared-client and Pi runtime acceptance remain
-open. USB Soapy discovery is not an nRSP-ST acceptance test.
+Raw I/Q and Pi runtime acceptance remain open. USB Soapy discovery is not an
+nRSP-ST acceptance test.
 
 Native audio tests cover signed endianness, callback evidence, output failure,
-malformed packets, cancellation and resource cleanup. The current live attempt
-was rejected because SDRconnect remained stopped after both UI and explicit API
-start attempts. That path correctly failed before opening native output. Live
-native RF callback/listening acceptance remains pending receiver availability.
+malformed packets, cancellation and resource cleanup. An earlier live attempt
+was rejected while SDRconnect was stopped, correctly failing before opening
+native output. The operator identified Refresh Device List followed by Start
+as the required setup step.
+
+On 2026-10-27, with the real nRSP-ST running in IQ Lite at its existing WFM
+tuning, standalone native playback passed a five-second check at 10% volume.
+The SDR-enabled Pip-Boy executable also reached Playing through native callback
+consumption using temporary preferences. An independent three-second standalone
+subscriber succeeded while Pip-Boy stayed Playing. Volume adjustment, output
+restart, duplicate-start rejection and asynchronous Stop passed. One observed
+Stop response was 9.44 ms, not a timing guarantee; worker cleanup completed and
+read-only status confirmed the shared receiver remained running. A fresh 500 ms
+subscription then received 26,409 stereo frames. No received samples were saved,
+and no tuning, firmware or shared receiver start/stop commands were sent by these
+checks. This verifies real-receiver PCM through native output callbacks; human
+confirmation of speaker audibility and RF signal quality remains open.
 
 A separate synthetic-PCM native-output smoke passed on macOS after explicitly
 pausing CPAL's CoreAudio stream before prebuffering. Both standalone and embedded

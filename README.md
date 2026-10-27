@@ -44,7 +44,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Near-term work
 
-Verify live nRSP-ST native audio once its SDRconnect receiver can start; complete raw I/Q and firmware acceptance separately. USB receivers use the separate SoapySDR adapter. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
+Live nRSP-ST PCM now reaches native output callbacks in both standalone and Pip-Boy players, including concurrent subscribers and safe local Stop. Complete human listening, raw I/Q and firmware acceptance separately. USB receivers use the separate SoapySDR adapter. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
 
 ## Run the native radio
 
