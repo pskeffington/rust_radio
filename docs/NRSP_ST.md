@@ -106,6 +106,12 @@ and no tuning, firmware or shared receiver start/stop commands were sent by thes
 checks. This verifies real-receiver PCM through native output callbacks; human
 confirmation of speaker audibility and RF signal quality remains open.
 
+The live checks were repeated against module `6997dff` and Pip-Boy `f71dd2d`
+after the operator refreshed and started SDRconnect again: PCM ingress resumed,
+both native players passed, concurrent reception and output restart passed,
+and Stop completed cleanup while leaving shared reception running. The observed
+Stop response was 11.52 ms; a fresh 500 ms capture received 24,008 stereo frames.
+
 A separate synthetic-PCM native-output smoke passed on macOS after explicitly
 pausing CPAL's CoreAudio stream before prebuffering. Both standalone and embedded
 players reached Playing from actual native callback consumption, native output
