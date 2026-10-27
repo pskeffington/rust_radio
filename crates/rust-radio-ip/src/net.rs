@@ -1,12 +1,12 @@
 //! Async native HTTPS radio receiver with bounded backpressure and cancellation.
 //! Network I/O runs outside the Symphonia worker and CPAL callback.
 
+use reqwest::header::{CONTENT_TYPE, LOCATION};
+use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::stream::{
     icy_interval, parse_m3u, ApprovedEndpoint, IcyAudioReader, MAX_PLAYLIST_BYTES, MAX_REQUEST_HOPS,
 };
-use reqwest::header::{CONTENT_TYPE, LOCATION};
-use reqwest::redirect::Policy;
 use std::io::{self, Read};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
