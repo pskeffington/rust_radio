@@ -17,6 +17,8 @@ pub use rust_radio_ip::{net, probe};
 
 #[cfg(feature = "sdr")]
 pub use rust_radio_core::sdr;
+#[cfg(feature = "sdr")]
+pub use rust_radio_sdr as receiver;
 
 #[cfg(feature = "gui")]
 pub use rust_radio_gui::RadioPanel;

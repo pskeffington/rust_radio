@@ -40,7 +40,7 @@ pub struct Tuning {
     pub frequency_hz: u64,
     pub sample_rate_hz: u32,
     pub demodulation: Demodulation,
-    /// None delegates gain selection to the hardware's automatic gain control.
+    /// None uses the device's automatic/default gain policy.
     pub gain_db_tenths: Option<i16>,
 }
 
@@ -63,12 +63,27 @@ impl fmt::Display for RadioError {
 impl std::error::Error for RadioError {}
 
 /// Receive-only hardware contract. Implementations must not transmit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReceiverKind {
+    Unspecified,
+    Simulated,
+    Physical,
+}
+
+/// Receive-only hardware contract. Implementations must bound driver reads.
 pub trait RadioDevice {
     fn capabilities(&self) -> &RadioCapabilities;
     fn apply_tuning(&mut self, tuning: Tuning) -> Result<(), RadioError>;
     /// Return interleaved signed I/Q samples from a bounded driver read.
     /// A return value of zero means no samples currently available.
     fn read_iq(&mut self, buffer: &mut [i16]) -> Result<usize, RadioError>;
+    fn receiver_kind(&self) -> ReceiverKind {
+        ReceiverKind::Unspecified
+    }
+    /// Release active receive resources; never start or retune the device.
+    fn stop(&mut self) -> Result<(), RadioError> {
+        Ok(())
+    }
 }
 
 pub struct RadioTuner<D: RadioDevice> {
@@ -101,6 +116,16 @@ impl<D: RadioDevice> RadioTuner<D> {
         self.active
     }
 
+    pub fn receiver_kind(&self) -> ReceiverKind {
+        self.device.receiver_kind()
+    }
+
+    pub fn stop(&mut self) -> Result<(), RadioError> {
+        let result = self.device.stop();
+        self.active = None;
+        result
+    }
+
     /// State changes only after the driver acknowledges the configuration.
     pub fn tune(&mut self, settings: Tuning) -> Result<(), RadioError> {
         let c = self.device.capabilities();
@@ -122,7 +147,13 @@ impl<D: RadioDevice> RadioTuner<D> {
                 return Err(RadioError::UnsupportedGain(gain));
             }
         }
-        self.device.apply_tuning(settings)?;
+        if let Err(error) = self.device.apply_tuning(settings) {
+            // A driver may stop the old stream before a retune fails. Never
+            // retain settings that no longer describe an acknowledged stream.
+            self.active = None;
+            let _ = self.device.stop();
+            return Err(error);
+        }
         self.active = Some(settings);
         Ok(())
     }
@@ -182,6 +213,15 @@ impl RadioDevice for SimulatedRadio {
         buffer.fill(0);
         Ok(buffer.len())
     }
+
+    fn receiver_kind(&self) -> ReceiverKind {
+        ReceiverKind::Simulated
+    }
+
+    fn stop(&mut self) -> Result<(), RadioError> {
+        self.tuning = None;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -233,5 +273,47 @@ mod tests {
         assert_eq!(tuner.tune(invalid), Err(RadioError::UnsupportedGain(600)));
         tuner.tune(settings()).unwrap();
         assert!(tuner.read_iq(&mut [0; 3]).is_err());
+    }
+
+    #[test]
+    fn failed_driver_retune_clears_previous_state_and_stops() {
+        struct FailingRetune {
+            simulated: SimulatedRadio,
+            calls: usize,
+            stopped: bool,
+        }
+        impl RadioDevice for FailingRetune {
+            fn capabilities(&self) -> &RadioCapabilities {
+                self.simulated.capabilities()
+            }
+            fn apply_tuning(&mut self, tuning: Tuning) -> Result<(), RadioError> {
+                self.calls += 1;
+                if self.calls > 1 {
+                    Err(RadioError::Device("retune failed".into()))
+                } else {
+                    self.simulated.apply_tuning(tuning)
+                }
+            }
+            fn read_iq(&mut self, _: &mut [i16]) -> Result<usize, RadioError> {
+                panic!("failed retune must block subsequent reads")
+            }
+            fn stop(&mut self) -> Result<(), RadioError> {
+                self.stopped = true;
+                self.simulated.stop()
+            }
+        }
+        let mut tuner = RadioTuner::new(FailingRetune {
+            simulated: SimulatedRadio::default(),
+            calls: 0,
+            stopped: false,
+        })
+        .unwrap();
+        tuner.tune(settings()).unwrap();
+        let mut next = settings();
+        next.frequency_hz += 100_000;
+        assert!(tuner.tune(next).is_err());
+        assert_eq!(tuner.active_tuning(), None);
+        assert!(tuner.device.stopped);
+        assert_eq!(tuner.read_iq(&mut [0; 8]), Err(RadioError::NotConfigured));
     }
 }

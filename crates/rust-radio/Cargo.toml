@@ -9,7 +9,8 @@ description = "Standalone, embeddable receive-only radio module for Rust hosts"
 [features]
 default = ["ip-radio"]
 ip-radio = ["dep:rust-radio-audio", "dep:rust-radio-ip"]
-sdr = ["rust-radio-core/sdr"]
+sdr = ["rust-radio-core/sdr", "dep:rust-radio-sdr"]
+soapy-sdr = ["sdr", "rust-radio-sdr/soapy"]
 gui = ["ip-radio", "dep:rust-radio-gui"]
 
 [dependencies]
@@ -17,3 +18,4 @@ rust-radio-core = { path = "../rust-radio-core" }
 rust-radio-audio = { path = "../rust-radio-audio", optional = true }
 rust-radio-ip = { path = "../rust-radio-ip", optional = true }
 rust-radio-gui = { path = "../rust-radio-gui", optional = true }
+rust-radio-sdr = { path = "../rust-radio-sdr", optional = true }

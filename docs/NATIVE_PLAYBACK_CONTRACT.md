@@ -1,6 +1,6 @@
 # Native playback migration contract
 
-Status: design gate only. Pip-Boy remains the only confirmed audible player.
+Status: implemented in the standalone module and consumed by Pip-Boy through a pinned Git dependency. Human-audible acceptance and native callback evidence are distinct; see the dated records below.
 
 ## Worker ownership
 
@@ -25,4 +25,8 @@ Status: design gate only. Pip-Boy remains the only confirmed audible player.
 
 ## Current evidence and caveats
 
-The remote GitHub files were written successfully; this environment cannot reach github.com via shell and does not have Cargo installed. The GitHub combined commit status query returned no reported statuses for the most recently checked revision; it is not evidence of green CI. No source-to-host cutover has been attempted.
+On 2026-10-27 Pip-Boy main integrated the standalone facade and thin compatibility adapters (commit `2a9ad3d0e14a03db8bffbb95541cae9266b32421`). The host retains the HTML HUD and preferences schema; it does not link the optional standalone GUI. All 328 host tests, formatting, check, strict Clippy and build passed locally. Browser regression fixtures passed at 480×320, 320×568 and 800×480.
+
+A live loopback HUD run with temporary preferences exercised Skylab and Groove Salad. Both reached Playing after decoded samples were consumed by the native output callback. Volume, duplicate Play rejection, Stop-before-switch, favorites/selection and no autoplay on reads/output changes were checked. This run is not a new human listening confirmation, Bluetooth recovery test or Pi acceptance.
+
+The optional receive-only SoapySDR adapter compiles and links on this Mac; explicit discovery found no receivers. It provides I/Q ingress only, without AM/FM/SSB audio demodulation. Physical reception, unplug/replug and ARM64 remain open. GitHub Actions has returned startup failures on prior pushes; local green checks do not establish remote CI success.

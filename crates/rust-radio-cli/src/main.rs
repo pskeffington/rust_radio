@@ -1,15 +1,17 @@
 //! Operator-triggered standalone test harness. No automatic network or audio I/O.
-use rust_radio_audio::output::available_outputs;
-use rust_radio_audio::playback::NativeRadioEngine;
-use rust_radio_audio::validation::validate_station;
-use rust_radio_core::directory::{curated_stations, station_by_id};
-use rust_radio_core::validation::StationValidation;
+use rust_radio::directory::{curated_stations, station_by_id};
+use rust_radio::output::available_outputs;
+use rust_radio::validation::validate_station;
+use rust_radio::validation_types::StationValidation;
+use rust_radio::NativeRadioEngine;
 use std::io::{self, BufRead};
 use std::sync::mpsc;
 use std::thread;
 use std::time::UNIX_EPOCH;
 use std::time::{Duration, Instant};
 use std::{env, process};
+
+mod sdr;
 
 #[derive(Debug, PartialEq, Eq)]
 struct ListenArgs<'a> {
@@ -22,6 +24,7 @@ struct ListenArgs<'a> {
 fn usage() {
     eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
     eprintln!("Interactive listen commands: status | volume N | stop");
+    eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -129,10 +132,10 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
     let mut audible = false;
     let result = loop {
         let snapshot = engine.status();
-        if snapshot.state == rust_radio_audio::compat_controller::PlaybackState::Playing {
+        if snapshot.state == rust_radio::controller::PlaybackState::Playing {
             audible = true;
         }
-        if snapshot.state == rust_radio_audio::compat_controller::PlaybackState::Failed {
+        if snapshot.state == rust_radio::controller::PlaybackState::Failed {
             break Err(snapshot
                 .last_error
                 .unwrap_or_else(|| "playback failed".to_owned()));
@@ -194,6 +197,8 @@ fn run(args: &[String]) -> Result<(), String> {
             }
         }
         Some("listen") => listen(parse_listen(args)?),
+        Some("sdr-devices") if args.len() == 1 => sdr::devices(),
+        Some("sdr-capture") => sdr::capture(args),
         _ => {
             usage();
             Err("invalid command".into())

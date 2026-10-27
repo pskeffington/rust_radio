@@ -4,11 +4,12 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 ## Status (2026-10-27)
 
-This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Earlier standalone Skylab CLI playback was operator-confirmed on macOS; that result does not certify subsequent changes, the GUI, or Pi hardware. Rust-Boy host integration and SDR reception remain separate gates.
+This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Pip-Boy now embeds the headless `rust-radio` module through a pinned Git dependency. Its HUD runtime checks exercised Skylab and Groove Salad through native PCM output, explicit Stop, volume and saved selection. Optional SoapySDR support provides bounded I/Q capture; physical RF, RF audio demodulation and Pi acceptance remain open.
 
 ## Navigation
 
 - [Standalone module and embedding API](docs/EMBEDDING.md)
+- [Optional SDR receive adapter and hardware gates](docs/SDR_RECEIVE.md)
 - [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
 - [Component ownership and extraction gates](docs/PORTING_PLAN.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
@@ -25,7 +26,7 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-For control-only testing, use `cargo test -p rust-radio-core`; it requires no network receiver, sound card, USB SDR or native audio libraries. Workspace builds include CPAL and eframe and need platform development libraries (on Linux, `libasound2-dev` and `pkg-config`). Cargo commands are **instructions**, not test results from this authoring pass.
+For control-only testing, use `cargo test -p rust-radio-core`; it requires no network receiver, sound card, USB SDR or native audio libraries. Workspace builds include CPAL and eframe and need platform development libraries (on Linux, `libasound2-dev` and `pkg-config`). The local verification record is linked from the embedding documentation; remote CI and physical hardware acceptance are separate checks.
 
 Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so Git-aware source searches and indexes skip generated files.
 
@@ -42,7 +43,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Near-term work
 
-Consume the standalone `rust-radio` library from Rust-Boy through a pinned dependency and thin host adapters. Preserve Mac Skylab playback, explicit playback controls, Bluetooth output routing, favorites storage and 480x320 HUD behavior. The default library is headless; the standalone GUI is optional.
+Validate physical receiver I/Q ingress with an installed SoapySDR driver, then implement and test RF audio demodulation. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
 
 ## Run the native radio
 

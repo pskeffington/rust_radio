@@ -15,6 +15,12 @@ adds the receive-only tuner contract and explicit simulator. `gui` is optional
 and adds `RadioPanel` for egui hosts. Hardware reception is a separate adapter
 and acceptance gate; simulated IQ is never evidence of received RF.
 
+`soapy-sdr` adds the optional SDK-backed receive adapter through
+`rust_radio::receiver`, including explicit discovery, device open and bounded
+I/Q capture. See [SDR receive limits and acceptance](SDR_RECEIVE.md). This feature
+requires the native SDK and Rust 1.85; it adds no dependency to the default IP
+or pure-control builds.
+
 ```rust
 use rust_radio::NativeRadioEngine;
 

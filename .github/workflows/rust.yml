@@ -19,3 +19,18 @@ jobs:
         run: cargo test --workspace
       - name: Lint
         run: cargo clippy --workspace --all-targets -- -D warnings
+  optional-sdr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install receive adapter SDK headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsoapysdr-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Test receive adapter without opening devices
+        run: cargo test --locked -p rust-radio-sdr --features soapy
+      - name: Lint receive adapter
+        run: cargo clippy --locked -p rust-radio-sdr --all-targets --features soapy -- -D warnings
+      - name: Check hardware-only embedded module
+        run: cargo check --locked -p rust-radio --no-default-features --features soapy-sdr
