@@ -20,8 +20,21 @@ The current Rust-Boy desktop HUD is a same-origin HTML/JavaScript interface, **n
 
 ## Acceptance and constraints
 - 480 × 320 is a logical-pixel target; high-DPI and physical touch screenshots require verification.
-- No intentional scroll in default view. OUTPUT expansion may require more space on small screens; future pass should overlay output list rather than increase panel height.
+- No intentional scroll in default view. OUTPUT now opens a centered fixed-size 380 × 165 logical-pixel overlay rather than extending the panel. Confirm the physical 480 × 320 viewport has no clipping on macOS and Pi.
 - No direct station URL input. Only curated stations.
 - Output selection is disabled while session exists.
 - Keep firmware/Pi builds optional: eframe's graphics/window stack and target platform must be validated separately; the audio engine is independent.
 - Formatting, compile, native GPU rendering and physical mouse/touch acceptance require user Mac test after commit.
+
+## Next operator Mac acceptance
+
+```sh
+cd ~/GitHub/rust_radio
+git pull --ff-only origin main
+cargo fmt --all -- --check
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo run -p rust-radio-gui --bin rust-radio-gui
+```
+
+Check the radio window at 480 × 320: station arrows, play/stop, volume, error text, and OUTPUT overlay must be fully tappable without body scrolling. Verify that simply opening the GUI emits no audio or radio HTTP traffic. PLAY should produce audible Skylab reception, and STOP should terminate it. Device changes require stopping first. These GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
