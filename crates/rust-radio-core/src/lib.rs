@@ -3,9 +3,17 @@
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Source {
-    Internet { station_id: String },
-    Sdr { device_id: String, frequency_hz: u64 },
-    Satellite { receiver_id: String, frequency_hz: u64 },
+    Internet {
+        station_id: String,
+    },
+    Sdr {
+        device_id: String,
+        frequency_hz: u64,
+    },
+    Satellite {
+        receiver_id: String,
+        frequency_hz: u64,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,15 +59,26 @@ pub struct RadioController {
 
 impl Default for RadioController {
     fn default() -> Self {
-        Self { snapshot: Snapshot { generation: 0, state: SessionState::Stopped, source: None, volume: 50 } }
+        Self {
+            snapshot: Snapshot {
+                generation: 0,
+                state: SessionState::Stopped,
+                source: None,
+                volume: 50,
+            },
+        }
     }
 }
 
 impl RadioController {
-    pub fn snapshot(&self) -> &Snapshot { &self.snapshot }
+    pub fn snapshot(&self) -> &Snapshot {
+        &self.snapshot
+    }
 
     pub fn set_volume(&mut self, value: u8) -> Result<(), RadioError> {
-        if value > 100 { return Err(RadioError::InvalidVolume); }
+        if value > 100 {
+            return Err(RadioError::InvalidVolume);
+        }
         self.snapshot.volume = value;
         Ok(())
     }
@@ -70,7 +89,8 @@ impl RadioController {
                 return Err(RadioError::UnknownStation);
             }
         }
-        if self.snapshot.state != SessionState::Stopped && self.snapshot.state != SessionState::Failed {
+        if self.snapshot.state != SessionState::Stopped && self.snapshot.state != SessionState::Failed
+        {
             return Err(RadioError::AlreadyActive);
         }
         self.snapshot.generation = self.snapshot.generation.wrapping_add(1);
@@ -84,11 +104,19 @@ impl RadioController {
         if directory::station_by_id(station_id).is_none() {
             return Err(RadioError::UnknownStation);
         }
-        self.request_start(Source::Internet { station_id: station_id.to_owned() })
+        self.request_start(Source::Internet {
+            station_id: station_id.to_owned(),
+        })
     }
 
-    pub fn acknowledge_state(&mut self, generation: u64, state: SessionState) -> Result<(), RadioError> {
-        if generation != self.snapshot.generation { return Err(RadioError::StaleGeneration); }
+    pub fn acknowledge_state(
+        &mut self,
+        generation: u64,
+        state: SessionState,
+    ) -> Result<(), RadioError> {
+        if generation != self.snapshot.generation {
+            return Err(RadioError::StaleGeneration);
+        }
         let allowed = matches!(
             (self.snapshot.state, state),
             (SessionState::Connecting, SessionState::Buffering)
@@ -99,7 +127,9 @@ impl RadioController {
                 | (SessionState::Recovering, SessionState::Buffering)
                 | (SessionState::Recovering, SessionState::Connecting)
         ) || (state == SessionState::Failed && self.snapshot.state != SessionState::Stopped);
-        if !allowed { return Err(RadioError::InvalidTransition); }
+        if !allowed {
+            return Err(RadioError::InvalidTransition);
+        }
         self.snapshot.state = state;
         Ok(())
     }
@@ -119,19 +149,37 @@ mod tests {
     #[test]
     fn stale_events_cannot_restart_stopped_session() {
         let mut control = RadioController::default();
-        let generation = control.request_start(Source::Internet { station_id: "skylab".into() }).unwrap();
+        let generation = control
+            .request_start(Source::Internet {
+                station_id: "skylab".into(),
+            })
+            .unwrap();
         control.request_stop();
-        assert_eq!(control.acknowledge_state(generation, SessionState::Playing), Err(RadioError::StaleGeneration));
+        assert_eq!(
+            control.acknowledge_state(generation, SessionState::Playing),
+            Err(RadioError::StaleGeneration)
+        );
         assert_eq!(control.snapshot().state, SessionState::Stopped);
     }
     #[test]
     fn cannot_claim_playing_before_buffering() {
         let mut control = RadioController::default();
-        let generation = control.request_start(Source::Internet { station_id: "skylab".into() }).unwrap();
-        assert_eq!(control.acknowledge_state(generation, SessionState::Playing), Err(RadioError::InvalidTransition));
+        let generation = control
+            .request_start(Source::Internet {
+                station_id: "skylab".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            control.acknowledge_state(generation, SessionState::Playing),
+            Err(RadioError::InvalidTransition)
+        );
         assert_eq!(control.snapshot().state, SessionState::Connecting);
-        control.acknowledge_state(generation, SessionState::Buffering).unwrap();
-        control.acknowledge_state(generation, SessionState::Playing).unwrap();
+        control
+            .acknowledge_state(generation, SessionState::Buffering)
+            .unwrap();
+        control
+            .acknowledge_state(generation, SessionState::Playing)
+            .unwrap();
     }
     #[test]
     fn invalid_volume_is_rejected() {
@@ -142,7 +190,10 @@ mod tests {
     #[test]
     fn unapproved_station_does_not_start_session() {
         let mut control = RadioController::default();
-        assert_eq!(control.request_internet_station("https://localhost/admin"), Err(RadioError::UnknownStation));
+        assert_eq!(
+            control.request_internet_station("https://localhost/admin"),
+            Err(RadioError::UnknownStation)
+        );
         assert_eq!(control.snapshot().generation, 0);
         assert_eq!(control.snapshot().state, SessionState::Stopped);
         assert!(control.request_internet_station("skylab").is_ok());
@@ -150,8 +201,17 @@ mod tests {
     #[test]
     fn cannot_start_second_session() {
         let mut control = RadioController::default();
-        control.request_start(Source::Internet { station_id: "skylab".into() }).unwrap();
-        assert_eq!(control.request_start(Source::Internet { station_id: "groovesalad".into() }), Err(RadioError::AlreadyActive));
+        control
+            .request_start(Source::Internet {
+                station_id: "skylab".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            control.request_start(Source::Internet {
+                station_id: "groovesalad".into(),
+            }),
+            Err(RadioError::AlreadyActive)
+        );
     }
 }
 
