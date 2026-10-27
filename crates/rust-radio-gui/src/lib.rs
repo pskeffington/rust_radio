@@ -1,9 +1,9 @@
 //! Embeddable 480x320 radio surface. The host owns the window and event loop.
 //! Constructing a panel never opens an audio device or connects to a broadcaster.
 use eframe::egui;
+use rust_radio_audio::compat_controller::PlaybackState;
 use rust_radio_audio::output::{available_outputs, OutputDeviceInfo};
 use rust_radio_audio::playback::NativeRadioEngine;
-use rust_radio_audio::compat_controller::PlaybackState;
 use rust_radio_core::directory::{curated_stations, station_by_id};
 
 pub const PANEL_WIDTH: f32 = 480.0;
@@ -25,7 +25,10 @@ pub struct RadioPanel {
 impl Default for RadioPanel {
     fn default() -> Self {
         Self {
-            station: curated_stations().first().map(|s| s.id.to_owned()).unwrap_or_default(),
+            station: curated_stations()
+                .first()
+                .map(|s| s.id.to_owned())
+                .unwrap_or_default(),
             volume: 60,
             output: "system".into(),
             outputs: Vec::new(),
@@ -87,15 +90,18 @@ impl RadioPanel {
             .stroke(egui::Stroke::new(1.0, GREEN))
             .inner_margin(egui::Margin::same(9));
         frame.show(ui, |ui| {
-            ui.set_min_size(egui::vec2(PANEL_WIDTH - 20.0, PANEL_HEIGHT - 20.0));
-            ui.set_max_width(PANEL_WIDTH - 20.0);
+            ui.set_max_width((ui.available_width() - 2.0).min(PANEL_WIDTH - 20.0));
             ui.visuals_mut().override_text_color = Some(GREEN);
             ui.spacing_mut().item_spacing = egui::vec2(7.0, 7.0);
             ui.spacing_mut().button_padding = egui::vec2(10.0, 8.0);
 
             let status = self.engine.as_ref().map(|engine| engine.status());
-            let state = status.as_ref().map(|s| s.state).unwrap_or(PlaybackState::Stopped);
-            let running = self.engine.is_some() && !matches!(state, PlaybackState::Failed | PlaybackState::Stopped);
+            let state = status
+                .as_ref()
+                .map(|s| s.state)
+                .unwrap_or(PlaybackState::Stopped);
+            let running = self.engine.is_some()
+                && !matches!(state, PlaybackState::Failed | PlaybackState::Stopped);
 
             ui.horizontal(|ui| {
                 ui.strong("RADIO  /  IP");
@@ -113,8 +119,12 @@ impl RadioPanel {
                         self.step_station(-1);
                     }
                     egui::ComboBox::from_id_salt("rust_radio_station")
-                        .width(315.0)
-                        .selected_text(station_by_id(&self.station).map(|s| s.name).unwrap_or("Select station"))
+                        .width(260.0)
+                        .selected_text(
+                            station_by_id(&self.station)
+                                .map(|s| s.name)
+                                .unwrap_or("Select station"),
+                        )
                         .show_ui(ui, |ui| {
                             for station in curated_stations() {
                                 ui.selectable_value(&mut self.station, station.id.to_owned(), station.name);
@@ -130,19 +140,34 @@ impl RadioPanel {
             }
             ui.separator();
             ui.horizontal(|ui| {
-                if ui.add_enabled(!running, egui::Button::new("▶  PLAY").min_size(egui::vec2(116.0, 49.0))).clicked() {
+                if ui
+                    .add_enabled(
+                        !running,
+                        egui::Button::new("▶  PLAY").min_size(egui::vec2(116.0, 44.0)),
+                    )
+                    .clicked()
+                {
                     if self.engine.is_some() {
                         self.stop();
                     }
                     self.play();
                 }
-                if ui.add_enabled(self.engine.is_some(), egui::Button::new("■  STOP").min_size(egui::vec2(116.0, 49.0))).clicked() {
+                if ui
+                    .add_enabled(
+                        self.engine.is_some(),
+                        egui::Button::new("■  STOP").min_size(egui::vec2(116.0, 44.0)),
+                    )
+                    .clicked()
+                {
                     self.stop();
                 }
                 ui.add_space(4.0);
                 ui.label(format!("VOL {}%", self.volume));
             });
-            let slider = ui.add_sized([ui.available_width(), 26.0], egui::Slider::new(&mut self.volume, 0..=100).show_value(false));
+            let slider = ui.add_sized(
+                [ui.available_width(), 26.0],
+                egui::Slider::new(&mut self.volume, 0..=100).show_value(false),
+            );
             if slider.changed() {
                 if let Some(engine) = &self.engine {
                     if let Err(error) = engine.set_volume(self.volume) {
@@ -155,7 +180,7 @@ impl RadioPanel {
                     self.note = error;
                 }
             }
-            if matches!(state, PlaybackState::Failed) {
+            if matches!(state, PlaybackState::Failed) && self.note == "CONNECTING / NATIVE AUDIO" {
                 self.note = "STREAM FAILED / STOP THEN RETRY".into();
             }
             ui.separator();
@@ -169,18 +194,48 @@ impl RadioPanel {
                 ui.label(egui::RichText::new(&self.note).small());
             });
             if self.show_output {
-                ui.add_enabled_ui(self.engine.is_none(), |ui| {
-                    egui::ComboBox::from_id_salt("rust_radio_output")
-                        .width(350.0)
-                        .selected_text(self.outputs.iter().find(|d| d.id == self.output).map(|d| d.name.as_str()).unwrap_or("System default"))
-                        .show_ui(ui, |ui| {
-                            for device in &self.outputs {
-                                ui.add_enabled_ui(device.available, |ui| {
-                                    ui.selectable_value(&mut self.output, device.id.clone(), &device.name);
+                egui::Window::new("RADIO / AUDIO OUTPUT")
+                    .id(egui::Id::new("rust_radio_output_overlay"))
+                    .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                    .fixed_size(egui::vec2(380.0, 165.0))
+                    .resizable(false)
+                    .collapsible(false)
+                    .show(ui.ctx(), |ui| {
+                        ui.label("Stop playback before selecting another output.");
+                        ui.add_enabled_ui(self.engine.is_none(), |ui| {
+                            egui::ComboBox::from_id_salt("rust_radio_output")
+                                .width(325.0)
+                                .selected_text(
+                                    self.outputs
+                                        .iter()
+                                        .find(|d| d.id == self.output)
+                                        .map(|d| d.name.as_str())
+                                        .unwrap_or("System default"),
+                                )
+                                .show_ui(ui, |ui| {
+                                    for device in &self.outputs {
+                                        ui.add_enabled_ui(device.available, |ui| {
+                                            ui.selectable_value(
+                                                &mut self.output,
+                                                device.id.clone(),
+                                                &device.name,
+                                            );
+                                        });
+                                    }
                                 });
+                        });
+                        ui.horizontal(|ui| {
+                            if ui.button("REFRESH").clicked() {
+                                self.refresh_outputs();
+                            }
+                            if ui.button("SYSTEM DEFAULT").clicked() && self.engine.is_none() {
+                                self.output = "system".into();
+                            }
+                            if ui.button("CLOSE").clicked() {
+                                self.show_output = false;
                             }
                         });
-                });
+                    });
             }
             ui.ctx().request_repaint_after(std::time::Duration::from_millis(250));
         });
@@ -188,8 +243,13 @@ impl RadioPanel {
 
     fn step_station(&mut self, direction: isize) {
         let list = curated_stations();
-        if list.is_empty() { return; }
-        let index = list.iter().position(|s| s.id == self.station).unwrap_or(0) as isize;
+        if list.is_empty() {
+            return;
+        }
+        let index = list
+            .iter()
+            .position(|s| s.id == self.station)
+            .unwrap_or(0) as isize;
         let next = (index + direction).rem_euclid(list.len() as isize) as usize;
         self.station = list[next].id.into();
     }
@@ -198,6 +258,7 @@ impl RadioPanel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn panel_constructs_without_starting_radio() {
         let panel = RadioPanel::new();
