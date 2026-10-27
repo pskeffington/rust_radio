@@ -253,6 +253,47 @@ fn continuous_audio_consumer_can_stop_and_unsubscribe_without_touching_hardware(
 }
 
 #[test]
+fn native_output_backpressure_does_not_expire_the_next_audio_read() {
+    let (endpoint, handle) = fixture(|mut peer| {
+        // A native output worker can spend longer than the network timeout
+        // draining one bounded PCM packet. Keep the next packet ready to read.
+        peer.get_mut()
+            .set_read_timeout(Some(OPERATION_TIMEOUT * 2))
+            .unwrap();
+        assert_eq!(request(&mut peer).property, "started");
+        response(&mut peer, "started", "true");
+        assert_eq!(request(&mut peer).event_type, "audio_stream_enable");
+        for samples in [[-100, 100], [-200, 200]] {
+            peer.send(Message::Binary(packet(1, &samples).into()))
+                .unwrap();
+        }
+        let stop = request(&mut peer);
+        assert_eq!(stop.event_type, "audio_stream_enable");
+        assert_eq!(stop.value, "false");
+        assert!(peer.read().is_err());
+    });
+    let cancel = AtomicBool::new(false);
+    let client = Client::connect(endpoint, &cancel).unwrap();
+    let mut callbacks = 0;
+    let result = client.stream_audio(&cancel, |bytes| {
+        callbacks += 1;
+        if callbacks == 1 {
+            assert_eq!(bytes, &packet(1, &[-100, 100])[2..]);
+            thread::sleep(OPERATION_TIMEOUT + Duration::from_millis(50));
+            true
+        } else {
+            assert_eq!(bytes, &packet(1, &[-200, 200])[2..]);
+            false
+        }
+    });
+    handle.join().unwrap();
+    let report = result.expect("output backpressure must not become a network timeout");
+    assert_eq!(callbacks, 2);
+    assert_eq!(report.sample_pairs, 2);
+    assert!(!report.cancelled);
+}
+
+#[test]
 fn unrelated_packets_cannot_keep_a_stalled_audio_session_alive() {
     let (endpoint, handle) = fixture(|mut peer| {
         assert_eq!(request(&mut peer).property, "started");
@@ -273,6 +314,7 @@ fn unrelated_packets_cannot_keep_a_stalled_audio_session_alive() {
             );
             peer.send(Message::Binary(packet(5, &[0, 0]).into()))
                 .unwrap();
+            peer.send(Message::Binary(packet(1, &[]).into())).unwrap();
             std::thread::sleep(Duration::from_millis(10));
         }
     });

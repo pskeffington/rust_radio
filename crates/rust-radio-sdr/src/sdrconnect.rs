@@ -331,6 +331,8 @@ impl Client {
     /// Continuous primary PCM for a native playback worker. Memory remains
     /// bounded; missing primary audio fails after three seconds even if the
     /// server continues sending unrelated events. Stop unsubscribes and closes.
+    /// The read deadline excludes time spent delivering a packet to the native
+    /// output worker. The callback must bound its work and observe cancellation.
     pub fn stream_audio(
         self,
         cancel: &AtomicBool,
@@ -388,10 +390,14 @@ impl Client {
                     };
                     sample_pairs = sample_pairs.saturating_add(pairs as u64);
                     if pairs > 0 {
-                        last_audio = Instant::now();
                         if !on_frame(frame) {
                             break;
                         }
+                        // Native output backpressure can take longer than a
+                        // network read timeout for one bounded PCM packet.
+                        // Start the next read's idle budget after delivery;
+                        // fixed-duration captures still use their own `until`.
+                        last_audio = Instant::now();
                     }
                 }
             }

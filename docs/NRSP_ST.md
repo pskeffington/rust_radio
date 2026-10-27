@@ -55,7 +55,11 @@ cargo run --locked -p rust-radio-cli --features sdrconnect -- \
 
 `Client::stream_audio()` supports continuous playback with a three-second
 primary-audio inactivity limit. Other channels and spectrum/control traffic do
-not extend that deadline. Stereo i16 PCM is converted/resampled on the worker;
+not extend that deadline; empty primary packets do not extend it either. Time
+spent delivering PCM to the native output worker does not consume the next
+network read's timeout, so output backpressure on a large packet does not
+trigger a false reconnect. Fixed-duration captures retain their original read
+deadline. Stereo i16 PCM is converted/resampled on the worker;
 Playing requires samples consumed by the native callback. Stop mutes queued
 samples immediately, unsubscribes and closes the owned connection. Hosts retain
 the engine and poll `try_finish()`/`shutdown_pending()` before replacing it.
