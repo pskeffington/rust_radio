@@ -1,7 +1,7 @@
 //! Silent, bounded station validation using the same MP3/AAC decoder as playback.
 //! These synchronous checks belong on a host worker, never the GUI render thread.
 
-use crate::playback::LiveMediaSource;
+use crate::media::LiveMediaSource;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::stream::{open_station, RadioHttp, StreamError};
 use rust_radio_core::validation::{StationValidation, ValidationStage, ValidationStatus};

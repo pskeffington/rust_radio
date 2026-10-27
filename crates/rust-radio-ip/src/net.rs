@@ -332,9 +332,11 @@ async fn pump_station(
                 }
                 document.extend_from_slice(&bytes);
             }
-            let mut entries = parse_playlist(station_id, &document, format)
-                .map_err(|e| format!("Radio playlist rejected: {e}"))?;
-            next = entries.remove(0);
+            next = parse_playlist(station_id, &document, format)
+                .map_err(|e| format!("Radio playlist rejected: {e}"))?
+                .into_iter()
+                .next()
+                .ok_or("Radio playlist contains no stream endpoints")?;
             continue;
         }
         if !mime.starts_with("audio/") && mime != "application/octet-stream" {

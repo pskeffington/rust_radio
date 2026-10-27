@@ -4,13 +4,14 @@
 use crate::compat_controller::{
     PlaybackEvent, PlaybackState, RadioCommand, RadioController, RadioSession,
 };
+use crate::media::LiveMediaSource;
 use crate::output::NativeAudioOutput;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::pcm::PcmConverter;
 use rust_radio_core::recovery::{decide, FailureClass, RecoveryAction};
 use rust_radio_ip::error::TransportError;
 use rust_radio_ip::net as radio_net;
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io;
 use std::sync::{
     atomic::{AtomicBool, AtomicU8, Ordering},
     Arc, Mutex,
@@ -21,7 +22,7 @@ use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
 use symphonia::core::errors::Error as DecodeError;
 use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::{MediaSource, MediaSourceStream};
+use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
@@ -240,48 +241,6 @@ impl NativeRadioEngine {
 impl Drop for NativeRadioEngine {
     fn drop(&mut self) {
         self.stop();
-    }
-}
-
-/// A non-seekable, thread-safe media source around the R2 ICY reader.
-/// Only the decoder worker locks it, never the real-time CPAL callback.
-pub(crate) struct LiveMediaSource<R: Read + Send> {
-    reader: Mutex<R>,
-}
-
-impl<R: Read + Send> LiveMediaSource<R> {
-    pub(crate) fn new(reader: R) -> Self {
-        Self {
-            reader: Mutex::new(reader),
-        }
-    }
-}
-
-impl<R: Read + Send> Read for LiveMediaSource<R> {
-    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
-        self.reader
-            .get_mut()
-            .map_err(|_| io::Error::other("Audio source lock poisoned"))?
-            .read(bytes)
-    }
-}
-
-impl<R: Read + Send> Seek for LiveMediaSource<R> {
-    fn seek(&mut self, _: SeekFrom) -> io::Result<u64> {
-        Err(io::Error::new(
-            io::ErrorKind::Unsupported,
-            "Live broadcasts are not seekable",
-        ))
-    }
-}
-
-impl<R: Read + Send> MediaSource for LiveMediaSource<R> {
-    fn is_seekable(&self) -> bool {
-        false
-    }
-
-    fn byte_len(&self) -> Option<u64> {
-        None
     }
 }
 
@@ -867,15 +826,5 @@ mod tests {
         assert!(!interruptible_wait(&cancelled, Duration::from_secs(4)));
         let cancelled = AtomicBool::new(false);
         assert!(interruptible_wait(&cancelled, Duration::ZERO));
-    }
-
-    #[test]
-    fn live_media_source_does_not_offer_seeking() {
-        let mut source = LiveMediaSource::new(io::Cursor::new(vec![1u8, 2, 3]));
-        let mut bytes = [0u8; 2];
-        assert_eq!(source.read(&mut bytes).unwrap(), 2);
-        assert_eq!(bytes, [1, 2]);
-        assert!(!source.is_seekable());
-        assert!(source.seek(SeekFrom::Start(0)).is_err());
     }
 }

@@ -5,7 +5,6 @@
 //! entire playlist/redirect/ICY path without audio devices or subprocesses.
 
 use crate::directory::station_by_id;
-use std::collections::BTreeMap;
 use std::fmt;
 use std::io::{self, Read};
 
@@ -197,7 +196,10 @@ pub fn parse_pls(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
     let mut header_seen = false;
     let mut declared_entries = None;
     let mut version_seen = false;
-    let mut entries = BTreeMap::new();
+    // FileN is already a bounded numeric index; no tree nodes are needed.
+    let mut entries: [Option<ApprovedEndpoint>; MAX_PLAYLIST_ENTRIES] =
+        std::array::from_fn(|_| None);
+    let mut entry_count = 0;
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with(';') || line.starts_with('#') {
@@ -244,20 +246,22 @@ pub fn parse_pls(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
                         return Err(StreamError::TooManyEntries);
                     }
                     let endpoint = playlist_endpoint(station_id, value)?;
-                    if entries.insert(index, endpoint).is_some() {
+                    if entries[index - 1].replace(endpoint).is_some() {
                         return Err(StreamError::InvalidPlaylist);
                     }
+                    entry_count += 1;
                 }
             }
         }
     }
-    if entries.is_empty()
-        || declared_entries != Some(entries.len())
-        || !entries.keys().copied().eq(1..=entries.len())
-    {
+    if entry_count == 0 || declared_entries != Some(entry_count) {
         return Err(StreamError::InvalidPlaylist);
     }
-    Ok(entries.into_values().collect())
+    entries
+        .into_iter()
+        .take(entry_count)
+        .collect::<Option<Vec<_>>>()
+        .ok_or(StreamError::InvalidPlaylist)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -372,8 +376,10 @@ pub fn open_station<C: RadioHttp>(
                 .body
                 .take((MAX_PLAYLIST_BYTES + 1) as u64)
                 .read_to_end(&mut document)?;
-            let mut candidates = parse_playlist(station_id, &document, format)?;
-            next = candidates.remove(0);
+            next = parse_playlist(station_id, &document, format)?
+                .into_iter()
+                .next()
+                .ok_or(StreamError::InvalidPlaylist)?;
             continue;
         }
         if !is_audio(response.content_type.as_deref()) {
@@ -564,6 +570,34 @@ mod tests {
                 Err(StreamError::TooManyEntries)
             ));
         }
+    }
+
+    #[test]
+    fn pls_numeric_indexes_cover_capacity_and_reject_sparse_entries() {
+        let mut body = format!("[playlist]\nNumberOfEntries={MAX_PLAYLIST_ENTRIES}\nVersion=2\n");
+        for index in (1..=MAX_PLAYLIST_ENTRIES).rev() {
+            body.push_str(&format!(
+                "File{index}=https://ice5.somafm.com/radio-{index}\n"
+            ));
+        }
+        let entries = parse_pls("groovesalad", body.as_bytes()).unwrap();
+        assert_eq!(entries.len(), MAX_PLAYLIST_ENTRIES);
+        for (index, endpoint) in entries.iter().enumerate() {
+            assert_eq!(
+                endpoint.url(),
+                format!("https://ice5.somafm.com/radio-{}", index + 1)
+            );
+        }
+        let sparse = body
+            .replace("File8=https://ice5.somafm.com/radio-8\n", "")
+            .replace(
+                &format!("NumberOfEntries={MAX_PLAYLIST_ENTRIES}"),
+                &format!("NumberOfEntries={}", MAX_PLAYLIST_ENTRIES - 1),
+            );
+        assert!(matches!(
+            parse_pls("groovesalad", sparse.as_bytes()),
+            Err(StreamError::InvalidPlaylist)
+        ));
     }
 
     #[test]

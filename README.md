@@ -26,6 +26,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 For control-only testing, use `cargo test -p rust-radio-core`; it requires no network receiver, sound card, USB SDR or native audio libraries. Workspace builds include CPAL and eframe and need platform development libraries (on Linux, `libasound2-dev` and `pkg-config`). Cargo commands are **instructions**, not test results from this authoring pass.
 
+Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so Git-aware source searches and indexes skip generated files.
+
 ## Required integration invariants
 
 1. No external media-app launching, web browser audio or autoplay.
