@@ -1,0 +1,19 @@
+name: Rust radio core
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  portable-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Test offline core
+        run: cargo test --workspace
+      - name: Lint
+        run: cargo clippy --workspace --all-targets -- -D warnings
