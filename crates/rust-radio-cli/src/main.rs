@@ -77,7 +77,10 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
 
 fn listen(args: ListenArgs<'_>) -> Result<(), String> {
     let mut engine = NativeRadioEngine::start_internet(args.station, args.volume, args.output)?;
-    println!("RUST RADIO / {} / output {} / volume {}%", args.station, args.output, args.volume);
+    println!(
+        "RUST RADIO / {} / output {} / volume {}%",
+        args.station, args.output, args.volume
+    );
 
     // A separate stdin reader lets the main thread monitor duration and playback failures.
     let (tx, rx) = mpsc::channel::<String>();
@@ -106,11 +109,17 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
             audible = true;
         }
         if snapshot.state == rust_radio_audio::compat_controller::PlaybackState::Failed {
-            break Err(snapshot.last_error.unwrap_or_else(|| "playback failed".to_owned()));
+            break Err(snapshot
+                .last_error
+                .unwrap_or_else(|| "playback failed".to_owned()));
         }
         if let Some(seconds) = args.seconds {
             if start.elapsed() >= Duration::from_secs(seconds) {
-                break if audible { Ok(()) } else { Err("No decoded PCM reached the audio callback".into()) };
+                break if audible {
+                    Ok(())
+                } else {
+                    Err("No decoded PCM reached the audio callback".into())
+                };
             }
         } else if let Ok(command) = rx.try_recv() {
             let command = command.trim();
@@ -187,7 +196,16 @@ mod tests {
         ] {
             assert!(parse_listen(&options(&args)).is_err(), "{:?}", args);
         }
-        let parsed = options(&["listen", "skylab", "--seconds", "30", "--volume", "25", "--output", "system"]);
+        let parsed = options(&[
+            "listen",
+            "skylab",
+            "--seconds",
+            "30",
+            "--volume",
+            "25",
+            "--output",
+            "system",
+        ]);
         assert_eq!(parse_listen(&parsed).unwrap().volume, 25);
         assert_eq!(parse_listen(&parsed).unwrap().seconds, Some(30));
         assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
