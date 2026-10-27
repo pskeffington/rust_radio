@@ -147,6 +147,13 @@ impl NativeAudioOutput {
             )?,
             format => return Err(format!("Unsupported native sample format: {format:?}")),
         };
+        // CPAL's CoreAudio backend starts the AudioUnit during construction.
+        // Pause before exposing the producer so callbacks cannot drain a live
+        // low-latency source faster than it can reach the prebuffer threshold.
+        #[cfg(target_os = "macos")]
+        stream
+            .pause()
+            .map_err(|e| format!("Cannot prepare paused native audio output: {e}"))?;
         Ok(Self {
             producer,
             stream,
