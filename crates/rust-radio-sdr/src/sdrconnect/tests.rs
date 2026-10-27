@@ -329,6 +329,10 @@ fn unrelated_packets_cannot_keep_a_stalled_audio_session_alive() {
 
 #[test]
 fn stopped_receiver_and_invalid_limits_do_not_enable_capture() {
+    assert_eq!(
+        Error::NotStreaming.to_string(),
+        "SDRconnect has no running receiver. Use Refresh Device List, select the nRSP-ST, and press Start before subscribing"
+    );
     for duration in [Duration::ZERO, Duration::from_secs(6)] {
         let (endpoint, handle) = fixture(|mut peer| {
             assert!(peer.read().is_err());

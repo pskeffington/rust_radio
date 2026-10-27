@@ -36,7 +36,9 @@ impl fmt::Display for Error {
             Self::Cancelled => f.write_str("SDRconnect operation cancelled"),
             Self::Timeout => f.write_str("SDRconnect API deadline expired"),
             Self::NotStreaming => {
-                f.write_str("Select and start the nRSP-ST in SDRconnect before subscribing")
+                f.write_str(
+                    "SDRconnect has no running receiver. Use Refresh Device List, select the nRSP-ST, and press Start before subscribing",
+                )
             }
             Self::Protocol(message) => write!(f, "SDRconnect protocol: {message}"),
             Self::Transport(message) => write!(f, "SDRconnect connection: {message}"),
