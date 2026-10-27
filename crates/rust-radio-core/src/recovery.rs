@@ -74,10 +74,7 @@ impl ReceiverError {
 /// switch immediately; failed streams may only resume if their failure was
 /// explicitly classified as an output-device failure. Never autoplay a
 /// stopped session or retry unsupported media just from changing speakers.
-pub fn restart_after_output_change(
-    state: crate::SessionState,
-    output_failed: bool,
-) -> bool {
+pub fn restart_after_output_change(state: crate::SessionState, output_failed: bool) -> bool {
     use crate::SessionState;
     match state {
         SessionState::Stopped => false,
@@ -101,10 +98,7 @@ mod tests {
         assert!(!restart_after_output_change(SessionState::Failed, false));
         assert!(restart_after_output_change(SessionState::Failed, true));
         assert!(restart_after_output_change(SessionState::Playing, false));
-        assert!(restart_after_output_change(
-            SessionState::Recovering,
-            false
-        ));
+        assert!(restart_after_output_change(SessionState::Recovering, false));
     }
 
     #[test]
