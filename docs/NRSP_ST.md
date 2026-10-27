@@ -103,14 +103,17 @@ Stop response was 9.44 ms, not a timing guarantee; worker cleanup completed and
 read-only status confirmed the shared receiver remained running. A fresh 500 ms
 subscription then received 26,409 stereo frames. No received samples were saved,
 and no tuning, firmware or shared receiver start/stop commands were sent by these
-checks. This verifies real-receiver PCM through native output callbacks; human
-confirmation of speaker audibility and RF signal quality remains open.
+checks. This verifies real-receiver PCM through native output callbacks.
 
 The live checks were repeated against module `6997dff` and Pip-Boy `f71dd2d`
 after the operator refreshed and started SDRconnect again: PCM ingress resumed,
 both native players passed, concurrent reception and output restart passed,
 and Stop completed cleanup while leaving shared reception running. The observed
 Stop response was 11.52 ms; a fresh 500 ms capture received 24,008 stereo frames.
+
+On 2026-10-27 the operator confirmed hearing radio audio on the MacBook Air
+speakers using the system default audio output. Speaker audibility is confirmed
+for this Mac run; RF signal quality has not been measured.
 
 A separate synthetic-PCM native-output smoke passed on macOS after explicitly
 pausing CPAL's CoreAudio stream before prebuffering. Both standalone and embedded

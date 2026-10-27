@@ -4,7 +4,7 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 ## Status (2026-10-27)
 
-This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Pip-Boy now embeds the headless `rust-radio` module through a pinned Git dependency. Its HUD runtime checks exercised Skylab and Groove Salad through native PCM output, explicit Stop, volume and saved selection. The selected nRSP-ST uses the optional SDRconnect API, including native PCM playback through the same engine as IP radio. SoapySDR remains a separate USB path. Physical native RF listening, raw I/Q and Pi acceptance remain open.
+This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Pip-Boy now embeds the headless `rust-radio` module through a pinned Git dependency. Its HUD runtime checks exercised Skylab and Groove Salad through native PCM output, explicit Stop, volume and saved selection. The selected nRSP-ST uses the optional SDRconnect API, including native PCM playback through the same engine as IP radio. The operator confirmed audible radio playback on MacBook Air speakers through the system default output. SoapySDR remains a separate USB path. Raw I/Q and Pi acceptance remain open.
 
 ## Navigation
 
@@ -44,7 +44,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Near-term work
 
-Live nRSP-ST PCM now reaches native output callbacks in both standalone and Pip-Boy players, including concurrent subscribers and safe local Stop. Complete human listening, raw I/Q and firmware acceptance separately. USB receivers use the separate SoapySDR adapter. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
+Live nRSP-ST PCM now reaches native output callbacks in both standalone and Pip-Boy players, including concurrent subscribers and safe local Stop. MacBook Air speaker playback is operator-confirmed. Complete raw I/Q and firmware acceptance separately. USB receivers use the separate SoapySDR adapter. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
 
 ## Run the native radio
 
