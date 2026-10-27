@@ -19,9 +19,16 @@ pub(super) fn play(
 ) -> Result<(), PlaybackFailure> {
     *receiver.lock().expect("receiver state mutex poisoned") = None;
     let mut client = Client::connect(endpoint, cancelled).map_err(api_failure)?;
-    let state = client.status(cancelled).map_err(api_failure)?;
-    if !state.started || state.active_device.is_empty() {
+    let mut state = client.status(cancelled).map_err(api_failure)?;
+    if state.active_device.is_empty() {
         return Err(api_failure(Error::NotStreaming));
+    }
+    if !state.started {
+        if !state.can_control {
+            return Err(api_failure(Error::ControlUnavailable));
+        }
+        client.start_receiver(cancelled).map_err(api_failure)?;
+        state.started = true;
     }
     *receiver.lock().expect("receiver state mutex poisoned") = Some(state);
     if cancelled.load(Ordering::Acquire) {

@@ -9,17 +9,18 @@ Run SDRconnect (GUI or headless) on the Mac or Raspberry Pi, connect it to the
 nRSP-ST, and enable its WebSocket server. Point this module at that SDRconnect
 host's API port, usually 5454. The radio's own network service is a different
 protocol. A device named NETRADIO on a router is not proof of a running API.
-SDRconnect setup and receiver selection remain operator actions.
-If the receiver does not start, use **Refresh Device List** in SDRconnect,
-select the nRSP-ST in IQ Lite mode, then press Start before starting this module.
-The refresh is an SDRconnect UI action, not a WebSocket command sent by the module.
+SDRconnect setup, receiver selection and device-list refresh remain operator
+actions. Use **Refresh Device List** and select the nRSP-ST in IQ Lite mode
+there. The refresh is an SDRconnect UI action, not a WebSocket command sent by
+the module.
 
 ```sh
 # Independent of SoapySDR and the USB SDRplay SDK:
 cargo run --locked -p rust-radio-cli --features sdrconnect -- \
   sdrconnect-status 127.0.0.1:5454
 
-# Select/start the receiver in SDRconnect first. Both commands discard samples:
+# Capture is passive and needs an already running receiver. Both commands
+# discard samples:
 cargo run --locked -p rust-radio-cli --features sdrconnect -- \
   sdrconnect-capture 127.0.0.1:5454 iq --milliseconds 500
 cargo run --locked -p rust-radio-cli --features sdrconnect -- \
@@ -30,13 +31,18 @@ Use an explicit private-LAN or loopback IP and port; no DNS, public-endpoint
 fallback, credentials, discovery scan or redirect is used. This is a plain
 WebSocket connection to the operator-selected local API. No endpoint is saved.
 
-`rust_radio::receiver::sdrconnect::Client` provides a read-only status snapshot
-and `receive_for()`. Status reports server-supplied receiver/tuning/antenna data;
-it does not select, start, stop or retune shared hardware. Receive subscribes to
-the already running primary receiver, delivers borrowed packets to a host
-callback, disables that subscription, and closes its owned connection. A stopped
-receiver yields an explicit error. A new receive session needs a new client, so
-buffered packets cannot leak into a later session.
+`rust_radio::receiver::sdrconnect::Client` provides a read-only status snapshot,
+`receive_for()` and explicit `start_receiver()`. Status reports server-supplied
+receiver/tuning/antenna data. Receive and capture are passive: they subscribe to
+the already running primary receiver, deliver borrowed packets to a host
+callback, disable that subscription, and close their owned connection. A new
+receive session needs a new client, so buffered packets cannot leak into a later
+session. Explicit native Play may start the already selected receiver if
+SDRconnect reports `can_control`; it sends the documented
+`device_stream_enable=true` event and waits for `started=true` before opening
+audio output. It never selects or refreshes devices, and stopping local playback
+leaves shared reception running. If SDRconnect denies control, Play reports an
+error and does not open the output.
 
 The implementation follows [API 1.0.3](https://sdrplay.com/wp-content/uploads/2026/08/SDRconnect_WebSocket_API.pdf).
 Primary stereo audio is signed little-endian 16-bit PCM at 48 kHz; I/Q uses
@@ -45,8 +51,8 @@ and spectrum data. The capture CLI never opens an audio output. Native playback 
 through the shared `NativeRadioEngine::start_sdrconnect()` entry point when both
 `ip-radio` (default) and `sdrconnect` are enabled. It reuses CPAL output selection,
 volume, bounded PCM conversion/queueing, retries and asynchronous Stop. A new
-session still requires an already-running receiver in SDRconnect; the engine
-does not start or retune shared hardware.
+session starts reception on the already selected receiver when SDRconnect grants
+control; the engine does not select, refresh or retune shared hardware.
 
 ```sh
 cargo run --locked -p rust-radio-cli --features sdrconnect -- \
@@ -68,11 +74,13 @@ Limits: one MiB per WebSocket message/frame, 8 KiB control envelopes, three-seco
 connection/handshake and status deadlines, 1–5000 ms receive windows, and a 250 ms
 unsubscribe attempt followed by socket closure. Cancellation is checked between
 nonblocking operations; the initial TCP connect can take up to three seconds.
-Run on a host worker and keep callbacks brief. No samples are recorded and no
-server recording or shared-device streaming commands are sent.
+Run on a host worker and keep callbacks brief. No samples are recorded or server
+recordings started. Apart from explicit Play activation, no shared-device control
+commands are sent.
 
-Local fixtures verify read-only requests, type/channel separation, cancellation,
-malformed/oversized data, timeout, stopped-receiver errors and unsubscribe/close.
+Local fixtures verify read-only requests, explicit receiver activation,
+type/channel separation, cancellation, malformed/oversized data, timeout,
+stopped-receiver errors and unsubscribe/close.
 Initial API checks on the supplied Pi address and localhost were refused.
 Later, SDRconnect 1.0.10 on the Mac exposed API 1.0.3 and the selected nRSP-ST.
 Read-only status succeeded both stopped and streaming. With the receiver started

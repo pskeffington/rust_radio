@@ -143,6 +143,30 @@ fn status_is_read_only_and_ignores_pushes_and_secondary_responses() {
 }
 
 #[test]
+fn explicit_start_uses_device_stream_enable_then_waits_for_started_status() {
+    let (endpoint, handle) = fixture(|mut peer| {
+        let start_request = request(&mut peer);
+        assert_eq!(start_request.event_type, "device_stream_enable");
+        assert_eq!(start_request.property, "");
+        assert_eq!(start_request.value, "true");
+        assert_eq!(start_request.device.as_deref(), Some("primary"));
+
+        for started in ["false", "true"] {
+            let status_request = request(&mut peer);
+            assert_eq!(status_request.event_type, "get_property");
+            assert_eq!(status_request.property, "started");
+            response(&mut peer, "started", started);
+        }
+        // Receiver start is an explicit side effect; releasing this client does
+        // not send device_stream_enable=false or stop the shared receiver.
+    });
+    let cancel = AtomicBool::new(false);
+    let mut client = Client::connect(endpoint, &cancel).unwrap();
+    client.start_receiver(&cancel).unwrap();
+    handle.join().unwrap();
+}
+
+#[test]
 fn cancelled_iq_and_audio_subscriptions_disable_only_the_requested_client_stream() {
     for (kind, tag, ignored) in [(StreamKind::Iq, 2, 1), (StreamKind::Audio, 1, 2)] {
         let (endpoint, handle) = fixture(move |mut peer| {
@@ -331,7 +355,11 @@ fn unrelated_packets_cannot_keep_a_stalled_audio_session_alive() {
 fn stopped_receiver_and_invalid_limits_do_not_enable_capture() {
     assert_eq!(
         Error::NotStreaming.to_string(),
-        "SDRconnect has no running receiver. Use Refresh Device List, select the nRSP-ST, and press Start before subscribing"
+        "SDRconnect receiver did not start. Use Refresh Device List and select the nRSP-ST; start it for passive capture or use explicit native Play"
+    );
+    assert_eq!(
+        Error::ControlUnavailable.to_string(),
+        "SDRconnect does not allow starting the selected receiver"
     );
     for duration in [Duration::ZERO, Duration::from_secs(6)] {
         let (endpoint, handle) = fixture(|mut peer| {

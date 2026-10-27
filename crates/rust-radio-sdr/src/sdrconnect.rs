@@ -1,7 +1,8 @@
 //! SDRconnect WebSocket API 1.0.x. An nRSP-ST is reached through SDRconnect,
 //! not through the USB SDRplay API. Construction is offline; all I/O is explicit.
-//! This client observes an already selected/started receiver. It never starts or
-//! stops shared hardware, retunes another client, records, or transmits.
+//! This client observes an already selected receiver. Explicit host playback can
+//! start shared reception when SDRconnect grants control. It never stops, retunes,
+//! or selects hardware, records, or transmits.
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::io;
@@ -24,6 +25,7 @@ pub enum Error {
     Cancelled,
     Timeout,
     NotStreaming,
+    ControlUnavailable,
     Protocol(String),
     Transport(String),
 }
@@ -37,8 +39,11 @@ impl fmt::Display for Error {
             Self::Timeout => f.write_str("SDRconnect API deadline expired"),
             Self::NotStreaming => {
                 f.write_str(
-                    "SDRconnect has no running receiver. Use Refresh Device List, select the nRSP-ST, and press Start before subscribing",
+                    "SDRconnect receiver did not start. Use Refresh Device List and select the nRSP-ST; start it for passive capture or use explicit native Play",
                 )
+            }
+            Self::ControlUnavailable => {
+                f.write_str("SDRconnect does not allow starting the selected receiver")
             }
             Self::Protocol(message) => write!(f, "SDRconnect protocol: {message}"),
             Self::Transport(message) => write!(f, "SDRconnect connection: {message}"),
@@ -305,6 +310,24 @@ impl Client {
             antennas,
             active_antenna,
         })
+    }
+
+    /// Start the already selected receiver after an explicit host Play action.
+    /// Call only after status confirms a selected device and `can_control`.
+    /// This never selects or refreshes devices and leaves the receiver running
+    /// when this client later disconnects.
+    pub fn start_receiver(&mut self, cancel: &AtomicBool) -> Result<(), Error> {
+        let deadline = Instant::now() + OPERATION_TIMEOUT;
+        self.send("device_stream_enable", "", "true", deadline, cancel)?;
+        loop {
+            if parse_bool(&self.query("started", deadline, cancel)?)? {
+                return Ok(());
+            }
+            if Instant::now() >= deadline {
+                return Err(Error::NotStreaming);
+            }
+            std::thread::sleep(POLL_INTERVAL);
+        }
     }
 
     /// Subscribe to an already running primary receiver for at most five
