@@ -22,3 +22,19 @@ On a Mac with actual audio output, record OS/audio device, UTC timestamp, commit
 ## Current evidence
 
 The CLI source and Cargo workspace registration are committed, but this environment does not have Cargo and cannot run the native audio tests. The connected GitHub Actions lookup for the previous source commit returned no matching PR-triggered runs; this does not prove that push-triggered workflows are absent. No audible standalone playback is claimed.
+
+
+## Reliability pass: manual output and session control
+
+After the prior Mac 30-second Skylab audible pass, the CLI now supports:
+
+```sh
+cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 25
+cargo run -p rust-radio-cli -- outputs
+cargo run -p rust-radio-cli -- listen skylab --seconds 30 --output system
+cargo run -p rust-radio-cli -- listen skylab --volume 50
+```
+
+For a named `--output`, copy an ID from the most recent `outputs` listing. Index/name-bound identifiers can change when devices reconnect and must be refreshed. Interactive mode accepts `status`, `volume N`, `stop` or `q`. Output selection is made at start; mid-session output hot-switching is a separate gate.
+
+These CLI additions have **not** been re-tested on hardware in this pass. The earlier operator-confirmed 30-second Skylab pass applies to the prior CLI implementation. Run formatting, tests, Clippy and playback regression on the exact new commit before release. Test stop during connecting and buffering, and verify that all worker resources close. In interactive mode the stdin thread is detached and is not itself a hardware resource; graceful cancellation of a pending stdin read is still a future cleanup.
