@@ -29,7 +29,7 @@ For control-only testing, use `cargo test -p rust-radio-core`; it requires no ne
 ## Required integration invariants
 
 1. No external media-app launching, web browser audio or autoplay.
-2. Only explicit user Play opens network/hardware receiver resources.
+2. Only explicit Play or Validate opens network resources; validation never opens audio output or hardware receivers.
 3. One active session; generation-tagged state and real worker cancellation.
 4. Audible `Playing` requires proof of samples reaching audio output; successful HTTP/SDR tuning alone is insufficient.
 5. Bounded streaming memory, TLS and publisher endpoint validation, controlled redirects and timeouts.
@@ -50,3 +50,11 @@ cargo run -p rust-radio-gui --bin rust-radio-gui
 Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous worker releases its resources. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.
 
 The native transport resolves bounded M3U and PLS playlists using publisher-approved URLs. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
+
+Check a station without opening an audio device:
+
+```sh
+cargo run -p rust-radio-cli -- validate skylab
+```
+
+Validation records its timestamp, resolved endpoint, furthest verified stage and MP3/AAC decode evidence. It shares one 18-second HTTP deadline across all playlist/redirect hops, reads at most 256 KiB of audio and examines at most 64 packets. Only decoded finite PCM produces a successful exit status; HTTP success and catalog inclusion alone do not. Checks are explicit and are not part of offline CI. Reports currently last only for that invocation; GUI status and persistent validation history remain future work.

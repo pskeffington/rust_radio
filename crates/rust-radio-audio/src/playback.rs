@@ -245,12 +245,12 @@ impl Drop for NativeRadioEngine {
 
 /// A non-seekable, thread-safe media source around the R2 ICY reader.
 /// Only the decoder worker locks it, never the real-time CPAL callback.
-struct LiveMediaSource<R: Read + Send> {
+pub(crate) struct LiveMediaSource<R: Read + Send> {
     reader: Mutex<R>,
 }
 
 impl<R: Read + Send> LiveMediaSource<R> {
-    fn new(reader: R) -> Self {
+    pub(crate) fn new(reader: R) -> Self {
         Self {
             reader: Mutex::new(reader),
         }

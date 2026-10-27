@@ -1,10 +1,13 @@
 //! Operator-triggered standalone test harness. No automatic network or audio I/O.
 use rust_radio_audio::output::available_outputs;
 use rust_radio_audio::playback::NativeRadioEngine;
+use rust_radio_audio::validation::validate_station;
 use rust_radio_core::directory::{curated_stations, station_by_id};
+use rust_radio_core::validation::StationValidation;
 use std::io::{self, BufRead};
 use std::sync::mpsc;
 use std::thread;
+use std::time::UNIX_EPOCH;
 use std::time::{Duration, Instant};
 use std::{env, process};
 
@@ -17,8 +20,29 @@ struct ListenArgs<'a> {
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
     eprintln!("Interactive listen commands: status | volume N | stop");
+}
+
+fn validation_summary(report: &StationValidation) -> String {
+    let checked_at = report
+        .checked_at
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|time| time.as_secs().to_string())
+        .unwrap_or_else(|| "not checked".into());
+    format!(
+        "{}\t{:?}\tstage={:?}\tchecked_at_unix={}\nendpoint={}\ncodec={}\tsample_rate={}\tchannels={}\tdecoded_frames={}\n{}",
+        report.station_id,
+        report.status,
+        report.stage,
+        checked_at,
+        report.resolved_url.as_deref().unwrap_or("unknown"),
+        report.codec.as_deref().unwrap_or("unknown"),
+        report.sample_rate.unwrap_or(0),
+        report.channels.unwrap_or(0),
+        report.decoded_frames,
+        report.detail,
+    )
 }
 
 fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
@@ -160,6 +184,15 @@ fn run(args: &[String]) -> Result<(), String> {
             }
             Ok(())
         }
+        Some("validate") if args.len() == 2 => {
+            let report = validate_station(&args[1])?;
+            println!("{}", validation_summary(&report));
+            if report.is_decoded() {
+                Ok(())
+            } else {
+                Err("Station did not pass decoded-audio validation".into())
+            }
+        }
         Some("listen") => listen(parse_listen(args)?),
         _ => {
             usage();
@@ -214,5 +247,17 @@ mod tests {
     #[test]
     fn listing_is_network_free() {
         assert!(run(&options(&["stations"])).is_ok());
+    }
+
+    #[test]
+    fn invalid_validation_requests_fail_without_network_or_audio() {
+        for args in [
+            vec!["validate"],
+            vec!["validate", "unknown-station"],
+            vec!["validate", "https://localhost/admin"],
+            vec!["validate", "skylab", "unexpected"],
+        ] {
+            assert!(run(&options(&args)).is_err());
+        }
     }
 }

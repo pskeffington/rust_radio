@@ -5,3 +5,5 @@
 pub mod compat_controller;
 pub mod output;
 pub mod playback;
+/// Explicit, bounded station checks that decode PCM without opening an output.
+pub mod validation;

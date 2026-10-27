@@ -226,3 +226,5 @@ pub mod recovery;
 pub mod directory;
 /// Bounded HTTPS stream-response, playlist and ICY parser (network-free).
 pub mod stream;
+/// Station-validation evidence, independent of transport, decoder and GUI.
+pub mod validation;
