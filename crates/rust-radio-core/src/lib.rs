@@ -65,6 +65,11 @@ impl RadioController {
     }
 
     pub fn request_start(&mut self, source: Source) -> Result<u64, RadioError> {
+        if let Source::Internet { ref station_id } = source {
+            if directory::station_by_id(station_id).is_none() {
+                return Err(RadioError::UnknownStation);
+            }
+        }
         if self.snapshot.state != SessionState::Stopped && self.snapshot.state != SessionState::Failed {
             return Err(RadioError::AlreadyActive);
         }
