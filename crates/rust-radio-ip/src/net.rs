@@ -6,7 +6,8 @@ use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::stream::{
-    icy_interval, parse_m3u, ApprovedEndpoint, IcyAudioReader, MAX_PLAYLIST_BYTES, MAX_REQUEST_HOPS,
+    icy_interval, parse_playlist, playlist_format, ApprovedEndpoint, IcyAudioReader,
+    PlaylistFormat, StreamError, MAX_PLAYLIST_BYTES, MAX_REQUEST_HOPS,
 };
 use std::future::Future;
 use std::io::{self, Read};
@@ -302,12 +303,12 @@ async fn pump_station(
             .unwrap_or("")
             .trim()
             .to_ascii_lowercase();
-        let playlist = next.url().ends_with(".m3u")
-            || matches!(
-                mime.as_str(),
-                "audio/x-mpegurl" | "audio/mpegurl" | "application/x-mpegurl"
-            );
-        if playlist {
+        if let Some(format) = playlist_format(next.url(), content_type.as_deref()) {
+            if format == PlaylistFormat::Hls {
+                return Err(TransportError::Permanent(
+                    StreamError::UnsupportedHls.to_string(),
+                ));
+            }
             if playlist_seen {
                 return Err("Nested radio playlist not permitted".into());
             }
@@ -326,7 +327,7 @@ async fn pump_station(
                 }
                 document.extend_from_slice(&bytes);
             }
-            let mut entries = parse_m3u(station_id, &document)
+            let mut entries = parse_playlist(station_id, &document, format)
                 .map_err(|e| format!("Radio playlist rejected: {e}"))?;
             next = entries.remove(0);
             continue;

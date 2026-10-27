@@ -5,6 +5,7 @@
 //! entire playlist/redirect/ICY path without audio devices or subprocesses.
 
 use crate::directory::station_by_id;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::{self, Read};
 
@@ -26,6 +27,7 @@ pub enum StreamError {
     MissingLocation,
     HttpStatus(u16),
     UnsupportedContentType,
+    UnsupportedHls,
     InvalidIcyInterval,
     TransportUnavailable,
     Io(io::Error),
@@ -33,7 +35,10 @@ pub enum StreamError {
 
 impl fmt::Display for StreamError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
+        match self {
+            Self::UnsupportedHls => f.write_str("HLS radio transport is not supported"),
+            error => write!(f, "{error:?}"),
+        }
     }
 }
 
@@ -148,6 +153,9 @@ pub fn parse_m3u(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
     let mut result = Vec::new();
     for line in text.lines() {
         let trimmed = line.trim();
+        if trimmed.starts_with("#EXT-X-") {
+            return Err(StreamError::UnsupportedHls);
+        }
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
@@ -162,17 +170,129 @@ pub fn parse_m3u(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
     Ok(result)
 }
 
-fn is_playlist(url: &str, content_type: Option<&str>) -> bool {
+/// Parse bounded PLS v2 playlists. Every FileN URL must be publisher-approved;
+/// titles and lengths are inert metadata. Entries are returned in numeric order.
+pub fn parse_pls(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>, StreamError> {
+    if body.len() > MAX_PLAYLIST_BYTES {
+        return Err(StreamError::OversizedPlaylist);
+    }
+    let text = std::str::from_utf8(body).map_err(|_| StreamError::InvalidPlaylist)?;
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let mut header_seen = false;
+    let mut declared_entries = None;
+    let mut version_seen = false;
+    let mut entries = BTreeMap::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with(';') || line.starts_with('#') {
+            continue;
+        }
+        if !header_seen {
+            if !line.eq_ignore_ascii_case("[playlist]") {
+                return Err(StreamError::InvalidPlaylist);
+            }
+            header_seen = true;
+            continue;
+        }
+        let (key, value) = line.split_once('=').ok_or(StreamError::InvalidPlaylist)?;
+        let key = key.trim().to_ascii_lowercase();
+        let value = value.trim();
+        match key.as_str() {
+            "numberofentries" => {
+                if declared_entries.is_some() {
+                    return Err(StreamError::InvalidPlaylist);
+                }
+                let count = value
+                    .parse::<usize>()
+                    .map_err(|_| StreamError::InvalidPlaylist)?;
+                if count > MAX_PLAYLIST_ENTRIES {
+                    return Err(StreamError::TooManyEntries);
+                }
+                declared_entries = Some(count);
+            }
+            "version" => {
+                if version_seen || value != "2" {
+                    return Err(StreamError::InvalidPlaylist);
+                }
+                version_seen = true;
+            }
+            _ => {
+                if let Some(index) = key.strip_prefix("file") {
+                    let index = index
+                        .parse::<usize>()
+                        .map_err(|_| StreamError::InvalidPlaylist)?;
+                    if index == 0 {
+                        return Err(StreamError::InvalidPlaylist);
+                    }
+                    if index > MAX_PLAYLIST_ENTRIES {
+                        return Err(StreamError::TooManyEntries);
+                    }
+                    let endpoint = ApprovedEndpoint::new(station_id, value)?;
+                    if entries.insert(index, endpoint).is_some() {
+                        return Err(StreamError::InvalidPlaylist);
+                    }
+                }
+            }
+        }
+    }
+    if entries.is_empty()
+        || declared_entries != Some(entries.len())
+        || !entries.keys().copied().eq(1..=entries.len())
+    {
+        return Err(StreamError::InvalidPlaylist);
+    }
+    Ok(entries.into_values().collect())
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlaylistFormat {
+    M3u,
+    Pls,
+    /// Segmented HLS needs a dedicated transport; never treat it as direct audio.
+    Hls,
+}
+
+/// Shared detection for offline validation and sustained native playback.
+pub fn playlist_format(url: &str, content_type: Option<&str>) -> Option<PlaylistFormat> {
     let mime = content_type
         .unwrap_or("")
         .split(';')
         .next()
         .unwrap_or("")
-        .trim();
-    url.ends_with(".m3u")
-        || ["audio/x-mpegurl", "audio/mpegurl", "application/x-mpegurl"]
-            .iter()
-            .any(|value| mime.eq_ignore_ascii_case(value))
+        .trim()
+        .to_ascii_lowercase();
+    let url = url.to_ascii_lowercase();
+    if url.ends_with(".m3u8") || mime == "application/vnd.apple.mpegurl" {
+        Some(PlaylistFormat::Hls)
+    } else if matches!(
+        mime.as_str(),
+        "audio/x-scpls" | "audio/scpls" | "application/x-scpls"
+    ) {
+        Some(PlaylistFormat::Pls)
+    } else if matches!(
+        mime.as_str(),
+        "audio/x-mpegurl" | "audio/mpegurl" | "application/x-mpegurl"
+    ) {
+        Some(PlaylistFormat::M3u)
+    } else if url.ends_with(".pls") {
+        Some(PlaylistFormat::Pls)
+    } else if url.ends_with(".m3u") {
+        Some(PlaylistFormat::M3u)
+    } else {
+        None
+    }
+}
+
+pub fn parse_playlist(
+    station_id: &str,
+    body: &[u8],
+    format: PlaylistFormat,
+) -> Result<Vec<ApprovedEndpoint>, StreamError> {
+    match format {
+        PlaylistFormat::M3u => parse_m3u(station_id, body),
+        PlaylistFormat::Pls => parse_pls(station_id, body),
+        PlaylistFormat::Hls => Err(StreamError::UnsupportedHls),
+    }
 }
 
 fn is_audio(content_type: Option<&str>) -> bool {
@@ -223,7 +343,10 @@ pub fn open_station<C: RadioHttp>(
         if response.status != 200 {
             return Err(StreamError::HttpStatus(response.status));
         }
-        if is_playlist(next.url(), response.content_type.as_deref()) {
+        if let Some(format) = playlist_format(next.url(), response.content_type.as_deref()) {
+            if format == PlaylistFormat::Hls {
+                return Err(StreamError::UnsupportedHls);
+            }
             if playlist_seen {
                 return Err(StreamError::TooManyHops);
             }
@@ -233,7 +356,7 @@ pub fn open_station<C: RadioHttp>(
                 .body
                 .take((MAX_PLAYLIST_BYTES + 1) as u64)
                 .read_to_end(&mut document)?;
-            let mut candidates = parse_m3u(station_id, &document)?;
+            let mut candidates = parse_playlist(station_id, &document, format)?;
             next = candidates.remove(0);
             continue;
         }
@@ -397,6 +520,195 @@ mod tests {
         ));
         assert!(parse_m3u("groovesalad", b"#EXTM3U\n# comment").is_err());
         assert!(parse_m3u("groovesalad", b"https://example.com/steal").is_err());
+    }
+
+    #[test]
+    fn pls_entries_are_bounded_allowlisted_and_sorted_by_number() {
+        let playlist = "\u{feff}[PLAYLIST]\r\n; broadcaster playlist\r\nFile2=https://ice5.somafm.com/groovesalad-128-mp3\r\nTitle1=Groove=Salad\r\nLength1=-1\r\nfIlE1 = https://ice2.somafm.com/groovesalad-128-mp3\r\nNumberOfEntries=2\r\nVersion=2\r\n";
+        let entries = parse_pls("groovesalad", playlist.as_bytes()).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(
+            entries[0].url(),
+            "https://ice2.somafm.com/groovesalad-128-mp3"
+        );
+        assert_eq!(
+            entries[1].url(),
+            "https://ice5.somafm.com/groovesalad-128-mp3"
+        );
+        assert!(matches!(
+            parse_pls("groovesalad", &vec![b'a'; MAX_PLAYLIST_BYTES + 1]),
+            Err(StreamError::OversizedPlaylist)
+        ));
+        for body in [
+            "[playlist]\nNumberOfEntries=17\n",
+            "[playlist]\nFile17=https://ice5.somafm.com/audio\nNumberOfEntries=1\n",
+        ] {
+            assert!(matches!(
+                parse_pls("groovesalad", body.as_bytes()),
+                Err(StreamError::TooManyEntries)
+            ));
+        }
+    }
+
+    #[test]
+    fn malformed_pls_counts_versions_and_duplicate_entries_are_rejected() {
+        let audio = "https://ice5.somafm.com/groovesalad-128-mp3";
+        for body in [
+            String::new(),
+            format!("File1={audio}\nNumberOfEntries=1"),
+            "[playlist]\nNumberOfEntries=0".into(),
+            format!("[playlist]\nFile1={audio}"),
+            format!("[playlist]\nFile1={audio}\nNumberOfEntries=2"),
+            format!("[playlist]\nFile2={audio}\nNumberOfEntries=1"),
+            format!("[playlist]\nFile0={audio}\nNumberOfEntries=1"),
+            format!("[playlist]\nFile1={audio}\nFile1={audio}\nNumberOfEntries=1"),
+            format!("[playlist]\nFile1={audio}\nNumberOfEntries=1\nNumberOfEntries=1"),
+            format!("[playlist]\nFile1={audio}\nNumberOfEntries=1\nVersion=3"),
+            format!("[playlist]\nFile1={audio}\nNumberOfEntries=1\nVersion=2\nVersion=2"),
+            format!("[playlist]\nFilex={audio}\nNumberOfEntries=1"),
+        ] {
+            assert!(
+                matches!(
+                    parse_pls("groovesalad", body.as_bytes()),
+                    Err(StreamError::InvalidPlaylist)
+                ),
+                "{body}"
+            );
+        }
+        assert!(matches!(
+            parse_pls("groovesalad", b"[playlist]\n\xff"),
+            Err(StreamError::InvalidPlaylist)
+        ));
+    }
+
+    #[test]
+    fn unapproved_pls_fallback_is_rejected_even_after_a_safe_first_entry() {
+        for url in [
+            "http://ice5.somafm.com/audio",
+            "https://127.0.0.1/audio",
+            "https://somafm.com.evil.test/audio",
+        ] {
+            let body = format!("[playlist]\nFile1=https://ice5.somafm.com/audio\nFile2={url}\nNumberOfEntries=2\nVersion=2");
+            assert!(matches!(
+                parse_pls("groovesalad", body.as_bytes()),
+                Err(StreamError::UnsafeEndpoint)
+            ));
+        }
+    }
+
+    #[test]
+    fn playlist_detection_distinguishes_pls_m3u_and_hls() {
+        for (url, mime, expected) in [
+            (
+                "https://somafm.com/radio.PLS",
+                None,
+                Some(PlaylistFormat::Pls),
+            ),
+            (
+                "https://somafm.com/radio",
+                Some("Audio/X-SCPLS; charset=utf-8"),
+                Some(PlaylistFormat::Pls),
+            ),
+            (
+                "https://somafm.com/radio.m3u",
+                Some("audio/x-scpls"),
+                Some(PlaylistFormat::Pls),
+            ),
+            (
+                "https://somafm.com/radio.m3u",
+                None,
+                Some(PlaylistFormat::M3u),
+            ),
+            (
+                "https://somafm.com/radio",
+                Some("application/x-mpegurl"),
+                Some(PlaylistFormat::M3u),
+            ),
+            (
+                "https://somafm.com/radio.M3U8",
+                Some("audio/mpegurl"),
+                Some(PlaylistFormat::Hls),
+            ),
+            (
+                "https://somafm.com/radio",
+                Some("application/vnd.apple.mpegurl"),
+                Some(PlaylistFormat::Hls),
+            ),
+            ("https://somafm.com/radio", Some("audio/mpeg"), None),
+        ] {
+            assert_eq!(playlist_format(url, mime), expected);
+        }
+    }
+
+    #[test]
+    fn hls_manifests_are_never_treated_as_direct_station_playlists() {
+        for body in [
+            b"#EXTM3U\n#EXT-X-VERSION:3\nhttps://ice5.somafm.com/segment.ts".as_slice(),
+            b"#EXTM3U\nhttps://ice5.somafm.com/audio\n#EXT-X-STREAM-INF:BANDWIDTH=128000",
+        ] {
+            assert!(matches!(
+                parse_m3u("groovesalad", body),
+                Err(StreamError::UnsupportedHls)
+            ));
+        }
+        assert!(matches!(
+            parse_playlist("groovesalad", b"", PlaylistFormat::Hls),
+            Err(StreamError::UnsupportedHls)
+        ));
+    }
+
+    #[test]
+    fn redirected_pls_resolves_to_approved_audio() {
+        let ice = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let fixture = FakeHttp(vec![
+            Fixture {
+                url: "https://somafm.com/m3u/groovesalad.m3u",
+                status: 302,
+                mime: "text/plain",
+                redirect: Some("https://somafm.com/groovesalad.pls"),
+                metaint: None,
+                body: vec![],
+            },
+            Fixture {
+                url: "https://somafm.com/groovesalad.pls",
+                status: 200,
+                mime: "audio/x-scpls",
+                redirect: None,
+                metaint: None,
+                body: format!("[playlist]\nFile1={ice}\nNumberOfEntries=1\nVersion=2").into_bytes(),
+            },
+            Fixture {
+                url: ice,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: b"audio".to_vec(),
+            },
+        ]);
+        let mut stream = open_station(&fixture, "groovesalad").unwrap();
+        assert_eq!(stream.endpoint.url(), ice);
+        let mut audio = String::new();
+        stream.reader.read_to_string(&mut audio).unwrap();
+        assert_eq!(audio, "audio");
+    }
+
+    #[test]
+    fn resolver_rejects_hls_without_fetching_segments() {
+        for mime in ["application/vnd.apple.mpegurl", "audio/x-mpegurl"] {
+            let fixture = FakeHttp(vec![Fixture {
+                url: "https://somafm.com/m3u/groovesalad.m3u",
+                status: 200,
+                mime,
+                redirect: None,
+                metaint: None,
+                body: b"#EXTM3U\n#EXT-X-VERSION:3\nhttps://ice5.somafm.com/segment.ts".to_vec(),
+            }]);
+            assert!(matches!(
+                open_station(&fixture, "groovesalad"),
+                Err(StreamError::UnsupportedHls)
+            ));
+        }
     }
 
     #[test]

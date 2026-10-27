@@ -12,6 +12,8 @@ Each connection has its own cancellation flag. Dropping its guard or byte reader
 
 Hosts that need recovery policy can use `net::open_station_classified()` and `error::TransportError`; the original `open_station()` keeps its string-error API. Connection/header and read failures, HTTP 408/429 and 5xx responses are transient. Invalid endpoints, playlists, content and other HTTP rejections are permanent. Playback shares a three-retry budget across startup and in-stream failures, waiting 1, 2 and 4 seconds; Stop interrupts those waits. Stream I/O failures during decoder probing also use that budget, while unsupported formats and output-device failures remain terminal.
 
+Core validation and native playback share M3U/PLS format detection and parsing. Both enforce 16 KiB/16-entry limits and validate every stream URL against the station's publisher allowlist. PLS requires a matching `NumberOfEntries`, contiguous `FileN` indices and `Version=2` when present; the transport selects the first entry in numeric order. Metadata is inert. HLS MIME types, `.m3u8` URLs and `#EXT-X-` manifest tags return an explicit unsupported-transport error without fetching segments. Playlist nesting remains disallowed.
+
 Live cancellation during DNS/TLS, device behavior, Pi hardware, dependency MSRV compatibility and source-host parity still require separate validation. These offline tests do not certify hardware playback.
 
 Remaining validation:

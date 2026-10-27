@@ -48,3 +48,5 @@ cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
 
 Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous worker releases its resources. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.
+
+The native transport resolves bounded M3U and PLS playlists using publisher-approved URLs. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
