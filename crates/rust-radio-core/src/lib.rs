@@ -16,15 +16,8 @@ pub enum Source {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SessionState {
-    Stopped,
-    Connecting,
-    Buffering,
-    Playing,
-    Recovering,
-    Failed,
-}
+/// Shared state vocabulary for source-neutral and native playback controllers.
+pub use controller::PlaybackState as SessionState;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RadioError {
@@ -222,8 +215,13 @@ pub mod pcm;
 /// Pure retry and output-recovery policy, extracted from the Rust-Boy baseline.
 pub mod recovery;
 
+/// Native playback commands/events, usable without loading audio dependencies.
+pub mod controller;
 /// Curated broadcaster catalog and source selection, extracted from Rust-Boy.
 pub mod directory;
+/// Hardware-independent receive-only tuner contract and explicit simulation.
+#[cfg(feature = "sdr")]
+pub mod sdr;
 /// Bounded HTTPS stream-response, playlist and ICY parser (network-free).
 pub mod stream;
 /// Station-validation evidence, independent of transport, decoder and GUI.

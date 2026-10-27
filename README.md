@@ -8,6 +8,7 @@ This workspace contains portable control/parsing code, bounded HTTPS transport, 
 
 ## Navigation
 
+- [Standalone module and embedding API](docs/EMBEDDING.md)
 - [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
 - [Component ownership and extraction gates](docs/PORTING_PLAN.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
@@ -41,7 +42,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Near-term work
 
-Extract existing production radio components into independently testable crates with pinned upstream source revision, then switch Rust-Boy to a tested path dependency. Preserve Mac Skylab playback, explicit playback controls, Bluetooth output routing, favorites storage and 480x320 HUD behavior.
+Consume the standalone `rust-radio` library from Rust-Boy through a pinned dependency and thin host adapters. Preserve Mac Skylab playback, explicit playback controls, Bluetooth output routing, favorites storage and 480x320 HUD behavior. The default library is headless; the standalone GUI is optional.
 
 ## Run the native radio
 
