@@ -24,6 +24,10 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Rust Radio",
         options,
-        Box::new(|_cc| Ok(Box::new(StandaloneRadio { radio: RadioPanel::new() }))),
+        Box::new(|_cc| {
+            Ok(Box::new(StandaloneRadio {
+                radio: RadioPanel::new(),
+            }))
+        }),
     )
 }
