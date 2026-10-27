@@ -7,6 +7,7 @@ use rust_radio_core::directory::station_by_id;
 use rust_radio_core::stream::{
     icy_interval, parse_m3u, ApprovedEndpoint, IcyAudioReader, MAX_PLAYLIST_BYTES, MAX_REQUEST_HOPS,
 };
+use std::future::Future;
 use std::io::{self, Read};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -22,6 +23,7 @@ const PENDING_CHUNKS: usize = 16;
 const READ_DEADLINE: Duration = Duration::from_secs(3);
 const CONNECT_DEADLINE: Duration = Duration::from_secs(8);
 const STARTUP_DEADLINE: Duration = Duration::from_secs(35);
+const CANCEL_INTERVAL: Duration = Duration::from_millis(25);
 
 struct StreamHeaders {
     content_type: Option<String>,
@@ -35,6 +37,7 @@ pub struct ChunkReader {
     buffered: Vec<u8>,
     position: usize,
     cancelled: Arc<AtomicBool>,
+    stopped: Arc<AtomicBool>,
     error: Arc<Mutex<Option<String>>>,
 }
 
@@ -44,7 +47,7 @@ impl Read for ChunkReader {
             return Ok(0);
         }
         loop {
-            if self.cancelled.load(Ordering::Acquire) {
+            if self.cancelled.load(Ordering::Acquire) || self.stopped.load(Ordering::Acquire) {
                 return Err(io::Error::new(io::ErrorKind::Interrupted, "Radio stopped"));
             }
             if self.position < self.buffered.len() {
@@ -77,23 +80,68 @@ impl Read for ChunkReader {
     }
 }
 
+impl Drop for ChunkReader {
+    fn drop(&mut self) {
+        self.stopped.store(true, Ordering::Release);
+    }
+}
+
 pub struct RadioInput {
     pub reader: IcyAudioReader<ChunkReader>,
     pub content_type: Option<String>,
 }
 
-/// The guard must outlive the decoder. Dropping the compressed-byte reader
-/// releases the sender; the join waits for the bounded HTTP read to finish.
-/// Do NOT flip the session's cancel flag here: reconnection creates a new
-/// stream within the same user-authorized session.
+/// Dropping the guard cancels this connection before joining its worker, even
+/// if the decoder still holds its reader or the audio queue is full. This never
+/// changes the session's cancel flag: recovery can open another connection.
 pub struct NetworkGuard {
     worker: Option<JoinHandle<()>>,
+    stopped: Arc<AtomicBool>,
 }
 
 impl Drop for NetworkGuard {
     fn drop(&mut self) {
+        self.stopped.store(true, Ordering::Release);
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
+        }
+    }
+}
+
+/// Keep the in-flight future across polling deadlines. Cancelling drops that
+/// future, releasing pending HTTP requests, responses and backpressure waits.
+async fn until_cancelled(
+    work: impl Future<Output = Result<(), String>>,
+    cancelled: &AtomicBool,
+    stopped: &AtomicBool,
+) -> Result<(), String> {
+    let mut work = std::pin::pin!(work);
+    loop {
+        if cancelled.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        if let Ok(result) = timeout(CANCEL_INTERVAL, work.as_mut()).await {
+            return result;
+        }
+    }
+}
+
+async fn send_fragment(
+    audio: &SyncSender<Vec<u8>>,
+    mut pending: Vec<u8>,
+    cancelled: &AtomicBool,
+) -> bool {
+    loop {
+        if cancelled.load(Ordering::Acquire) {
+            return false;
+        }
+        match audio.try_send(pending) {
+            Ok(()) => return true,
+            Err(TrySendError::Full(bytes)) => {
+                pending = bytes;
+                sleep(Duration::from_millis(5)).await;
+            }
+            Err(TrySendError::Disconnected(_)) => return false,
         }
     }
 }
@@ -111,6 +159,8 @@ pub fn open_station(
     let error = Arc::new(Mutex::new(None));
     let worker_error = Arc::clone(&error);
     let worker_cancel = Arc::clone(&cancelled);
+    let stopped = Arc::new(AtomicBool::new(false));
+    let worker_stopped = Arc::clone(&stopped);
     let worker = thread::Builder::new()
         .name("rust-radio-http".into())
         .spawn(move || {
@@ -119,10 +169,15 @@ pub fn open_station(
                 .build()
                 .map_err(|e| format!("Radio network runtime unavailable: {e}"))
                 .and_then(|runtime| {
-                    runtime.block_on(pump_station(&id, &worker_cancel, &startup_tx, &audio_tx))
+                    runtime.block_on(until_cancelled(
+                        pump_station(&id, &worker_cancel, &startup_tx, &audio_tx),
+                        &worker_cancel,
+                        &worker_stopped,
+                    ))
                 });
             if let Err(message) = result {
-                if !worker_cancel.load(Ordering::Acquire) {
+                if !worker_cancel.load(Ordering::Acquire) && !worker_stopped.load(Ordering::Acquire)
+                {
                     *worker_error.lock().expect("Radio error mutex poisoned") =
                         Some(message.clone());
                     let _ = startup_tx.try_send(Err(message));
@@ -132,6 +187,7 @@ pub fn open_station(
         .map_err(|e| format!("Cannot launch native radio receiver: {e}"))?;
     let guard = NetworkGuard {
         worker: Some(worker),
+        stopped: Arc::clone(&stopped),
     };
 
     let start = Instant::now();
@@ -156,6 +212,7 @@ pub fn open_station(
         buffered: Vec::new(),
         position: 0,
         cancelled,
+        stopped,
         error,
     };
     Ok((
@@ -283,19 +340,8 @@ async fn pump_station(
                 return Err("Radio stream ended".into());
             };
             for fragment in piece.chunks(CHUNK_SIZE) {
-                let mut pending = fragment.to_vec();
-                loop {
-                    if cancelled.load(Ordering::Acquire) {
-                        return Ok(());
-                    }
-                    match audio.try_send(pending) {
-                        Ok(()) => break,
-                        Err(TrySendError::Full(bytes)) => {
-                            pending = bytes;
-                            sleep(Duration::from_millis(5)).await;
-                        }
-                        Err(TrySendError::Disconnected(_)) => return Ok(()),
-                    }
+                if !send_fragment(audio, fragment.to_vec(), cancelled).await {
+                    return Ok(());
                 }
             }
         }
@@ -308,6 +354,157 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
+    struct DropNotice(mpsc::Sender<()>);
+
+    impl Drop for DropNotice {
+        fn drop(&mut self) {
+            let _ = self.0.send(());
+        }
+    }
+
+    fn stalled_connection(
+        cancelled: Arc<AtomicBool>,
+        stopped: Arc<AtomicBool>,
+    ) -> (NetworkGuard, Receiver<()>) {
+        test_connection(std::future::pending(), cancelled, stopped)
+    }
+
+    fn test_connection(
+        work: impl Future<Output = Result<(), String>> + Send + 'static,
+        cancelled: Arc<AtomicBool>,
+        stopped: Arc<AtomicBool>,
+    ) -> (NetworkGuard, Receiver<()>) {
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (dropped_tx, dropped_rx) = mpsc::channel();
+        let worker_stopped = Arc::clone(&stopped);
+        let worker = thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime
+                .block_on(until_cancelled(
+                    async move {
+                        let _notice = DropNotice(dropped_tx);
+                        ready_tx.send(()).unwrap();
+                        work.await
+                    },
+                    &cancelled,
+                    &worker_stopped,
+                ))
+                .unwrap();
+        });
+        ready_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        (
+            NetworkGuard {
+                worker: Some(worker),
+                stopped,
+            },
+            dropped_rx,
+        )
+    }
+
+    #[test]
+    fn guard_drop_releases_a_full_queue_even_while_the_receiver_is_retained() {
+        let (sender, receiver) = mpsc::sync_channel(1);
+        sender.send(vec![1; CHUNK_SIZE]).unwrap();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let worker_cancelled = Arc::clone(&cancelled);
+        let (guard, dropped) = test_connection(
+            async move {
+                send_fragment(&sender, vec![2; CHUNK_SIZE], &worker_cancelled).await;
+                Ok(())
+            },
+            Arc::clone(&cancelled),
+            Arc::new(AtomicBool::new(false)),
+        );
+        let (joined_tx, joined_rx) = mpsc::channel();
+        thread::spawn(move || {
+            drop(guard);
+            joined_tx.send(()).unwrap();
+        });
+        dropped.recv_timeout(Duration::from_secs(3)).unwrap();
+        joined_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        assert_eq!(receiver.recv().unwrap(), vec![1; CHUNK_SIZE]);
+        assert!(receiver.recv().is_err());
+        assert!(!cancelled.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn dropping_guard_cancels_pending_io_without_stopping_the_session() {
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let stopped = Arc::new(AtomicBool::new(false));
+        let (guard, dropped) = stalled_connection(Arc::clone(&cancelled), Arc::clone(&stopped));
+        // Bound the regression test even if joining a stalled worker regresses.
+        let (joined_tx, joined_rx) = mpsc::channel();
+        thread::spawn(move || {
+            drop(guard);
+            joined_tx.send(()).unwrap();
+        });
+        dropped.recv_timeout(Duration::from_secs(3)).unwrap();
+        joined_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        assert!(stopped.load(Ordering::Acquire));
+        assert!(!cancelled.load(Ordering::Acquire));
+
+        // Recovery gets a fresh connection in the still-authorized session.
+        let (guard, dropped) =
+            stalled_connection(Arc::clone(&cancelled), Arc::new(AtomicBool::new(false)));
+        cancelled.store(true, Ordering::Release);
+        dropped.recv_timeout(Duration::from_secs(3)).unwrap();
+        drop(guard);
+    }
+
+    #[test]
+    fn dropping_reader_cancels_connection_even_with_a_retained_guard() {
+        let mut reader = test_reader(vec![1, 2, 3]);
+        let (guard, dropped) =
+            stalled_connection(Arc::clone(&reader.cancelled), Arc::clone(&reader.stopped));
+        assert_eq!(reader.read(&mut [0; 1]).unwrap(), 1);
+        drop(reader);
+        dropped.recv_timeout(Duration::from_secs(3)).unwrap();
+        drop(guard);
+    }
+
+    #[test]
+    fn guard_cancellation_rejects_buffered_bytes_with_the_reader_still_alive() {
+        let mut reader = test_reader(vec![1, 2, 3]);
+        assert_eq!(reader.read(&mut [0; 1]).unwrap(), 1);
+        let (guard, dropped) =
+            stalled_connection(Arc::clone(&reader.cancelled), Arc::clone(&reader.stopped));
+        drop(guard);
+        dropped.recv_timeout(Duration::from_secs(3)).unwrap();
+        assert_eq!(
+            reader.read(&mut [0; 1]).unwrap_err().kind(),
+            io::ErrorKind::Interrupted
+        );
+    }
+
+    #[test]
+    fn cancellation_polling_preserves_work_and_its_error() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let cancelled = AtomicBool::new(false);
+        let stopped = AtomicBool::new(false);
+        let result = runtime.block_on(async {
+            timeout(
+                Duration::from_secs(3),
+                until_cancelled(
+                    async {
+                        sleep(CANCEL_INTERVAL * 3).await;
+                        Err("synthetic read timeout".to_owned())
+                    },
+                    &cancelled,
+                    &stopped,
+                ),
+            )
+            .await
+            .expect("Cancellation polling must not restart in-flight work")
+        });
+        assert_eq!(result.unwrap_err(), "synthetic read timeout");
+    }
+
     fn test_reader(bytes: Vec<u8>) -> ChunkReader {
         let (sender, receiver) = mpsc::sync_channel(2);
         sender.send(bytes).unwrap();
@@ -317,6 +514,7 @@ mod tests {
             buffered: Vec::new(),
             position: 0,
             cancelled: Arc::new(AtomicBool::new(false)),
+            stopped: Arc::new(AtomicBool::new(false)),
             error: Arc::new(Mutex::new(None)),
         }
     }

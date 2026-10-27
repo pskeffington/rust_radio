@@ -140,7 +140,10 @@ impl RadioPanel {
                 .unwrap_or(PlaybackState::Stopped);
             let running = self.engine.is_some();
 
-            if let Some(error) = status.as_ref().and_then(|session| session.last_error.as_ref()) {
+            if let Some(error) = status
+                .as_ref()
+                .and_then(|session| session.last_error.as_ref())
+            {
                 self.note = error.clone();
             }
             if matches!(state, PlaybackState::Failed) && self.note == "CONNECTING / NATIVE AUDIO" {

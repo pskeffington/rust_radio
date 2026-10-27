@@ -191,7 +191,10 @@ impl NativeRadioEngine {
                 let mut controller = self.controller.lock().expect("radio state mutex poisoned");
                 let session = controller.state();
                 let generation = session.generation;
-                if !matches!(session.state, PlaybackState::Failed | PlaybackState::Stopped) {
+                if !matches!(
+                    session.state,
+                    PlaybackState::Failed | PlaybackState::Stopped
+                ) {
                     let message = if panicked {
                         "Radio playback worker failed unexpectedly"
                     } else {
