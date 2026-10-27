@@ -62,10 +62,10 @@ mod tests {
 
     #[test]
     fn invalid_listen_args_fail_before_any_hardware_or_network_access() {
-        assert!(parse_listen(&["skylab".into(), "--seconds".into(), "0".into()]).is_err());
-        assert!(parse_listen(&["unknown".into(), "--seconds".into(), "30".into()]).is_err());
-        assert!(parse_listen(&["skylab".into(), "--seconds".into(), "301".into()]).is_err());
-        assert!(parse_listen(&["skylab".into(), "--seconds".into(), "30".into()]).is_ok());
+        assert!(parse_listen(&["listen".into(), "skylab".into(), "--seconds".into(), "0".into()]).is_err());
+        assert!(parse_listen(&["listen".into(), "unknown".into(), "--seconds".into(), "30".into()]).is_err());
+        assert!(parse_listen(&["listen".into(), "skylab".into(), "--seconds".into(), "301".into()]).is_err());
+        assert!(parse_listen(&["listen".into(), "skylab".into(), "--seconds".into(), "30".into()]).is_ok());
     }
 
     #[test]
