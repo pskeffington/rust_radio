@@ -127,7 +127,11 @@ impl RadioPanel {
                         )
                         .show_ui(ui, |ui| {
                             for station in curated_stations() {
-                                ui.selectable_value(&mut self.station, station.id.to_owned(), station.name);
+                                ui.selectable_value(
+                                    &mut self.station,
+                                    station.id.to_owned(),
+                                    station.name,
+                                );
                             }
                         });
                     if ui.add_sized([45.0, 43.0], egui::Button::new("▶")).clicked() {
@@ -185,7 +189,10 @@ impl RadioPanel {
             }
             ui.separator();
             ui.horizontal(|ui| {
-                if ui.add_sized([120.0, 38.0], egui::Button::new("OUTPUT ▾")).clicked() {
+                if ui
+                    .add_sized([120.0, 38.0], egui::Button::new("OUTPUT ▾"))
+                    .clicked()
+                {
                     self.show_output = !self.show_output;
                     if self.show_output {
                         self.refresh_outputs();
@@ -237,7 +244,8 @@ impl RadioPanel {
                         });
                     });
             }
-            ui.ctx().request_repaint_after(std::time::Duration::from_millis(250));
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(250));
         });
     }
 
@@ -246,10 +254,7 @@ impl RadioPanel {
         if list.is_empty() {
             return;
         }
-        let index = list
-            .iter()
-            .position(|s| s.id == self.station)
-            .unwrap_or(0) as isize;
+        let index = list.iter().position(|s| s.id == self.station).unwrap_or(0) as isize;
         let next = (index + direction).rem_euclid(list.len() as isize) as usize;
         self.station = list[next].id.into();
     }
