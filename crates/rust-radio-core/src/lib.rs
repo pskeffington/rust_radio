@@ -25,6 +25,7 @@ pub enum RadioError {
     NoActiveSession,
     StaleGeneration,
     InvalidTransition,
+    UnknownStation,
     Backend(String),
 }
 
@@ -71,6 +72,14 @@ impl RadioController {
         self.snapshot.source = Some(source);
         self.snapshot.state = SessionState::Connecting;
         Ok(self.snapshot.generation)
+    }
+
+    /// Validate a curated station before attempting any receiver I/O.
+    pub fn request_internet_station(&mut self, station_id: &str) -> Result<u64, RadioError> {
+        if directory::station_by_id(station_id).is_none() {
+            return Err(RadioError::UnknownStation);
+        }
+        self.request_start(Source::Internet { station_id: station_id.to_owned() })
     }
 
     pub fn acknowledge_state(&mut self, generation: u64, state: SessionState) -> Result<(), RadioError> {
@@ -124,6 +133,14 @@ mod tests {
         let mut control = RadioController::default();
         assert_eq!(control.set_volume(101), Err(RadioError::InvalidVolume));
         assert_eq!(control.snapshot().volume, 50);
+    }
+    #[test]
+    fn unapproved_station_does_not_start_session() {
+        let mut control = RadioController::default();
+        assert_eq!(control.request_internet_station("https://localhost/admin"), Err(RadioError::UnknownStation));
+        assert_eq!(control.snapshot().generation, 0);
+        assert_eq!(control.snapshot().state, SessionState::Stopped);
+        assert!(control.request_internet_station("skylab").is_ok());
     }
     #[test]
     fn cannot_start_second_session() {
