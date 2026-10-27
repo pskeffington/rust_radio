@@ -1,0 +1,27 @@
+# R8 — Standalone Rust Radio micro-GUI and embedded panel
+
+## Goal
+A standalone desktop GUI using exactly the same Rust `RadioPanel` instance API that another Rust app can mount. No browser, external media player, local web server, or new audio backend. Display target: **480 × 320 logical pixels**. An embedded host chooses the allocated region and owns the top-level event loop.
+
+## Launch on Mac
+```sh
+cargo run -p rust-radio-gui --bin rust-radio-gui
+```
+The panel does not start playback at launch. Station browse is offline. Tap PLAY to open approved native IP radio. STOP cancels the worker. Drag volume while playing. OUTPUT opens a selectable list of OS audio devices; stop first to change outputs.
+
+## Embed in an egui host
+Add the package (pinned to an approved commit for repeatability):
+```toml
+rust-radio-gui = { git = "https://github.com/pskeffington/rust_radio", rev = "<reviewed-commit>" }
+```
+In a struct owned by the host GUI, create `radio: rust_radio_gui::RadioPanel::new()`. Inside the host's existing `egui::Ui`, call `self.radio.show(ui)`. The host controls mount/unmount, navigation, and lifetime. Drop automatically stops audio; explicitly call `radio.stop()` on dismount if playback should not persist.
+
+The current Rust-Boy desktop HUD is a same-origin HTML/JavaScript interface, **not** an egui host. Thus direct `show(ui)` embedding requires an egui shell; the existing HTML HUD needs a bridge or a separate native pane. Do not claim drop-in compatibility with the HTML screen until that adapter is built and validated. The playback/audio crates can still be reused independently.
+
+## Acceptance and constraints
+- 480 × 320 is a logical-pixel target; high-DPI and physical touch screenshots require verification.
+- No intentional scroll in default view. OUTPUT expansion may require more space on small screens; future pass should overlay output list rather than increase panel height.
+- No direct station URL input. Only curated stations.
+- Output selection is disabled while session exists.
+- Keep firmware/Pi builds optional: eframe's graphics/window stack and target platform must be validated separately; the audio engine is independent.
+- Formatting, compile, native GPU rendering and physical mouse/touch acceptance require user Mac test after commit.
