@@ -154,18 +154,46 @@ impl NativeRadioEngine {
             .apply(RadioCommand::SetVolume(percent))
             .map_err(|e| format!("{e:?}"))?;
         self.volume.store(percent, Ordering::Release);
+        if self.cancelled.load(Ordering::Acquire) {
+            self.volume.store(0, Ordering::Release);
+        }
         Ok(())
     }
 
+    /// Cancel immediately without waiting for network or device cleanup.
+    /// Hosts must retain this engine and poll `try_finish` before starting another.
+    /// Muting also silences queued PCM while the worker releases its device.
+    pub fn request_stop(&self) {
+        let already_cancelled = self.cancelled.swap(true, Ordering::AcqRel);
+        self.volume.store(0, Ordering::Release);
+        if !already_cancelled {
+            let _ = self
+                .controller
+                .lock()
+                .expect("radio state mutex poisoned")
+                .apply(RadioCommand::Stop);
+        }
+    }
+
+    /// Reap a completed worker without blocking. False means cleanup is pending.
+    pub fn try_finish(&mut self) -> bool {
+        if self
+            .worker
+            .as_ref()
+            .is_some_and(|worker| !worker.is_finished())
+        {
+            return false;
+        }
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+        true
+    }
+
+    /// Synchronous shutdown for CLI callers and final teardown.
+    /// GUI hosts should use `request_stop` followed by `try_finish` instead.
     pub fn stop(&mut self) {
-        self.cancelled.store(true, Ordering::Release);
-        let _ = self
-            .controller
-            .lock()
-            .expect("radio state mutex poisoned")
-            .apply(RadioCommand::Stop);
-        // The playback HTTP read timeout is finite, so joining cannot wait
-        // forever on a stalled network read.
+        self.request_stop();
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
         }
@@ -515,6 +543,46 @@ pub fn run_demo(station_id: &str, duration_seconds: Option<u64>) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stop_request_does_not_wait_for_worker_and_rejects_late_events() {
+        let mut controller = RadioController::default();
+        let generation = controller
+            .apply(RadioCommand::PlayInternet {
+                station_id: "skylab".into(),
+            })
+            .unwrap();
+        let controller = Arc::new(Mutex::new(controller));
+        let (release, pending) = std::sync::mpsc::channel();
+        let worker = thread::spawn(move || {
+            let _ = pending.recv_timeout(Duration::from_secs(5));
+        });
+        let mut engine = NativeRadioEngine {
+            controller: Arc::clone(&controller),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed: Arc::new(AtomicBool::new(false)),
+            worker: Some(worker),
+        };
+        engine.request_stop();
+        assert!(engine.cancelled.load(Ordering::Acquire));
+        assert_eq!(engine.volume.load(Ordering::Acquire), 0);
+        engine.set_volume(80).unwrap();
+        assert_eq!(engine.volume.load(Ordering::Acquire), 0);
+        assert_eq!(engine.status().state, PlaybackState::Stopped);
+        assert!(!engine.try_finish());
+        assert!(!controller
+            .lock()
+            .unwrap()
+            .event(generation, PlaybackEvent::Connected));
+        let stopped_generation = engine.status().generation;
+        engine.request_stop();
+        assert_eq!(engine.status().generation, stopped_generation);
+        release.send(()).unwrap();
+        engine.stop();
+        assert!(engine.try_finish());
+        assert!(engine.worker.is_none());
+    }
 
     #[test]
     fn device_failures_never_consume_the_network_retry_budget() {

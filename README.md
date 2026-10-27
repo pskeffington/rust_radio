@@ -2,15 +2,17 @@
 
 Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. Intended backends: curated HTTPS internet streams, optional USB SDR receivers and future satellite receive adapters.
 
-## Status (2026-10-26)
+## Status (2026-10-27)
 
-**Initial scaffold only.** The existing native Mac-demonstrated player remains in `pip_boy`; it has **not** yet been ported or independently validated in this repository. This repo currently supplies a source-neutral radio control contract, offline unit tests, integration/porting plan and research matrix.
+This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Earlier standalone Skylab CLI playback was operator-confirmed on macOS; that result does not certify subsequent changes, the GUI, or Pi hardware. Rust-Boy host integration and SDR reception remain separate gates.
 
 ## Navigation
 
 - [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
 - [Component ownership and extraction gates](docs/PORTING_PLAN.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
+- [Native GUI and embedding](docs/GUI_INTEGRATION.md)
+- [Standalone acceptance](docs/STANDALONE_ACCEPTANCE.md)
 - [Existing Rust-Boy radio engineering roadmap](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_NATIVE_ROADMAP.md)
 - [Existing Rust-Boy SDR contract](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_SDR.md)
 
@@ -22,7 +24,7 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-No network, sound card, USB SDR or proprietary system libraries are required for the default pure-control crate. Cargo commands are **instructions**, not test results from this authoring pass.
+For control-only testing, use `cargo test -p rust-radio-core`; it requires no network receiver, sound card, USB SDR or native audio libraries. Workspace builds include CPAL and eframe and need platform development libraries (on Linux, `libasound2-dev` and `pkg-config`). Cargo commands are **instructions**, not test results from this authoring pass.
 
 ## Required integration invariants
 
@@ -38,3 +40,11 @@ No network, sound card, USB SDR or proprietary system libraries are required for
 ## Near-term work
 
 Extract existing production radio components into independently testable crates with pinned upstream source revision, then switch Rust-Boy to a tested path dependency. Preserve Mac Skylab playback, explicit playback controls, Bluetooth output routing, favorites storage and 480x320 HUD behavior.
+
+## Run the native radio
+
+```sh
+cargo run -p rust-radio-gui --bin rust-radio-gui
+```
+
+Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous worker releases its resources. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.

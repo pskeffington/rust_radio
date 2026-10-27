@@ -20,6 +20,7 @@ pub struct RadioPanel {
     engine: Option<NativeRadioEngine>,
     note: String,
     show_output: bool,
+    stopping: bool,
 }
 
 impl Default for RadioPanel {
@@ -35,6 +36,7 @@ impl Default for RadioPanel {
             engine: None,
             note: "READY / SELECT STATION AND PRESS PLAY".into(),
             show_output: false,
+            stopping: false,
         }
     }
 }
@@ -44,11 +46,30 @@ impl RadioPanel {
         Self::default()
     }
 
+    /// Begin cancellation without blocking the host UI. Keep rendering the panel
+    /// (or call `poll_shutdown`) until `is_active` becomes false before dismounting.
     pub fn stop(&mut self) {
-        if let Some(mut engine) = self.engine.take() {
-            engine.stop();
+        if let Some(engine) = &self.engine {
+            engine.request_stop();
+            self.stopping = true;
+            self.note = "STOPPING / RELEASING RECEIVER".into();
         }
-        self.note = "RECEIVER STOPPED".into();
+        self.poll_shutdown();
+    }
+
+    /// Let hosts complete shutdown even while this panel is hidden.
+    /// Returns true when no receiver resources remain owned by the panel.
+    pub fn poll_shutdown(&mut self) -> bool {
+        if !self.stopping {
+            return self.engine.is_none();
+        }
+        let finished = self.engine.as_mut().is_none_or(|engine| engine.try_finish());
+        if finished {
+            self.engine = None;
+            self.stopping = false;
+            self.note = "RECEIVER STOPPED".into();
+        }
+        self.engine.is_none()
     }
 
     pub fn is_active(&self) -> bool {
@@ -85,6 +106,7 @@ impl RadioPanel {
     /// Pure touch-oriented presentation except when the user explicitly clicks Play,
     /// Stop, output refresh, or adjusts the volume. No network traffic on render.
     pub fn show(&mut self, ui: &mut egui::Ui) {
+        self.poll_shutdown();
         let frame = egui::Frame::new()
             .fill(DARK)
             .stroke(egui::Stroke::new(1.0_f32, GREEN))
@@ -106,14 +128,18 @@ impl RadioPanel {
             ui.horizontal(|ui| {
                 ui.strong("RADIO  /  IP");
                 ui.add_space(12.0);
-                ui.label(format!("{:?}", state).to_uppercase());
+                ui.label(if self.stopping {
+                    "STOPPING".into()
+                } else {
+                    format!("{:?}", state).to_uppercase()
+                });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label("RUST RADIO");
                 });
             });
             ui.separator();
 
-            ui.add_enabled_ui(!running, |ui| {
+            ui.add_enabled_ui(!running && !self.stopping, |ui| {
                 ui.horizontal(|ui| {
                     if ui.add_sized([45.0, 43.0], egui::Button::new("◀")).clicked() {
                         self.step_station(-1);
@@ -146,7 +172,7 @@ impl RadioPanel {
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(
-                        !running,
+                        !running && !self.stopping,
                         egui::Button::new("▶  PLAY").min_size(egui::vec2(116.0, 44.0)),
                     )
                     .clicked()
@@ -158,7 +184,7 @@ impl RadioPanel {
                 }
                 if ui
                     .add_enabled(
-                        self.engine.is_some(),
+                        self.engine.is_some() && !self.stopping,
                         egui::Button::new("■  STOP").min_size(egui::vec2(116.0, 44.0)),
                     )
                     .clicked()
@@ -263,6 +289,16 @@ impl RadioPanel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stopping_an_idle_panel_is_immediate_and_idempotent() {
+        let mut panel = RadioPanel::new();
+        panel.stop();
+        panel.stop();
+        assert!(panel.poll_shutdown());
+        assert!(!panel.is_active());
+        assert!(!panel.stopping);
+    }
 
     #[test]
     fn panel_constructs_without_starting_radio() {

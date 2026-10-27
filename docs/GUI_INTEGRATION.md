@@ -7,14 +7,14 @@ A standalone desktop GUI using exactly the same Rust `RadioPanel` instance API t
 ```sh
 cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
-The panel does not start playback at launch. Station browse is offline. Tap PLAY to open approved native IP radio. STOP cancels the worker. Drag volume while playing. OUTPUT opens a selectable list of OS audio devices; stop first to change outputs.
+The panel does not start playback at launch. Station browse is offline. Tap PLAY to open approved native IP radio. STOP requests cancellation without joining on the UI thread. Queued PCM is muted immediately. STOPPING remains visible until worker cleanup finishes; PLAY and output changes remain locked during cleanup. Drag volume while playing. OUTPUT opens a selectable list of OS audio devices; stop first to change outputs.
 
 ## Embed in an egui host
 Add the package (pinned to an approved commit for repeatability):
 ```toml
 rust-radio-gui = { git = "https://github.com/pskeffington/rust_radio", rev = "<reviewed-commit>" }
 ```
-In a struct owned by the host GUI, create `radio: rust_radio_gui::RadioPanel::new()`. Inside the host's existing `egui::Ui`, call `self.radio.show(ui)`. The host controls mount/unmount, navigation, and lifetime. Drop automatically stops audio; explicitly call `radio.stop()` on dismount if playback should not persist.
+In a struct owned by the host GUI, create `radio: rust_radio_gui::RadioPanel::new()`. Inside the host's existing `egui::Ui`, call `self.radio.show(ui)`. The host controls mount/unmount, navigation, and lifetime. Drop synchronously stops and joins the worker. To avoid blocking the host UI on dismount, call `radio.stop()`, retain the panel, and continue calling `radio.poll_shutdown()` until it returns true before dropping it. `is_active()` stays true during cleanup.
 
 The current Rust-Boy desktop HUD is a same-origin HTML/JavaScript interface, **not** an egui host. Thus direct `show(ui)` embedding requires an egui shell; the existing HTML HUD needs a bridge or a separate native pane. Do not claim drop-in compatibility with the HTML screen until that adapter is built and validated. The playback/audio crates can still be reused independently.
 
@@ -38,3 +38,9 @@ cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
 
 Check the radio window at 480 × 320: station arrows, play/stop, volume, error text, and OUTPUT overlay must be fully tappable without body scrolling. Verify that simply opening the GUI emits no audio or radio HTTP traffic. PLAY should produce audible Skylab reception, and STOP should terminate it. Device changes require stopping first. These GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
+
+## Stop responsiveness regression
+
+The offline playback test holds a synthetic worker behind a channel while requesting Stop. It checks cancellation, immediate mute, stale-event rejection, idempotent Stop, and nonblocking completion polling; a volume update after Stop must not unmute queued PCM. This test opens no audio device or network connection.
+
+On macOS, stop during connect, buffering, live playback and reconnection. Confirm the window continues repainting while STOPPING is shown and that PLAY/output selection cannot create a second session. Hardware timing and GUI rendering still require operator verification.
