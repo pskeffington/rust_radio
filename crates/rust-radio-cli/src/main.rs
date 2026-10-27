@@ -1,5 +1,5 @@
 //! Operator-triggered standalone test harness. No automatic network or audio I/O.
-use rust_radio_audio::playback::{run_demo, NativeRadioEngine};
+use rust_radio_audio::playback::run_demo;
 use rust_radio_audio::output::available_outputs;
 use rust_radio_core::directory::curated_stations;
 use std::{env, process};
