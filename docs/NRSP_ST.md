@@ -85,3 +85,10 @@ malformed packets, cancellation and resource cleanup. The current live attempt
 was rejected because SDRconnect remained stopped after both UI and explicit API
 start attempts. That path correctly failed before opening native output. Live
 native RF callback/listening acceptance remains pending receiver availability.
+
+A separate synthetic-PCM native-output smoke passed on macOS after explicitly
+pausing CPAL's CoreAudio stream before prebuffering. Both standalone and embedded
+players reached Playing from actual native callback consumption, native output
+restart preserved the receiver source, Stop released subscriptions, and switching
+to live Skylab worked. One observed host Stop response was about 50 ms. These
+are native pipeline checks, not a physical nRSP-ST listening confirmation.
