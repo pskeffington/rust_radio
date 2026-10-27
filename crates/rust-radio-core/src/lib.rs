@@ -111,3 +111,8 @@ mod tests {
         assert_eq!(control.request_start(Source::Internet { station_id: "other".into() }), Err(RadioError::AlreadyActive));
     }
 }
+
+/// DSP-independent PCM conversion, extracted from the Rust-Boy baseline.
+pub mod pcm;
+/// Pure retry and output-recovery policy, extracted from the Rust-Boy baseline.
+pub mod recovery;
