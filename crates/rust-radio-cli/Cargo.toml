@@ -9,6 +9,7 @@ rust-version.workspace = true
 default = []
 sdr = ["rust-radio/sdr"]
 soapy-sdr = ["sdr", "rust-radio/soapy-sdr"]
+sdrconnect = ["sdr", "rust-radio/sdrconnect"]
 
 [dependencies]
 rust-radio = { path = "../rust-radio" }

@@ -1,5 +1,8 @@
 # Optional SDR receive adapter
 
+For the selected **nRSP-ST network receiver**, use the separate
+[SDRconnect integration](NRSP_ST.md). It does not use the USB adapter below.
+
 The standalone module keeps IP radio operational without an SDR SDK or device.
 Enable `soapy-sdr` only on a machine with SoapySDR and the appropriate receiver
 driver installed. The current Rust binding requires Rust 1.85 or newer. No

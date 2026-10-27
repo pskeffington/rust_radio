@@ -4,12 +4,13 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 ## Status (2026-10-27)
 
-This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Pip-Boy now embeds the headless `rust-radio` module through a pinned Git dependency. Its HUD runtime checks exercised Skylab and Groove Salad through native PCM output, explicit Stop, volume and saved selection. Optional SoapySDR support provides bounded I/Q capture; physical RF, RF audio demodulation and Pi acceptance remain open.
+This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Pip-Boy now embeds the headless `rust-radio` module through a pinned Git dependency. Its HUD runtime checks exercised Skylab and Groove Salad through native PCM output, explicit Stop, volume and saved selection. The selected nRSP-ST uses the optional SDRconnect network API for bounded I/Q or demodulated PCM ingress; SoapySDR remains a separate USB path. Physical RF, native RF audio playback and Pi acceptance remain open.
 
 ## Navigation
 
 - [Standalone module and embedding API](docs/EMBEDDING.md)
 - [Optional SDR receive adapter and hardware gates](docs/SDR_RECEIVE.md)
+- [SDRplay nRSP-ST network receiver via SDRconnect](docs/NRSP_ST.md)
 - [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
 - [Component ownership and extraction gates](docs/PORTING_PLAN.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
@@ -43,7 +44,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Near-term work
 
-Validate physical receiver I/Q ingress with an installed SoapySDR driver, then implement and test RF audio demodulation. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
+Connect the selected nRSP-ST through a reachable SDRconnect API, validate real I/Q/audio ingress, then integrate native RF audio playback. USB receivers use the separate SoapySDR adapter. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
 
 ## Run the native radio
 

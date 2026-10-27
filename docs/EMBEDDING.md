@@ -21,6 +21,11 @@ I/Q capture. See [SDR receive limits and acceptance](SDR_RECEIVE.md). This featu
 requires the native SDK and Rust 1.85; it adds no dependency to the default IP
 or pure-control builds.
 
+`sdrconnect` adds the SDK-independent network API for the selected SDRplay
+nRSP-ST through `rust_radio::receiver::sdrconnect`. It is independent of
+`soapy-sdr` and the GUI, and requires Rust 1.85 or newer. See
+[nRSP-ST setup and current limits](NRSP_ST.md).
+
 ```rust
 use rust_radio::NativeRadioEngine;
 

@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use std::{env, process};
 
 mod sdr;
+mod sdrconnect;
 
 #[derive(Debug, PartialEq, Eq)]
 struct ListenArgs<'a> {
@@ -25,6 +26,7 @@ fn usage() {
     eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
     eprintln!("Interactive listen commands: status | volume N | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
+    eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -199,6 +201,7 @@ fn run(args: &[String]) -> Result<(), String> {
         Some("listen") => listen(parse_listen(args)?),
         Some("sdr-devices") if args.len() == 1 => sdr::devices(),
         Some("sdr-capture") => sdr::capture(args),
+        Some("sdrconnect-status" | "sdrconnect-capture") => sdrconnect::run(args),
         _ => {
             usage();
             Err("invalid command".into())
