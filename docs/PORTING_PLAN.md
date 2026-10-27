@@ -25,6 +25,8 @@
 - P4: Feature-gated physical SDR backend + DSP, receive-only; no simulator portrayed as RF.
 - P5: Satellite receiver adapter design, protocol-specific rights review and test hardware.
 - P6: Pi ARM64 CPU/memory/battery and 480x320 UI acceptance; Windows output test.
+  CI cross-checks the headless SDRconnect module for AArch64 Linux, but physical
+  Pi runtime and UI acceptance remain separate requirements.
 
 **Current state (2026-10-27)**: the standalone `rust-radio` facade owns the shared controller, directory, parsing, PCM, recovery, IP transport, native playback/output and optional receiver adapter. Pip-Boy main consumes a pinned Git revision through thin re-exports; host preferences and HTML UI remain host-owned. The compatibility controller now lives in core. The source-neutral `SessionController` is also available for future backend coordination.
 

@@ -30,12 +30,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: aarch64-unknown-linux-gnu
       - name: Test network API using local fixtures only
         run: cargo test --locked -p rust-radio-sdr --features sdrconnect
       - name: Lint network API
         run: cargo clippy --locked -p rust-radio-sdr --all-targets --features sdrconnect -- -D warnings
       - name: Check embedded module without native SDK or audio
         run: cargo check --locked -p rust-radio --no-default-features --features sdrconnect
+      - name: Cross-check headless receiver module for Raspberry Pi ARM64
+        run: cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu
   optional-sdr:
     runs-on: ubuntu-latest
     steps:
