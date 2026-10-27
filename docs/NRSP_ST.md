@@ -50,7 +50,16 @@ server recording or shared-device streaming commands are sent.
 
 Local fixtures verify read-only requests, type/channel separation, cancellation,
 malformed/oversized data, timeout, stopped-receiver errors and unsubscribe/close.
-Actual API checks on the supplied Pi address and localhost returned connection
-refused on port 5454. Hardware ingress, RF audio, shared-client behavior and Pi
-runtime acceptance remain unverified until SDRconnect is reachable and connected
-to the nRSP-ST. USB Soapy discovery is not an nRSP-ST acceptance test.
+Initial API checks on the supplied Pi address and localhost were refused.
+Later, SDRconnect 1.0.10 on the Mac exposed API 1.0.3 and the selected nRSP-ST.
+Read-only status succeeded both stopped and streaming. With the receiver started
+in IQ Lite mode at its existing WFM tuning, a two-second audio subscription
+received 96,030 stereo frames and unsubscribed. No audio was saved or played by
+this CLI; this is network PCM ingress, not a listening confirmation.
+
+I/Q subscriptions returned zero pairs in IQ Lite mode. Selecting Full IQ and
+attempting to start displayed SDRconnect's “Update Required” firmware notice;
+that mode could not be validated. No firmware was modified. The original IQ Lite
+selection and mute setting were restored, and the receiver was left stopped.
+Raw I/Q, native RF audio output, shared-client and Pi runtime acceptance remain
+open. USB Soapy discovery is not an nRSP-ST acceptance test.
