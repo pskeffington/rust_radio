@@ -116,3 +116,8 @@ mod tests {
 pub mod pcm;
 /// Pure retry and output-recovery policy, extracted from the Rust-Boy baseline.
 pub mod recovery;
+
+/// Curated broadcaster catalog and source selection, extracted from Rust-Boy.
+pub mod directory;
+/// Bounded HTTPS stream-response, playlist and ICY parser (network-free).
+pub mod stream;
