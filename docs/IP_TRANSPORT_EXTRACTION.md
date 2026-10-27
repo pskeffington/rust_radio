@@ -14,6 +14,8 @@ Hosts that need recovery policy can use `net::open_station_classified()` and `er
 
 Core validation and native playback share M3U/PLS format detection and parsing. Both enforce 16 KiB/16-entry limits and validate every stream URL against the station's publisher allowlist. PLS requires a matching `NumberOfEntries`, contiguous `FileN` indices and `Version=2` when present; the transport selects the first entry in numeric order. Metadata is inert. HLS MIME types, `.m3u8` URLs and `#EXT-X-` manifest tags return an explicit unsupported-transport error without fetching segments. Playlist nesting remains disallowed.
 
+SomaFM's official HTTPS playlists currently include legacy HTTP stream links. The parser upgrades these entries to HTTPS before allowlist validation, consistent with the publisher's documented TLS direct links. It preserves the original host, port and path, rejects unsafe variants and never falls back to plaintext. This compatibility rule is limited to SomaFM playlist entries; direct endpoints and redirects still require explicit HTTPS.
+
 Live cancellation during DNS/TLS, device behavior, Pi hardware, dependency MSRV compatibility and source-host parity still require separate validation. These offline tests do not certify hardware playback.
 
 Remaining validation:

@@ -28,6 +28,8 @@ On a Mac with actual audio output, record OS/audio device, UTC timestamp, commit
 
 Offline tests cover stream parsing, recovery and silent MP3/AAC validation. Audible playback, GUI interaction and device-loss behavior still require tests on the target hardware; the earlier operator-confirmed Mac Skylab pass does not certify later commits.
 
+On 2026-10-27, explicit live `validate` checks decoded PCM from all ten curated stations without opening audio output. Skylab returned MP3 at 48 kHz stereo; Groove Salad, Secret Agent, Lush, Drone Zone, Deep Space One, Space Station Soma, Beat Blender, DEF CON Radio and Underground 80s returned MP3 at 44.1 kHz stereo. SomaFM required upgrading legacy HTTP playlist entries to their allowlisted HTTPS equivalents. These results establish point-in-time decoding only; rerun checks to establish current availability.
+
 
 ## Reliability pass: manual output and session control
 

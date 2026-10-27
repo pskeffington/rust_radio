@@ -143,6 +143,22 @@ pub struct OpenRadioStream<R: Read> {
     pub reader: IcyAudioReader<R>,
 }
 
+/// SomaFM's HTTPS-served playlists still contain legacy HTTP stream links.
+/// Request only their TLS equivalents, subject to the same publisher/port/path
+/// checks as every other endpoint. Never send a plaintext request or downgrade.
+fn playlist_endpoint(station_id: &str, url: &str) -> Result<ApprovedEndpoint, StreamError> {
+    let station = station_by_id(station_id).ok_or(StreamError::UnknownStation)?;
+    if station
+        .publisher_reference_url
+        .starts_with("https://somafm.com/")
+    {
+        if let Some(rest) = url.strip_prefix("http://") {
+            return ApprovedEndpoint::new(station_id, &format!("https://{rest}"));
+        }
+    }
+    ApprovedEndpoint::new(station_id, url)
+}
+
 /// Parse official M3U/extended-M3U playlists. Fail closed on unapproved lines.
 pub fn parse_m3u(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>, StreamError> {
     if body.len() > MAX_PLAYLIST_BYTES {
@@ -159,7 +175,7 @@ pub fn parse_m3u(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
-        result.push(ApprovedEndpoint::new(station_id, trimmed)?);
+        result.push(playlist_endpoint(station_id, trimmed)?);
         if result.len() > MAX_PLAYLIST_ENTRIES {
             return Err(StreamError::TooManyEntries);
         }
@@ -227,7 +243,7 @@ pub fn parse_pls(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
                     if index > MAX_PLAYLIST_ENTRIES {
                         return Err(StreamError::TooManyEntries);
                     }
-                    let endpoint = ApprovedEndpoint::new(station_id, value)?;
+                    let endpoint = playlist_endpoint(station_id, value)?;
                     if entries.insert(index, endpoint).is_some() {
                         return Err(StreamError::InvalidPlaylist);
                     }
@@ -584,7 +600,7 @@ mod tests {
     #[test]
     fn unapproved_pls_fallback_is_rejected_even_after_a_safe_first_entry() {
         for url in [
-            "http://ice5.somafm.com/audio",
+            "http://ice5.somafm.com:80/audio",
             "https://127.0.0.1/audio",
             "https://somafm.com.evil.test/audio",
         ] {
@@ -593,6 +609,51 @@ mod tests {
                 parse_pls("groovesalad", body.as_bytes()),
                 Err(StreamError::UnsafeEndpoint)
             ));
+        }
+    }
+
+    #[test]
+    fn legacy_somafm_playlist_entries_are_upgraded_before_requesting() {
+        let url = "http://ice6.somafm.com/groovesalad-128-mp3";
+        assert!(ApprovedEndpoint::new("groovesalad", url).is_err());
+        let m3u = parse_m3u("groovesalad", format!("#EXTM3U\n{url}").as_bytes()).unwrap();
+        let pls = parse_pls(
+            "groovesalad",
+            format!("[playlist]\nFile1={url}\nNumberOfEntries=1\nVersion=2").as_bytes(),
+        )
+        .unwrap();
+        for entries in [m3u, pls] {
+            assert_eq!(
+                entries[0].url(),
+                "https://ice6.somafm.com/groovesalad-128-mp3"
+            );
+        }
+        assert!(parse_m3u(
+            "skylab",
+            b"http://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited"
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn legacy_playlist_upgrade_never_relaxes_endpoint_safety() {
+        for url in [
+            "http://127.0.0.1/audio",
+            "http://ice6.somafm.com.evil.test/audio",
+            "http://ice6.somafm.com:80/audio",
+            "http://ice6.somafm.com:8080/audio",
+            "http://evil.test@ice6.somafm.com/audio",
+            "http://ice6.somafm.com/../internal",
+            "http://ice6.somafm.com/%2e%2e/internal",
+            "http://ice6.somafm.com/audio?redirect=localhost",
+        ] {
+            assert!(
+                matches!(
+                    parse_m3u("groovesalad", url.as_bytes()),
+                    Err(StreamError::UnsafeEndpoint)
+                ),
+                "{url}"
+            );
         }
     }
 

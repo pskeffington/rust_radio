@@ -67,6 +67,16 @@ fn synthetic_mp3_and_aac_decode_without_audio_hardware() {
 }
 
 #[test]
+fn legacy_http_playlist_uses_only_https_requests_and_decodes_pcm() {
+    let mut fixture = Fixture::audio("audio/mpeg", MP3);
+    fixture.playlist = b"#EXTM3U\nhttp://ice5.somafm.com/groovesalad-128-mp3\n".into();
+    let report = validate_with(&fixture, "groovesalad").unwrap();
+    assert!(report.is_decoded(), "{report:?}");
+    assert_eq!(fixture.requests.borrow().as_slice(), [ROOT, AUDIO]);
+    assert_eq!(report.resolved_url.as_deref(), Some(AUDIO));
+}
+
+#[test]
 fn successful_http_and_claimed_audio_type_are_not_decode_evidence() {
     for (mime, body, status) in [
         (
