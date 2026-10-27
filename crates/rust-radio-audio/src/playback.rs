@@ -176,6 +176,7 @@ impl NativeRadioEngine {
     }
 
     /// Reap a completed worker without blocking. False means cleanup is pending.
+    /// Unexpected worker termination becomes a visible failure, never stale Playing.
     pub fn try_finish(&mut self) -> bool {
         if self
             .worker
@@ -185,7 +186,20 @@ impl NativeRadioEngine {
             return false;
         }
         if let Some(worker) = self.worker.take() {
-            let _ = worker.join();
+            let panicked = worker.join().is_err();
+            if !self.cancelled.load(Ordering::Acquire) {
+                let mut controller = self.controller.lock().expect("radio state mutex poisoned");
+                let session = controller.state();
+                let generation = session.generation;
+                if !matches!(session.state, PlaybackState::Failed | PlaybackState::Stopped) {
+                    let message = if panicked {
+                        "Radio playback worker failed unexpectedly"
+                    } else {
+                        "Radio playback worker ended unexpectedly"
+                    };
+                    controller.event(generation, PlaybackEvent::Error(message.into()));
+                }
+            }
         }
         true
     }
@@ -543,6 +557,65 @@ pub fn run_demo(station_id: &str, duration_seconds: Option<u64>) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn completed_test_engine(panics: bool) -> NativeRadioEngine {
+        let mut controller = RadioController::default();
+        controller
+            .apply(RadioCommand::PlayInternet {
+                station_id: "skylab".into(),
+            })
+            .unwrap();
+        NativeRadioEngine {
+            controller: Arc::new(Mutex::new(controller)),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed: Arc::new(AtomicBool::new(false)),
+            worker: Some(thread::spawn(move || {
+                assert!(!panics, "Synthetic playback worker panic");
+            })),
+        }
+    }
+
+    fn finish_test_engine(engine: &mut NativeRadioEngine) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !engine.try_finish() {
+            assert!(Instant::now() < deadline, "Synthetic worker did not finish");
+            thread::yield_now();
+        }
+    }
+
+    #[test]
+    fn unexpected_worker_exit_is_reported_and_reaping_is_idempotent() {
+        for panics in [false, true] {
+            let mut engine = completed_test_engine(panics);
+            finish_test_engine(&mut engine);
+            let status = engine.status();
+            assert_eq!(status.state, PlaybackState::Failed);
+            assert!(status.last_error.unwrap().contains("unexpectedly"));
+            assert!(engine.try_finish());
+            assert!(engine.worker.is_none());
+        }
+    }
+
+    #[test]
+    fn worker_cleanup_preserves_existing_failure_and_explicit_stop() {
+        let mut engine = completed_test_engine(false);
+        let generation = engine.status().generation;
+        engine.controller.lock().unwrap().event(
+            generation,
+            PlaybackEvent::Error("Selected speaker disconnected".into()),
+        );
+        finish_test_engine(&mut engine);
+        assert_eq!(
+            engine.status().last_error.as_deref(),
+            Some("Selected speaker disconnected")
+        );
+        let mut engine = completed_test_engine(true);
+        engine.request_stop();
+        finish_test_engine(&mut engine);
+        assert_eq!(engine.status().state, PlaybackState::Stopped);
+        assert!(engine.status().last_error.is_none());
+    }
 
     #[test]
     fn stop_request_does_not_wait_for_worker_and_rejects_late_events() {

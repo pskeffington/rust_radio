@@ -22,7 +22,7 @@ The current Rust-Boy desktop HUD is a same-origin HTML/JavaScript interface, **n
 - 480 × 320 is a logical-pixel target; high-DPI and physical touch screenshots require verification.
 - No intentional scroll in default view. OUTPUT now opens a centered fixed-size 380 × 165 logical-pixel overlay rather than extending the panel. Confirm the physical 480 × 320 viewport has no clipping on macOS and Pi.
 - No direct station URL input. Only curated stations.
-- Output selection is disabled while session exists.
+- Output selection is disabled while the worker still owns receiver resources, including failure cleanup. Completed failed sessions release automatically; failure details remain visible and PLAY requests a fresh session.
 - Keep firmware/Pi builds optional: eframe's graphics/window stack and target platform must be validated separately; the audio engine is independent.
 - Formatting, compile, native GPU rendering and physical mouse/touch acceptance require user Mac test after commit.
 
@@ -44,3 +44,11 @@ Check the radio window at 480 × 320: station arrows, play/stop, volume, error t
 The offline playback test holds a synthetic worker behind a channel while requesting Stop. It checks cancellation, immediate mute, stale-event rejection, idempotent Stop, and nonblocking completion polling; a volume update after Stop must not unmute queued PCM. This test opens no audio device or network connection.
 
 On macOS, stop during connect, buffering, live playback and reconnection. Confirm the window continues repainting while STOPPING is shown and that PLAY/output selection cannot create a second session. Hardware timing and GUI rendering still require operator verification.
+
+## Completed and failed workers
+
+`poll_shutdown()` also reaps workers that finish without an explicit Stop. The panel retains the final failure snapshot after releasing the engine, so FAILED and its error remain visible while station/output selection and PLAY become available. STOP clears a retained failure. No retry is started by polling or changing an output. Long status/error text is truncated to one line to preserve the micro-panel height; hovering reveals the full message.
+
+`NativeRadioEngine::try_finish()` converts a panic or an otherwise unexplained worker exit into a failed snapshot. It preserves existing device/stream errors and never overwrites an explicit Stop with a cleanup failure. Hosts using the engine directly should poll this method to observe terminal worker exits.
+
+Offline regression coverage now includes unexpected normal exit, worker panic, repeated completion polling, preserved failure details, and Stop taking priority over a worker panic. GUI/native audio acceptance remains pending for this pass.

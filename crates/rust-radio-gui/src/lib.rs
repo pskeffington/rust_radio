@@ -1,7 +1,7 @@
 //! Embeddable 480x320 radio surface. The host owns the window and event loop.
 //! Constructing a panel never opens an audio device or connects to a broadcaster.
 use eframe::egui;
-use rust_radio_audio::compat_controller::PlaybackState;
+use rust_radio_audio::compat_controller::{PlaybackState, RadioSession};
 use rust_radio_audio::output::{available_outputs, OutputDeviceInfo};
 use rust_radio_audio::playback::NativeRadioEngine;
 use rust_radio_core::directory::{curated_stations, station_by_id};
@@ -21,6 +21,7 @@ pub struct RadioPanel {
     note: String,
     show_output: bool,
     stopping: bool,
+    last_session: Option<RadioSession>,
 }
 
 impl Default for RadioPanel {
@@ -37,6 +38,7 @@ impl Default for RadioPanel {
             note: "READY / SELECT STATION AND PRESS PLAY".into(),
             show_output: false,
             stopping: false,
+            last_session: None,
         }
     }
 }
@@ -53,23 +55,32 @@ impl RadioPanel {
             engine.request_stop();
             self.stopping = true;
             self.note = "STOPPING / RELEASING RECEIVER".into();
+        } else {
+            self.last_session = None;
+            self.note = "RECEIVER STOPPED".into();
         }
         self.poll_shutdown();
     }
 
-    /// Let hosts complete shutdown even while this panel is hidden.
-    /// Returns true when no receiver resources remain owned by the panel.
+    /// Reap finished receivers even while this panel is hidden. False means
+    /// a worker still owns resources. A completed failure remains visible until
+    /// the operator explicitly starts another session or clears it with Stop.
     pub fn poll_shutdown(&mut self) -> bool {
-        if !self.stopping {
-            return self.engine.is_none();
+        let Some(engine) = self.engine.as_mut() else {
+            return true;
+        };
+        if !engine.try_finish() {
+            return false;
         }
-        let finished = self.engine.as_mut().is_none_or(|engine| engine.try_finish());
-        if finished {
-            self.engine = None;
-            self.stopping = false;
-            self.note = "RECEIVER STOPPED".into();
-        }
-        self.engine.is_none()
+        let session = engine.status();
+        self.engine = None;
+        self.stopping = false;
+        self.note = session
+            .last_error
+            .clone()
+            .unwrap_or_else(|| "RECEIVER STOPPED".into());
+        self.last_session = Some(session);
+        true
     }
 
     pub fn is_active(&self) -> bool {
@@ -87,6 +98,7 @@ impl RadioPanel {
         match NativeRadioEngine::start_internet(&self.station, self.volume, &self.output) {
             Ok(engine) => {
                 self.engine = Some(engine);
+                self.last_session = None;
                 self.note = "CONNECTING / NATIVE AUDIO".into();
             }
             Err(error) => self.note = error,
@@ -117,13 +129,23 @@ impl RadioPanel {
             ui.spacing_mut().item_spacing = egui::vec2(7.0, 7.0);
             ui.spacing_mut().button_padding = egui::vec2(10.0, 8.0);
 
-            let status = self.engine.as_ref().map(|engine| engine.status());
+            let status = self
+                .engine
+                .as_ref()
+                .map(|engine| engine.status())
+                .or_else(|| self.last_session.clone());
             let state = status
                 .as_ref()
                 .map(|s| s.state)
                 .unwrap_or(PlaybackState::Stopped);
-            let running = self.engine.is_some()
-                && !matches!(state, PlaybackState::Failed | PlaybackState::Stopped);
+            let running = self.engine.is_some();
+
+            if let Some(error) = status.as_ref().and_then(|session| session.last_error.as_ref()) {
+                self.note = error.clone();
+            }
+            if matches!(state, PlaybackState::Failed) && self.note == "CONNECTING / NATIVE AUDIO" {
+                self.note = "STREAM FAILED / PRESS PLAY TO RETRY".into();
+            }
 
             ui.horizontal(|ui| {
                 ui.strong("RADIO  /  IP");
@@ -177,14 +199,11 @@ impl RadioPanel {
                     )
                     .clicked()
                 {
-                    if self.engine.is_some() {
-                        self.stop();
-                    }
                     self.play();
                 }
                 if ui
                     .add_enabled(
-                        self.engine.is_some() && !self.stopping,
+                        (running || state == PlaybackState::Failed) && !self.stopping,
                         egui::Button::new("■  STOP").min_size(egui::vec2(116.0, 44.0)),
                     )
                     .clicked()
@@ -205,14 +224,6 @@ impl RadioPanel {
                     }
                 }
             }
-            if let Some(status) = status {
-                if let Some(error) = status.last_error {
-                    self.note = error;
-                }
-            }
-            if matches!(state, PlaybackState::Failed) && self.note == "CONNECTING / NATIVE AUDIO" {
-                self.note = "STREAM FAILED / STOP THEN RETRY".into();
-            }
             ui.separator();
             ui.horizontal(|ui| {
                 if ui
@@ -224,7 +235,8 @@ impl RadioPanel {
                         self.refresh_outputs();
                     }
                 }
-                ui.label(egui::RichText::new(&self.note).small());
+                ui.add(egui::Label::new(egui::RichText::new(&self.note).small()).truncate())
+                    .on_hover_text(&self.note);
             });
             if self.show_output {
                 egui::Window::new("RADIO / AUDIO OUTPUT")
@@ -289,6 +301,24 @@ impl RadioPanel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn completed_failure_stays_visible_without_retaining_an_active_receiver() {
+        let mut panel = RadioPanel::new();
+        panel.last_session = Some(RadioSession {
+            state: PlaybackState::Failed,
+            last_error: Some("Speaker disconnected".into()),
+            ..Default::default()
+        });
+        assert!(panel.poll_shutdown());
+        assert!(!panel.is_active());
+        let session = panel.last_session.as_ref().unwrap();
+        assert_eq!(session.state, PlaybackState::Failed);
+        assert_eq!(session.last_error.as_deref(), Some("Speaker disconnected"));
+        panel.stop();
+        assert!(panel.last_session.is_none());
+        assert_eq!(panel.note, "RECEIVER STOPPED");
+    }
 
     #[test]
     fn stopping_an_idle_panel_is_immediate_and_idempotent() {

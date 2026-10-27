@@ -26,7 +26,7 @@
 - P5: Satellite receiver adapter design, protocol-specific rights review and test hardware.
 - P6: Pi ARM64 CPU/memory/battery and 480x320 UI acceptance; Windows output test.
 
-**Current state**: rust-radio-core is only an initial pure-control scaffold. Actual player and SDR implementations remain in pip_boy. Do not claim code migration or live functionality until ports and tests pass.
+**Current state**: the workspace now includes `rust-radio-core` control/parsing/PCM/recovery code, `rust-radio-ip` transport, `rust-radio-audio` playback and output, a CLI, and an egui panel. The audio crate retains a compatibility controller alongside the source-neutral core contract; these APIs still need consolidation before host migration. Earlier standalone CLI Skylab playback was operator-confirmed on macOS, while current GUI, shutdown changes, Rust-Boy host migration, physical SDR, and Pi acceptance remain separate gates. See the standalone and GUI acceptance records; do not infer hardware validation from source availability.
 
 ## Compatibility API
 Hosts should drive commands (select/play/stop/volume/output) and observe session snapshots; keep network receivers, native device discovery, publishers, and GUI outside the core. Provide versioned API and avoid cyclic dependency from rust_radio back to pip_boy.
