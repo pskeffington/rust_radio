@@ -1,0 +1,19 @@
+[package]
+name = "rust-radio-gui"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+rust-radio-core = { path = "../rust-radio-core" }
+rust-radio-audio = { path = "../rust-radio-audio" }
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
+
+[lib]
+name = "rust_radio_gui"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rust-radio-gui"
+path = "src/main.rs"
