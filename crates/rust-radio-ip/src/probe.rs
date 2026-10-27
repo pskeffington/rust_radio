@@ -5,10 +5,10 @@
 //! Continuous playback requires an independently cancellable worker and a
 //! per-read inactivity timeout; it must not reuse the probe's total deadline.
 
-use rust_radio_core::stream::{ApprovedEndpoint, HttpResponse, RadioHttp, StreamError};
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
+use rust_radio_core::stream::{ApprovedEndpoint, HttpResponse, RadioHttp, StreamError};
 use std::time::Duration;
 
 pub struct NativeRadioHttp {
