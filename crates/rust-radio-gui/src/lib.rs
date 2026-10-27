@@ -87,7 +87,7 @@ impl RadioPanel {
     pub fn show(&mut self, ui: &mut egui::Ui) {
         let frame = egui::Frame::new()
             .fill(DARK)
-            .stroke(egui::Stroke::new(1.0, GREEN))
+            .stroke(egui::Stroke::new(1.0_f32, GREEN))
             .inner_margin(egui::Margin::same(9));
         frame.show(ui, |ui| {
             ui.set_max_width((ui.available_width() - 2.0).min(PANEL_WIDTH - 20.0));
