@@ -1,14 +1,14 @@
 //! In-process IP-radio playback worker using native Rust decoding and CPAL.
 //! No subprocesses, browser playback, persistent audio files or RF transmit.
 
-use rust_radio_ip::net as radio_net;
-use crate::output::NativeAudioOutput;
 use crate::compat_controller::{
     PlaybackEvent, PlaybackState, RadioCommand, RadioController, RadioSession,
 };
+use crate::output::NativeAudioOutput;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::pcm::PcmConverter;
 use rust_radio_core::recovery::{decide, FailureClass, RecoveryAction};
+use rust_radio_ip::net as radio_net;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::sync::{
     atomic::{AtomicBool, AtomicU8, Ordering},
