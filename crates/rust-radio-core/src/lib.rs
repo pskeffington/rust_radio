@@ -24,6 +24,7 @@ pub enum RadioError {
     AlreadyActive,
     NoActiveSession,
     StaleGeneration,
+    InvalidTransition,
     Backend(String),
 }
 
@@ -74,6 +75,17 @@ impl RadioController {
 
     pub fn acknowledge_state(&mut self, generation: u64, state: SessionState) -> Result<(), RadioError> {
         if generation != self.snapshot.generation { return Err(RadioError::StaleGeneration); }
+        let allowed = matches!(
+            (self.snapshot.state, state),
+            (SessionState::Connecting, SessionState::Buffering)
+                | (SessionState::Connecting, SessionState::Recovering)
+                | (SessionState::Buffering, SessionState::Playing)
+                | (SessionState::Buffering, SessionState::Recovering)
+                | (SessionState::Playing, SessionState::Recovering)
+                | (SessionState::Recovering, SessionState::Buffering)
+                | (SessionState::Recovering, SessionState::Connecting)
+        ) || (state == SessionState::Failed && self.snapshot.state != SessionState::Stopped);
+        if !allowed { return Err(RadioError::InvalidTransition); }
         self.snapshot.state = state;
         Ok(())
     }
@@ -97,6 +109,15 @@ mod tests {
         control.request_stop();
         assert_eq!(control.acknowledge_state(generation, SessionState::Playing), Err(RadioError::StaleGeneration));
         assert_eq!(control.snapshot().state, SessionState::Stopped);
+    }
+    #[test]
+    fn cannot_claim_playing_before_buffering() {
+        let mut control = RadioController::default();
+        let generation = control.request_start(Source::Internet { station_id: "skylab".into() }).unwrap();
+        assert_eq!(control.acknowledge_state(generation, SessionState::Playing), Err(RadioError::InvalidTransition));
+        assert_eq!(control.snapshot().state, SessionState::Connecting);
+        control.acknowledge_state(generation, SessionState::Buffering).unwrap();
+        control.acknowledge_state(generation, SessionState::Playing).unwrap();
     }
     #[test]
     fn invalid_volume_is_rejected() {
