@@ -311,7 +311,7 @@ impl Client {
     /// Cleanup disables only this client's subscription, leaving shared RF
     /// streaming and other clients untouched. No samples are stored here.
     pub fn receive_for(
-        mut self,
+        self,
         kind: StreamKind,
         duration: Duration,
         cancel: &AtomicBool,
@@ -322,6 +322,36 @@ impl Client {
                 "Receive duration must be 1..5000 ms".into(),
             ));
         }
+        self.receive(kind, Some(duration), cancel, |frame| {
+            on_frame(frame);
+            true
+        })
+    }
+
+    /// Continuous primary PCM for a native playback worker. Memory remains
+    /// bounded; missing primary audio fails after three seconds even if the
+    /// server continues sending unrelated events. Stop unsubscribes and closes.
+    pub fn stream_audio(
+        self,
+        cancel: &AtomicBool,
+        mut on_audio: impl FnMut(&[u8]) -> bool,
+    ) -> Result<ReceiveReport, Error> {
+        self.receive(StreamKind::Audio, None, cancel, |frame| {
+            if let BinaryFrame::Audio(bytes) = frame {
+                on_audio(bytes)
+            } else {
+                true
+            }
+        })
+    }
+
+    fn receive(
+        mut self,
+        kind: StreamKind,
+        duration: Option<Duration>,
+        cancel: &AtomicBool,
+        mut on_frame: impl FnMut(BinaryFrame<'_>) -> bool,
+    ) -> Result<ReceiveReport, Error> {
         let start = Instant::now();
         if cancel.load(Ordering::Acquire) {
             return Ok(ReceiveReport {
@@ -338,12 +368,15 @@ impl Client {
         // failure must attempt the matching disable and close the connection.
         let result = (|| {
             self.send(kind.event(), "", "true", start + OPERATION_TIMEOUT, cancel)?;
-            let deadline = Instant::now() + duration;
+            let until = duration.map(|duration| Instant::now() + duration);
+            let mut last_audio = Instant::now();
             let mut sample_pairs = 0u64;
             loop {
+                let deadline = until.unwrap_or(last_audio + OPERATION_TIMEOUT);
                 let message = match self.read(deadline, cancel) {
                     Ok(message) => message,
-                    Err(Error::Timeout | Error::Cancelled) => break,
+                    Err(Error::Timeout) if until.is_some() => break,
+                    Err(Error::Cancelled) => break,
                     Err(error) => return Err(error),
                 };
                 if let Message::Binary(bytes) = message {
@@ -354,7 +387,12 @@ impl Client {
                         _ => continue,
                     };
                     sample_pairs = sample_pairs.saturating_add(pairs as u64);
-                    on_frame(frame);
+                    if pairs > 0 {
+                        last_audio = Instant::now();
+                        if !on_frame(frame) {
+                            break;
+                        }
+                    }
                 }
             }
             Ok(ReceiveReport {

@@ -26,6 +26,15 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
+#[cfg(feature = "sdrconnect")]
+mod sdrconnect;
+
+enum PlaybackSource {
+    Internet(String),
+    #[cfg(feature = "sdrconnect")]
+    SdrConnect(rust_radio_sdr::sdrconnect::Endpoint),
+}
+
 #[derive(Debug)]
 enum PlaybackFailure {
     Network(String),
@@ -81,13 +90,15 @@ fn probe_failure(error: DecodeError) -> PlaybackFailure {
 }
 
 /// No direct audio output or network access occurs until the caller issues
-/// an explicit PlayInternet command. One engine owns one active worker.
+/// an explicit internet or SDRconnect Play command. One engine owns one active worker.
 pub struct NativeRadioEngine {
     controller: Arc<Mutex<RadioController>>,
     cancelled: Arc<AtomicBool>,
     volume: Arc<AtomicU8>,
     output_failed: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
+    #[cfg(feature = "sdrconnect")]
+    receiver: Arc<Mutex<Option<rust_radio_sdr::sdrconnect::Status>>>,
 }
 
 impl NativeRadioEngine {
@@ -99,6 +110,39 @@ impl NativeRadioEngine {
         if station_by_id(station_id).is_none() {
             return Err("Unknown curated internet radio station".into());
         }
+        Self::start(
+            PlaybackSource::Internet(station_id.to_owned()),
+            volume_percent,
+            output_id,
+        )
+    }
+
+    /// Explicit native playback of SDRconnect's already-running primary receiver.
+    /// No shared hardware start/stop, tuning or recording commands are sent.
+    #[cfg(feature = "sdrconnect")]
+    pub fn start_sdrconnect(
+        endpoint: &str,
+        volume_percent: u8,
+        output_id: &str,
+    ) -> Result<Self, String> {
+        let endpoint =
+            rust_radio_sdr::sdrconnect::Endpoint::parse(endpoint).map_err(|e| e.to_string())?;
+        Self::start(
+            PlaybackSource::SdrConnect(endpoint),
+            volume_percent,
+            output_id,
+        )
+    }
+
+    #[cfg(feature = "sdrconnect")]
+    pub fn receiver_status(&self) -> Option<rust_radio_sdr::sdrconnect::Status> {
+        self.receiver
+            .lock()
+            .expect("receiver state mutex poisoned")
+            .clone()
+    }
+
+    fn start(source: PlaybackSource, volume_percent: u8, output_id: &str) -> Result<Self, String> {
         if volume_percent > 100 {
             return Err("Volume must be between 0 and 100".into());
         }
@@ -106,11 +150,14 @@ impl NativeRadioEngine {
         controller
             .apply(RadioCommand::SetVolume(volume_percent))
             .map_err(|e| format!("{e:?}"))?;
-        let generation = controller
-            .apply(RadioCommand::PlayInternet {
-                station_id: station_id.to_owned(),
-            })
-            .map_err(|e| format!("{e:?}"))?;
+        let command = match &source {
+            PlaybackSource::Internet(station_id) => RadioCommand::PlayInternet {
+                station_id: station_id.clone(),
+            },
+            #[cfg(feature = "sdrconnect")]
+            PlaybackSource::SdrConnect(_) => RadioCommand::PlaySdr,
+        };
+        let generation = controller.apply(command).map_err(|e| format!("{e:?}"))?;
         let controller = Arc::new(Mutex::new(controller));
         let cancelled = Arc::new(AtomicBool::new(false));
         let volume = Arc::new(AtomicU8::new(volume_percent));
@@ -119,19 +166,42 @@ impl NativeRadioEngine {
         let worker_volume = Arc::clone(&volume);
         let output_failed = Arc::new(AtomicBool::new(false));
         let worker_output_failed = Arc::clone(&output_failed);
-        let id = station_id.to_owned();
+        #[cfg(feature = "sdrconnect")]
+        let receiver = Arc::new(Mutex::new(None));
+        #[cfg(feature = "sdrconnect")]
+        let worker_receiver = Arc::clone(&receiver);
         let selected_output = output_id.to_owned();
         let worker = thread::Builder::new()
             .name("rust-radio-playback".into())
             .spawn(move || {
-                let result = play_with_recovery(
-                    &id,
-                    generation,
-                    &worker_controller,
-                    &worker_cancelled,
-                    worker_volume,
-                    &selected_output,
-                );
+                let result = match source {
+                    PlaybackSource::Internet(id) => play_with_recovery(
+                        &id,
+                        generation,
+                        &worker_controller,
+                        &worker_cancelled,
+                        worker_volume,
+                        &selected_output,
+                    ),
+                    #[cfg(feature = "sdrconnect")]
+                    PlaybackSource::SdrConnect(endpoint) => recover_attempts(
+                        generation,
+                        &worker_controller,
+                        &worker_cancelled,
+                        || {
+                            sdrconnect::play(
+                                endpoint,
+                                generation,
+                                &worker_controller,
+                                &worker_cancelled,
+                                Arc::clone(&worker_volume),
+                                &selected_output,
+                                &worker_receiver,
+                            )
+                        },
+                        |delay| interruptible_wait(&worker_cancelled, delay),
+                    ),
+                };
                 if let Err(error) = result {
                     if !worker_cancelled.load(Ordering::Acquire) {
                         if matches!(error, PlaybackFailure::Output(_)) {
@@ -151,6 +221,8 @@ impl NativeRadioEngine {
             volume,
             output_failed,
             worker: Some(worker),
+            #[cfg(feature = "sdrconnect")]
+            receiver,
         })
     }
 
@@ -158,6 +230,15 @@ impl NativeRadioEngine {
     /// The HUD can offer an explicit output selection/retry.
     pub fn output_failed(&self) -> bool {
         self.output_failed.load(Ordering::Acquire)
+    }
+
+    /// A Stop has muted PCM but the owned worker is still releasing resources.
+    pub fn shutdown_pending(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+            && self
+                .worker
+                .as_ref()
+                .is_some_and(|worker| !worker.is_finished())
     }
 
     pub fn status(&self) -> RadioSession {
@@ -698,6 +779,8 @@ mod tests {
             cancelled: Arc::new(AtomicBool::new(false)),
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
             worker: Some(thread::spawn(move || {
                 assert!(!panics, "Synthetic playback worker panic");
             })),
@@ -764,9 +847,12 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             worker: Some(worker),
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
         };
         engine.request_stop();
         assert!(engine.cancelled.load(Ordering::Acquire));
+        assert!(engine.shutdown_pending());
         assert_eq!(engine.volume.load(Ordering::Acquire), 0);
         engine.set_volume(80).unwrap();
         assert_eq!(engine.volume.load(Ordering::Acquire), 0);
@@ -781,6 +867,7 @@ mod tests {
         assert_eq!(engine.status().generation, stopped_generation);
         release.send(()).unwrap();
         engine.stop();
+        assert!(!engine.shutdown_pending());
         assert!(engine.try_finish());
         assert!(engine.worker.is_none());
     }

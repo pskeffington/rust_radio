@@ -2542,6 +2542,7 @@ dependencies = [
  "ringbuf",
  "rust-radio-core",
  "rust-radio-ip",
+ "rust-radio-sdr",
  "symphonia",
 ]
 

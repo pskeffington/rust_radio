@@ -5,9 +5,14 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+default = []
+sdrconnect = ["dep:rust-radio-sdr", "rust-radio-sdr/sdrconnect"]
+
 [dependencies]
 rust-radio-core = { path = "../rust-radio-core" }
 rust-radio-ip = { path = "../rust-radio-ip" }
+rust-radio-sdr = { path = "../rust-radio-sdr", optional = true }
 cpal = "=0.16.0"
 symphonia = { version = "=0.5.5", default-features = false, features = ["mp3", "aac"] }
 ringbuf = "=0.4.8"

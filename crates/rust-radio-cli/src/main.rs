@@ -17,6 +17,7 @@ mod sdrconnect;
 #[derive(Debug, PartialEq, Eq)]
 struct ListenArgs<'a> {
     station: &'a str,
+    sdrconnect: bool,
     seconds: Option<u64>,
     output: &'a str,
     volume: u8,
@@ -27,6 +28,7 @@ fn usage() {
     eprintln!("Interactive listen commands: status | volume N | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
+    eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -51,11 +53,22 @@ fn validation_summary(report: &StationValidation) -> String {
 }
 
 fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
-    if args.len() < 2 || args[0] != "listen" || station_by_id(&args[1]).is_none() {
+    if args.len() < 2 {
+        return Err("missing listen source");
+    }
+    let sdrconnect = args[0] == "sdrconnect-listen";
+    if sdrconnect {
+        #[cfg(feature = "sdrconnect")]
+        rust_radio::receiver::sdrconnect::Endpoint::parse(&args[1])
+            .map_err(|_| "invalid SDRconnect peer")?;
+        #[cfg(not(feature = "sdrconnect"))]
+        return Err("enable the sdrconnect feature for native nRSP-ST audio");
+    } else if args[0] != "listen" || station_by_id(&args[1]).is_none() {
         return Err("unknown curated station");
     }
     let mut parsed = ListenArgs {
         station: &args[1],
+        sdrconnect,
         seconds: None,
         output: "system",
         volume: 60,
@@ -105,7 +118,18 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
 }
 
 fn listen(args: ListenArgs<'_>) -> Result<(), String> {
-    let mut engine = NativeRadioEngine::start_internet(args.station, args.volume, args.output)?;
+    let mut engine = if args.sdrconnect {
+        #[cfg(feature = "sdrconnect")]
+        {
+            NativeRadioEngine::start_sdrconnect(args.station, args.volume, args.output)?
+        }
+        #[cfg(not(feature = "sdrconnect"))]
+        {
+            return Err("enable the sdrconnect feature".into());
+        }
+    } else {
+        NativeRadioEngine::start_internet(args.station, args.volume, args.output)?
+    };
     println!(
         "RUST RADIO / {} / output {} / volume {}%",
         args.station, args.output, args.volume
@@ -198,7 +222,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 Err("Station did not pass decoded-audio validation".into())
             }
         }
-        Some("listen") => listen(parse_listen(args)?),
+        Some("listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
         Some("sdr-devices") if args.len() == 1 => sdr::devices(),
         Some("sdr-capture") => sdr::capture(args),
         Some("sdrconnect-status" | "sdrconnect-capture") => sdrconnect::run(args),
@@ -250,6 +274,27 @@ mod tests {
         assert_eq!(parse_listen(&parsed).unwrap().volume, 25);
         assert_eq!(parse_listen(&parsed).unwrap().seconds, Some(30));
         assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
+    }
+
+    #[cfg(feature = "sdrconnect")]
+    #[test]
+    fn native_sdr_listen_validates_peer_and_limits_before_resources() {
+        for raw in [
+            vec!["sdrconnect-listen", "8.8.8.8:5454"],
+            vec!["sdrconnect-listen", "127.0.0.1:9", "--volume", "101"],
+            vec!["sdrconnect-listen", "127.0.0.1:9", "--seconds", "0"],
+        ] {
+            assert!(parse_listen(&options(&raw)).is_err());
+        }
+        let args = options(&[
+            "sdrconnect-listen",
+            "127.0.0.1:5454",
+            "--seconds",
+            "3",
+            "--volume",
+            "10",
+        ]);
+        assert!(parse_listen(&args).unwrap().sdrconnect);
     }
 
     #[test]

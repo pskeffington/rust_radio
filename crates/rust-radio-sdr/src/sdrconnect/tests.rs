@@ -225,6 +225,67 @@ fn silent_receive_reaches_deadline_unsubscribes_and_closes_the_owned_connection(
 }
 
 #[test]
+fn continuous_audio_consumer_can_stop_and_unsubscribe_without_touching_hardware() {
+    let (endpoint, handle) = fixture(|mut peer| {
+        assert_eq!(request(&mut peer).property, "started");
+        response(&mut peer, "started", "true");
+        assert_eq!(request(&mut peer).event_type, "audio_stream_enable");
+        peer.send(Message::Binary(packet(2, &[1, 2]).into()))
+            .unwrap();
+        peer.send(Message::Binary(packet(1, &[-100, 100]).into()))
+            .unwrap();
+        let stop = request(&mut peer);
+        assert_eq!(stop.event_type, "audio_stream_enable");
+        assert_eq!(stop.value, "false");
+        assert!(peer.read().is_err());
+    });
+    let cancel = AtomicBool::new(false);
+    let client = Client::connect(endpoint, &cancel).unwrap();
+    let report = client
+        .stream_audio(&cancel, |bytes| {
+            assert_eq!(bytes.len(), 4);
+            false
+        })
+        .unwrap();
+    assert_eq!(report.sample_pairs, 1);
+    assert!(!report.cancelled);
+    handle.join().unwrap();
+}
+
+#[test]
+fn unrelated_packets_cannot_keep_a_stalled_audio_session_alive() {
+    let (endpoint, handle) = fixture(|mut peer| {
+        assert_eq!(request(&mut peer).property, "started");
+        response(&mut peer, "started", "true");
+        assert_eq!(request(&mut peer).event_type, "audio_stream_enable");
+        peer.get_mut().set_nonblocking(true).unwrap();
+        let until = Instant::now() + Duration::from_secs(5);
+        loop {
+            if let Ok(Message::Text(text)) = peer.read() {
+                let stop: Envelope = serde_json::from_str(&text).unwrap();
+                assert_eq!(stop.event_type, "audio_stream_enable");
+                assert_eq!(stop.value, "false");
+                break;
+            }
+            assert!(
+                Instant::now() < until,
+                "audio subscription failed to time out"
+            );
+            peer.send(Message::Binary(packet(5, &[0, 0]).into()))
+                .unwrap();
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    });
+    let cancel = AtomicBool::new(false);
+    let client = Client::connect(endpoint, &cancel).unwrap();
+    assert_eq!(
+        client.stream_audio(&cancel, |_| panic!("secondary data became primary audio")),
+        Err(Error::Timeout)
+    );
+    handle.join().unwrap();
+}
+
+#[test]
 fn stopped_receiver_and_invalid_limits_do_not_enable_capture() {
     for duration in [Duration::ZERO, Duration::from_secs(6)] {
         let (endpoint, handle) = fixture(|mut peer| {

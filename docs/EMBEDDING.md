@@ -53,3 +53,10 @@ Compatibility imports in `rust-radio-audio::compat_controller` refer to the
 same core controller types. `rust-radio-core::SessionState` is the same playback
 state type, so source selection and output-recovery policy cannot drift from the
 native worker's state vocabulary.
+
+With default IP/audio features plus `sdrconnect`, the same `NativeRadioEngine`
+also accepts `start_sdrconnect(peer, volume, output)`. Its status uses
+`InputKind::Sdr`; `receiver_status()` exposes the last server-reported tuning
+snapshot without network I/O. Stop/reaping and output ownership follow the same
+contract as IP playback. A control-only `sdrconnect` dependency still links no
+native audio or USB SDR SDK.

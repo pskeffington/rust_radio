@@ -38,8 +38,24 @@ buffered packets cannot leak into a later session.
 The implementation follows [API 1.0.3](https://sdrplay.com/wp-content/uploads/2026/08/SDRconnect_WebSocket_API.pdf).
 Primary stereo audio is signed little-endian 16-bit PCM at 48 kHz; I/Q uses
 signed little-endian pairs. Packet tags distinguish those from secondary-device
-and spectrum data. This adds network ingress, not an independent RF demodulator
-or native RF audio player. The capture CLI never opens an audio output.
+and spectrum data. The capture CLI never opens an audio output. Native playback is now available
+through the shared `NativeRadioEngine::start_sdrconnect()` entry point when both
+`ip-radio` (default) and `sdrconnect` are enabled. It reuses CPAL output selection,
+volume, bounded PCM conversion/queueing, retries and asynchronous Stop. A new
+session still requires an already-running receiver in SDRconnect; the engine
+does not start or retune shared hardware.
+
+```sh
+cargo run --locked -p rust-radio-cli --features sdrconnect -- \
+  sdrconnect-listen 127.0.0.1:5454 --seconds 10 --volume 10
+```
+
+`Client::stream_audio()` supports continuous playback with a three-second
+primary-audio inactivity limit. Other channels and spectrum/control traffic do
+not extend that deadline. Stereo i16 PCM is converted/resampled on the worker;
+Playing requires samples consumed by the native callback. Stop mutes queued
+samples immediately, unsubscribes and closes the owned connection. Hosts retain
+the engine and poll `try_finish()`/`shutdown_pending()` before replacing it.
 
 Limits: one MiB per WebSocket message/frame, 8 KiB control envelopes, three-second
 connection/handshake and status deadlines, 1–5000 ms receive windows, and a 250 ms
@@ -63,3 +79,9 @@ that mode could not be validated. No firmware was modified. The original IQ Lite
 selection and mute setting were restored, and the receiver was left stopped.
 Raw I/Q, native RF audio output, shared-client and Pi runtime acceptance remain
 open. USB Soapy discovery is not an nRSP-ST acceptance test.
+
+Native audio tests cover signed endianness, callback evidence, output failure,
+malformed packets, cancellation and resource cleanup. The current live attempt
+was rejected because SDRconnect remained stopped after both UI and explicit API
+start attempts. That path correctly failed before opening native output. Live
+native RF callback/listening acceptance remains pending receiver availability.
