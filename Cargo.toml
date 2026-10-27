@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rust-radio-core", "crates/rust-radio-ip", "crates/rust-radio-audio"]
+members = ["crates/rust-radio-core", "crates/rust-radio-ip", "crates/rust-radio-audio", "crates/rust-radio-cli"]
 resolver = "2"
 
 [workspace.package]
