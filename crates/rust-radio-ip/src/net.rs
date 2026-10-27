@@ -50,7 +50,12 @@ impl Read for ChunkReader {
         }
         loop {
             if self.cancelled.load(Ordering::Acquire) || self.stopped.load(Ordering::Acquire) {
-                return Err(io::Error::new(io::ErrorKind::Interrupted, "Radio stopped"));
+                // read_exact retries Interrupted, which can spin forever while
+                // parsing an ICY metadata block after Stop.
+                return Err(io::Error::new(
+                    io::ErrorKind::ConnectionAborted,
+                    "Radio stopped",
+                ));
             }
             if self.position < self.buffered.len() {
                 let available = self.buffered.len() - self.position;
@@ -499,7 +504,26 @@ mod tests {
         dropped.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(
             reader.read(&mut [0; 1]).unwrap_err().kind(),
-            io::ErrorKind::Interrupted
+            io::ErrorKind::ConnectionAborted
+        );
+    }
+
+    #[test]
+    fn stop_during_icy_metadata_does_not_retry_cancelled_reads_forever() {
+        let reader = test_reader(b"a\x01StreamTitle='X';".to_vec());
+        let cancelled = Arc::clone(&reader.cancelled);
+        let mut icy = IcyAudioReader::new(reader, Some(1));
+        assert_eq!(icy.read(&mut [0; 1]).unwrap(), 1);
+        cancelled.store(true, Ordering::Release);
+        let (sender, receiver) = mpsc::channel();
+        thread::spawn(move || {
+            sender
+                .send(icy.read(&mut [0; 1]).unwrap_err().kind())
+                .unwrap();
+        });
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(3)).unwrap(),
+            io::ErrorKind::ConnectionAborted
         );
     }
 

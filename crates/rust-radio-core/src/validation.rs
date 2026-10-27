@@ -17,6 +17,7 @@ pub enum ValidationStatus {
     Unavailable,
     InvalidStream,
     Unsupported,
+    Cancelled,
     Decoded,
 }
 
