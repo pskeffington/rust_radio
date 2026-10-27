@@ -151,7 +151,7 @@ mod tests {
     fn cannot_start_second_session() {
         let mut control = RadioController::default();
         control.request_start(Source::Internet { station_id: "skylab".into() }).unwrap();
-        assert_eq!(control.request_start(Source::Internet { station_id: "other".into() }), Err(RadioError::AlreadyActive));
+        assert_eq!(control.request_start(Source::Internet { station_id: "groovesalad".into() }), Err(RadioError::AlreadyActive));
     }
 }
 
