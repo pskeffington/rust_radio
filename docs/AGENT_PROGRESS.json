@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:36:53Z",
+  "updated_at_utc": "2026-10-28T20:39:00Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "d7c9f12",
@@ -100,9 +100,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": null,
+    "latest_observed_head_run": 40765092086,
     "previous_head_run": 40763293734,
-    "conclusion": "PR #3 is open. No workflow run or combined check was visible for current code head d7c9f12 at query time. Prior Actions run 40763293734 failed before jobs were created; remote CI remains unverified."
+    "conclusion": "PR head 88227d517f8ce2f3ce6411b4ca13615048a25317 has empty combined status. Actions run 40765092086 ended startup_failure with zero jobs; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",

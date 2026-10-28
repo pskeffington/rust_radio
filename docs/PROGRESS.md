@@ -939,3 +939,11 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   unverified. No receiver, audio-output, or Pi hardware was exercised.
 - Next: perform receiver/output/Pi acceptance when hardware is available and
   resolve publisher reuse rights before adding an NPR member stream.
+
+## CI status refresh (2026-10-28)
+
+- After pushing checkpoint commit `88227d5`, PR #3 remained open and
+  mergeable. Its combined status was empty.
+- GitHub Actions run `40765092086` ended `startup_failure` with zero jobs.
+  No job logs exist, so this provides no code-level CI result; remote CI remains
+  unverified. The local six-gate run on implementation source `d7c9f12` passed.
