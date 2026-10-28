@@ -89,6 +89,8 @@ impl ApprovedEndpoint {
                 && path.starts_with("skylab-radio-limited")
         } else if station.id == "wcrb" {
             authority == "wgbh-live.streamguys1.com" && path == "classical-hi/"
+        } else if station.id == "gbhnews" {
+            authority == "wgbh-live.streamguys1.com" && path == "wgbh"
         } else {
             let host = authority.strip_suffix(":443").unwrap_or(authority);
             !host.contains(':')
