@@ -18,6 +18,15 @@ Updated 2026-10-27. Active priorities and ownership are in the
   Clippy for all targets, **131 tests** and build. The headless SDRconnect module
   also passed the AArch64 Linux compile check. These are software checks; this
   pass adds no new physical receiver, listening or Pi acceptance evidence.
+- Pip-Boy `beaa719` consumes module `21045b3`. Its extended HUD smoke confirmed
+  exactly one activation and no audio subscription on unconfirmed startup, then
+  native callback playback after corrected fixture setup and explicit Play.
+  Standalone PCM, output restart and socket cleanup also passed at zero volume.
+- After incorporating intervening upstream sync commits, host formatting, check,
+  strict Clippy, build and UI/security validators passed; all **341 tests passed
+  serially**. Upstream sync formatting/lint repairs were isolated in host commit
+  `3b11bce`. The primary Pip-Boy checkout was fast-forwarded and rebuilt with SDR
+  enabled; its pre-existing untracked `rust_radio/` directory was preserved.
 
 ## Recorded delivery milestones
 
@@ -28,6 +37,7 @@ Updated 2026-10-27. Active priorities and ownership are in the
 | Rust Radio `9831f29` | Recorded operator-confirmed radio audibility on MacBook Air speakers using system default output |
 | Rust Radio `f46034d`, Pip-Boy `1298bcf` | Explicit Play activation added and consumed by the host; stopped-receiver synthetic/native-output smoke passed |
 | Rust Radio `3b38f8f` | Headless SDRconnect AArch64 Linux compile check passed locally and added to CI |
+| Rust Radio `21045b3`, Pip-Boy `beaa719` | Unconfirmed receiver startup fails without automatic activation retries; explicit retry and native output integration passed |
 
 Real nRSP-ST IQ Lite PCM reached native callbacks in both players, including
 concurrent subscribers, volume/output restart and local Stop leaving reception
@@ -46,13 +56,14 @@ are recorded separately from real-receiver evidence.
   station controls currently support IP radio; Pip-Boy owns its SDR selector.
 - **USB SDR:** the adapter compiles/links, but no supported device or driver was
   discovered on this Mac. RawIq ingress is implemented; local RF DSP audio is not.
-- **CI:** the inspected [Rust Radio run at `3b38f8f`](https://github.com/pskeffington/rust_radio/actions/runs/40602802105)
-  and [Pip-Boy run at `1298bcf`](https://github.com/pskeffington/pip_boy/actions/runs/40599722688)
+- **CI:** the inspected [Rust Radio run at `21045b3`](https://github.com/pskeffington/rust_radio/actions/runs/40622415593)
+  and [Pip-Boy run at `beaa719`](https://github.com/pskeffington/pip_boy/actions/runs/40622963504)
   reported `startup_failure` with zero jobs. Earlier failed-run retry requests
   were refused by GitHub. No underlying cause or remote green result is established.
-- **Host test reliability:** an existing dashboard role-activation test has
-  intermittently returned 409 during parallel suites; subsequent complete runs
-  passed. No dashboard implementation was changed by these radio passes.
+- **Host test reliability:** an existing dashboard role-activation test again
+  returned 409 in the parallel suite on this pass. The complete serial suite
+  passed; the parallel failure remains unresolved. No dashboard implementation
+  was changed by these radio passes.
 
 Station history is currently kept for the CLI invocation or panel lifetime.
 Persistent validation history, HLS transport and satellite adapters remain
