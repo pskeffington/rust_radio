@@ -1135,3 +1135,13 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   status checks are visible for this head; prior Actions run `40770761885`
   failed before creating jobs. Local `git merge-tree origin/main HEAD` found
   no conflicts.
+
+## Headless AArch64 feature matrix (2026-10-28)
+
+- On current head `3b57855`, all three Pi-target compile configurations passed:
+  core-only (`--no-default-features`), SDRconnect, and direct `nrsp-native`.
+- These checks verify the headless Linux ARM64 dependency/feature combinations
+  compile; they do not verify native Pi audio, receiver interoperability, or
+  runtime behavior.
+- PR #3 remains open and mergeable at `3b57855`. No workflow runs or combined
+  status checks are visible for this head; remote CI remains unverified.

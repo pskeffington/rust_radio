@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:23:35Z",
+  "updated_at_utc": "2026-10-28T21:24:11Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -51,7 +51,8 @@
     "Reviewed WBUR as an NPR-affiliated catalog candidate: official pages document a live site/app stream but no stable direct endpoint, and say content is copyrighted with rare licensing approvals. No feed added without endpoint and written product-use permission.",
     "Extended catalog mirror regression to enforce six-hour freshness, decoded-audio validation, initial unverified state, publisher-directed endpoints, and redistribution-not-authorized policy.",
     "Aligned scheduled catalog validation with its six-hour freshness TTL; the bounded live sweep decoded all 25 stations and the GUI label A/B/C regression passed.",
-    "Added a credential-safe per-station GitHub Actions summary for scheduled catalog validation, with sanitized Markdown labels and synthetic regression tests."
+    "Added a credential-safe per-station GitHub Actions summary for scheduled catalog validation, with sanitized Markdown labels and synthetic regression tests.",
+    "Cross-checked the headless AArch64 Linux matrix for core-only, SDRconnect and direct nRSP-native feature configurations."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -75,7 +76,7 @@
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
     "latest_code_head_ci": "Current PR head fab6f63 has no workflow run or status checks visible; previous Actions run 40770761885 on 2bd4bfd failed at startup before jobs were created; remote CI remains unverified",
     "live_catalog_revalidation": "2026-10-28T21:18:27Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; point-in-time codec evidence only",
-    "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed this run; compile evidence only",
+    "arm64_headless_check": "on current head 3b57855, cargo check passed for core-only, sdrconnect and nrsp-native with --no-default-features on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
