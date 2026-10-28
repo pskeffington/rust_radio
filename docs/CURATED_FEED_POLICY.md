@@ -1,47 +1,76 @@
-# Curated radio directory and automatic feed health
+# Curated radio directory, redundant streams and health hysteresis
 
-The **authoritative runtime directory** is `crates/rust-radio-core/src/directory.rs`. `catalog/curated-stations.json` is its machine-readable mirror, checked for parity by the native validator's offline tests. Station IDs and their ordered positions must remain stable unless a station is deliberately replaced.
+The authoritative runtime directory is `crates/rust-radio-core/src/directory.rs`. `catalog/curated-stations.json` is a machine-readable mirror, checked against the native catalog by offline unit tests. The list contains **25 stable station IDs**, including **GBH 89.7 / NPR News (Boston)**, which replaced PopTron. Publisher provenance: https://www.wgbh.org/help/how-to-access-live-radio-streams.
 
-## Station policy
+## Safety rules: never automatically remove a good station
 
-- There are exactly 25 first-party publisher-referenced curated channels, including **GBH 89.7 — NPR News (Boston)** (`gbhnews`) with the publisher-documented HTTPS direct stream. It replaces the former PopTron entry. GBH official source: https://www.wgbh.org/help/how-to-access-live-radio-streams
-- A published address is a *candidate*, not proof of a live stream. Only **an actual HTTP → supported codec → decoded audio** probe can mark it fresh. TCP, HEAD, a successful playlist download or endpoint reachability never suffices.
-- Successful decoder evidence has a strict six-hour TTL (`FEED_FRESHNESS_TTL`). The recognized states are `fresh`, `stale`, `unverified`, and `failed`. Subsequent failure supersedes earlier success. Hosts must recalculate freshness using `validation.checked_at_unix`, not assume a JSON status string remains current.
-- Station-specific HTTPS host and path allowlists remain enforced by `ApprovedEndpoint`; a direct/user-saved URL is outside the curated catalog and cannot masquerade as a validated station.
-- Listening is receive-only; the application does not rebroadcast audio or convey a redistribution license.
+**The curated 25-station list is permanent until an explicit, reviewed catalog change.** A bad network check is not a reason to remove, rename, or reorder a channel. Live availability and the right to *try* a station are separate concepts.
 
-## Native automatic validator
+A radio stream is marked **fresh** only when actual decoded audio frames succeeded within the previous **six hours**. DNS, TCP, an HTTP 200, and successful playlist parsing are insufficient. Separate operational states are:
 
-The headless Rust CLI at `crates/rust-radio-cli/src/bin/rust-radio-feed-validator.rs` consumes the same 25-entry directory and the existing bounded decoder validation path. It does not open audio output, attach SDR hardware, start playback or block the radio GUI.
+| State | Evidence and behavior | In default `--eligible`? |
+| --- | --- | --- |
+| `fresh` | Latest successful decoded audio, age at most 6 hours | Yes |
+| `degraded` | Previous decoded audio within 24 hours, now failing or not rechecked within 6 hours; fewer than 3 independent failing sweeps | **Yes**, labeled degraded, not fresh |
+| `stale` | Last success older than 24 hours, or clock evidence invalid | No; still present in catalog and manually selectable |
+| `unverified` | No trustworthy successful decode yet | No; still present in catalog |
+| `unavailable` | 3 completed failing sweeps with no provider-wide suppression | No; still present in catalog and manually selectable |
+
+After success, both failure counter and degraded status clear immediately. Last-good timestamps are **never** renewed by failed requests. The 24-hour grace period is deliberately bounded: it maintains the listening experience during a temporary outage, but never claims an untested feed is fresh.
+
+### Independent redundancy layers
+
+1. **Within each completed sweep:** retry an unsuccessful decoder probe once after 1.5 seconds; do not issue a second request when the first succeeds. Retries do **not** increment the independent-sweep failure counter.
+2. **Across sweeps:** require 3 *completed*, separately scheduled failed sweeps to classify a single station as `unavailable`. Interrupted sweeps leave the counter unchanged. The default daemon interval is 4 hours.
+3. **Across publishers:** if every channel on SomaFM or GBH fails simultaneously, suspect a shared provider/CDN fault. Do not advance those station-level failure counters; retain individual error details. Single-channel publishers still use ordinary multi-sweep hysteresis.
+4. **Across the whole host:** if all 25 streams fail to decode in one sweep, mark `network_incident_suspected` and do not advance any station-level failure counters.
+5. **Across CDN mirrors:** for curated M3U/PLS stations only, the core stream resolver **and native playback transport** may try another listed publisher-approved HTTPS endpoint if a prior endpoint has a transport, HTTP, or invalid-content-type failure. This is serial, bounded by `MAX_REQUEST_HOPS`, and never permits arbitrary hosts. A decoder-level malformed-audio failure still requires a new validation attempt; a playlist mirror is not proof of decoded audio.
+6. **Across restarts:** keep a second complete health snapshot at `<output>.bak`. The primary file is atomically replaced after each checked station; the backup is replaced only after an entire sweep completes. On corrupt/missing primary JSON, load the backup. Do not silently replace two corrupt reports with empty health history.
+
+For health monitoring, automatic filtering should operate on the exported **ID allowlist**, never mutate `CURATED_STATIONS`. Even a station recorded as `unavailable` remains available for an explicit operator playback attempt and subsequent revalidation.
+
+## Headless native validator
+
+`crates/rust-radio-cli/src/bin/rust-radio-feed-validator.rs` performs receive-only, serial stream checks without opening a speaker, attaching SDR hardware, or occupying the GUI render thread. It uses the same native Rust stream decoder/transport as the radio system.
 
 ```sh
-# One complete scan; nonzero exit if any station is not verified:
+# Single complete sweep; exits nonzero if any station is not eligible:
 cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --once
 
-# Operator-enabled periodic validator (immediate scan then every four hours):
-cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --daemon
+# Continuous operator-enabled monitor, beginning with an immediate sweep:
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --daemon --interval-minutes 240 --output ./state/feed-health.json
 
-# Use an explicit persistent location instead of target/:
-cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --daemon --output ./state/feed-health.json
-
-# Read the saved report and recompute the TTL (no network access):
+# Recompute health from last-good evidence, without contacting broadcasters:
 cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --status --output ./state/feed-health.json
 
-# Emit only currently eligible station IDs for a host to consume (JSON array):
+# Use for ordinary radio browsing: fresh + bounded degraded grace:
 cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --eligible --output ./state/feed-health.json
+
+# Use for strict applications: decoded within 6h only:
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --strict-eligible --output ./state/feed-health.json
 ```
 
-The default report is `target/radio-feed-health.json` (ignored by Git). The daemon scans serially (one remote connection at a time) with 500-ms spacing and no overlapping scans. Each probe inherits the existing cancellable, bounded native decoder validation deadline. A scan takes up to several minutes if every endpoint times out; the default four-hour interval gives margin before the six-hour TTL. Use `--daemon --interval-minutes N` with `15 <= N <= 240` to change cadence. Run only one daemon per report path; the current implementation has no multi-process lease manager.
+The default output is `target/radio-feed-health.json` (ignored by Git). Use a persistent `--output` directory for deployment. Serial scans pause 500 ms between stations. Each underlying validator enforces finite network/decode deadlines, so complete scans may take several minutes when streams are unavailable. `--interval-minutes` accepts 15–240, only in daemon mode; the interval includes the duration of the sweep. **Run one daemon per report path**: there is no cross-process lease manager yet.
 
-Each station gets an ordered entry with stable ID, name, genre, category, publisher provenance, current `health`, and nested `validation` evidence (status, stage, UTC Unix check timestamp, codec, sample rate, channels, decoded frames and bounded error detail). Report schema version is **1**. After each station the complete 25-entry JSON structure is atomically replaced on Unix/macOS; `checked` and `complete` distinguish interrupted scans. The validator never persists user-custom streaming tokens or raw resolved URLs.
+### JSON schema and migration
 
-The `--eligible` output is an allowlist of fresh station **IDs**, not raw user-supplied URLs. `--status` recomputes expiry on read without contacting broadcasters. Invalid reports, mismatched catalog IDs, oversized reports and unsupported schema versions fail closed. For unattended services, supply an output path in a persistent application state directory (the default `target/` may be cleaned during development).
+Current report schema is **version 2**; version-1 reports are accepted and their successful decoded-audio evidence is migrated without wiping the last-good timestamp.
 
-## Playback / GUI integration boundary
+Each ordered station record contains its immutable `id`, `name`, `genre`, `category`, and publisher reference, plus:
 
-The existing GUI still independently validates a newly selected station before playback and reports its check state. **The auto-validator's JSON is currently external to the GUI:** an integrator must consume `--eligible` or parse and time-check the JSON to filter recommendations or enforce a strict fresh-only automatic mode. It does not silently block an operator's explicit Play request. A future integration pass may import signed/permission-controlled local snapshots and provide a `Verified only` toggle without blocking manual diagnostic tuning.
+- `validation`: latest bounded probe outcome, including codec, timestamp, decoded frames and concise error detail
+- `last_good`: the most recent successful decoded-audio evidence, retained even after failure
+- `probe_attempts`: 1 or 2 per checked station
+- `consecutive_failed_sweeps`: capped at 3, excluding suspected whole-host and shared-publisher incidents
+- `health`: point-in-time cached label, recomputed by `--status` and `--eligible`
 
-## Verification
+Top-level fields include `checked`, `complete`, `fresh`, `degraded`, `stale`, `unverified`, `unavailable`, `network_incident_suspected` and, after a complete scan, `publisher_incidents_suspected`. Do not trust a stored health string beyond its timestamp; consumers must recompute expiry from the validation evidence. The reader rejects oversized or invalid JSON, mismatched catalog IDs, and unsupported schema versions. Raw custom stream URLs and query tokens are not persisted.
+
+## GUI integration boundary
+
+The standalone GUI still performs its own explicit selected-station checks. The background JSON report and `--eligible` ID set are **not yet wired into the GUI**. This pass prevents validator consumers from treating single failures as automatic station removal, but it does not yet implement a GUI filter. A future GUI integration should show `fresh` and `degraded` distinctly, retain manual override for troubleshooting, and never remove a curated entry on probe failure.
+
+## Verification and operational acceptance
 
 ```sh
 cargo fmt --all -- --check
@@ -51,4 +80,4 @@ cargo test --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-The validator unit tests use **offline injected fake reports**, never external stream probes. No channel is asserted live merely by a passing build. Run `--once` on a network-enabled host for real live acceptance, check the per-channel errors, and then evaluate `--eligible` before promoting the station list.
+Offline regression tests cover a transient first-probe error followed by success, triple-sweep failure thresholds, recovery, total-host outage suppression, shared-publisher outage suppression, 6h/24h boundaries, atomic backup restoration, schema-v1 migration, strict versus grace eligibility and allowlisted CDN failover. Passing offline tests never proves external stations are currently live. Run a **real network-enabled `--once` sweep** and inspect the results before calling the 25 feeds verified. Publisher links are for personal listening; they do not authorize rebroadcasting or redistribution.
