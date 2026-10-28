@@ -176,6 +176,25 @@ fn probe_if_active<T>(
     }
 }
 
+fn start_resource_if_active<T, E>(
+    cancelled: &AtomicBool,
+    start: impl FnOnce() -> Result<T, E>,
+    on_cancel: impl FnOnce(),
+) -> Result<Option<T>, E> {
+    if cancelled.load(Ordering::Acquire) {
+        on_cancel();
+        return Ok(None);
+    }
+    let resource = start()?;
+    if cancelled.load(Ordering::Acquire) {
+        drop(resource);
+        on_cancel();
+        Ok(None)
+    } else {
+        Ok(Some(resource))
+    }
+}
+
 /// No direct audio output or network access occurs until the caller issues
 /// an explicit internet or SDRconnect Play command. A process-wide lease admits
 /// only one playback worker, including across multiple engine instances.
@@ -844,20 +863,23 @@ fn decode_and_play(
     direct: bool,
     context: &PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
-    if context.cancelled.load(Ordering::Acquire) {
-        return Ok(());
-    }
     // Establish an audio device before opening a remote broadcaster.
-    let played_samples = begin_output_attempt(context.output_progress);
-    let mut output = NativeAudioOutput::open_with_progress(
-        Arc::clone(&context.volume),
-        context.output_id,
-        played_samples,
+    let Some(mut output) = start_resource_if_active(
+        context.cancelled,
+        || {
+            let played_samples = begin_output_attempt(context.output_progress);
+            NativeAudioOutput::open_with_progress(
+                Arc::clone(&context.volume),
+                context.output_id,
+                played_samples,
+            )
+        },
+        || clear_output_attempt(context.output_progress),
     )
-    .map_err(PlaybackFailure::Output)?;
-    if context.cancelled.load(Ordering::Acquire) {
+    .map_err(PlaybackFailure::Output)?
+    else {
         return Ok(());
-    }
+    };
     let (stream, _network_guard) = if direct {
         radio_net::open_direct_classified(station_id, Arc::clone(context.cancelled))?
     } else {
@@ -1361,6 +1383,54 @@ mod tests {
 
         assert!(result.is_none());
         assert!(!output_failure_read.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn stop_before_output_start_skips_factory_and_clears_stale_progress() {
+        let cancelled = AtomicBool::new(true);
+        let progress = Arc::new(Mutex::new(Some(Arc::new(AtomicU64::new(5)))));
+        let factory_called = AtomicBool::new(false);
+        let result = start_resource_if_active(
+            &cancelled,
+            || {
+                factory_called.store(true, Ordering::Release);
+                Ok::<_, ()>(())
+            },
+            || clear_output_attempt(&progress),
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(!factory_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn stop_during_output_start_drops_resource_and_clears_callback_progress() {
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let callback_samples_weak = Arc::downgrade(&callback_samples);
+        let cleanup_called = AtomicBool::new(false);
+        let result = start_resource_if_active(
+            &cancelled,
+            || {
+                *progress.lock().unwrap() = Some(Arc::clone(&callback_samples));
+                cancelled.store(true, Ordering::Release);
+                Ok::<_, ()>(Arc::clone(&callback_samples))
+            },
+            || {
+                clear_output_attempt(&progress);
+                cleanup_called.store(true, Ordering::Release);
+            },
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(cleanup_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
+        drop(callback_samples);
+        assert!(callback_samples_weak.upgrade().is_none());
     }
 
     #[cfg(feature = "nrsp-native")]
