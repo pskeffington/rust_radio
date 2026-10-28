@@ -35,12 +35,12 @@ struct Options {
 
 fn help() {
     println!(
-        "Usage: rust-radio-feed-validator [--once|--daemon|--status|--eligible] [--output PATH] [--interval-minutes 15..240]\\n\\
---once: scan curated stations; return nonzero if any fail\\n\\
---daemon: scan immediately and repeat every four hours\\n\\
---status: summarize health, applying the six-hour TTL\\n\\
---eligible: output JSON IDs with fresh decoded-audio evidence\\n\\
-Default output: target/radio-feed-health.json"
+        r#"Usage: rust-radio-feed-validator [--once|--daemon|--status|--eligible] [--output PATH] [--interval-minutes 15..240]
+--once: scan curated stations; return nonzero if any fail
+--daemon: scan immediately and repeat every four hours
+--status: summarize health, applying the six-hour TTL
+--eligible: output JSON IDs with fresh decoded-audio evidence
+Default output: target/radio-feed-health.json"#
     );
 }
 
