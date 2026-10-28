@@ -704,18 +704,36 @@ fn play_with_recovery(
     direct: bool,
     context: PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
-    recover_attempts(
+    recover_output_attempts(
         context.generation,
         context.controller,
         context.cancelled,
+        context.output_progress,
+        || decode_and_play(station_id, direct, &context),
+        |delay| interruptible_wait(context.cancelled, delay),
+    )
+}
+
+fn recover_output_attempts(
+    generation: u64,
+    controller: &Arc<Mutex<RadioController>>,
+    cancelled: &AtomicBool,
+    output_progress: &OutputProgress,
+    mut attempt: impl FnMut() -> Result<(), PlaybackFailure>,
+    wait: impl FnMut(Duration) -> bool,
+) -> Result<(), PlaybackFailure> {
+    recover_attempts(
+        generation,
+        controller,
+        cancelled,
         || {
-            let result = decode_and_play(station_id, direct, &context);
+            let result = attempt();
             if result.is_err() {
-                clear_output_attempt(context.output_progress);
+                clear_output_attempt(output_progress);
             }
             result
         },
-        |delay| interruptible_wait(context.cancelled, delay),
+        wait,
     )
 }
 
@@ -1520,6 +1538,34 @@ mod tests {
             PlaybackFailure::Permanent("unknown codec".into()).class(),
             FailureClass::Permanent
         );
+    }
+
+    #[test]
+    fn output_loss_clears_stale_callback_progress_without_retrying() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let old_callback_progress = begin_output_attempt(&progress);
+        old_callback_progress.store(1_024, Ordering::Release);
+        let mut attempts = 0;
+
+        let error = recover_output_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            &progress,
+            || {
+                attempts += 1;
+                Err(PlaybackFailure::Output("Bluetooth output lost".into()))
+            },
+            |_| panic!("output loss must not wait for a network retry"),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.class(), FailureClass::OutputUnavailable);
+        assert_eq!(attempts, 1);
+        assert!(progress.lock().unwrap().is_none());
+        assert_eq!(old_callback_progress.load(Ordering::Acquire), 1_024);
     }
 
     #[test]
