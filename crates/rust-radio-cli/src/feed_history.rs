@@ -1,5 +1,6 @@
 //! Optional, bounded persistence for point-in-time curated feed validation.
 
+use rust_radio::feed_history::parse_feed_history;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeSet;
 use std::fs::{self, File, OpenOptions};
@@ -94,10 +95,8 @@ fn merge(previous: Option<&str>, report: &Value) -> Result<Value, String> {
     if results.len() != rust_radio::directory::curated_stations().len() {
         return Err("Validation report does not cover the complete catalog".into());
     }
-    let mut stations = match previous {
-        Some(json) => parse_previous(json)?,
-        None => Map::new(),
-    };
+    let previous = previous.map(parse_feed_history).transpose()?;
+    let mut stations = Map::new();
     let mut seen = BTreeSet::new();
 
     for result in results {
@@ -127,11 +126,15 @@ fn merge(previous: Option<&str>, report: &Value) -> Result<Value, String> {
             ));
         }
         let checked = result["checked_at_unix"].as_u64().unwrap_or(checked_at);
-        let previous_record = stations.get(id);
-        let previous_decoded =
-            previous_record.and_then(|record| record["last_decoded_at_unix"].as_u64());
+        let previous_record = previous
+            .as_ref()
+            .and_then(|history| history.stations.get(id));
+        let previous_decoded = previous_record
+            .and_then(|record| record.last_decoded_at)
+            .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+            .map(|duration| duration.as_secs());
         let previous_failures = previous_record
-            .and_then(|record| record["consecutive_failures"].as_u64())
+            .map(|record| u64::from(record.consecutive_failures))
             .unwrap_or(0);
         let last_decoded = if decoded {
             Some(checked)
@@ -175,91 +178,6 @@ fn merge(previous: Option<&str>, report: &Value) -> Result<Value, String> {
         "stations": stations,
     }))
     .map_err(|error| format!("Unable to build feed history: {error}"))
-}
-
-fn parse_previous(raw: &str) -> Result<Map<String, Value>, String> {
-    let previous: Value = serde_json::from_str(raw)
-        .map_err(|error| format!("Feed history is invalid JSON: {error}"))?;
-    if previous["schema_version"].as_u64() != Some(1) {
-        return Err("Unsupported feed history schema version".into());
-    }
-    let stations = previous["stations"]
-        .as_object()
-        .ok_or_else(|| "Feed history has no stations object".to_owned())?;
-    let valid_ids: Vec<_> = rust_radio::directory::curated_stations()
-        .iter()
-        .map(|station| station.id)
-        .collect();
-    if stations.len() > valid_ids.len() {
-        return Err("Feed history contains too many stations".into());
-    }
-    let updated_at = previous["updated_at_unix"]
-        .as_u64()
-        .ok_or_else(|| "Feed history has no valid update timestamp".to_owned())?;
-    for (id, record) in stations {
-        let checked_at = record["last_checked_at_unix"].as_u64();
-        let status = record["last_status"].as_str();
-        let stage = record["last_stage"].as_str();
-        let attempts = record["attempts"].as_u64();
-        let failures = record["consecutive_failures"].as_u64();
-        let decoded_at = record["last_decoded_at_unix"].as_u64();
-        let health = record["health"].as_str();
-        let valid_status = matches!(
-            status,
-            Some(
-                "unverified"
-                    | "unavailable"
-                    | "invalid_stream"
-                    | "unsupported"
-                    | "cancelled"
-                    | "decoded"
-                    | "check_error"
-            )
-        );
-        let valid_stage = matches!(
-            stage,
-            Some(
-                "not_checked"
-                    | "endpoint_reached"
-                    | "stream_response"
-                    | "supported_codec"
-                    | "decoded_audio"
-            )
-        );
-        let decoded = status == Some("decoded");
-        let valid_health = if decoded {
-            matches!(health, Some("fresh" | "stale"))
-        } else if matches!(status, Some("unverified" | "cancelled")) {
-            health == Some("unverified")
-        } else {
-            health == Some("failed")
-        };
-        if !valid_ids.contains(&id.as_str())
-            || checked_at.map_or(true, |time| time > updated_at)
-            || !valid_status
-            || !valid_stage
-            || !valid_health
-            || attempts.map_or(true, |count| !(1..=2).contains(&count))
-            || failures.map_or(true, |count| count > 1_000_000)
-        {
-            return Err("Feed history contains an invalid station record".into());
-        }
-        if decoded
-            && (stage != Some("decoded_audio") || decoded_at != checked_at || failures != Some(0))
-        {
-            return Err("Feed history contains inconsistent decoded evidence".into());
-        }
-        if !decoded && stage == Some("decoded_audio") {
-            return Err("Feed history contains inconsistent decoded stage".into());
-        }
-        if decoded_at.is_some_and(|time| Some(time) > checked_at)
-            || decoded_at.is_some_and(|time| time > updated_at)
-            || (decoded_at.is_none() && !record["last_decoded_at_unix"].is_null())
-        {
-            return Err("Feed history has an invalid last decoded timestamp".into());
-        }
-    }
-    Ok(stations.clone())
 }
 
 #[cfg(test)]

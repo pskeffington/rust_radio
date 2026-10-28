@@ -16,6 +16,30 @@ fn host_control_contract_is_shared_and_initialization_is_offline() {
     assert!(radio.state().station_id.is_none());
 }
 
+#[test]
+fn headless_host_can_read_shared_feed_history_without_enabling_gui_or_io() {
+    let history = rust_radio::feed_history::parse_feed_history(include_str!(
+        "../../../testdata/feed-health-v1.json"
+    ))
+    .unwrap();
+    let skylab = history.stations.get("skylab").unwrap();
+    assert_eq!(
+        skylab.status,
+        rust_radio::validation_types::ValidationStatus::Decoded
+    );
+    assert_eq!(
+        skylab.stage,
+        rust_radio::validation_types::ValidationStage::DecodedAudio
+    );
+    assert_eq!(skylab.attempts, 1);
+    assert_eq!(
+        skylab.health_at(
+            std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000)
+        ),
+        rust_radio::validation_types::FeedHealth::Fresh
+    );
+}
+
 #[cfg(feature = "ip-radio")]
 #[test]
 fn headless_engine_validates_commands_before_opening_resources() {

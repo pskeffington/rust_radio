@@ -1,13 +1,9 @@
 //! Import bounded host-persisted health summaries without performing file or network I/O.
 
-use rust_radio_core::directory::curated_stations;
+use rust_radio_core::feed_history::parse_feed_history;
 use rust_radio_core::validation::{ValidationStatus, FEED_FRESHNESS_TTL};
-use serde_json::Value;
 use std::collections::BTreeMap;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-const MAX_HISTORY_BYTES: usize = 64 * 1024;
-const MAX_FAILURES: u64 = 1_000_000;
+use std::time::SystemTime;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct SavedFeedValidation {
@@ -18,121 +14,20 @@ pub(super) struct SavedFeedValidation {
 pub(super) fn parse_history(
     json: &str,
 ) -> Result<BTreeMap<&'static str, SavedFeedValidation>, String> {
-    if json.len() > MAX_HISTORY_BYTES {
-        return Err("Feed validation history exceeds 64 KiB".into());
-    }
-    let value: Value = serde_json::from_str(json)
-        .map_err(|error| format!("Feed validation history is invalid JSON: {error}"))?;
-    if value["schema_version"].as_u64() != Some(1) {
-        return Err("Unsupported feed validation history schema".into());
-    }
-    let updated_at = epoch(value["updated_at_unix"].as_u64(), "update")?;
-    let stations = value["stations"]
-        .as_object()
-        .ok_or_else(|| "Feed validation history has no stations object".to_owned())?;
-    if stations.len() > curated_stations().len() {
-        return Err("Feed validation history contains too many stations".into());
-    }
-    let mut parsed = BTreeMap::new();
-    for (id, record) in stations {
-        let station = curated_stations()
-            .iter()
-            .find(|station| station.id == id)
-            .ok_or_else(|| format!("Unknown curated station in feed history: {id}"))?;
-        let checked_at = epoch(record["last_checked_at_unix"].as_u64(), "last check")?;
-        if checked_at > updated_at {
-            return Err(format!("Future station check in feed history for {id}"));
-        }
-        let status = parse_status(record["last_status"].as_str())?;
-        let stage = record["last_stage"]
-            .as_str()
-            .ok_or_else(|| format!("Missing validation stage in feed history for {id}"))?;
-        if !matches!(
-            stage,
-            "not_checked"
-                | "endpoint_reached"
-                | "stream_response"
-                | "supported_codec"
-                | "decoded_audio"
-        ) {
-            return Err(format!("Unknown validation stage in feed history for {id}"));
-        }
-        let attempts = record["attempts"]
-            .as_u64()
-            .filter(|attempts| (1..=2).contains(attempts))
-            .ok_or_else(|| format!("Invalid attempt count in feed history for {id}"))?;
-        let _ = attempts;
-        let failures = record["consecutive_failures"]
-            .as_u64()
-            .filter(|failures| *failures <= MAX_FAILURES)
-            .ok_or_else(|| format!("Invalid failure count in feed history for {id}"))?;
-        let _ = failures;
-        let last_decoded = match record["last_decoded_at_unix"].as_u64() {
-            Some(timestamp) => {
-                let time = epoch(Some(timestamp), "last decoded")?;
-                if time > checked_at || time > updated_at {
-                    return Err(format!("Future decoded timestamp in feed history for {id}"));
-                }
-                Some(time)
-            }
-            None if record["last_decoded_at_unix"].is_null() => None,
-            None => {
-                return Err(format!(
-                    "Invalid decoded timestamp in feed history for {id}"
-                ))
-            }
-        };
-        if status == ValidationStatus::Decoded {
-            if last_decoded != Some(checked_at) || stage != "decoded_audio" || failures != 0 {
-                return Err(format!(
-                    "Inconsistent decoded evidence in feed history for {id}"
-                ));
-            }
-        } else if stage == "decoded_audio" {
-            return Err(format!(
-                "Inconsistent decoded stage in feed history for {id}"
-            ));
-        }
-        let health = record["health"]
-            .as_str()
-            .ok_or_else(|| format!("Missing health in feed history for {id}"))?;
-        let valid_health = match status {
-            ValidationStatus::Decoded => matches!(health, "fresh" | "stale"),
-            ValidationStatus::Cancelled | ValidationStatus::Unverified => health == "unverified",
-            _ => health == "failed",
-        };
-        if !valid_health {
-            return Err(format!("Inconsistent health in feed history for {id}"));
-        }
-        parsed.insert(
-            station.id,
-            SavedFeedValidation {
-                status,
-                last_decoded_at: last_decoded,
-            },
-        );
-    }
-    Ok(parsed)
-}
-
-fn epoch(seconds: Option<u64>, label: &str) -> Result<SystemTime, String> {
-    let seconds = seconds.ok_or_else(|| format!("Missing {label} timestamp in feed history"))?;
-    UNIX_EPOCH
-        .checked_add(Duration::from_secs(seconds))
-        .ok_or_else(|| format!("Invalid {label} timestamp in feed history"))
-}
-
-fn parse_status(status: Option<&str>) -> Result<ValidationStatus, String> {
-    match status {
-        Some("unverified") => Ok(ValidationStatus::Unverified),
-        Some("unavailable") => Ok(ValidationStatus::Unavailable),
-        Some("invalid_stream") => Ok(ValidationStatus::InvalidStream),
-        Some("unsupported") => Ok(ValidationStatus::Unsupported),
-        Some("cancelled") => Ok(ValidationStatus::Cancelled),
-        Some("decoded") => Ok(ValidationStatus::Decoded),
-        Some("check_error") => Ok(ValidationStatus::Unavailable),
-        _ => Err("Unknown status in feed validation history".into()),
-    }
+    let history = parse_feed_history(json)?;
+    Ok(history
+        .stations
+        .into_iter()
+        .map(|(id, record)| {
+            (
+                id,
+                SavedFeedValidation {
+                    status: record.status,
+                    last_decoded_at: record.last_decoded_at,
+                },
+            )
+        })
+        .collect())
 }
 
 pub(super) fn label(validation: SavedFeedValidation, now: SystemTime) -> &'static str {
@@ -155,6 +50,8 @@ pub(super) fn label(validation: SavedFeedValidation, now: SystemTime) -> &'stati
 mod tests {
     use super::*;
     use serde_json::json;
+    use serde_json::Value;
+    use std::time::{Duration, UNIX_EPOCH};
 
     fn history(last_status: &str, decoded_at: Option<u64>, checked_at: u64) -> String {
         json!({

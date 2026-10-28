@@ -165,6 +165,16 @@ or network IO, never autoplays, and never gates Play. A live station check takes
 precedence over saved history; the active listening surface continues to report
 current playback rather than historical check state.
 
+Headless hosts can consume the same versioned snapshot with
+`rust_radio::feed_history::parse_feed_history(json)`; a Rust-Boy adapter can
+adopt this API when it updates its pinned module revision. The parser lives in
+the core crate and does not require the optional egui feature. It enforces the
+64 KiB schema and returns typed per-station status, stage, attempts, last
+decoded time and failure count. Call
+`FeedHistoryRecord::health_at(now)` when displaying the result so freshness is
+recomputed instead of trusting a cached label. The host owns file I/O and any
+presentation; saved evidence is informational and never gates playback.
+
 Use `take_ip_stations_update() -> Option<String>` to obtain the versioned JSON
 when saved stations or selection change, and persist it off the render thread.
 Call `report_ip_stations_saved(result)` for write failures. Import validates the

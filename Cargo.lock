@@ -2595,6 +2595,9 @@ dependencies = [
 [[package]]
 name = "rust-radio-core"
 version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "rust-radio-gui"
