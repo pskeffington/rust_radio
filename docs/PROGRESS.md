@@ -13,6 +13,12 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Added a font-metric regression test to keep the current catalog labels within
   the compact popup row width. This is an offline layout A/B, not a listener
   cohort study; no audience preference was measured.
+- Pushed commit `af06e14` on `codex/station-label-layout-ab` and opened PR #3.
+  The local formatting, default/all-feature test, strict Clippy and all-feature
+  check gates passed. GitHub Actions run `40738637556` ended as
+  `startup_failure` before creating any jobs; the connector returned no job logs
+  or step diagnostics. Remote CI remains unverified, and no workflow change is
+  justified by the available evidence.
 
 ## Current module pass: listener-focused interface
 
