@@ -60,6 +60,18 @@ impl Server {
                     .unwrap_or("")
                     .to_owned();
                 seen.lock().unwrap().push(path.clone());
+                if path == "/audio-stall" {
+                    stream
+                        .write_all(
+                            b"HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nConnection: keep-alive\r\n\r\n",
+                        )
+                        .unwrap();
+                    stream.flush().unwrap();
+                    while !cancel.load(Ordering::Acquire) {
+                        thread::sleep(Duration::from_millis(5));
+                    }
+                    continue;
+                }
                 let (status, headers, body) = match path.split('?').next().unwrap_or("") {
                     "/redirect" => (
                         "302 Found",
@@ -237,6 +249,29 @@ fn cancellation_interrupts_pending_headers_and_unreachable_endpoint_is_classifie
         Err(TransportError::Network(_))
     ));
 }
+
+#[test]
+fn cancellation_after_audio_headers_interrupts_the_first_reader_wait() {
+    let server = Server::new();
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let (mut input, guard) = open_direct_classified(
+        &format!("{}/audio-stall", server.url),
+        Arc::clone(&cancelled),
+    )
+    .expect("audio headers should complete before the body stalls");
+
+    assert_eq!(input.content_type.as_deref(), Some("audio/mpeg"));
+    let start = Instant::now();
+    cancelled.store(true, Ordering::Release);
+    assert_eq!(
+        input.reader.read(&mut [0; 1]).unwrap_err().kind(),
+        std::io::ErrorKind::ConnectionAborted
+    );
+    drop(guard);
+    assert!(start.elapsed() < Duration::from_millis(500));
+    assert_eq!(server.requests.lock().unwrap().as_slice(), ["/audio-stall"]);
+}
+
 #[test]
 fn stalled_endpoint_hits_header_timeout_without_an_icmp_probe() {
     let server = Server::new();
