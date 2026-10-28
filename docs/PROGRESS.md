@@ -16,9 +16,10 @@ Updated 2026-10-28. Active priorities and ownership are in the
   This is an offline layout A/B, not a listener cohort study; no audience
   preference was measured.
 - PR #3, `Polish compact radio UI and test station labels`, remains open on
-  `codex/station-label-layout-ab`. The latest observed Actions run
-  `40739532314` ended as `startup_failure` before creating any jobs; remote CI
-  remains unverified, and no workflow change is justified by that result.
+  `codex/station-label-layout-ab`. Recent Actions runs `40739532314` and
+  `40740893003` ended as `startup_failure` before creating jobs; combined status
+  and diagnostics were empty. Remote CI remains unverified, and no workflow
+  change is justified by those results.
 - Additional locked target checks passed for the headless module on
   `aarch64-unknown-linux-gnu` with both `nrsp-native` and `sdrconnect`, and the
   default IP module on `aarch64-apple-darwin`. These are compile checks, not Pi
