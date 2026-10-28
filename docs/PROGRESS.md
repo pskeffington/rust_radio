@@ -847,7 +847,7 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   category labels fit 24/25 while names-only and compact labels fit 25/25; all
   variants fit at 340 px. These are layout-fit measurements, not listener
   preference evidence. Loopback fixtures required local socket permission.
-- No receiver hardware was exercised. The current PR head's Actions run
-  `40762846108` failed at startup before creating jobs; remote CI remains
-  unverified. Physical nRSP reconnect and output-device recovery acceptance
-  remain open.
+- No receiver hardware was exercised. The preceding PR head's Actions run
+  `40762846108` failed at startup before creating jobs; no workflow run is
+  visible for `4b872d1` yet, so remote CI remains unverified. Physical nRSP
+  reconnect and output-device recovery acceptance remain open.
