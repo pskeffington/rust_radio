@@ -3,6 +3,21 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: catalog probe coverage
+
+- Replaced the duplicate station-ID/host probe table with a target derived
+  from the catalog's publisher HTTPS URL after exact station-ID lookup. This
+  keeps reachability probes allowlisted while automatically covering WCRB and
+  future catalog endpoint changes.
+- Added regression checks for every catalog entry, WCRB's GBH stream host,
+  Skylab's explicit port, and rejection of unknown or URL-shaped IDs.
+- Passed formatting, default/all-feature workspace tests, strict Clippy in
+  both configurations, and all-feature workspace check. Loopback HTTP fixtures
+  needed local-network permission; all tests passed on rerun.
+- This validates TCP-target coverage only; it does not establish endpoint
+  availability, decoded audio, publisher rights, or physical output. Next:
+  continue station metadata/rights review and complete physical output recovery.
+
 ## Current module pass: native output callback coverage
 
 - Extracted the callback's bounded sample transfer into a private helper used

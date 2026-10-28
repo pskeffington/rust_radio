@@ -368,14 +368,7 @@ impl RadioConnectivity for PublisherTcpCheck {
 /// Station-specific TCP reachability probe. Host and port are fixed by curated
 /// station ID, never inferred from a user-provided URL. Does not prove audio.
 pub fn station_tcp_reachable(id: &str, timeout: Duration) -> Option<IpReachability> {
-    let (host, port) = match id {
-        "skylab" => ("uksoutha.streaming.broadcast.radio", 29690),
-        "groovesalad" | "secretagent" | "lush" | "dronezone" | "deepspaceone" | "spacestation"
-        | "beatblender" | "defcon" | "u80s" | "indiepop" | "folkfwd" | "metal" | "bootliquor"
-        | "sonicuniverse" | "bossa" | "reggae" | "thistle" | "fluid" | "cliqhop" | "thetrip"
-        | "poptron" | "leftcoast70s" | "illstreet" => ("somafm.com", 443),
-        _ => return None,
-    };
+    let (host, port) = station_tcp_target(id)?;
     let timeout = timeout.min(Duration::from_secs(3));
     let Ok(addrs) = (host, port).to_socket_addrs() else {
         return Some(IpReachability::Unreachable);
@@ -388,6 +381,20 @@ pub fn station_tcp_reachable(id: &str, timeout: Duration) -> Option<IpReachabili
     } else {
         IpReachability::Unreachable
     })
+}
+
+/// Resolve only a curated station ID to its publisher-approved HTTPS host.
+/// Keeping this derived from the catalog prevents the probe allowlist from
+/// silently omitting a station or drifting when a publisher endpoint changes.
+fn station_tcp_target(id: &str) -> Option<(&str, u16)> {
+    let station = station_by_id(id)?;
+    let endpoint = station.playlist_url.strip_prefix("https://")?;
+    let authority = endpoint.split('/').next()?;
+    let (host, port) = match authority.rsplit_once(':') {
+        Some((host, port)) => (host, port.parse().ok()?),
+        None => (authority, 443),
+    };
+    (!host.is_empty()).then_some((host, port))
 }
 
 pub fn curated_stations() -> &'static [InternetStation] {
@@ -454,6 +461,11 @@ mod tests {
         let mut ids = std::collections::BTreeSet::new();
         for station in curated_stations() {
             assert!(ids.insert(station.id), "duplicate station ID");
+            assert!(
+                station_tcp_target(station.id).is_some(),
+                "curated station has no safe TCP probe target: {}",
+                station.id
+            );
             assert!([
                 "CHILL",
                 "AMBIENT",
@@ -497,5 +509,19 @@ mod tests {
             }
             assert!(!station.name.is_empty());
         }
+    }
+
+    #[test]
+    fn station_probe_target_comes_from_curated_https_endpoint() {
+        assert_eq!(
+            station_tcp_target("wcrb"),
+            Some(("wgbh-live.streamguys1.com", 443))
+        );
+        assert_eq!(
+            station_tcp_target("skylab"),
+            Some(("uksoutha.streaming.broadcast.radio", 29690))
+        );
+        assert_eq!(station_tcp_target("unknown"), None);
+        assert_eq!(station_tcp_target("https://attacker.test"), None);
     }
 }
