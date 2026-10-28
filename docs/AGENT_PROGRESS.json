@@ -1,9 +1,9 @@
 {
-  "updated_at_utc": "2026-10-28T21:51:00Z",
+  "updated_at_utc": "2026-10-28T21:51:30Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "9eb4e32",
-  "pull_request": "pending push and PR creation",
+  "implementation_commit": "9eb4e32 (checkpoint 43a0763)",
+  "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
     "Added a six-hourly and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
@@ -62,7 +62,10 @@
     "Added regressions rejecting unreviewed SomaFM preset endpoints and catalog entries without documented third-party player support.",
     "Focused station-validation fixture suite passed 8/8; live bounded silent sweep decoded all five catalog stations in one attempt each at 2026-10-28T21:48Z.",
     "Repeated GUI station-label A/B/C fit measurement on five stations: at 295px A 4/5, B/C 5/5; at 340px all 5/5; C saves 32px, layout-fit evidence only.",
-    "All six required Rust workspace validation gates passed; the loopback tests passed after rerunning with local-socket access."
+    "All six required Rust workspace validation gates passed; the loopback tests passed after rerunning with local-socket access.",
+    "Pushed validated branch codex/catalog-publisher-permissions with implementation 9eb4e32 and machine-checkpoint commit 43a0763.",
+    "Opened PR #5, applied codex and codex-automation labels, attached it to the task, and verified GitHub reports mergeable=true.",
+    "PR #5 Actions run 40775321206 ended startup_failure before job creation; combined commit status is empty, so remote CI remains unverified."
   ],
   "validation": {
     "fmt": "passed on rights-corrected source",
@@ -84,7 +87,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
-    "latest_code_head_ci": "Current PR head 1642027 has no workflow run or status checks visible yet; latest Actions run 40772645579 on 52be452 failed at startup with zero jobs; remote CI remains unverified",
+    "latest_code_head_ci": "PR #5 head 43a0763 has no commit statuses; Actions run 40775321206 startup_failure before jobs, remote CI unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
     "arm64_headless_check": "on current head 3b57855, cargo check passed for core-only, sdrconnect and nrsp-native with --no-default-features on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
@@ -135,9 +138,11 @@
     "interpretation": "compact-layout measurement on the current five-station directory, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40772645579,
-    "observed_head": "52be452",
-    "conclusion": "Actions run 40772645579 for head 52be452 ended startup_failure with zero jobs; GitHub Actions job listing is empty. Previous run 40772372085 also failed before job creation. Repository Actions are enabled; selected actions allow GitHub-owned and verified actions. No actionable code/allowlist cause found. Current PR head 1642027 has no run yet; remote CI remains unverified."
+    "latest_pr_run": 40775321206,
+    "latest_pr_head": "43a07636ddda2fc774ad700103bfb7686f10dc9e",
+    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_jobs": 0,
+    "details": "GitHub Actions failed before job creation; no jobs or logs were returned. Local required workspace gates passed; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -147,5 +152,5 @@
     "Expand the five-station safe catalog toward the approximately 25-station target using documented, authorized third-party player sources",
     "NPR News inclusion requires a named broadcaster stream and applicable rights evidence"
   ],
-  "next_priority": "Research, review and live-validate additional publisher-supported station endpoints; retain the current rights exclusions, then continue physical audio/output, Pi and receiver acceptance when hardware is available."
+  "next_priority": "Research, review and live-validate additional publisher-supported station endpoints; retain rights-based exclusions and the approximately 25-station target, then continue physical output, Pi and receiver acceptance when hardware is available."
 }

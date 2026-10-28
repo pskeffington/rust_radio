@@ -33,9 +33,11 @@ Updated 2026-10-28. Active priorities and ownership are in the
   GBH News AAC 32 kHz, KEXP AAC 44.1 kHz and Radio Paradise MP3. This is
   point-in-time codec evidence only.
 - Current branch is `codex/catalog-publisher-permissions`, based on merged
-  source commit `5568fb3`. PR #4 remains open with runner-startup failures and
-  is docs-only; PR #2 is also open with its earlier catalog proposal. This
-  change is being prepared independently and has not been pushed yet.
+  source commit `5568fb3`. PR #5 is open and mergeable at `43a0763`. Its
+  Actions run `40775321206` failed at startup before job creation, matching the
+  existing runner failure; local required gates all passed. PR #4 remains open
+  with docs-only CI evidence, and PR #2 remains open with its earlier catalog
+  proposal. Both were left unchanged.
 - Highest priority: research and validate additional authorized station
   sources without restoring feeds whose terms disallow third-party clients;
   then revisit required physical output, Pi and receiver acceptance.
