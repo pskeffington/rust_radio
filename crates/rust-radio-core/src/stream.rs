@@ -375,9 +375,21 @@ pub fn open_station<C: RadioHttp>(
     let station = station_by_id(station_id).ok_or(StreamError::UnknownStation)?;
     let mut next = ApprovedEndpoint::new(station_id, station.playlist_url)?;
     let mut playlist_seen = false;
+    // Only official playlist entries reach this queue. They were all checked
+    // against the station-specific HTTPS allowlist by parse_playlist.
+    let mut alternatives = std::collections::VecDeque::new();
 
     for _ in 0..MAX_REQUEST_HOPS {
-        let response = client.get(&next)?;
+        let response = match client.get(&next) {
+            Ok(response) => response,
+            Err(error) => {
+                if let Some(backup) = alternatives.pop_front() {
+                    next = backup;
+                    continue;
+                }
+                return Err(error);
+            }
+        };
         if matches!(response.status, 301 | 302 | 303 | 307 | 308) {
             let location = response
                 .redirect_location
@@ -387,6 +399,10 @@ pub fn open_station<C: RadioHttp>(
             continue;
         }
         if response.status != 200 {
+            if let Some(backup) = alternatives.pop_front() {
+                next = backup;
+                continue;
+            }
             return Err(StreamError::HttpStatus(response.status));
         }
         if let Some(format) = playlist_format(next.url(), response.content_type.as_deref()) {
@@ -402,16 +418,28 @@ pub fn open_station<C: RadioHttp>(
                 .body
                 .take((MAX_PLAYLIST_BYTES + 1) as u64)
                 .read_to_end(&mut document)?;
-            next = parse_playlist(station_id, &document, format)?
-                .into_iter()
-                .next()
-                .ok_or(StreamError::InvalidPlaylist)?;
+            let mut entries = parse_playlist(station_id, &document, format)?.into_iter();
+            next = entries.next().ok_or(StreamError::InvalidPlaylist)?;
+            alternatives.extend(entries);
             continue;
         }
         if !is_audio(response.content_type.as_deref()) {
+            if let Some(backup) = alternatives.pop_front() {
+                next = backup;
+                continue;
+            }
             return Err(StreamError::UnsupportedContentType);
         }
-        let interval = icy_interval(response.icy_metaint.as_deref())?;
+        let interval = match icy_interval(response.icy_metaint.as_deref()) {
+            Ok(interval) => interval,
+            Err(error) => {
+                if let Some(backup) = alternatives.pop_front() {
+                    next = backup;
+                    continue;
+                }
+                return Err(error);
+            }
+        };
         return Ok(OpenRadioStream {
             endpoint: next,
             content_type: response.content_type,
