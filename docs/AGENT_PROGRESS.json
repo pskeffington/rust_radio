@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T18:46:37Z",
+  "updated_at_utc": "2026-10-28T18:49:47Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "b5e47c4",
+  "implementation_commit": "8384f26",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -12,7 +12,8 @@
     "Final live sweep decoded 25 of 25 catalog stations.",
     "Added one delayed retry for transient unavailable reports; permanent rejections remain single-attempt.",
     "Added opt-in atomic 64 KiB feed-health history with freshness and consecutive failure state.",
-    "Added host API to import saved feed evidence into the GUI with live-result precedence and no playback gating."
+    "Added host API to import saved feed evidence into the GUI with live-result precedence and no playback gating.",
+    "Added a shared versioned fixture consumed by CLI and GUI tests to prevent the persisted schema from drifting."
   ],
   "validation": {
     "fmt": "passed",
@@ -24,6 +25,8 @@
     "live_catalog_decode": "25/25 decoded in 25 attempts; point-in-time only",
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
     "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
+    "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
+    "repeatable_layout_ab": "passed; 24/25 vs 25/25 at 295px, both 25/25 at 340px, 1776px saved",
     "workflow_yaml": "parsed"
   },
   "a_b_test": {
@@ -44,5 +47,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Observe CI after the host import change, then exercise loaded history in the Rust-Boy host while keeping live playback and validation authoritative."
+  "next_priority": "Observe CI after the shared history contract change, then exercise saved-history import in Rust-Boy while keeping live playback and checks authoritative."
 }
