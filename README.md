@@ -19,6 +19,7 @@ IP radio and nRSP-ST PCM have reached native output callbacks in standalone and 
 - [Progress notes and verification evidence](docs/PROGRESS.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
 - [Native GUI and embedding](docs/GUI_INTEGRATION.md)
+- [Curated 25-station feed health and auto-validator](docs/CURATED_FEED_POLICY.md)
 - [Standalone acceptance](docs/STANDALONE_ACCEPTANCE.md)
 - [Existing Rust-Boy radio engineering roadmap](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_NATIVE_ROADMAP.md)
 - [Existing Rust-Boy SDR contract](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_SDR.md)
@@ -34,6 +35,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 For control-only testing, use `cargo test -p rust-radio-core`; it requires no network receiver, sound card, USB SDR or native audio libraries. Workspace builds include CPAL and eframe and need platform development libraries (on Linux, `libasound2-dev` and `pkg-config`). The local verification record is linked from the embedding documentation; remote CI and physical hardware acceptance are separate checks.
 
 Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so Git-aware source searches and indexes skip generated files.
+
+## Validate curated radio feeds (headless Rust)
+
+The catalog contains **25 curated streams**, including **GBH 89.7 — NPR News (Boston)**. The separate native monitor checks each stream by decoding real audio, never by socket reachability alone, and publishes a time-bounded health report that can be consumed by Rust-Boy.
+
+```sh
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --once
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --daemon
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --status
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --eligible
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --strict-eligible
+```
+
+The periodic monitor runs only when explicitly launched and never opens audio outputs. It writes atomic JSON snapshots to `target/radio-feed-health.json` plus a last-completed `.bak` recovery copy; use `--output PATH` for persistent state. A stream is **fresh** only when audio has decoded in the last six hours, but a previously working station stays **degraded / eligible** for up to 24 hours rather than disappearing after a transient timeout. Each failed station gets one repeat probe, three separate failed sweeps are required for individual unavailability, and shared broadcaster or whole-network outages do not penalize stations separately. Official M3U/PLS playlist CDN backups are tried serially when transport fails. `--strict-eligible` is fresh-only. The GUI currently performs separate selected-station checks; consuming the health allowlist is a host integration step. See the [resilient feed policy](docs/CURATED_FEED_POLICY.md).
 
 ## Required integration invariants
 

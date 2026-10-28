@@ -89,6 +89,8 @@ impl ApprovedEndpoint {
                 && path.starts_with("skylab-radio-limited")
         } else if station.id == "wcrb" {
             authority == "wgbh-live.streamguys1.com" && path == "classical-hi/"
+        } else if station.id == "gbhnews" {
+            authority == "wgbh-live.streamguys1.com" && path == "wgbh"
         } else {
             let host = authority.strip_suffix(":443").unwrap_or(authority);
             !host.contains(':')
@@ -373,9 +375,21 @@ pub fn open_station<C: RadioHttp>(
     let station = station_by_id(station_id).ok_or(StreamError::UnknownStation)?;
     let mut next = ApprovedEndpoint::new(station_id, station.playlist_url)?;
     let mut playlist_seen = false;
+    // Only official playlist entries reach this queue. They were all checked
+    // against the station-specific HTTPS allowlist by parse_playlist.
+    let mut alternatives = std::collections::VecDeque::new();
 
     for _ in 0..MAX_REQUEST_HOPS {
-        let response = client.get(&next)?;
+        let response = match client.get(&next) {
+            Ok(response) => response,
+            Err(error) => {
+                if let Some(backup) = alternatives.pop_front() {
+                    next = backup;
+                    continue;
+                }
+                return Err(error);
+            }
+        };
         if matches!(response.status, 301 | 302 | 303 | 307 | 308) {
             let location = response
                 .redirect_location
@@ -385,6 +399,10 @@ pub fn open_station<C: RadioHttp>(
             continue;
         }
         if response.status != 200 {
+            if let Some(backup) = alternatives.pop_front() {
+                next = backup;
+                continue;
+            }
             return Err(StreamError::HttpStatus(response.status));
         }
         if let Some(format) = playlist_format(next.url(), response.content_type.as_deref()) {
@@ -400,16 +418,28 @@ pub fn open_station<C: RadioHttp>(
                 .body
                 .take((MAX_PLAYLIST_BYTES + 1) as u64)
                 .read_to_end(&mut document)?;
-            next = parse_playlist(station_id, &document, format)?
-                .into_iter()
-                .next()
-                .ok_or(StreamError::InvalidPlaylist)?;
+            let mut entries = parse_playlist(station_id, &document, format)?.into_iter();
+            next = entries.next().ok_or(StreamError::InvalidPlaylist)?;
+            alternatives.extend(entries);
             continue;
         }
         if !is_audio(response.content_type.as_deref()) {
+            if let Some(backup) = alternatives.pop_front() {
+                next = backup;
+                continue;
+            }
             return Err(StreamError::UnsupportedContentType);
         }
-        let interval = icy_interval(response.icy_metaint.as_deref())?;
+        let interval = match icy_interval(response.icy_metaint.as_deref()) {
+            Ok(interval) => interval,
+            Err(error) => {
+                if let Some(backup) = alternatives.pop_front() {
+                    next = backup;
+                    continue;
+                }
+                return Err(error);
+            }
+        };
         return Ok(OpenRadioStream {
             endpoint: next,
             content_type: response.content_type,
@@ -552,6 +582,20 @@ mod tests {
             "https://ice5.somafm.com/groovesalad-128-mp3"
         )
         .is_ok());
+    }
+
+    #[test]
+    fn gbh_news_endpoint_is_exact_and_cannot_access_other_mounts() {
+        assert!(ApprovedEndpoint::new("gbhnews", "https://wgbh-live.streamguys1.com/wgbh").is_ok());
+        for bad in [
+            "http://wgbh-live.streamguys1.com/wgbh",
+            "https://wgbh-live.streamguys1.com/classical-hi/",
+            "https://wgbh-live.streamguys1.com/wgbh-extra",
+            "https://wgbh-live.streamguys1.com/wgbh?token=bad",
+            "https://wgbh-live.streamguys1.com.evil.test/wgbh",
+        ] {
+            assert!(ApprovedEndpoint::new("gbhnews", bad).is_err(), "{bad}");
+        }
     }
 
     #[test]
@@ -774,6 +818,70 @@ mod tests {
             parse_playlist("groovesalad", b"", PlaylistFormat::Hls),
             Err(StreamError::UnsupportedHls)
         ));
+    }
+
+    #[test]
+    fn publisher_playlist_uses_second_cdn_if_first_is_down() {
+        let first = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let backup = "https://ice6.somafm.com/groovesalad-128-mp3";
+        let playlist = format!("#EXTM3U\n{first}\n{backup}\n");
+        let fixture = FakeHttp(vec![
+            Fixture {
+                url: "https://somafm.com/m3u/groovesalad.m3u",
+                status: 200,
+                mime: "audio/x-mpegurl",
+                redirect: None,
+                metaint: None,
+                body: playlist.into_bytes(),
+            },
+            Fixture {
+                url: first,
+                status: 503,
+                mime: "text/plain",
+                redirect: None,
+                metaint: None,
+                body: vec![],
+            },
+            Fixture {
+                url: backup,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: b"backup-cdn-audio".to_vec(),
+            },
+        ]);
+        let mut result = open_station(&fixture, "groovesalad").unwrap();
+        assert_eq!(result.endpoint.url(), backup);
+        let mut audio = String::new();
+        result.reader.read_to_string(&mut audio).unwrap();
+        assert_eq!(audio, "backup-cdn-audio");
+    }
+
+    #[test]
+    fn network_error_on_first_cdn_tries_only_publisher_approved_backup() {
+        let first = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let backup = "https://ice6.somafm.com/groovesalad-128-mp3";
+        let fixture = FakeHttp(vec![
+            Fixture {
+                url: "https://somafm.com/m3u/groovesalad.m3u",
+                status: 200,
+                mime: "application/x-mpegurl",
+                redirect: None,
+                metaint: None,
+                body: format!("#EXTM3U\n{first}\n{backup}").into_bytes(),
+            },
+            Fixture {
+                url: backup,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: b"network-backup".to_vec(),
+            },
+        ]);
+        let stream = open_station(&fixture, "groovesalad").unwrap();
+        assert_eq!(stream.endpoint.url(), backup);
     }
 
     #[test]

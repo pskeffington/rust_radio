@@ -347,22 +347,40 @@ async fn pump_input(
         .build()
         .map_err(|_| "Cannot initialize radio HTTP client")?;
     let mut playlist_seen = false;
+    // For curated stations only, keep publisher-approved mirror URLs from
+    // the official playlist. Direct/user-provided streams never populate it.
+    let mut alternatives = std::collections::VecDeque::<reqwest::Url>::new();
 
     for _ in 0..MAX_REQUEST_HOPS {
         if cancelled.load(Ordering::Acquire) {
             return Ok(());
         }
-        let mut response = timeout(
+        let request = timeout(
             CONNECT_DEADLINE,
             client.get(next.clone()).header("Icy-MetaData", "1").send(),
         )
-        .await
-        .map_err(|_| TransportError::Network("Radio connect/header timeout".to_owned()))?
-        .map_err(|_| {
-            TransportError::Network(
-                "Radio stream connection failed (check address and network)".into(),
-            )
-        })?;
+        .await;
+        let mut response = match request {
+            Ok(Ok(response)) => response,
+            Ok(Err(_)) => {
+                if let Some(backup) = alternatives.pop_front() {
+                    next = backup;
+                    continue;
+                }
+                return Err(TransportError::Network(
+                    "Radio stream connection failed (check address and network)".into(),
+                ));
+            }
+            Err(_) => {
+                if let Some(backup) = alternatives.pop_front() {
+                    next = backup;
+                    continue;
+                }
+                return Err(TransportError::Network(
+                    "Radio connect/header timeout".into(),
+                ));
+            }
+        };
         let status = response.status();
         if status.is_redirection() {
             let location = response
@@ -377,6 +395,10 @@ async fn pump_input(
             continue;
         }
         if !status.is_success() {
+            if let Some(backup) = alternatives.pop_front() {
+                next = backup;
+                continue;
+            }
             return Err(TransportError::http_status(status));
         }
         let content_type = response
@@ -430,16 +452,26 @@ async fn pump_input(
                 .map_err(|e| format!("Radio playlist rejected: {e}"))?;
                 entries.into_iter().next().ok_or("Empty radio playlist")?
             } else {
-                let endpoint = parse_playlist(station_id, &document, format)
-                    .map_err(|e| format!("Radio playlist rejected: {e}"))?
-                    .into_iter()
-                    .next()
-                    .ok_or("Empty radio playlist")?;
-                reqwest::Url::parse(endpoint.url()).map_err(|_| "Invalid playlist URL")?
+                let entries = parse_playlist(station_id, &document, format)
+                    .map_err(|e| format!("Radio playlist rejected: {e}"))?;
+                let mut urls = Vec::with_capacity(entries.len());
+                for endpoint in entries {
+                    urls.push(
+                        reqwest::Url::parse(endpoint.url()).map_err(|_| "Invalid playlist URL")?,
+                    );
+                }
+                let mut urls = urls.into_iter();
+                let primary = urls.next().ok_or("Empty radio playlist")?;
+                alternatives.extend(urls);
+                primary
             };
             continue;
         }
         if !mime.starts_with("audio/") && mime != "application/octet-stream" {
+            if let Some(backup) = alternatives.pop_front() {
+                next = backup;
+                continue;
+            }
             return Err(TransportError::Permanent(format!(
                 "Server did not return an audio stream: {mime}"
             )));

@@ -229,14 +229,14 @@
       "format": "MP3"
     },
     {
-      "id": "poptron",
-      "name": "PopTron",
-      "genre": "Electropop / indie dance",
-      "category": "POP",
-      "playlist_url": "https://somafm.com/m3u/poptron.m3u",
-      "publisher_reference_url": "https://somafm.com/poptron/directstreamlinks.html",
-      "nominal_kbps": 128,
-      "format": "MP3"
+      "id": "gbhnews",
+      "name": "GBH 89.7 — NPR News (Boston)",
+      "genre": "NPR news / public affairs / local reporting",
+      "category": "NEWS",
+      "playlist_url": "https://wgbh-live.streamguys1.com/wgbh",
+      "publisher_reference_url": "https://www.wgbh.org/help/how-to-access-live-radio-streams",
+      "nominal_kbps": 0,
+      "format": "Streaming audio (verify at runtime)"
     },
     {
       "id": "leftcoast70s",

@@ -6,8 +6,8 @@ use rust_radio_audio::playback::NativeRadioEngine;
 use rust_radio_audio::validation::StationValidationTask;
 use rust_radio_core::directory::{curated_stations, station_by_id, InternetStation};
 use rust_radio_core::validation::{FeedHealth, StationValidation, ValidationStatus};
-use std::time::SystemTime;
 use std::collections::BTreeMap;
+use std::time::SystemTime;
 
 #[cfg(feature = "nrsp-native")]
 mod fm_presets;
@@ -88,6 +88,7 @@ pub struct RadioPanel {
     last_session: Option<RadioSession>,
     validation: Option<StationValidationTask>,
     validations: BTreeMap<&'static str, StationValidation>,
+    last_good_checks: BTreeMap<&'static str, SystemTime>,
 }
 
 impl Default for RadioPanel {
@@ -152,6 +153,7 @@ impl Default for RadioPanel {
             last_session: None,
             validation: None,
             validations: BTreeMap::new(),
+            last_good_checks: BTreeMap::new(),
         }
     }
 }
@@ -231,6 +233,11 @@ impl RadioPanel {
                     }
                     Ok(report) => match station_by_id(&report.station_id) {
                         Some(station) => {
+                            if report.is_decoded() {
+                                if let Some(at) = report.checked_at {
+                                    self.last_good_checks.insert(station.id, at);
+                                }
+                            }
                             self.validations.insert(station.id, report);
                             self.note =
                                 format!("STATION CHECK / {}", self.validation_label(station.id));
@@ -489,10 +496,23 @@ impl RadioPanel {
             }
         }
         match self.validations.get(id) {
-            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Fresh => "FRESH / DECODED",
-            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Stale => "STALE / RECHECK",
+            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Fresh => {
+                "FRESH / DECODED"
+            }
+            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Stale => {
+                "STALE / RECHECK"
+            }
+            Some(_)
+                if self.last_good_checks.get(id).is_some_and(|at| {
+                    SystemTime::now()
+                        .duration_since(*at)
+                        .is_ok_and(|age| age <= std::time::Duration::from_secs(24 * 60 * 60))
+                }) =>
+            {
+                "DEGRADED / RETRY"
+            }
             Some(report) => match report.status {
-                ValidationStatus::Unavailable => "UNAVAILABLE",
+                ValidationStatus::Unavailable => "CHECK FAILED / RETRY",
                 ValidationStatus::InvalidStream => "INVALID STREAM",
                 ValidationStatus::Unsupported => "UNSUPPORTED",
                 _ => "UNVERIFIED",

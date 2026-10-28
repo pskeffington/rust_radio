@@ -251,3 +251,22 @@ are recorded separately from real-receiver evidence.
 Station history is currently kept for the CLI invocation or panel lifetime.
 Persistent validation history, HLS transport and satellite adapters remain
 deferred; they are not prerequisites for the accepted MP3/AAC/native PCM paths.
+
+## Resilient feed validator PR verification (2026-10-28)
+
+The open station-health PR initially failed `cargo fmt --all -- --check` on
+its head. Applied rustfmt and committed the formatting-only correction as
+`3fa0233` on `feature/native-feed-validator-npr`. On macOS with Rust 1.99.1,
+formatting, `cargo test --workspace`, `cargo test --workspace --all-features`,
+strict Clippy in default and all-feature configurations, and
+`cargo check --workspace --all-features` all passed. Loopback integration
+fixtures required running tests outside the default network sandbox. GitHub
+reported no check statuses or Actions runs for the updated commit; remote CI
+is therefore still unverified. A live 25-station sweep and hardware acceptance
+remain outstanding.
+
+A post-validation live `cargo run -p rust-radio-cli -- validate skylab` on the
+current `main` checkout returned `Unavailable` at `NotChecked` with no resolved
+endpoint (exit 2). This environment did not establish endpoint availability;
+no successful live stream evidence was obtained. A full 25-station sweep remains
+pending a network-enabled run.

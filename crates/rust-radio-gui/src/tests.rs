@@ -126,7 +126,7 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     let release = hold_check(&mut panel);
     release.send(()).unwrap();
     finish_panel(&mut panel);
-    assert_eq!(panel.validation_label("skylab"), "DECODED");
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
     assert!(panel.validations["skylab"].is_decoded());
     let evidence = panel.validations["skylab"].clone();
     panel.step_station(1);
@@ -140,7 +140,31 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     release.send(()).unwrap();
     finish_panel(&mut panel);
     assert_eq!(panel.validations["skylab"], evidence);
-    assert_eq!(panel.validation_label("skylab"), "DECODED");
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
+}
+
+#[test]
+fn single_bad_check_does_not_hide_a_previously_good_station() {
+    let mut panel = RadioPanel::new();
+    let mut good = StationValidation::unverified("skylab");
+    good.status = ValidationStatus::Decoded;
+    good.stage = rust_radio_core::validation::ValidationStage::DecodedAudio;
+    good.decoded_frames = 512;
+    good.checked_at = Some(SystemTime::now());
+    panel
+        .last_good_checks
+        .insert("skylab", good.checked_at.unwrap());
+    panel.validations.insert("skylab", good);
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
+
+    let mut failed = StationValidation::unverified("skylab");
+    failed.status = ValidationStatus::Unavailable;
+    failed.checked_at = Some(SystemTime::now());
+    panel.validations.insert("skylab", failed);
+    assert_eq!(panel.validation_label("skylab"), "DEGRADED / RETRY");
+    assert!(curated_stations()
+        .iter()
+        .any(|station| station.id == "skylab"));
 }
 
 #[test]
