@@ -45,9 +45,10 @@ cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --once
 cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --daemon
 cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --status
 cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --eligible
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --strict-eligible
 ```
 
-The periodic monitor runs only when explicitly launched and never opens audio outputs. It stores an atomic JSON health snapshot at `target/radio-feed-health.json`; choose `--output PATH` for persistent state. A station is `fresh` only after decoded audio passes within six hours. The GUI currently performs its own selected-station checks; consuming the validator's fresh-ID allowlist for a strict filtered catalog is a separate host integration step. See the [feed health policy](docs/CURATED_FEED_POLICY.md).
+The periodic monitor runs only when explicitly launched and never opens audio outputs. It writes atomic JSON snapshots to `target/radio-feed-health.json` plus a last-completed `.bak` recovery copy; use `--output PATH` for persistent state. A stream is **fresh** only when audio has decoded in the last six hours, but a previously working station stays **degraded / eligible** for up to 24 hours rather than disappearing after a transient timeout. Each failed station gets one repeat probe, three separate failed sweeps are required for individual unavailability, and shared broadcaster or whole-network outages do not penalize stations separately. Official M3U/PLS playlist CDN backups are tried serially when transport fails. `--strict-eligible` is fresh-only. The GUI currently performs separate selected-station checks; consuming the health allowlist is a host integration step. See the [resilient feed policy](docs/CURATED_FEED_POLICY.md).
 
 ## Required integration invariants
 
