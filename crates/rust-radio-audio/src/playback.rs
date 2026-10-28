@@ -185,7 +185,17 @@ fn start_resource_if_active<T, E>(
         on_cancel();
         return Ok(None);
     }
-    let resource = start()?;
+    let resource = match start() {
+        Ok(resource) => resource,
+        Err(error) => {
+            on_cancel();
+            return if cancelled.load(Ordering::Acquire) {
+                Ok(None)
+            } else {
+                Err(error)
+            };
+        }
+    };
     if cancelled.load(Ordering::Acquire) {
         drop(resource);
         on_cancel();
@@ -1431,6 +1441,55 @@ mod tests {
         assert!(progress.lock().unwrap().is_none());
         drop(callback_samples);
         assert!(callback_samples_weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn stop_racing_with_output_start_failure_clears_progress_and_suppresses_error() {
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let cleanup_called = AtomicBool::new(false);
+        let result = start_resource_if_active(
+            &cancelled,
+            || {
+                *progress.lock().unwrap() = Some(Arc::clone(&callback_samples));
+                cancelled.store(true, Ordering::Release);
+                Err::<(), _>("native output failed while Stop was requested")
+            },
+            || {
+                clear_output_attempt(&progress);
+                cleanup_called.store(true, Ordering::Release);
+            },
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(cleanup_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn output_start_failure_clears_progress_and_preserves_error_when_active() {
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let cleanup_called = AtomicBool::new(false);
+        let error = start_resource_if_active(
+            &cancelled,
+            || {
+                *progress.lock().unwrap() = Some(Arc::clone(&callback_samples));
+                Err::<(), _>("native output device unavailable")
+            },
+            || {
+                clear_output_attempt(&progress);
+                cleanup_called.store(true, Ordering::Release);
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, "native output device unavailable");
+        assert!(cleanup_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
     }
 
     #[cfg(feature = "nrsp-native")]
