@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:25:45Z",
+  "updated_at_utc": "2026-10-28T21:27:38Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -53,7 +53,8 @@
     "Aligned scheduled catalog validation with its six-hour freshness TTL; the bounded live sweep decoded all 25 stations and the GUI label A/B/C regression passed.",
     "Added a credential-safe per-station GitHub Actions summary for scheduled catalog validation, with sanitized Markdown labels and synthetic regression tests.",
     "Cross-checked the headless AArch64 Linux matrix for core-only, SDRconnect and direct nRSP-native feature configurations.",
-    "Validated the credential-safe report summary against a fresh real 25-station CLI report; all station decodes were summarized and the GUI label A/B/C test repeated."
+    "Validated the credential-safe report summary against a fresh real 25-station CLI report; all station decodes were summarized and the GUI label A/B/C test repeated.",
+    "Closed the summary formatter's missing check_error outcome and permissive-stage gap by matching all CLI status/stage enums and requiring schema version 1."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -107,7 +108,8 @@
     "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
     "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata",
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
-    "catalog_validation_summary": "passed 3 Python tests for decoded/unavailable/unverified statuses, endpoint/error omission, Markdown label sanitization and malformed report rejection; actual 25-station CLI report formatted successfully; workflow YAML parsed and runs these tests before the live sweep",
+    "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully before this tightening; workflow YAML parsed and runs the tests before the live sweep",
+    "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
     "current_pr_state": "PR #3 open and mergeable at fab6f63; local git merge-tree origin/main HEAD reports no conflicts"
   },
   "a_b_test": {

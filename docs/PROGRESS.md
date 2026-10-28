@@ -1159,3 +1159,17 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   preference.
 - PR #3 was open and mergeable at `c9dc197`; no workflow run or status was
   visible. No new catalog, GUI or hardware regression was found.
+
+## Catalog summary status contract (2026-10-28)
+
+- Review against the CLI JSON encoder found the summary formatter omitted the
+  `check_error` outcome emitted when a validator returns an error, and it
+  accepted stage strings outside the core validation enum. Added `check_error`
+  handling, a five-value stage allowlist, and strict schema-version checking.
+- Four standard-library tests passed, covering decoded/unavailable/unverified/
+  check-error outcomes, redaction, label injection, invalid stages, malformed
+  reports and unsupported schema versions. Ruby YAML parsing, Rust formatting
+  and `git diff --check` passed.
+- The live-sweep JSON path is unchanged; all 25 stations decoded in the latest
+  real sweep, and the summary was verified against that CLI output before this
+  contract tightening. No Rust source changed.

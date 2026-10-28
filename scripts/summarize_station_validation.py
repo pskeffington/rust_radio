@@ -13,7 +13,6 @@ from typing import Any
 
 
 _ID = re.compile(r"[a-z0-9_-]{1,64}\Z")
-_LABEL = re.compile(r"[a-z_]{1,40}\Z")
 _STATUSES = {
     "decoded",
     "unverified",
@@ -21,7 +20,14 @@ _STATUSES = {
     "invalid_stream",
     "unsupported",
     "cancelled",
+    "check_error",
+}
+_STAGES = {
     "not_checked",
+    "endpoint_reached",
+    "stream_response",
+    "supported_codec",
+    "decoded_audio",
 }
 
 
@@ -34,6 +40,9 @@ def _station_id(value: Any) -> str:
 
 
 def render_summary(report: dict[str, Any]) -> str:
+    version = report.get("schema_version")
+    if not isinstance(version, int) or isinstance(version, bool) or version != 1:
+        raise ValueError("unsupported validation report schema version")
     results = report.get("results")
     if not isinstance(results, list):
         raise ValueError("validation report must contain a results array")
@@ -49,8 +58,12 @@ def render_summary(report: dict[str, Any]) -> str:
 
     checked_at = report.get("checked_at_unix")
     if isinstance(checked_at, int) and not isinstance(checked_at, bool):
-        when = datetime.fromtimestamp(checked_at, timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-        lines.append(f"Checked: {when}")
+        try:
+            when = datetime.fromtimestamp(checked_at, timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        except (OverflowError, OSError, ValueError):
+            pass
+        else:
+            lines.append(f"Checked: {when}")
 
     if statuses:
         counts = ", ".join(f"{status}: {count}" for status, count in sorted(statuses.items()))
@@ -64,8 +77,7 @@ def render_summary(report: dict[str, Any]) -> str:
             result = {}
         station = _station_id(result.get("station_id"))
         status = _safe(result.get("status"), _STATUSES)
-        stage = result.get("stage")
-        stage = stage if isinstance(stage, str) and _LABEL.fullmatch(stage) else "unknown"
+        stage = _safe(result.get("stage"), _STAGES)
         attempts = result.get("attempts")
         attempts = attempts if isinstance(attempts, int) and not isinstance(attempts, bool) else 0
         attempts = min(max(attempts, 0), 255)
