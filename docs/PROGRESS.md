@@ -10,7 +10,7 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Focused exact-endpoint boundary tests passed. Catalog mirror parity and JSON parsing passed.
 - Station label A/B/C at 295 px: full category 24/25; names-only 25/25; compact category 25/25. At 340 px all variants fit 25/25. Compact category saves 192 aggregate text pixels; `wcrb` is the full-category overflow. This evaluates layout fit, not listener preference.
 - Full workspace tests, formatting, strict default and all-feature Clippy, all-feature tests/check, and headless AArch64 Linux checks (core-only, SDRconnect, nRSP-native) passed. The manual native-audio test remains ignored; no physical audio, receiver or Pi acceptance was performed.
-- Highest priority: preserve the source/rights evidence and complete output/device acceptance; national continuous NPR feed rights and remote Actions startup remain unresolved.
+- Highest priority: preserve the source/rights evidence and complete output/device acceptance; national continuous NPR feed rights and remote Actions startup remain unresolved. The PR run for commit `7b62f76` (run 40778781999) ended in `startup_failure` before creating any jobs; the combined commit status was empty.
 
 ## Four WFMU feeds and catalog validation (2026-10-28 22:10 UTC)
 

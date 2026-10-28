@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:14:21Z",
+  "updated_at_utc": "2026-10-28T22:17:14Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "pending; 25-station catalog increment validated locally",
+  "implementation_commit": "7b62f76062504549d7380d6911291cdab0ffd25a (catalog increment; local gates passed)",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -148,7 +148,7 @@
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #3 remains open at 1642027; local history has no conflict on preceding docs-only checkpoint 52be452; current GitHub mergeability is being recomputed after push",
+    "current_pr_state": "PR #5 remains open and mergeable; updated summary now reflects twenty-five publisher-documented entries",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
     "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
     "catalog_mirror_parity": "passed; ordered runtime/JSON station metadata and third-party-player policy parity including all 25 records",
@@ -169,11 +169,11 @@
     "interpretation": "compact-layout measurement on the current nineteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": "pending post-push lookup",
-    "latest_pr_head": "pending post-push lookup",
-    "latest_pr_conclusion": "pending post-push lookup",
-    "latest_pr_jobs": "pending post-push lookup",
-    "details": "Local gates passed for the 25-station increment. Existing latest Actions run failed before job creation; check latest PR head after push. Remote CI is not considered passed."
+    "latest_pr_run": 40778781999,
+    "latest_pr_head": "7b62f76062504549d7380d6911291cdab0ffd25a",
+    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_jobs": 0,
+    "details": "GitHub Actions run 40778781999 for the 25-station head failed at startup before job creation; commit status is empty. All required local gates passed. Remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
