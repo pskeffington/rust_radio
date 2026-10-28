@@ -825,6 +825,70 @@ mod tests {
     }
 
     #[test]
+    fn publisher_playlist_uses_second_cdn_if_first_is_down() {
+        let first = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let backup = "https://ice6.somafm.com/groovesalad-128-mp3";
+        let playlist = format!("#EXTM3U\n{first}\n{backup}\n");
+        let fixture = FakeHttp(vec![
+            Fixture {
+                url: "https://somafm.com/m3u/groovesalad.m3u",
+                status: 200,
+                mime: "audio/x-mpegurl",
+                redirect: None,
+                metaint: None,
+                body: playlist.into_bytes(),
+            },
+            Fixture {
+                url: first,
+                status: 503,
+                mime: "text/plain",
+                redirect: None,
+                metaint: None,
+                body: vec![],
+            },
+            Fixture {
+                url: backup,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: b"backup-cdn-audio".to_vec(),
+            },
+        ]);
+        let mut result = open_station(&fixture, "groovesalad").unwrap();
+        assert_eq!(result.endpoint.url(), backup);
+        let mut audio = String::new();
+        result.reader.read_to_string(&mut audio).unwrap();
+        assert_eq!(audio, "backup-cdn-audio");
+    }
+
+    #[test]
+    fn network_error_on_first_cdn_tries_only_publisher_approved_backup() {
+        let first = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let backup = "https://ice6.somafm.com/groovesalad-128-mp3";
+        let fixture = FakeHttp(vec![
+            Fixture {
+                url: "https://somafm.com/m3u/groovesalad.m3u",
+                status: 200,
+                mime: "application/x-mpegurl",
+                redirect: None,
+                metaint: None,
+                body: format!("#EXTM3U\n{first}\n{backup}").into_bytes(),
+            },
+            Fixture {
+                url: backup,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: b"network-backup".to_vec(),
+            },
+        ]);
+        let stream = open_station(&fixture, "groovesalad").unwrap();
+        assert_eq!(stream.endpoint.url(), backup);
+    }
+
+    #[test]
     fn redirected_pls_resolves_to_approved_audio() {
         let ice = "https://ice5.somafm.com/groovesalad-128-mp3";
         let fixture = FakeHttp(vec![
