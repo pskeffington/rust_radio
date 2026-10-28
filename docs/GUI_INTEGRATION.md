@@ -18,7 +18,11 @@ rust-radio-gui = { git = "https://github.com/pskeffington/rust_radio", rev = "<r
 ```
 In a struct owned by the host GUI, create `radio: rust_radio_gui::RadioPanel::new()`. Inside the host's existing `egui::Ui`, call `self.radio.show(ui)`. The host controls mount/unmount, navigation, and lifetime. Drop synchronously stops and joins owned workers. To avoid blocking the host UI on dismount, call `radio.stop()`, retain the panel, and continue calling `radio.poll_shutdown()` until it returns true before dropping it. `is_active()` includes both playback and station validation and stays true during cleanup.
 
-The current Rust-Boy desktop HUD is a same-origin HTML/JavaScript interface, **not** an egui host. Thus direct `show(ui)` embedding requires an egui shell; the existing HTML HUD needs a bridge or a separate native pane. Do not claim drop-in compatibility with the HTML screen until that adapter is built and validated. The playback/audio crates can still be reused independently.
+Pip-Boy's HTML/JavaScript HUD already embeds the headless `rust-radio` library
+through thin adapters and a pinned Git dependency. It owns its presentation,
+preferences and optional nRSP-ST selector. The standalone egui panel uses the
+same native IP engine and remains an optional interface for egui hosts; its
+current station controls are IP-only. See [host integration](EMBEDDING.md).
 
 ## Acceptance and constraints
 - 480 × 320 is a logical-pixel target; high-DPI and physical touch screenshots require verification.

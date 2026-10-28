@@ -117,8 +117,10 @@ impl NativeRadioEngine {
         )
     }
 
-    /// Explicit native playback of SDRconnect's already-running primary receiver.
-    /// No shared hardware start/stop, tuning or recording commands are sent.
+    /// Explicit native playback of SDRconnect's selected primary receiver.
+    /// Starts reception if stopped and control is allowed. Missing startup
+    /// confirmation requires explicit retry; Stop leaves shared reception running.
+    /// Device selection, refresh, tuning and recording remain SDRconnect actions.
     #[cfg(feature = "sdrconnect")]
     pub fn start_sdrconnect(
         endpoint: &str,

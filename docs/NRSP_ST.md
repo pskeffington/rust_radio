@@ -44,6 +44,14 @@ audio output. It never selects or refreshes devices, and stopping local playback
 leaves shared reception running. If SDRconnect denies control, Play reports an
 error and does not open the output.
 
+Startup status is polled at most ten times per second with cancellation checked
+between polls. If startup is not confirmed within three seconds, `StartTimeout`
+is terminal for native playback: it reports Refresh Device List/selection/retry
+guidance without entering network recovery or issuing another activation. The
+deadline also covers a missing startup response; transport disconnections retain
+normal bounded recovery. Local Stop can cancel the startup wait and leaves shared
+reception running if activation already reached the receiver.
+
 The implementation follows [API 1.0.3](https://sdrplay.com/wp-content/uploads/2026/08/SDRconnect_WebSocket_API.pdf).
 Primary stereo audio is signed little-endian 16-bit PCM at 48 kHz; I/Q uses
 signed little-endian pairs. Packet tags distinguish those from secondary-device

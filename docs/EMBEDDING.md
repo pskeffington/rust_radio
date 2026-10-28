@@ -60,3 +60,22 @@ also accepts `start_sdrconnect(peer, volume, output)`. Its status uses
 snapshot without network I/O. Stop/reaping and output ownership follow the same
 contract as IP playback. A control-only `sdrconnect` dependency still links no
 native audio or USB SDR SDK.
+
+Explicit `start_sdrconnect()` playback starts the selected receiver if stopped
+and SDRconnect grants control. It waits for confirmation before opening native
+output. A three-second startup confirmation failure is terminal (`StartTimeout`),
+so network recovery does not repeat activation; the host can offer explicit Play
+again after setup is corrected. Transport failures retain bounded recovery.
+Status and capture remain passive, and local Stop leaves shared reception running.
+
+For the Pi target, the headless receiver dependency can be checked without audio
+or SDK libraries:
+
+```sh
+rustup target add aarch64-unknown-linux-gnu
+cargo check --locked -p rust-radio --no-default-features --features sdrconnect \
+  --target aarch64-unknown-linux-gnu
+```
+
+This checks compilation only. See the [roadmap](PORTING_PLAN.md) and
+[progress notes](PROGRESS.md) for remaining physical acceptance.

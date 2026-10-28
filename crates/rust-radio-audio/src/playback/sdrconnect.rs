@@ -294,6 +294,10 @@ mod tests {
     #[test]
     fn sdr_transport_errors_reuse_typed_recovery_without_retrying_output_loss() {
         assert_eq!(
+            api_failure(Error::StartTimeout).class(),
+            FailureClass::Permanent
+        );
+        assert_eq!(
             api_failure(Error::NotStreaming).class(),
             FailureClass::Permanent
         );

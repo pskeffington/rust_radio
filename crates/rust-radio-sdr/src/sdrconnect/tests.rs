@@ -159,11 +159,63 @@ fn explicit_start_uses_device_stream_enable_then_waits_for_started_status() {
         }
         // Receiver start is an explicit side effect; releasing this client does
         // not send device_stream_enable=false or stop the shared receiver.
+        assert!(peer.read().is_err());
     });
     let cancel = AtomicBool::new(false);
     let mut client = Client::connect(endpoint, &cancel).unwrap();
     client.start_receiver(&cancel).unwrap();
+    drop(client);
     handle.join().unwrap();
+}
+
+#[test]
+fn unconfirmed_receiver_start_is_terminal_and_status_polling_is_bounded() {
+    let (endpoint, handle) = fixture(|mut peer| {
+        let start = request(&mut peer);
+        assert_eq!(start.event_type, "device_stream_enable");
+        assert_eq!(start.value, "true");
+        let mut queries = 0;
+        while let Ok(message) = peer.read() {
+            let Message::Text(json) = message else {
+                panic!("unexpected request while waiting for receiver startup");
+            };
+            let query: Envelope = serde_json::from_str(&json).unwrap();
+            assert_eq!(query.event_type, "get_property");
+            assert_eq!(query.property, "started");
+            queries += 1;
+            response(&mut peer, "started", "false");
+        }
+        // One activation, at most ten status polls per second, and no shared
+        // hardware stop or stream subscription on failure.
+        assert!((1..=32).contains(&queries), "{queries} status queries");
+    });
+    let cancel = AtomicBool::new(false);
+    let mut client = Client::connect(endpoint, &cancel).unwrap();
+    let result = client.start_receiver(&cancel);
+    drop(client);
+    handle.join().unwrap();
+    assert_eq!(result, Err(Error::StartTimeout));
+}
+
+#[test]
+fn stopping_during_receiver_activation_cancels_the_status_poll_wait() {
+    let cancel = std::sync::Arc::new(AtomicBool::new(false));
+    let peer_cancel = std::sync::Arc::clone(&cancel);
+    let (endpoint, handle) = fixture(move |mut peer| {
+        assert_eq!(request(&mut peer).event_type, "device_stream_enable");
+        assert_eq!(request(&mut peer).property, "started");
+        response(&mut peer, "started", "false");
+        thread::sleep(Duration::from_millis(20));
+        peer_cancel.store(true, Ordering::Release);
+        // Cancellation closes the owned connection without another query,
+        // subscription or shared receiver stop.
+        assert!(peer.read().is_err());
+    });
+    let mut client = Client::connect(endpoint, &cancel).unwrap();
+    let result = client.start_receiver(&cancel);
+    drop(client);
+    handle.join().unwrap();
+    assert_eq!(result, Err(Error::Cancelled));
 }
 
 #[test]

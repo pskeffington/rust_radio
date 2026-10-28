@@ -8,13 +8,13 @@ Status: implemented in the standalone module and consumed by Pip-Boy through a p
 - Starting a station is a deliberate operator command. Directory listing, favorites, startup, navigation and output enumeration are non-playing operations.
 - Receiver worker resolves only `ApprovedEndpoint` values. The HTTP client must disable implicit redirects and proxies, validate TLS, impose connect and inactivity deadlines, and implement cancellation.
 - The decoder produces bounded PCM frames; the CPAL callback consumes those frames without network requests, locks or per-callback allocation.
-- PlaybackStarted may be emitted only after a live sink has actually consumed non-silent/nonempty decoded samples. TCP availability is not playback evidence.
+- PlaybackStarted may be emitted only after a live sink has actually consumed nonempty PCM. TCP availability is not playback evidence; local mute does not erase callback evidence.
 - Stop must invalidate generation **and** cancel/join receiver, decoder and output worker resources; generation filtering alone does not release sockets or devices.
 - Output-device changes are operator-driven. Bluetooth pairing remains OS-owned. Explicit failure must be surfaced instead of silently switching output.
 - Recovery uses the existing bounded policy and must not restart a stopped generation.
 - Receiver hardware support remains receive-only and behind optional feature flags.
 
-## Port sequence
+## Completed port sequence
 
 1. Verify pure `rust-radio-core` compilation, formatting, Clippy and offline fixtures in GitHub Actions.
 2. Extract `radio_net.rs` into optional IP transport crate with preserved SSRF protections and streaming timeouts.
@@ -23,10 +23,21 @@ Status: implemented in the standalone module and consumed by Pip-Boy through a p
 5. Add an opt-in `rust_radio` host adapter in `pip_boy`; preserve existing UI and API response shape.
 6. Switch the host only after parity and regression gates, then test Pi ARM64 separately.
 
+Extraction and host cutover are complete. Physical Pi runtime and remote CI
+success remain acceptance requirements in the [current roadmap](PORTING_PLAN.md).
+
 ## Current evidence and caveats
 
 On 2026-10-27 Pip-Boy main integrated the standalone facade and thin compatibility adapters (commit `2a9ad3d0e14a03db8bffbb95541cae9266b32421`). The host retains the HTML HUD and preferences schema; it does not link the optional standalone GUI. All 328 host tests, formatting, check, strict Clippy and build passed locally. Browser regression fixtures passed at 480×320, 320×568 and 800×480.
 
 A live loopback HUD run with temporary preferences exercised Skylab and Groove Salad. Both reached Playing after decoded samples were consumed by the native output callback. Volume, duplicate Play rejection, Stop-before-switch, favorites/selection and no autoplay on reads/output changes were checked. This run is not a new human listening confirmation, Bluetooth recovery test or Pi acceptance.
 
-The optional receive-only SoapySDR adapter compiles and links on this Mac; explicit discovery found no receivers. It provides I/Q ingress only, without AM/FM/SSB audio demodulation. Physical reception, unplug/replug and ARM64 remain open. GitHub Actions has returned startup failures on prior pushes; local green checks do not establish remote CI success.
+The optional receive-only SoapySDR adapter compiles and links on this Mac; explicit discovery found no receivers. It provides I/Q ingress only, without AM/FM/SSB audio demodulation. Its physical reception and unplug/replug acceptance remain open.
+
+The selected nRSP-ST uses SDRconnect and has passed real-device PCM/native callback
+checks in standalone and Pip-Boy. The operator confirmed audible MacBook Air
+speaker playback. Explicit Play can activate a stopped selected receiver; an
+unconfirmed activation now fails once after three seconds instead of consuming
+network retries. See the [receiver evidence](NRSP_ST.md) and
+[progress notes](PROGRESS.md). The headless module cross-compiles for Pi ARM64;
+this does not establish native audio or HUD behavior on a physical Pi.

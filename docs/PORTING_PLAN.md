@@ -1,6 +1,10 @@
-# Import plan: pip_boy -> rust_radio -> pip_boy
+# Radio module roadmap and ownership
 
-**Baseline**: https://github.com/pskeffington/pip_boy (capture exact main SHA at import). Existing live Mac Skylab playback, transport/volume control, favorites and OS-managed Bluetooth routing must not regress.
+Updated 2026-10-27. The standalone library is integrated into
+[Pip-Boy](https://github.com/pskeffington/pip_boy) through a pinned Git dependency.
+The next work strengthens playback and completes platform acceptance. Source
+provenance remains in the extraction notes; dated evidence is in
+[progress notes](PROGRESS.md).
 
 ## Ownership map
 
@@ -17,20 +21,37 @@
 | crates/pipboy/src/radio.rs | host adapter (pip_boy) | CLI commands stay in Rust-Boy |
 | crates/pipboy/assets/radio-ui.js, radio-ui.css | host UI (pip_boy) | Micro and desktop view stay in Rust-Boy |
 
-## Migration gates
-- P0: Freeze baseline commit, record lockfile dependencies and exact radio tests, verify source licenses.
-- P1: Extract pure controller, PCM, directory and parser, retaining compatibility tests and data schema.
-- P2: Lift native network and playback workers behind explicit features; compare live Mac behavior to baseline.
-- P3: Add local path dependency in pip_boy then switch to a Git tagged dependency after CI.
-- P4: Feature-gated physical SDR backend + DSP, receive-only; no simulator portrayed as RF.
-- P5: Satellite receiver adapter design, protocol-specific rights review and test hardware.
-- P6: Pi ARM64 CPU/memory/battery and 480x320 UI acceptance; Windows output test.
-  CI cross-checks the headless SDRconnect module for AArch64 Linux, but physical
-  Pi runtime and UI acceptance remain separate requirements.
+## Delivery and acceptance
 
-**Current state (2026-10-27)**: the standalone `rust-radio` facade owns the shared controller, directory, parsing, PCM, recovery, IP transport, native playback/output and optional receiver adapter. Pip-Boy main consumes a pinned Git revision through thin re-exports; host preferences and HTML UI remain host-owned. The compatibility controller now lives in core. The source-neutral `SessionController` is also available for future backend coordination.
+| Area | Delivered | Remaining acceptance |
+| --- | --- | --- |
+| Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host | Release/tag decision after CI and platform gates |
+| IP playback | Native MP3/AAC, bounded M3U/PLS and ICY, cancellation, three retries, station validation and native callback checks | Live DNS/TLS cancellation and extended interruption tests; HLS remains unsupported |
+| Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
+| Compact GUI | Optional 480×320 egui panel, background station validation and offline layout/lifecycle coverage | Physical Mac/Pi rendering and touch; standalone panel currently supports IP stations |
+| nRSP-ST | SDRconnect status, passive capture, native PCM, explicit selected-device activation, startup failure handling; real Mac PCM and speaker evidence | Real stopped-device activation failure/recovery and raw I/Q; Full IQ is firmware-gated |
+| USB SDR | Optional SoapySDR discovery, capabilities and bounded RawIq capture | Supported receiver/driver, physical unplug/replug and RF capture; DSP audio remains unimplemented |
+| Raspberry Pi | Headless SDRconnect AArch64 Linux compile check, also configured in CI | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |
+| Remote CI | Linux core/native/receiver checks and ARM64 compile check configured | GitHub runs currently fail at startup before any jobs are created |
 
-Host integration passed 328 tests, strict Clippy and build locally; browser fixtures and a live Skylab/Groove Salad native PCM callback run also passed. SoapySDR provides optional bounded I/Q ingress, with no installed device found here. RF DSP/audio, physical SDR/ARM64, Bluetooth recovery and native GUI visual acceptance remain open. Remote CI success has not been established. See [embedding](EMBEDDING.md), [native playback evidence](NATIVE_PLAYBACK_CONTRACT.md) and [SDR boundaries](SDR_RECEIVE.md).
+## Next development priorities
+
+1. Keep recovery source-aware: terminal receiver setup failures require explicit
+   retry; transient transport failures retain bounded recovery. Add regression
+   evidence for demonstrated faults before expanding features.
+2. Exercise output loss/recovery and the standalone micro-GUI on actual hardware,
+   preserving the confirmed Mac speaker and Pip-Boy playback paths.
+3. Run the native module and Pip-Boy on the physical Pi with its intended sound
+   output and display. Cross-compilation alone does not complete this gate.
+4. Resolve SDRconnect's Full IQ firmware prerequisite before accepting nRSP-ST
+   raw I/Q. Keep USB/Soapy acceptance separate from the network receiver.
+5. Defer satellite adapters and additional DSP until the playback and platform
+   gates above are stable. Publisher distribution review remains required before
+   public station bundles.
+
+See [embedding](EMBEDDING.md), [native playback evidence](NATIVE_PLAYBACK_CONTRACT.md),
+[nRSP-ST](NRSP_ST.md) and [USB SDR boundaries](SDR_RECEIVE.md) for implementation
+contracts and reproducible commands.
 
 ## Compatibility API
 Hosts should drive commands (select/play/stop/volume/output) and observe session snapshots; keep network receivers, native device discovery, publishers, and GUI outside the core. Provide versioned API and avoid cyclic dependency from rust_radio back to pip_boy.

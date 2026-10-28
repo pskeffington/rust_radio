@@ -16,10 +16,14 @@ Core validation and native playback share M3U/PLS format detection and parsing. 
 
 SomaFM's official HTTPS playlists currently include legacy HTTP stream links. The parser upgrades these entries to HTTPS before allowlist validation, consistent with the publisher's documented TLS direct links. It preserves the original host, port and path, rejects unsafe variants and never falls back to plaintext. This compatibility rule is limited to SomaFM playlist entries; direct endpoints and redirects still require explicit HTTPS.
 
-Live cancellation during DNS/TLS, device behavior, Pi hardware, dependency MSRV compatibility and source-host parity still require separate validation. These offline tests do not certify hardware playback.
+Mac IP playback and Pip-Boy host cutover have passed the native callback checks
+recorded in [playback evidence](NATIVE_PLAYBACK_CONTRACT.md). Live DNS/TLS
+cancellation, device loss, Pi hardware and dependency MSRV compatibility remain
+separate verification items.
 
 Remaining validation:
 1. Check dependency MSRV compatibility and adopt a reviewed application lockfile.
 2. Exercise cancellation and startup expiry against live DNS/TLS and stalled servers.
 3. Audit DNS/address-based SSRF safeguards at connection time; validating host strings alone does not ensure resolved IP safety.
-4. Prove Skylab Mac audio, Stop, volume and OS-managed Bluetooth parity before replacing Pip-Boy's native implementation.
+4. Complete physical Bluetooth output loss/recovery; the completed host migration
+   and Mac speaker evidence do not establish Bluetooth parity.

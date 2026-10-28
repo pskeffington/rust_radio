@@ -4,7 +4,9 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 ## Status (2026-10-27)
 
-This workspace contains portable control/parsing code, bounded HTTPS transport, native Symphonia/CPAL playback, a CLI and an embeddable 480×320 egui panel. Pip-Boy now embeds the headless `rust-radio` module through a pinned Git dependency. Its HUD runtime checks exercised Skylab and Groove Salad through native PCM output, explicit Stop, volume and saved selection. The selected nRSP-ST uses the optional SDRconnect API, including native PCM playback through the same engine as IP radio. The operator confirmed audible radio playback on MacBook Air speakers through the system default output. SoapySDR remains a separate USB path. Raw I/Q and Pi acceptance remain open.
+The standalone module provides bounded HTTPS streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
+
+IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
 
 ## Navigation
 
@@ -12,7 +14,8 @@ This workspace contains portable control/parsing code, bounded HTTPS transport, 
 - [Optional SDR receive adapter and hardware gates](docs/SDR_RECEIVE.md)
 - [SDRplay nRSP-ST network receiver via SDRconnect](docs/NRSP_ST.md)
 - [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
-- [Component ownership and extraction gates](docs/PORTING_PLAN.md)
+- [Roadmap and component ownership](docs/PORTING_PLAN.md)
+- [Progress notes and verification evidence](docs/PROGRESS.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
 - [Native GUI and embedding](docs/GUI_INTEGRATION.md)
 - [Standalone acceptance](docs/STANDALONE_ACCEPTANCE.md)
@@ -34,9 +37,9 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 ## Required integration invariants
 
 1. No external media-app launching, web browser audio or autoplay.
-2. Only explicit Play or Validate opens network resources; validation never opens audio output or hardware receivers.
+2. Resource access requires an explicit host command. Construction, browsing and preference reads do not autoplay; validation never opens audio output or activates a receiver.
 3. One active session; generation-tagged state and real worker cancellation.
-4. Audible `Playing` requires proof of samples reaching audio output; successful HTTP/SDR tuning alone is insufficient.
+4. `Playing` requires samples consumed by the native output callback; audible listening is verified separately.
 5. Bounded streaming memory, TLS and publisher endpoint validation, controlled redirects and timeouts.
 6. Keep audio output devices, Bluetooth pairing and touch UI under OS/host ownership.
 7. No RF transmit path. Satellite reception is research-stage only.
@@ -44,7 +47,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Near-term work
 
-Live nRSP-ST PCM now reaches native output callbacks in both standalone and Pip-Boy players, including concurrent subscribers and safe local Stop. MacBook Air speaker playback is operator-confirmed. Complete raw I/Q and firmware acceptance separately. USB receivers use the separate SoapySDR adapter. Complete physical Pi/ARM64 and Bluetooth recovery acceptance. Pip-Boy already consumes the standalone module through thin adapters; the default library is headless and the standalone GUI is optional.
+Follow the [roadmap](docs/PORTING_PLAN.md) for platform and receiver acceptance. The next field checks cover output loss/recovery, standalone GUI controls and the actual Pi audio/HUD runtime. Raw I/Q needs the SDRconnect Full IQ firmware prerequisite resolved before it can be accepted. The separate SoapySDR USB adapter still needs a supported device and driver.
 
 ## Run the native radio
 

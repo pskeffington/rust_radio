@@ -1,4 +1,7 @@
-# Native audio extraction gate — 2026-10-26
+# Completed native audio extraction
+
+Source extraction began on 2026-10-26. The shared engine is now consumed by
+Pip-Boy; see [current progress](PROGRESS.md) and the [roadmap](PORTING_PLAN.md).
 
 ## Extracted sources
 
@@ -8,9 +11,12 @@
 
 ## Migration design
 
-`rust-radio-audio` is an opt-in crate. The default `rust-radio-core` remains free of CPAL, Symphonia, Reqwest and hardware requirements. Source adaptations are limited to module/crate imports and native worker naming; current behavior is intentionally retained.
+`rust-radio-audio` is enabled by the facade's default `ip-radio` feature.
+`rust-radio-core` remains free of CPAL, Symphonia, Reqwest and hardware requirements.
 
-The compatibility controller is explicitly transitional: `rust-radio-core::RadioController` has a different event/command API and should **not** replace the original until event-state equivalence and failure/retry tests prove parity. For now, `NativeRadioEngine` continues to use `compat_controller`.
+`compat_controller` now re-exports `rust-radio-core::controller`; host and native
+worker paths use the same types. The source-neutral `SessionController` remains
+available separately through the facade.
 
 `NativeRadioEngine::start_internet(station_id, volume_percent, output_id)` is the explicit action opening a selected audio output and station worker. `NativeRadioEngine::stop()` requests cancellation and joins its playback worker; GUI hosts use `request_stop()` and `try_finish()`. Offline tests cover receiver cleanup and bounded startup/stream retries; live DNS/TLS cancellation still needs field validation. Output selection is OS-managed, including already-paired Bluetooth. No microphone or RF transmission implementation.
 
@@ -27,6 +33,10 @@ The compatibility controller is explicitly transitional: `rust-radio-core::Radio
 - License review for station playback and distribution before packaging with a game or publicly redistributing
 - Confirm minimum supported Rust version against transitive dependencies and commit Cargo.lock
 
-## CI status
+## Current verification
 
-GitHub source changes and Linux ALSA header installation are committed. No claim is made that CI has passed, that the extracted player has actually produced sound, or that Rust-Boy is using this crate yet. Only after passing CI and Mac field parity should the Pip-Boy host switch to a path dependency.
+Pip-Boy's pinned Git dependency, Mac IP/native PCM checks, real nRSP-ST PCM and
+operator-confirmed MacBook Air speaker playback are recorded in
+[native playback evidence](NATIVE_PLAYBACK_CONTRACT.md) and [nRSP-ST evidence](NRSP_ST.md).
+The checklist above retains remaining platform/field requirements. Remote CI
+success is still unestablished: observed GitHub runs fail before jobs start.

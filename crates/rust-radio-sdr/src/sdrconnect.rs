@@ -18,12 +18,14 @@ pub const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 const MAX_CONTROL_BYTES: usize = 8192;
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(3);
 const POLL_INTERVAL: Duration = Duration::from_millis(5);
+const START_STATUS_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     InvalidEndpoint,
     Cancelled,
     Timeout,
+    StartTimeout,
     NotStreaming,
     ControlUnavailable,
     Protocol(String),
@@ -37,6 +39,9 @@ impl fmt::Display for Error {
             }
             Self::Cancelled => f.write_str("SDRconnect operation cancelled"),
             Self::Timeout => f.write_str("SDRconnect API deadline expired"),
+            Self::StartTimeout => f.write_str(
+                "SDRconnect did not confirm receiver startup within three seconds. Use Refresh Device List, select the nRSP-ST, and retry Play",
+            ),
             Self::NotStreaming => {
                 f.write_str(
                     "SDRconnect receiver did not start. Use Refresh Device List and select the nRSP-ST; start it for passive capture or use explicit native Play",
@@ -316,18 +321,29 @@ impl Client {
     /// Call only after status confirms a selected device and `can_control`.
     /// This never selects or refreshes devices and leaves the receiver running
     /// when this client later disconnects.
+    /// Missing startup confirmation returns `StartTimeout`, requiring explicit
+    /// retry rather than repeating device activation through network recovery.
     pub fn start_receiver(&mut self, cancel: &AtomicBool) -> Result<(), Error> {
         let deadline = Instant::now() + OPERATION_TIMEOUT;
-        self.send("device_stream_enable", "", "true", deadline, cancel)?;
-        loop {
-            if parse_bool(&self.query("started", deadline, cancel)?)? {
-                return Ok(());
+        let result = (|| {
+            self.send("device_stream_enable", "", "true", deadline, cancel)?;
+            loop {
+                if parse_bool(&self.query("started", deadline, cancel)?)? {
+                    return Ok(());
+                }
+                // Receiver startup can take time. Limit status traffic while
+                // retaining the same prompt cancellation as socket polling.
+                let next_query = (Instant::now() + START_STATUS_INTERVAL).min(deadline);
+                while Instant::now() < next_query {
+                    check(deadline, cancel)?;
+                    std::thread::sleep(POLL_INTERVAL);
+                }
             }
-            if Instant::now() >= deadline {
-                return Err(Error::NotStreaming);
-            }
-            std::thread::sleep(POLL_INTERVAL);
-        }
+        })();
+        result.map_err(|error| match error {
+            Error::Timeout => Error::StartTimeout,
+            error => error,
+        })
     }
 
     /// Subscribe to an already running primary receiver for at most five
