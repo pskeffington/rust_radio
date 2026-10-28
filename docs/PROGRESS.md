@@ -3,6 +3,26 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Native output failure diagnostics (2026-10-28 23:10 UTC)
+
+- CPAL asynchronous output errors now retain their backend diagnostic instead
+  of collapsing to a generic device-failure message. Playback recovery reports
+  that detail during format probing, stream decoding and sink backpressure;
+  synthetic failure-path tests cover recording and propagation.
+- Focused diagnostics and output recovery regressions passed. Formatting,
+  default/all-feature workspace tests, strict Clippy in both configurations,
+  and the all-feature check passed. Windows GNU workspace test binaries
+  cross-compiled for default, SDRconnect and direct nRSP-native features;
+  binaries were not run.
+- Repeated station-label A/B/C: at 295 px, full categories fit 24/25,
+  names-only and compact categories 25/25; at 340 px all fit. Compact labels
+  save 192 text pixels. This measures layout fit, not listener preference.
+- Source commit `e0eebfc` is pushed to open, mergeable PR #5. No workflow run or
+  commit status was visible for this head when checked; earlier PR run 259
+  failed before job creation. Local validation is not remote CI evidence.
+- Physical Bluetooth/USB output loss, Pi runtime, receiver hardware,
+  redistribution rights and healthy Windows MSVC CI remain open.
+
 ## Live volume changes across output formats (2026-10-28 23:05 UTC)
 
 - Added a callback regression that changes volume between successive buffers

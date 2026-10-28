@@ -1,10 +1,12 @@
 {
-  "updated_at_utc": "2026-10-28T23:06:25Z",
+  "updated_at_utc": "2026-10-28T23:10:52Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "002c86f; callback tests confirm volume updates between buffers for every active CPAL 0.16 PCM format.",
+  "implementation_commit": "e0eebfc4499473c8abaaab13b164a002505419cd; CPAL asynchronous output diagnostics now reach playback recovery messages.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Preserved CPAL native output error details through asynchronous failure state and playback recovery classification; synthetic diagnostic tests passed.",
+    "Passed all local required workspace gates, cross-compiled Windows GNU test binaries for three feature combinations, and repeated the station-label A/B/C fit measurement.",
     "Added a generic native output callback regression for volume changes between buffers at 100%, 50% and 0% across all eleven active CPAL PCM formats, including sample accounting.",
     "Repeated station-label A/B/C fit measurement after the callback test change: 24/25 full category and 25/25 names-only/compact at 295px; all variants fit at 340px.",
     "Observed latest PR run 259 for source head 002c86f: startup_failure before job creation; combined statuses empty.",
@@ -182,11 +184,13 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed locked cargo test --workspace --no-run targeting x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native with live volume transition test; binaries cross-compiled, not run.",
+    "windows_gnu_cross_check": "passed locked cargo test --workspace --no-run targeting x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native after diagnostics change; binaries cross-compiled, not run.",
     "interactive_cli_input_bound": "passed focused regression: rejects a 4097-byte line, accepts a 4096-byte line, handles CRLF and reads subsequent commands",
     "interactive_cli_input_error_classification": "passed: oversized input is distinguished from stdin I/O failure; actual InvalidData reader errors stay classified as I/O and are printed once before the worker exits",
     "native_audio_sample_formats": "passed callback conversion and gain regression for all eleven active CPAL 0.16 PCM formats (I8, I16, I24, I32, I64, U8, U16, U32, U64, F32, F64), testing -1.0, -0.5, 0, 0.75, 1.0 at 100%, 50%, and 0% volume plus played-sample accounting.",
-    "native_live_volume_changes": "passed for I8, I16, I24, I32, I64, U8, U16, U32, U64, F32 and F64; separate callback buffers picked up 100%, 50% and 0% volume and consumed-sample count reached three."
+    "native_live_volume_changes": "passed for I8, I16, I24, I32, I64, U8, U16, U32, U64, F32 and F64; separate callback buffers picked up 100%, 50% and 0% volume and consumed-sample count reached three.",
+    "native_output_failure_diagnostics": "passed focused tests for recording asynchronous backend diagnostics and propagation into PlaybackFailure; no hardware used.",
+    "station_label_ab": "passed repeat: at 295px A full category 24/25, B names-only 25/25, C compact category 25/25; at 340px all fit; C saves 192px vs A; layout fit evidence, not preference."
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -200,11 +204,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40784862854,
-    "latest_pr_head": "002c86fc835992f31ad170c18c91ab0af5ff6ef0",
-    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_run": null,
+    "latest_pr_head": "e0eebfc4499473c8abaaab13b164a002505419cd",
+    "latest_pr_conclusion": "no_run_observed",
     "latest_pr_jobs": 0,
-    "details": "Run 259 on source head 002c86f failed before jobs were created; combined statuses empty. Evidence checkpoint 06e0ffd has no run/status observed. Native MSVC checks remain unverified."
+    "details": "PR #5 open and mergeable at source head e0eebfc. GitHub returned no PR-triggered workflow run and no combined statuses for this commit. Earlier run 259 failed at startup before jobs; native MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -215,5 +219,6 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue synthetic playback/output-recovery testing; pursue physical Bluetooth/USB output, Raspberry Pi, receiver acceptance and publisher-rights review; retry native Windows CI after runner startup recovers."
+  "next_priority": "Continue synthetic playback/output-loss recovery coverage; next investigate reconnect/cancellation races and add a focused regression. Physical Bluetooth/USB output, Raspberry Pi, receiver hardware, distribution rights and healthy Windows MSVC CI remain open.",
+  "current_pr_state": "PR #5 open and mergeable at e0eebfc; no workflow run or combined status observed for source head."
 }
