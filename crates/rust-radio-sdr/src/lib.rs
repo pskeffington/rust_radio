@@ -4,6 +4,8 @@
 
 mod capture;
 pub use capture::{capture, CaptureReport, MAX_CAPTURE_DURATION, MAX_IQ_VALUES};
+mod wfm;
+pub use wfm::{stream_mono_wfm, WfmReport};
 
 #[cfg(feature = "soapy")]
 mod soapy;

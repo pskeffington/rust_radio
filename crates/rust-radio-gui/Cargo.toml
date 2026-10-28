@@ -8,6 +8,7 @@ rust-version = "1.85"
 [features]
 default = []
 sdrconnect = ["rust-radio-audio/sdrconnect"]
+soapy-sdr = ["rust-radio-core/sdr", "rust-radio-audio/soapy"]
 
 [dependencies]
 rust-radio-core = { path = "../rust-radio-core" }

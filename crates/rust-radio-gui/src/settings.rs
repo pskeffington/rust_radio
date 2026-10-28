@@ -57,6 +57,30 @@ impl RadioPanel {
                 }
             });
             ui.separator();
+            #[cfg(feature = "soapy-sdr")]
+            if self.is_usb_selected() {
+                let enabled = !self.is_active();
+                ui.horizontal(|ui| {
+                    ui.label("DEVICE ID");
+                    ui.add_enabled(
+                        enabled,
+                        egui::TextEdit::singleline(&mut self.usb_id)
+                            .desired_width(235.0)
+                            .char_limit(22),
+                    );
+                });
+                ui.horizontal(|ui| {
+                    ui.label("FM FREQ Hz");
+                    ui.add_enabled(
+                        enabled,
+                        egui::TextEdit::singleline(&mut self.usb_frequency)
+                            .desired_width(190.0)
+                            .char_limit(12),
+                    );
+                });
+                ui.label("Get ID with sdr-devices / 75 us de-emphasis.");
+                return;
+            }
             #[cfg(feature = "sdrconnect")]
             if self.is_sdr_selected() {
                 ui.label("SDRconnect API (IP:port)");

@@ -35,7 +35,7 @@ On 2026-10-27 Pip-Boy main integrated the standalone facade and thin compatibili
 
 A live loopback HUD run with temporary preferences exercised Skylab and Groove Salad. Both reached Playing after decoded samples were consumed by the native output callback. Volume, duplicate Play rejection, Stop-before-switch, favorites/selection and no autoplay on reads/output changes were checked. This run is not a new human listening confirmation, Bluetooth recovery test or Pi acceptance.
 
-The optional receive-only SoapySDR adapter compiles and links on this Mac; explicit discovery found no receivers. It provides I/Q ingress only, without AM/FM/SSB audio demodulation. Its physical reception and unplug/replug acceptance remain open.
+The optional receive-only SoapySDR adapter compiles and links on this Mac; explicit discovery found no receivers. An initial mono-FM demodulation and native output path now has synthetic coverage. Its physical reception, audible audio and unplug/replug acceptance remain open; AM, SSB and FM stereo are not implemented.
 
 The selected nRSP-ST uses SDRconnect and has passed real-device PCM/native callback
 checks in standalone and Pip-Boy. The operator confirmed audible MacBook Air

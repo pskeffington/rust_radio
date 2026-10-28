@@ -5,6 +5,9 @@
 
 use std::fmt;
 
+/// Receive-only broadcast FM processing for a channelized I/Q stream.
+pub mod wfm;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrequencyRange {
     pub min_hz: u64,

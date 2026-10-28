@@ -32,6 +32,13 @@ STOP unsubscribes and leaves shared reception running. IP station validation is
 unavailable for the SDR source. Switching sources while a check is running
 cancels that check before another session can begin.
 
+For the optional USB mono-FM source, launch with `--features soapy-sdr` and
+select **USB SDR / mono FM**. Use `sdr-devices` in the standalone CLI to obtain
+the receiver ID, then enter that ID and a frequency in Hz in SETTINGS. The GUI
+uses 75 µs de-emphasis; the CLI also supports 50 µs. This path needs SoapySDR,
+an installed device driver and a receiver supporting 240 ksample/s CS16. It has
+synthetic coverage but has not yet been tested with a physical dongle.
+
 ## Embed in an egui host
 Add the package (pinned to an approved commit for repeatability):
 ```toml

@@ -8,6 +8,7 @@ rust-version.workspace = true
 [features]
 default = []
 sdrconnect = ["dep:rust-radio-sdr", "rust-radio-sdr/sdrconnect"]
+soapy = ["dep:rust-radio-sdr", "rust-radio-sdr/soapy"]
 
 [dependencies]
 rust-radio-core = { path = "../rust-radio-core" }

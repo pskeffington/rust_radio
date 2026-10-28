@@ -29,11 +29,19 @@ use symphonia::core::probe::Hint;
 mod ip_pcm;
 #[cfg(feature = "sdrconnect")]
 mod sdrconnect;
+#[cfg(feature = "soapy")]
+mod soapy;
 
 enum PlaybackSource {
     Internet(String),
     #[cfg(feature = "sdrconnect")]
     SdrConnect(rust_radio_sdr::sdrconnect::Endpoint),
+    #[cfg(feature = "soapy")]
+    SoapyWfm {
+        id: String,
+        frequency_hz: u64,
+        deemphasis: rust_radio_core::sdr::wfm::Deemphasis,
+    },
 }
 
 #[derive(Debug)]
@@ -137,6 +145,37 @@ impl NativeRadioEngine {
         )
     }
 
+    /// Start mono broadcast FM from an explicitly selected SoapySDR receiver.
+    /// The driver must support channelized 240 ksample/s CS16 I/Q; no SDRconnect
+    /// process is used. Stop releases the owned receive stream and audio output.
+    #[cfg(feature = "soapy")]
+    pub fn start_soapy_wfm(
+        receiver_id: &str,
+        frequency_hz: u64,
+        deemphasis: rust_radio_core::sdr::wfm::Deemphasis,
+        volume_percent: u8,
+        output_id: &str,
+    ) -> Result<Self, String> {
+        if !receiver_id.starts_with("soapy-")
+            || receiver_id.len() != 22
+            || !receiver_id[6..]
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit())
+            || frequency_hz == 0
+        {
+            return Err("Use a discovered SoapySDR receiver ID and positive frequency".into());
+        }
+        Self::start(
+            PlaybackSource::SoapyWfm {
+                id: receiver_id.to_owned(),
+                frequency_hz,
+                deemphasis,
+            },
+            volume_percent,
+            output_id,
+        )
+    }
+
     #[cfg(feature = "sdrconnect")]
     pub fn receiver_status(&self) -> Option<rust_radio_sdr::sdrconnect::Status> {
         self.receiver
@@ -159,6 +198,8 @@ impl NativeRadioEngine {
             },
             #[cfg(feature = "sdrconnect")]
             PlaybackSource::SdrConnect(_) => RadioCommand::PlaySdr,
+            #[cfg(feature = "soapy")]
+            PlaybackSource::SoapyWfm { .. } => RadioCommand::PlaySdr,
         };
         let generation = controller.apply(command).map_err(|e| format!("{e:?}"))?;
         let controller = Arc::new(Mutex::new(controller));
@@ -203,6 +244,19 @@ impl NativeRadioEngine {
                             )
                         },
                         |delay| interruptible_wait(&worker_cancelled, delay),
+                    ),
+                    #[cfg(feature = "soapy")]
+                    PlaybackSource::SoapyWfm {
+                        id,
+                        frequency_hz,
+                        deemphasis,
+                    } => soapy::play(
+                        (&id, frequency_hz, deemphasis),
+                        generation,
+                        &worker_controller,
+                        &worker_cancelled,
+                        worker_volume,
+                        &selected_output,
                     ),
                 };
                 if let Err(error) = result {

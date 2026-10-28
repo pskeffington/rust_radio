@@ -10,7 +10,7 @@ description = "Standalone, embeddable receive-only radio module for Rust hosts"
 default = ["ip-radio"]
 ip-radio = ["dep:rust-radio-audio", "dep:rust-radio-ip"]
 sdr = ["rust-radio-core/sdr", "dep:rust-radio-sdr"]
-soapy-sdr = ["sdr", "rust-radio-sdr/soapy"]
+soapy-sdr = ["sdr", "rust-radio-sdr/soapy", "rust-radio-audio?/soapy", "rust-radio-gui?/soapy-sdr"]
 sdrconnect = ["sdr", "rust-radio-sdr/sdrconnect", "rust-radio-audio?/sdrconnect", "rust-radio-gui?/sdrconnect"]
 gui = ["ip-radio", "dep:rust-radio-gui"]
 

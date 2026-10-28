@@ -1,6 +1,6 @@
 # rust_radio
 
-Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. USB SDR raw I/Q and direct nRSP-ST service checks are optional; native USB and nRSP-ST audio remain development work.
+Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. Optional SoapySDR supports raw I/Q and a mono-FM audio path; direct nRSP-ST service checks are also available. USB FM awaits physical hardware acceptance, and direct nRSP-ST audio remains development work.
 
 ## Status (2026-10-27)
 
@@ -56,9 +56,17 @@ Follow the [roadmap](docs/PORTING_PLAN.md) for platform and receiver acceptance.
 cargo run -p rust-radio-gui --bin rust-radio-gui
 # Optional nRSP-ST source through SDRconnect:
 cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
+# Optional USB SDR mono-FM source through SoapySDR:
+cargo run -p rust-radio-gui --features soapy-sdr --bin rust-radio-gui
 ```
 
 The compact panel uses a green phosphor, monospaced retro skin. With `sdrconnect` enabled, select **nRSP-ST / SDRconnect**, enter the local API address in SETTINGS, and select the receiver in SDRconnect. Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous playback worker releases its resources. For IP stations, SETTINGS offers output selection and CHECK STATION, which decodes silently on a background worker. Station badges distinguish unverified, decoded, unavailable, unsupported and invalid streams. Stop, Cancel Check or browsing another source cancels a check; PLAY and another check remain locked until its worker finishes. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.
+
+With `soapy-sdr`, select **USB SDR / mono FM** and enter a device ID and FM
+frequency in SETTINGS. Get the ID using the `sdr-devices` CLI command shown in
+[USB receiver setup](docs/SDR_RECEIVE.md). This initial path requires a compatible
+SoapySDR driver supporting 240 ksample/s CS16 and has not yet been validated on a
+physical dongle.
 
 The native transport resolves bounded M3U and PLS playlists using publisher-approved URLs. Legacy HTTP entries inside SomaFM playlists are requested over HTTPS after the same host/port/path checks; there is no plaintext fallback. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
 

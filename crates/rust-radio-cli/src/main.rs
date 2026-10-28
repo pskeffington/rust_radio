@@ -28,6 +28,7 @@ fn usage() {
     eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
     eprintln!("Interactive listen commands: status | volume N | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
+    eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
     eprintln!("Direct nRSP-ST reachability: nrsp-status PRIVATE_IPV4 (enable sdr)");
     eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
     eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
@@ -120,7 +121,7 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
 }
 
 fn listen(args: ListenArgs<'_>) -> Result<(), String> {
-    let mut engine = if args.sdrconnect {
+    let engine = if args.sdrconnect {
         #[cfg(feature = "sdrconnect")]
         {
             NativeRadioEngine::start_sdrconnect(args.station, args.volume, args.output)?
@@ -136,10 +137,13 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
         "RUST RADIO / {} / output {} / volume {}%",
         args.station, args.output, args.volume
     );
+    monitor(engine, args.seconds)
+}
 
+fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), String> {
     // A separate stdin reader lets the main thread monitor duration and playback failures.
     let (tx, rx) = mpsc::channel::<String>();
-    if args.seconds.is_none() {
+    if seconds.is_none() {
         println!("Commands: status | volume N | stop");
         thread::spawn(move || {
             for line in io::stdin().lock().lines() {
@@ -168,7 +172,7 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
                 .last_error
                 .unwrap_or_else(|| "playback failed".to_owned()));
         }
-        if let Some(seconds) = args.seconds {
+        if let Some(seconds) = seconds {
             if start.elapsed() >= Duration::from_secs(seconds) {
                 break if audible {
                     Ok(())
@@ -227,6 +231,7 @@ fn run(args: &[String]) -> Result<(), String> {
         Some("listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
         Some("sdr-devices") if args.len() == 1 => sdr::devices(),
         Some("sdr-capture") => sdr::capture(args),
+        Some("sdr-listen") => sdr::listen(args),
         Some("nrsp-status") => nrsp::status(args),
         Some("sdrconnect-status" | "sdrconnect-capture") => sdrconnect::run(args),
         _ => {

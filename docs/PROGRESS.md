@@ -5,6 +5,20 @@ Updated 2026-10-27. Active priorities and ownership are in the
 
 ## Current module pass
 
+- Added initial standalone USB mono-FM playback via the existing SoapySDR
+  adapter, a 240 ksample/s I/Q demodulator, shared native output and explicit
+  CLI/GUI source selection. Synthetic FM tone/filter tests, a mock-device
+  receive/cleanup test and a zero-volume Mac native callback check passed.
+  No physical USB receiver was found during explicit discovery; RF and audible
+  hardware acceptance remain open.
+- The all-feature workspace passed formatting, check, strict Clippy, **152
+  tests** and build; IP-only and USB-enabled GUI feature tests and the headless
+  AArch64 compile check also passed. The separate ignored native-output check
+  was run manually with synthetic I/Q and zero volume. The USB-enabled CLI
+  also completed a six-second live Skylab playback check at zero volume.
+
+## Previous module pass: direct nRSP status
+
 - Cloned and reviewed Fides Supra main `2447fdc` in a temporary checkout. Its
   direct nRSP-ST work establishes web/device service checks and a passive
   browser-observed spectrum path; it does not provide direct audio or tuning.
@@ -103,8 +117,8 @@ are recorded separately from real-receiver evidence.
 - **Outputs/UI:** physical Bluetooth/USB loss and recovery, Windows output,
   standalone egui touch and Pi rendering remain open. The SDR-enabled standalone
   panel and Pip-Boy each expose their own UI over the shared engine.
-- **USB SDR:** the adapter compiles/links, but no supported device or driver was
-  discovered on this Mac. RawIq ingress is implemented; local RF DSP audio is not.
+- **USB SDR:** the adapter and initial mono-FM path compile/link, but no supported
+  device or driver was discovered on this Mac. Physical RF and audio remain open.
 - **CI:** the inspected [Rust Radio run at `3d77d11`](https://github.com/pskeffington/rust_radio/actions/runs/40624628207)
   and [Pip-Boy run at `81de2d5`](https://github.com/pskeffington/pip_boy/actions/runs/40624801806)
   reported `startup_failure` with zero jobs. Earlier failed-run retry requests

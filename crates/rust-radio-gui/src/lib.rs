@@ -22,6 +22,12 @@ pub struct RadioPanel {
     sdr_selected: bool,
     #[cfg(feature = "sdrconnect")]
     sdr_endpoint: String,
+    #[cfg(feature = "soapy-sdr")]
+    usb_selected: bool,
+    #[cfg(feature = "soapy-sdr")]
+    usb_id: String,
+    #[cfg(feature = "soapy-sdr")]
+    usb_frequency: String,
     volume: u8,
     output: String,
     outputs: Vec<OutputDeviceInfo>,
@@ -42,6 +48,12 @@ impl Default for RadioPanel {
             sdr_selected: false,
             #[cfg(feature = "sdrconnect")]
             sdr_endpoint: "127.0.0.1:5454".into(),
+            #[cfg(feature = "soapy-sdr")]
+            usb_selected: false,
+            #[cfg(feature = "soapy-sdr")]
+            usb_id: String::new(),
+            #[cfg(feature = "soapy-sdr")]
+            usb_frequency: "99100000".into(),
             volume: 60,
             output: "system".into(),
             outputs: Vec::new(),
@@ -128,19 +140,7 @@ impl RadioPanel {
         if self.is_active() {
             return;
         }
-        #[cfg(feature = "sdrconnect")]
-        let result = if self.sdr_selected {
-            NativeRadioEngine::start_sdrconnect(&self.sdr_endpoint, self.volume, &self.output)
-        } else {
-            NativeRadioEngine::start_internet(self.selected_station().id, self.volume, &self.output)
-        };
-        #[cfg(not(feature = "sdrconnect"))]
-        let result = NativeRadioEngine::start_internet(
-            self.selected_station().id,
-            self.volume,
-            &self.output,
-        );
-        match result {
+        match self.start_selected() {
             Ok(engine) => {
                 self.engine = Some(engine);
                 self.last_session = None;
@@ -153,8 +153,34 @@ impl RadioPanel {
         }
     }
 
+    fn start_selected(&self) -> Result<NativeRadioEngine, String> {
+        #[cfg(feature = "soapy-sdr")]
+        if self.usb_selected {
+            let frequency = self
+                .usb_frequency
+                .parse::<u64>()
+                .map_err(|_| "Enter a positive FM frequency in Hz")?;
+            return NativeRadioEngine::start_soapy_wfm(
+                &self.usb_id,
+                frequency,
+                rust_radio_core::sdr::wfm::Deemphasis::Us75,
+                self.volume,
+                &self.output,
+            );
+        }
+        #[cfg(feature = "sdrconnect")]
+        if self.sdr_selected {
+            return NativeRadioEngine::start_sdrconnect(
+                &self.sdr_endpoint,
+                self.volume,
+                &self.output,
+            );
+        }
+        NativeRadioEngine::start_internet(self.selected_station().id, self.volume, &self.output)
+    }
+
     fn start_validation(&mut self) {
-        if self.is_active() || self.is_sdr_selected() {
+        if self.is_active() || self.is_receiver_selected() {
             return;
         }
         match StationValidationTask::start(self.selected_station().id) {
@@ -168,7 +194,7 @@ impl RadioPanel {
 
     fn cancel_stale_validation(&mut self) {
         if let Some(task) = &self.validation {
-            if self.is_sdr_selected() || task.station_id() != self.selected_station().id {
+            if self.is_receiver_selected() || task.station_id() != self.selected_station().id {
                 task.request_cancel();
             }
         }
@@ -207,7 +233,9 @@ impl RadioPanel {
     }
 
     fn step_station(&mut self, direction: isize) {
-        let count = curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"));
+        let count = curated_stations().len()
+            + usize::from(cfg!(feature = "sdrconnect"))
+            + usize::from(cfg!(feature = "soapy-sdr"));
         if count == 0 {
             return;
         }
@@ -219,6 +247,8 @@ impl RadioPanel {
     fn source_index(&self) -> usize {
         if self.is_sdr_selected() {
             curated_stations().len()
+        } else if self.is_usb_selected() {
+            curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"))
         } else {
             self.station_index
         }
@@ -229,10 +259,30 @@ impl RadioPanel {
         {
             self.sdr_selected = index == curated_stations().len();
         }
+        #[cfg(feature = "soapy-sdr")]
+        {
+            self.usb_selected =
+                index == curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"));
+        }
         if index < curated_stations().len() {
             self.station_index = index;
         }
         self.cancel_stale_validation();
+    }
+
+    fn is_usb_selected(&self) -> bool {
+        #[cfg(feature = "soapy-sdr")]
+        {
+            self.usb_selected
+        }
+        #[cfg(not(feature = "soapy-sdr"))]
+        {
+            false
+        }
+    }
+
+    fn is_receiver_selected(&self) -> bool {
+        self.is_sdr_selected() || self.is_usb_selected()
     }
 
     fn is_sdr_selected(&self) -> bool {
@@ -247,6 +297,10 @@ impl RadioPanel {
     }
 
     fn source_detail(&self) -> String {
+        #[cfg(feature = "soapy-sdr")]
+        if self.usb_selected {
+            return format!("USB FM / {} Hz / MONO", self.usb_frequency);
+        }
         #[cfg(feature = "sdrconnect")]
         if self.sdr_selected {
             return format!("SDRCONNECT / {}", self.sdr_endpoint);

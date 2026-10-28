@@ -256,37 +256,30 @@ fn changing_station_is_offline() {
 fn station_indexes_preserve_catalog_order_and_wrap_in_both_directions() {
     let mut panel = RadioPanel::new();
     let stations = curated_stations();
-    for station in stations {
-        assert_eq!(panel.selected_station(), station);
+    let count = stations.len()
+        + usize::from(cfg!(feature = "sdrconnect"))
+        + usize::from(cfg!(feature = "soapy-sdr"));
+    for index in 0..count {
+        assert_eq!(panel.source_index(), index);
+        if index < stations.len() {
+            assert_eq!(panel.selected_station(), &stations[index]);
+        }
         panel.step_station(1);
     }
-    #[cfg(feature = "sdrconnect")]
-    {
-        assert!(panel.is_sdr_selected());
-        panel.step_station(1);
-    }
-    assert_eq!(panel.station_index, 0);
+    assert_eq!(panel.source_index(), 0);
     panel.step_station(-1);
-    #[cfg(feature = "sdrconnect")]
-    {
-        assert!(panel.is_sdr_selected());
-        panel.step_station(-1);
-    }
-    assert_eq!(panel.station_index, stations.len() - 1);
+    assert_eq!(panel.source_index(), count - 1);
     panel.step_station(1);
-    #[cfg(feature = "sdrconnect")]
-    {
-        assert!(panel.is_sdr_selected());
-        panel.step_station(1);
-    }
-    assert_eq!(panel.station_index, 0);
+    assert_eq!(panel.source_index(), 0);
     assert!(!panel.is_active());
 }
 
 #[test]
 fn large_station_steps_remain_in_bounds_without_overflow() {
     let mut panel = RadioPanel::new();
-    let count = curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"));
+    let count = curated_stations().len()
+        + usize::from(cfg!(feature = "sdrconnect"))
+        + usize::from(cfg!(feature = "soapy-sdr"));
     for direction in [isize::MIN, isize::MAX, -100, -1, 0, 1, 100] {
         panel.select_source(count - 1);
         let expected = ((count as i128 - 1) + direction as i128).rem_euclid(count as i128) as usize;
@@ -297,6 +290,40 @@ fn large_station_steps_remain_in_bounds_without_overflow() {
         }
     }
     assert!(!panel.is_active());
+}
+
+#[cfg(feature = "soapy-sdr")]
+#[test]
+fn usb_selection_is_offline_and_invalid_configuration_does_not_start_a_worker() {
+    let mut panel = RadioPanel::new();
+    panel.select_source(curated_stations().len() + usize::from(cfg!(feature = "sdrconnect")));
+    assert!(panel.is_usb_selected());
+    panel.start_validation();
+    assert!(panel.validation.is_none());
+    panel.play();
+    assert!(!panel.is_active());
+    assert!(panel.note.contains("discovered SoapySDR receiver ID"));
+    panel.usb_id = "soapy-0000000000000000".into();
+    panel.usb_frequency = "invalid".into();
+    panel.play();
+    assert!(!panel.is_active());
+    assert!(panel.note.contains("frequency"));
+    render_panel(&mut panel);
+    let context = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    let mut bounds = None;
+    for _ in 0..2 {
+        let _ = context.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ctx| {
+                bounds = panel.show_settings(ctx);
+            },
+        );
+    }
+    assert!(screen.contains_rect(bounds.unwrap()));
 }
 
 #[cfg(feature = "sdrconnect")]
