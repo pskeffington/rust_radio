@@ -340,10 +340,11 @@ impl NativeRadioEngine {
         #[cfg(feature = "sdrconnect")]
         let worker_receiver = Arc::clone(&receiver);
         #[cfg(feature = "nrsp-native")]
-        let native_control = if matches!(&source, PlaybackSource::NrspNative(..)) {
-            Some(Arc::new(nrsp_native::Control::default()))
-        } else {
-            None
+        let native_control = match &source {
+            PlaybackSource::NrspNative(_, config, fm) => {
+                Some(Arc::new(nrsp_native::Control::new(*config, *fm)))
+            }
+            _ => None,
         };
         #[cfg(feature = "nrsp-native")]
         let worker_native = native_control.clone();
@@ -379,18 +380,39 @@ impl NativeRadioEngine {
                         },
                     ),
                     #[cfg(feature = "nrsp-native")]
-                    PlaybackSource::NrspNative(endpoint, config, fm) => nrsp_native::play(
-                        (endpoint, config, fm),
-                        PlaybackContext {
+                    PlaybackSource::NrspNative(endpoint, _, _) => {
+                        let control = worker_native.as_ref().expect("native controls present");
+                        let mut reconnecting = false;
+                        recover_attempts(
                             generation,
-                            controller: &worker_controller,
-                            cancelled: &worker_cancelled,
-                            volume: worker_volume,
-                            output_id: &selected_output,
-                            output_progress: &worker_output_progress,
-                        },
-                        worker_native.as_ref().expect("native controls present"),
-                    ),
+                            &worker_controller,
+                            &worker_cancelled,
+                            || {
+                                let (config, fm) = control.desired_settings();
+                                let result = nrsp_native::play(
+                                    (endpoint, config, fm),
+                                    PlaybackContext {
+                                        generation,
+                                        controller: &worker_controller,
+                                        cancelled: &worker_cancelled,
+                                        volume: Arc::clone(&worker_volume),
+                                        output_id: &selected_output,
+                                        output_progress: &worker_output_progress,
+                                    },
+                                    control,
+                                    reconnecting,
+                                );
+                                if let Err(error) = &result {
+                                    if matches!(error, PlaybackFailure::Network(_)) {
+                                        reconnecting = true;
+                                    }
+                                    clear_output_attempt(&worker_output_progress);
+                                }
+                                result
+                            },
+                            |delay| interruptible_wait(&worker_cancelled, delay),
+                        )
+                    }
                     #[cfg(feature = "sdrconnect")]
                     PlaybackSource::SdrConnect(endpoint) => recover_attempts(
                         generation,
@@ -477,6 +499,7 @@ impl NativeRadioEngine {
             .pending
             .lock()
             .expect("native controls mutex poisoned");
+        control.set_desired_config(config);
         control
             .desired_mode
             .store(config.mode as u32, Ordering::Release);
@@ -510,6 +533,7 @@ impl NativeRadioEngine {
             .pending_fm
             .lock()
             .expect("native FM controls mutex poisoned") = Some(settings);
+        control.set_desired_fm(settings);
         Ok(())
     }
 
@@ -1463,7 +1487,10 @@ mod tests {
             assert!(controller.event(generation, event));
         }
         engine.controller = Arc::new(Mutex::new(controller));
-        engine.native_control = Some(Arc::new(nrsp_native::Control::default()));
+        let initial =
+            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
+                .unwrap();
+        engine.native_control = Some(Arc::new(nrsp_native::Control::new(initial, None)));
         engine.tune_nrsp_native(99_100_000, "nfm", 12_000).unwrap();
         assert!(engine
             .set_nrsp_native_fm(NativeFmSettings::default())
@@ -1473,6 +1500,11 @@ mod tests {
         engine
             .set_nrsp_native_fm(NativeFmSettings::default())
             .unwrap();
+        let (desired_config, desired_fm) =
+            engine.native_control.as_ref().unwrap().desired_settings();
+        assert_eq!(desired_config.mode, NativeNrspMode::Wfm);
+        assert_eq!(desired_config.frequency_hz, 99_100_000);
+        assert_eq!(desired_fm, Some(NativeFmSettings::default()));
         engine.request_stop();
         assert!(engine
             .set_nrsp_native_fm(NativeFmSettings::default())
