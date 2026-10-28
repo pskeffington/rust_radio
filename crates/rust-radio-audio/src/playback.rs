@@ -59,14 +59,14 @@ enum PlaybackSource {
     },
 }
 
-type OutputProgress = Arc<Mutex<Option<Arc<AtomicU64>>>>;
+pub(super) type OutputProgress = Arc<Mutex<Option<Arc<AtomicU64>>>>;
 
-struct IpPlaybackContext<'a> {
-    generation: u64,
-    controller: &'a Arc<Mutex<RadioController>>,
-    cancelled: &'a Arc<AtomicBool>,
-    volume: Arc<AtomicU8>,
-    output_id: &'a str,
+pub(super) struct PlaybackContext<'a> {
+    pub(super) generation: u64,
+    pub(super) controller: &'a Arc<Mutex<RadioController>>,
+    pub(super) cancelled: &'a Arc<AtomicBool>,
+    pub(super) volume: Arc<AtomicU8>,
+    pub(super) output_id: &'a str,
     output_progress: &'a OutputProgress,
 }
 
@@ -316,7 +316,7 @@ impl NativeRadioEngine {
                     PlaybackSource::Internet(id) => play_with_recovery(
                         &id,
                         false,
-                        IpPlaybackContext {
+                        PlaybackContext {
                             generation,
                             controller: &worker_controller,
                             cancelled: &worker_cancelled,
@@ -328,7 +328,7 @@ impl NativeRadioEngine {
                     PlaybackSource::Direct(url) => play_with_recovery(
                         &url,
                         true,
-                        IpPlaybackContext {
+                        PlaybackContext {
                             generation,
                             controller: &worker_controller,
                             cancelled: &worker_cancelled,
@@ -340,11 +340,14 @@ impl NativeRadioEngine {
                     #[cfg(feature = "nrsp-native")]
                     PlaybackSource::NrspNative(endpoint, config, fm) => nrsp_native::play(
                         (endpoint, config, fm),
-                        generation,
-                        &worker_controller,
-                        &worker_cancelled,
-                        worker_volume,
-                        &selected_output,
+                        PlaybackContext {
+                            generation,
+                            controller: &worker_controller,
+                            cancelled: &worker_cancelled,
+                            volume: worker_volume,
+                            output_id: &selected_output,
+                            output_progress: &worker_output_progress,
+                        },
                         worker_native.as_ref().expect("native controls present"),
                     ),
                     #[cfg(feature = "sdrconnect")]
@@ -353,14 +356,19 @@ impl NativeRadioEngine {
                         &worker_controller,
                         &worker_cancelled,
                         || {
-                            sdrconnect::play(
-                                endpoint,
+                            let context = PlaybackContext {
                                 generation,
-                                &worker_controller,
-                                &worker_cancelled,
-                                Arc::clone(&worker_volume),
-                                &selected_output,
-                                &worker_receiver,
+                                controller: &worker_controller,
+                                cancelled: &worker_cancelled,
+                                volume: Arc::clone(&worker_volume),
+                                output_id: &selected_output,
+                                output_progress: &worker_output_progress,
+                            };
+                            sdrconnect::play(endpoint, &context, &worker_receiver).map_err(
+                                |error| {
+                                    clear_output_attempt(&worker_output_progress);
+                                    error
+                                },
                             )
                         },
                         |delay| interruptible_wait(&worker_cancelled, delay),
@@ -372,11 +380,14 @@ impl NativeRadioEngine {
                         deemphasis,
                     } => soapy::play(
                         (&id, frequency_hz, deemphasis),
-                        generation,
-                        &worker_controller,
-                        &worker_cancelled,
-                        worker_volume,
-                        &selected_output,
+                        PlaybackContext {
+                            generation,
+                            controller: &worker_controller,
+                            cancelled: &worker_cancelled,
+                            volume: worker_volume,
+                            output_id: &selected_output,
+                            output_progress: &worker_output_progress,
+                        },
                     ),
                 };
                 record_worker_result(
@@ -618,12 +629,22 @@ fn signal(controller: &Arc<Mutex<RadioController>>, generation: u64, event: Play
         .event(generation, event);
 }
 
+pub(super) fn begin_output_attempt(progress: &OutputProgress) -> Arc<AtomicU64> {
+    let played_samples = Arc::new(AtomicU64::new(0));
+    *progress.lock().expect("output progress mutex poisoned") = Some(Arc::clone(&played_samples));
+    played_samples
+}
+
+pub(super) fn clear_output_attempt(progress: &OutputProgress) {
+    *progress.lock().expect("output progress mutex poisoned") = None;
+}
+
 /// Retry typed connection and stream I/O failures. Device loss and invalid
 /// codecs remain terminal; session Stop overrides any scheduled retry.
 fn play_with_recovery(
     station_id: &str,
     direct: bool,
-    context: IpPlaybackContext<'_>,
+    context: PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
     recover_attempts(
         context.generation,
@@ -632,10 +653,7 @@ fn play_with_recovery(
         || {
             let result = decode_and_play(station_id, direct, &context);
             if result.is_err() {
-                *context
-                    .output_progress
-                    .lock()
-                    .expect("output progress mutex poisoned") = None;
+                clear_output_attempt(context.output_progress);
             }
             result
         },
@@ -700,14 +718,10 @@ fn interruptible_wait(cancelled: &AtomicBool, delay: Duration) -> bool {
 fn decode_and_play(
     station_id: &str,
     direct: bool,
-    context: &IpPlaybackContext<'_>,
+    context: &PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
     // Establish an audio device before opening a remote broadcaster.
-    let played_samples = Arc::new(AtomicU64::new(0));
-    *context
-        .output_progress
-        .lock()
-        .expect("output progress mutex poisoned") = Some(Arc::clone(&played_samples));
+    let played_samples = begin_output_attempt(context.output_progress);
     let mut output = NativeAudioOutput::open_with_progress(
         Arc::clone(&context.volume),
         context.output_id,
@@ -1101,13 +1115,14 @@ mod tests {
         assert!(controller.event(generation, PlaybackEvent::Connected));
         assert!(controller.event(generation, PlaybackEvent::Buffered));
         let controller = Arc::new(Mutex::new(controller));
-        let callback_samples = Arc::new(AtomicU64::new(0));
+        let output_progress = Arc::new(Mutex::new(None));
+        let callback_samples = begin_output_attempt(&output_progress);
         let engine = NativeRadioEngine {
             controller,
             cancelled: Arc::new(AtomicBool::new(false)),
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
-            output_progress: Arc::new(Mutex::new(Some(Arc::clone(&callback_samples)))),
+            output_progress: Arc::clone(&output_progress),
             worker: None,
             #[cfg(feature = "nrsp-native")]
             native_control: None,
@@ -1124,10 +1139,10 @@ mod tests {
             .lock()
             .unwrap()
             .event(generation, PlaybackEvent::ConnectionLost));
+        clear_output_attempt(&output_progress);
         assert_eq!(engine.status().state, PlaybackState::Recovering);
 
-        let next_attempt_samples = Arc::new(AtomicU64::new(0));
-        *engine.output_progress.lock().unwrap() = Some(Arc::clone(&next_attempt_samples));
+        let next_attempt_samples = begin_output_attempt(&output_progress);
         assert!(engine
             .controller
             .lock()
@@ -1139,6 +1154,31 @@ mod tests {
 
         engine.request_stop();
         assert_eq!(engine.status().state, PlaybackState::Stopped);
+    }
+
+    #[test]
+    fn status_reconciles_delayed_callback_progress_for_sdr_playback() {
+        let mut controller = RadioController::default();
+        let generation = controller.apply(RadioCommand::PlaySdr).unwrap();
+        assert!(controller.event(generation, PlaybackEvent::Connected));
+        assert!(controller.event(generation, PlaybackEvent::Buffered));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let engine = NativeRadioEngine {
+            controller: Arc::new(Mutex::new(controller)),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed: Arc::new(AtomicBool::new(false)),
+            output_progress: Arc::new(Mutex::new(Some(Arc::clone(&callback_samples)))),
+            worker: None,
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
+        };
+
+        assert_eq!(engine.status().state, PlaybackState::Buffering);
+        callback_samples.store(1, Ordering::Release);
+        assert_eq!(engine.status().state, PlaybackState::Playing);
     }
 
     fn finish_test_engine(engine: &mut NativeRadioEngine) {

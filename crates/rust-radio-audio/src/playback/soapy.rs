@@ -5,19 +5,21 @@ use rust_radio_sdr::{stream_mono_wfm, SoapyReceiver};
 
 pub(super) fn play(
     source: (&str, u64, Deemphasis),
-    generation: u64,
-    controller: &Arc<Mutex<RadioController>>,
-    cancelled: &AtomicBool,
-    volume: Arc<AtomicU8>,
-    output_id: &str,
+    context: PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
     let (id, frequency_hz, deemphasis) = source;
     let receiver = SoapyReceiver::open(id, 0, INPUT_RATE_HZ)
         .map_err(|error| PlaybackFailure::Permanent(format!("USB receiver: {error}")))?;
-    if cancelled.load(Ordering::Acquire) {
+    if context.cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
-    let mut output = NativeAudioOutput::open(volume, output_id).map_err(PlaybackFailure::Output)?;
+    let played_samples = begin_output_attempt(context.output_progress);
+    let mut output = NativeAudioOutput::open_with_progress(
+        Arc::clone(&context.volume),
+        context.output_id,
+        played_samples,
+    )
+    .map_err(PlaybackFailure::Output)?;
     let mut converter = PcmConverter::new(AUDIO_RATE_HZ, output.sample_rate, 1, output.channels)
         .map_err(|error| {
             PlaybackFailure::Output(format!("Unsupported output format: {error:?}"))
@@ -25,13 +27,13 @@ pub(super) fn play(
     let result = receive_to_sink(
         receiver,
         (frequency_hz, deemphasis),
-        generation,
-        controller,
-        cancelled,
+        context.generation,
+        context.controller,
+        context.cancelled,
         &mut output,
         &mut converter,
     );
-    if !cancelled.load(Ordering::Acquire) && output.has_failed() {
+    if !context.cancelled.load(Ordering::Acquire) && output.has_failed() {
         return Err(PlaybackFailure::Output(
             "Native audio output disconnected or stopped consuming samples".into(),
         ));

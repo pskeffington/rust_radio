@@ -29,11 +29,7 @@ impl Control {
 
 pub(super) fn play(
     (endpoint, config, fm): (Endpoint, Config, Option<NativeFmSettings>),
-    generation: u64,
-    controller: &Arc<Mutex<RadioController>>,
-    cancelled: &AtomicBool,
-    volume: Arc<AtomicU8>,
-    output_id: &str,
+    context: PlaybackContext<'_>,
     control: &Control,
 ) -> Result<(), PlaybackFailure> {
     control
@@ -41,31 +37,45 @@ pub(super) fn play(
         .store(config.mode as u32, Ordering::Release);
     let mut decoder = opus::Decoder::new(48_000, opus::Channels::Stereo)
         .map_err(|e| format!("Native receiver Opus decoder unavailable: {e}"))?;
-    let mut client = Client::connect(endpoint, cancelled).map_err(|e| e.to_string())?;
+    let mut client = Client::connect(endpoint, context.cancelled).map_err(|e| e.to_string())?;
     if fm.is_some_and(|settings| settings.stereo) && !client.status().stereo_allowed {
         return Err("Receiver does not permit stereo FM; select mono".into());
     }
-    let mut output = NativeAudioOutput::open(volume, output_id).map_err(PlaybackFailure::Output)?;
+    let played_samples = begin_output_attempt(context.output_progress);
+    let mut output = NativeAudioOutput::open_with_progress(
+        Arc::clone(&context.volume),
+        context.output_id,
+        played_samples,
+    )
+    .map_err(PlaybackFailure::Output)?;
     let mut converter = PcmConverter::new(48_000, output.sample_rate, 2, output.channels)
         .map_err(|e| format!("Unsupported native receiver output: {e:?}"))?;
-    if cancelled.load(Ordering::Acquire) {
+    if context.cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
-    client.start(config, cancelled).map_err(|e| e.to_string())?;
+    client
+        .start(config, context.cancelled)
+        .map_err(|e| e.to_string())?;
     if let Some(fm) = fm {
-        client.set_fm(fm, cancelled).map_err(|e| e.to_string())?;
+        client
+            .set_fm(fm, context.cancelled)
+            .map_err(|e| e.to_string())?;
     }
     *control
         .observed
         .lock()
         .expect("native status mutex poisoned") = Some(client.status().clone());
-    signal(controller, generation, PlaybackEvent::Connected);
+    signal(
+        context.controller,
+        context.generation,
+        PlaybackEvent::Connected,
+    );
     // Opus permits up to 120 ms (5760 frames) per packet at 48 kHz.
     let mut pcm = vec![0.0; 5760 * 2];
     let mut sink = ip_pcm::SinkState::default();
     let mut render_error = None;
     let result = client.stream_audio_with_control(
-        cancelled,
+        context.cancelled,
         |client| {
             let pending = control
                 .pending
@@ -73,7 +83,7 @@ pub(super) fn play(
                 .expect("native controls mutex poisoned")
                 .take();
             if let Some(config) = pending {
-                client.tune(config, cancelled)?;
+                client.tune(config, context.cancelled)?;
             }
             let fm = control
                 .pending_fm
@@ -83,7 +93,7 @@ pub(super) fn play(
             if let Some(fm) =
                 fm.filter(|_| client.status().configured_mode == Some(NativeNrspMode::Wfm))
             {
-                client.set_fm(fm, cancelled)?;
+                client.set_fm(fm, context.cancelled)?;
             }
             *control
                 .observed
@@ -116,8 +126,8 @@ pub(super) fn play(
                 &mut converter,
                 &pcm[..frames * 2],
                 &mut output,
-                cancelled,
-                |event| signal(controller, generation, event),
+                context.cancelled,
+                |event| signal(context.controller, context.generation, event),
             ) {
                 Ok(keep_going) => keep_going && !output.has_failed(),
                 Err(error) => {
@@ -129,7 +139,7 @@ pub(super) fn play(
     );
     // Drop closes the owned connection even when the stop write cannot complete.
     let stop_result = client.stop();
-    if cancelled.load(Ordering::Acquire) {
+    if context.cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
     if let Some(error) = render_error {

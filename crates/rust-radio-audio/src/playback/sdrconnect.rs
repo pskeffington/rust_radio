@@ -10,16 +10,12 @@ fn api_failure(error: Error) -> PlaybackFailure {
 
 pub(super) fn play(
     endpoint: Endpoint,
-    generation: u64,
-    controller: &Arc<Mutex<RadioController>>,
-    cancelled: &AtomicBool,
-    volume: Arc<AtomicU8>,
-    output_id: &str,
+    context: &PlaybackContext<'_>,
     receiver: &Arc<Mutex<Option<Status>>>,
 ) -> Result<(), PlaybackFailure> {
     *receiver.lock().expect("receiver state mutex poisoned") = None;
-    let mut client = Client::connect(endpoint, cancelled).map_err(api_failure)?;
-    let mut state = client.status(cancelled).map_err(api_failure)?;
+    let mut client = Client::connect(endpoint, context.cancelled).map_err(api_failure)?;
+    let mut state = client.status(context.cancelled).map_err(api_failure)?;
     if state.active_device.is_empty() {
         return Err(api_failure(Error::NotStreaming));
     }
@@ -27,32 +23,44 @@ pub(super) fn play(
         if !state.can_control {
             return Err(api_failure(Error::ControlUnavailable));
         }
-        client.start_receiver(cancelled).map_err(api_failure)?;
+        client
+            .start_receiver(context.cancelled)
+            .map_err(api_failure)?;
         state.started = true;
     }
     *receiver.lock().expect("receiver state mutex poisoned") = Some(state);
-    if cancelled.load(Ordering::Acquire) {
+    if context.cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
-    let mut output = NativeAudioOutput::open(volume, output_id).map_err(PlaybackFailure::Output)?;
+    let played_samples = begin_output_attempt(context.output_progress);
+    let mut output = NativeAudioOutput::open_with_progress(
+        Arc::clone(&context.volume),
+        context.output_id,
+        played_samples,
+    )
+    .map_err(PlaybackFailure::Output)?;
     let mut pump = StereoPump::new(&output)?;
-    signal(controller, generation, PlaybackEvent::Connected);
+    signal(
+        context.controller,
+        context.generation,
+        PlaybackEvent::Connected,
+    );
     let mut render_error = None;
-    let result = client.stream_audio(cancelled, |bytes| {
-        if cancelled.load(Ordering::Acquire) {
+    let result = client.stream_audio(context.cancelled, |bytes| {
+        if context.cancelled.load(Ordering::Acquire) {
             return false;
         }
-        match pump.feed(bytes, &mut output, cancelled, |event| {
-            signal(controller, generation, event)
+        match pump.feed(bytes, &mut output, context.cancelled, |event| {
+            signal(context.controller, context.generation, event)
         }) {
-            Ok(()) => !cancelled.load(Ordering::Acquire),
+            Ok(()) => !context.cancelled.load(Ordering::Acquire),
             Err(error) => {
                 render_error = Some(error);
                 false
             }
         }
     });
-    if cancelled.load(Ordering::Acquire) {
+    if context.cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
     if output.has_failed() {
