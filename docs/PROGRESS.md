@@ -26,13 +26,11 @@ Updated 2026-10-28. Active priorities and ownership are in the
   parser; an embedding-contract test proves a non-GUI host can read history
   without file/network I/O or enabling audio features.
 - PR #3 is open and reports mergeable. GitHub reports no combined status for
-  remote head `626b446`; Actions run `40749877598` failed during startup before
-  jobs were created. This run fetched and merged that remote checkpoint with
-  local documentation commits, then added the shared headless parser and
-  verified all required local gates. Rust-Boy currently pins an older module
-  revision, so consuming the new API requires a later host pin update. Physical
-  output recovery, Pi runtime, USB SDR acceptance and publisher rights remain
-  open.
+  remote head `fdea7eb`; Actions run `40751270432` failed during startup and
+  returned zero jobs. The headless parser passed all required local gates.
+  Rust-Boy currently pins an older module revision, so consuming the new API
+  requires a later host pin update. Physical output recovery, Pi runtime, USB
+  SDR acceptance and publisher rights remain open.
 
 ## Current module pass: scheduled feed sweep and endpoint recovery
 
