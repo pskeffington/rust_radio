@@ -339,7 +339,7 @@ fn read_snapshot(path: &Path) -> Result<Value, String> {
     }
     let report: Value = serde_json::from_reader(file)
         .map_err(|error| format!("Invalid feed report: {error}"))?;
-    if report["schema_version"] != 1
+    if !matches!(report["schema_version"].as_u64(), Some(1 | 2))
         || report["total"].as_u64() != Some(curated_stations().len() as u64)
     {
         return Err("Report has an unsupported version or station count".into());
@@ -358,13 +358,61 @@ fn read_snapshot(path: &Path) -> Result<Value, String> {
     Ok(report)
 }
 
+fn backup_path(path: &Path) -> PathBuf {
+    let mut value = path.as_os_str().to_os_string();
+    value.push(".bak");
+    PathBuf::from(value)
+}
+
+/// Maintain a second completed snapshot. An interrupted sweep leaves a valid
+/// partial primary and the last fully completed backup; corrupt primary data
+/// never silently resets a station's last-good history.
+fn read_with_redundancy(path: &Path) -> Result<Option<Value>, String> {
+    match read_snapshot(path) {
+        Ok(report) => Ok(Some(report)),
+        Err(primary_error) => {
+            let backup = backup_path(path);
+            match read_snapshot(&backup) {
+                Ok(report) => {
+                    eprintln!(
+                        "Feed report unavailable ({primary_error}); recovered {}",
+                        backup.display()
+                    );
+                    Ok(Some(report))
+                }
+                Err(backup_error) => {
+                    if !path.exists() && !backup.exists() {
+                        Ok(None)
+                    } else {
+                        Err(format!(
+                            "Neither primary nor backup report is valid: {primary_error}; {backup_error}"
+                        ))
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn fresh_count(report: &Value, now: u64) -> usize {
     report["stations"]
         .as_array()
         .map(|entries| {
             entries
                 .iter()
-                .filter(|entry| current_health(&entry["validation"], now) == "fresh")
+                .filter(|entry| current_health(entry, now) == "fresh")
+                .count()
+        })
+        .unwrap_or(0)
+}
+
+fn eligible_count(report: &Value, now: u64, strict: bool) -> usize {
+    report["stations"]
+        .as_array()
+        .map(|entries| {
+            entries
+                .iter()
+                .filter(|entry| is_eligible(entry, now, strict))
                 .count()
         })
         .unwrap_or(0)
