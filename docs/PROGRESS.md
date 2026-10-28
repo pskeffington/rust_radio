@@ -28,6 +28,20 @@ Updated 2026-10-28. Active priorities and ownership are in the
   loss/recovery, Pi runtime, USB/receiver hardware and publisher rights remain
   separate acceptance gates.
 
+## Bounded native output stall handling (2026-10-28)
+
+- Code commit `ca4cf00` extracts the PCM-ring backpressure loop behind an
+  internal callback watchdog helper without changing the five-second runtime
+  threshold.
+- New synthetic tests fill a one-sample ring and verify a silent callback is
+  classified as output failure within an injected short timeout. A separate
+  cancellation test verifies Stop does not become a device failure.
+- The two new regressions, all six workspace validation gates, the station
+  label A/B and headless AArch64 SDRconnect compilation passed. Network fixture
+  tests required local socket permission.
+- This exercises a hardware failure path deterministically; it does not replace
+  physical Bluetooth/USB loss and recovery acceptance.
+
 ## Delayed callback playback-state fix (2026-10-28)
 
 - Implementation commit `94f0daa` gives each IP stream attempt its own

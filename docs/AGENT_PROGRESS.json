@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T19:32:31Z",
+  "updated_at_utc": "2026-10-28T19:35:56Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "df6a73d",
+  "implementation_commit": "ca4cf00",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -20,7 +20,8 @@
     "Reused the core parser from CLI persistence and GUI saved-history import, removing duplicate schema validation.",
     "Added a headless embedding contract test proving saved history is readable without GUI or I/O.",
     "Reconciled IP PlaybackStarted snapshots with actual native callback sample consumption, including delayed callbacks and per-retry counters.",
-    "Extended callback-consumed status reconciliation to direct nRSP-native, SDRconnect and Soapy playback; clear failed attempt progress before recovery."
+    "Extended callback-consumed status reconciliation to direct nRSP-native, SDRconnect and Soapy playback; clear failed attempt progress before recovery.",
+    "Extracted native output full-ring callback watchdog logic and added deterministic no-callback failure and cancellation classification regressions."
   ],
   "validation": {
     "fmt": "passed",
@@ -40,11 +41,11 @@
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
-    "implementation_commit": "df6a73d; callback-driven status reconciliation across IP, direct nRSP-native, SDRconnect and Soapy playback",
-    "latest_full_gate_run": "all six required gates passed on implementation commit df6a73d; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "PR head 76e7563 (implementation df6a73d) had empty combined status; Actions run 40754985187 failed at startup with zero jobs",
+    "implementation_commit": "ca4cf00; bounded native output callback-stall watchdog with deterministic failure/cancellation regressions",
+    "latest_full_gate_run": "all six required gates passed on implementation commit ca4cf00; loopback fixtures required local socket permission; native audio manual test remains ignored",
+    "latest_code_head_ci": "PR code head ca4cf00 had empty combined status and no workflow run visible at query time; previous head 2868270 run 40755284580 failed at startup with zero jobs",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
-    "arm64_headless_check": "cargo check -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on head 66f9efd; compile evidence only, not Pi runtime",
+    "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head ca4cf00; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "category+name 24/25 vs names-only 25/25 at 295px; both 25/25 at 340px; 1776px text-width savings; fit metric only",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy"
   },
@@ -57,8 +58,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40754985187,
-    "conclusion": "PR head 76e7563 (implementation df6a73d) had empty combined status; Actions run 40754985187 failed at startup and created zero jobs; no job-step failure is evidenced"
+    "latest_observed_head_run": 40755284580,
+    "conclusion": "previous PR head 2868270 had empty combined status; Actions run 40755284580 failed at startup and created zero jobs; current code head ca4cf00 has empty status and no workflow run visible"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -66,5 +67,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Check CI for the newly published callback fix; continue physical output-loss, Pi, receiver/USB and Rust-Boy host adoption gates."
+  "next_priority": "Continue native output-loss reliability audit and add deterministic tests for any concrete gaps; pursue physical output-loss, Pi, receiver/USB and Rust-Boy host adoption gates."
 }
