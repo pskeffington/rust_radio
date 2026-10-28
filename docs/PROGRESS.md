@@ -644,3 +644,23 @@ The process-wide lease change is committed as `bd48649` and confirmed on the
 remote PR branch. At the post-push query, the GitHub connector returned no
 combined status or PR-triggered Actions run for this SHA; its PR snapshot still
 showed the prior head, so remote CI is pending/unverified.
+
+## Public playback API admission regression (2026-10-28)
+
+- Strengthened the process-wide session test to exercise both public start paths:
+  curated internet playback and an explicit direct stream. With the active slot
+  held, each returns the duplicate-session error before a worker can open audio
+  or network resources. The focused test passes.
+- Repeated the station-label A/B/C regression on current source. At 295 px,
+  full category+name fits 24/25 rows while names-only and compact-category fit
+  25/25; at 340 px all three fit 25/25. Compact `CLASS` saves 32 text pixels on
+  WCRB. This remains a deterministic fit measurement, not listener preference.
+- Passed formatting, default and all-feature workspace tests, strict Clippy in
+  default and all-feature configurations, and all-feature workspace check.
+  Loopback fixture tests passed with local socket permission; two hardware audio
+  tests remain ignored where the feature/test configuration requires physical
+  output.
+- GitHub reports run `40757657155` (`Rust radio core`) as `startup_failure` with
+  zero jobs for the preceding PR head. Combined commit status is empty. This is
+  not evidence of a Rust job failure or a passing remote build; root cause is
+  not available from the run metadata.

@@ -1020,18 +1020,21 @@ mod tests {
     }
 
     #[test]
-    fn native_engine_refuses_a_second_worker_before_opening_resources() {
+    fn public_playback_entry_points_refuse_a_second_worker_before_opening_resources() {
         let _active = ACTIVE_PLAYBACK_SLOT.acquire().unwrap();
-        let result =
-            NativeRadioEngine::start(PlaybackSource::Internet("skylab".into()), 60, "system");
-        let error = match result {
-            Err(error) => error,
-            Ok(mut engine) => {
-                engine.stop();
-                panic!("a second playback worker was admitted")
-            }
-        };
-        assert_eq!(error, "A radio playback session is already active");
+        for result in [
+            NativeRadioEngine::start_internet("skylab", 60, "system"),
+            NativeRadioEngine::start_stream("https://example.com/live.mp3", 60, "system"),
+        ] {
+            let error = match result {
+                Err(error) => error,
+                Ok(mut engine) => {
+                    engine.stop();
+                    panic!("a second playback worker was admitted")
+                }
+            };
+            assert_eq!(error, "A radio playback session is already active");
+        }
     }
 
     #[test]

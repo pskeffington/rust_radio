@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:15:00Z",
+  "updated_at_utc": "2026-10-28T19:51:38Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bd48649",
@@ -24,35 +24,37 @@
     "Extracted native output full-ring callback watchdog logic and added deterministic no-callback failure and cancellation classification regressions.",
     "Added compact station category label chosen by three-variant A/B/C measurement; all 25 curated labels fit at 295px while retaining genre cues.",
     "Strengthened the layout regression to prove non-WCRB category labels remain unchanged; GUI crate tests and strict Clippy passed.",
-    "Enforced exactly one process-wide native playback worker across NativeRadioEngine instances with an atomic RAII lease; a second start is rejected before resource opening and release is covered for normal exit and unwinding."
+    "Enforced exactly one process-wide native playback worker across NativeRadioEngine instances with an atomic RAII lease; a second start is rejected before resource opening and release is covered for normal exit and unwinding.",
+    "Strengthened the process-wide playback admission regression to cover both public curated-station and direct-stream start APIs; both reject a second worker before resource opening."
   ],
   "validation": {
-    "fmt": "passed",
-    "workspace_tests": "passed; loopback fixtures allowed",
-    "workspace_clippy_strict": "passed",
-    "all_features_tests": "passed; localhost fixture tests required loopback permission; one physical audio test ignored",
-    "all_features_clippy_strict": "passed",
-    "all_features_check": "passed",
+    "fmt": "passed on current source",
+    "workspace_tests": "passed on current source; loopback fixtures allowed",
+    "workspace_clippy_strict": "passed on current source",
+    "all_features_tests": "passed on current source; loopback fixtures allowed; physical audio acceptance tests remain gated/ignored",
+    "all_features_clippy_strict": "passed on current source",
+    "all_features_check": "passed on current source",
     "live_catalog_decode": "25/25 decoded in 25 attempts; point-in-time only",
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
     "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed three variants; full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS saves 32px on WCRB",
+    "repeatable_layout_ab": "passed on current source: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all 25/25; compact CLASS saves 32px; fit measurement only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on implementation commit a417db6; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "bd48649 pushed and confirmed with git ls-remote; GitHub connector returned empty combined status and no PR-triggered Actions run at query time",
+    "latest_code_head_ci": "PR workflow run 40757657155 for prior head startup_failure with zero jobs; empty combined status; no remote Rust result",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
-    "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind"
+    "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
+    "public_playback_admission_regression": "passed; curated internet and direct stream public start paths reject while process-wide slot is occupied"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -66,8 +68,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": null,
-    "conclusion": "bd48649 is present on the remote PR branch. The GitHub connector returned empty combined status and no associated PR-triggered workflow runs; its PR snapshot still showed the prior head, so remote CI remains pending/unverified."
+    "latest_observed_head_run": 40757657155,
+    "conclusion": "PR-triggered Rust workflow run 40757657155 is startup_failure with zero jobs; combined commit status is empty. This does not identify a repository job failure or establish remote validation."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -75,5 +77,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Continue deterministic native device-loss/recovery work where a concrete software gap is found; maintain output-loss, Pi, receiver/USB and Rust-Boy field/adoption gates."
+  "next_priority": "Continue native device-loss/output selection recovery audit; retain physical Bluetooth/USB, Pi, receiver/USB SDR, broadcaster rights and Rust-Boy adoption acceptance gates."
 }
