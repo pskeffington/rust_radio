@@ -64,6 +64,14 @@ cargo run -p rust-radio-gui --features soapy-sdr --bin rust-radio-gui
 
 With `nrsp-native`, click **nSDR** for the receiver address (`IP:9001`), frequency, mode and bandwidth. PLAY starts the session; APPLY TUNING changes the active receiver; STOP releases it. See [direct receiver setup and verification](docs/NRSP_ST.md#direct-native-control-and-audio).
 
+The listening screen gives the station name priority, with a short genre line,
+one Play/Stop/Retry control, the current listening state, a wide volume slider
+and Mute (which restores the previous volume). Live playback never shows an
+unverified badge. Audio-output names replace decoder diagnostics; connection
+checks and technical details stay in setup. Errors remain beside Retry in a
+bounded, readable area. The phosphor theme uses softer scanlines and quieter
+secondary text.
+
 The top-left **IP Radio | nSDR | USB** buttons are input selectors and setup entry points. Green glow means the input is available; dim means unavailable or not checked. The underline marks the selected input. For example, with no internet and only a supported USB receiver attached, only USB glows. More than one input can glow when several are available.
 
 The standalone GUI scans on startup and every 30 seconds while idle. It checks HTTPS reachability, identifies native nRSP-ST receivers on local private IPv4 neighborhoods, and enumerates supported SoapySDR USB drivers. It selects detected hardware controls without starting reception; PLAY starts the radio. Click an input button for its output and source settings, detected-device selection, stream URL or tuning controls. SCAN INPUTS refreshes availability. Switching input types requires stopping playback first. Receiver settings and runtime receiver addresses stay in memory; explicitly saved IP stations are persisted locally.

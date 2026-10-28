@@ -187,6 +187,12 @@ fn native_ip_playback_switching_failure_retry_and_responsiveness() {
     panel.select_ip_station(base);
     panel.play();
     wait_for(&mut panel, &context, PlaybackState::Playing);
+    assert_eq!(panel.stream_check_summary(), "Receiving audio now");
+    assert!(!panel.source_detail().contains("UNVERIFIED"));
+    panel.change_volume(0);
+    assert_eq!(panel.volume, 0);
+    assert_eq!(panel.stream_check_summary(), "Receiving audio now");
+    // Keep this hardware acceptance muted; volume restoration is covered offline.
     panel.select_ip_station(base + 1);
     assert!(panel.restart_pending);
     assert_eq!(

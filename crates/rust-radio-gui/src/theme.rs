@@ -6,7 +6,9 @@ pub(super) const SCREEN: Color32 = Color32::from_rgb(5, 19, 9);
 pub(super) const ERROR: Color32 = Color32::from_rgb(218, 255, 160);
 const SURFACE: Color32 = Color32::from_rgb(12, 37, 17);
 const HOVER: Color32 = Color32::from_rgb(29, 66, 30);
-const BORDER: Color32 = Color32::from_rgb(76, 155, 76);
+pub(super) const MUTED: Color32 = Color32::from_rgb(101, 166, 99);
+pub(super) const ACTION: Color32 = Color32::from_rgb(22, 64, 28);
+pub(super) const BORDER: Color32 = Color32::from_rgb(76, 155, 76);
 
 pub(super) fn apply(ui: &mut egui::Ui) {
     let style = ui.style_mut();
@@ -54,9 +56,9 @@ pub(super) fn apply(ui: &mut egui::Ui) {
 
 pub(super) fn scanlines(ui: &egui::Ui) {
     let rect = ui.available_rect_before_wrap().intersect(ui.clip_rect());
-    let stroke = Stroke::new(0.5_f32, Color32::from_rgba_unmultiplied(85, 180, 85, 12));
-    for line in 0..80 {
-        let y = rect.top() + line as f32 * 4.0;
+    let stroke = Stroke::new(0.5_f32, Color32::from_rgba_unmultiplied(85, 180, 85, 5));
+    for line in 0..60 {
+        let y = rect.top() + line as f32 * 6.0;
         if y >= rect.bottom() {
             break;
         }
@@ -87,7 +89,7 @@ pub(super) fn input_button(
         egui::Button::new(egui::RichText::new(label).monospace().strong().color(color))
             .fill(fill)
             .stroke(Stroke::NONE)
-            .min_size(egui::vec2(0.0, 22.0)),
+            .min_size(egui::vec2(0.0, 28.0)),
     );
     if available {
         ui.painter().rect_stroke(

@@ -800,3 +800,140 @@ fn switching_input_types_preserves_the_last_saved_ip_station_without_connecting(
     assert_eq!(panel.segment, Segment::Ip);
     assert_eq!(panel.ip_station_name(), "My LAN station");
 }
+
+#[test]
+fn listener_status_uses_playback_state_instead_of_cached_verification() {
+    let mut panel = RadioPanel::new();
+    let mut report = StationValidation::unverified("skylab");
+    report.status = ValidationStatus::Unavailable;
+    panel.validations.insert("skylab", report);
+    for (state, label, working, failed) in [
+        (PlaybackState::Stopped, "Ready to listen", false, false),
+        (PlaybackState::Connecting, "Connecting", true, false),
+        (PlaybackState::Buffering, "Buffering", true, false),
+        (PlaybackState::Playing, "Playing", false, false),
+        (PlaybackState::Recovering, "Reconnecting", true, false),
+        (PlaybackState::Failed, "Unable to play", false, true),
+    ] {
+        panel.last_session = Some(RadioSession {
+            state,
+            ..Default::default()
+        });
+        let status = panel.listening_status();
+        assert_eq!(status.label, label);
+        assert_eq!(status.working, working);
+        assert_eq!(status.failed, failed);
+        assert_eq!(panel.source_detail(), "Chillout · lounge · ambient");
+        render_panel(&mut panel);
+    }
+    panel.restart_pending = true;
+    assert_eq!(panel.listening_status().label, "Connecting");
+    panel.stopping = true;
+    let switching = panel.listening_status();
+    assert_eq!(switching.label, "Switching station");
+    assert!(switching.stop_action);
+    panel.restart_pending = false;
+    panel.stopping = false;
+}
+
+#[test]
+fn mute_restores_the_last_listening_volume_without_starting_audio() {
+    let mut panel = RadioPanel::new();
+    panel.change_volume(37);
+    panel.toggle_mute();
+    assert_eq!(panel.volume, 0);
+    render_panel(&mut panel);
+    panel.toggle_mute();
+    assert_eq!(panel.volume, 37);
+    panel.toggle_mute();
+    panel.change_volume(81);
+    panel.toggle_mute();
+    panel.toggle_mute();
+    assert_eq!(panel.volume, 81);
+    assert!(!panel.is_active());
+}
+
+#[test]
+fn playing_surface_has_no_stale_badge_or_decode_diagnostics_and_errors_fit() {
+    use egui::epaint::Shape;
+    fn texts(shape: &Shape, result: &mut String) {
+        match shape {
+            Shape::Text(text) => {
+                result.push_str(&text.galley.job.text);
+                result.push('\n');
+            }
+            Shape::Vec(shapes) => {
+                for shape in shapes {
+                    texts(shape, result);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut panel = RadioPanel::new();
+    panel.note = "PLAYING / DECODED AUDIO REACHED OUTPUT".into();
+    panel.last_session = Some(RadioSession {
+        state: PlaybackState::Playing,
+        ..Default::default()
+    });
+    let context = egui::Context::default();
+    let output = context.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(480.0, 320.0),
+            )),
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| panel.show(ui));
+        },
+    );
+    let mut content = String::new();
+    for shape in output.shapes {
+        texts(&shape.shape, &mut content);
+    }
+    assert!(content.contains("Playing"), "{content}");
+    assert!(!content.contains("UNVERIFIED"), "{content}");
+    assert!(!content.contains("DECODED AUDIO"), "{content}");
+    panel.last_session = Some(RadioSession {
+        state: PlaybackState::Failed,
+        last_error: Some("The station is unavailable. ".repeat(100)),
+        ..Default::default()
+    });
+    render_panel(&mut panel);
+    assert_eq!(panel.listening_status().label, "Unable to play");
+}
+
+#[test]
+fn stream_errors_offer_listener_actions_with_original_diagnostics_retained() {
+    let mut panel = RadioPanel::new();
+    for (error, useful) in [
+        (
+            "Unsupported radio stream format: core (probe): no suitable format reader found",
+            "unsupported audio format",
+        ),
+        (
+            "Server did not return an audio stream: text/html",
+            "check the stream URL",
+        ),
+        (
+            "Radio server responded HTTP 404 Not Found",
+            "no longer available",
+        ),
+        ("Radio connect/header timeout", "Check your connection"),
+        (
+            "Native audio output device disconnected",
+            "select an output",
+        ),
+    ] {
+        panel.last_session = Some(RadioSession {
+            state: PlaybackState::Failed,
+            last_error: Some(error.into()),
+            ..Default::default()
+        });
+        assert!(panel.listener_error_detail().contains(useful));
+        assert_eq!(panel.playback_error().as_deref(), Some(error));
+        render_panel(&mut panel);
+    }
+}

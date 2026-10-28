@@ -3,7 +3,31 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Current module pass: IP streaming GUI and station lifecycle
+## Current module pass: listener-focused interface
+
+- Replaced the confusing Playing + Unverified combination with a presentation
+  driven by live playback state. Genre remains beneath the station; validation
+  history and technical details are available in setup, with live audio taking
+  priority. No decode/callback diagnostics appear on the listening screen.
+- Enlarged the station picker to use available width, removed duplicate status
+  lines, softened scanlines and secondary text, and replaced the two playback
+  buttons with a single Play/Stop/Retry action. Queued switching remains cancelable.
+- Fixed the short volume-slider sizing and added Mute/Unmute with previous-volume
+  restoration. Footer hints identify the next action or actual selected output.
+  Common stream errors explain a next action in plain language; exact errors
+  remain in setup. Long errors use remaining viewport space with Retry visible.
+- Simplified IP setup labels, exposed save/remove feedback, and moved connection
+  details into a collapsible section with a bounded scroll body. Playback,
+  persistence and embeddable host APIs remain intact.
+- Visually inspected the redesigned macOS app. Added regression coverage for
+  all listening states, stale check results, diagnostic-free Playing, mute
+  restoration and long-error bounds. Final verification passed **193 all-feature
+  tests**, **144 default tests**, the separate native muted acceptance, formatting,
+  strict Clippy in both configurations, workspace check and all-feature build.
+  The rebuilt standalone bundle is in `target/debug/Rust Radio.app`. Physical
+  touch/Pi rendering remain open.
+
+## Previous module pass: IP streaming GUI and station lifecycle
 
 - Kept routine controls visible with locally scoped phosphor popup/menu/button
   styling, current-selection marker, long-name tooltips, scrolling and keyboard

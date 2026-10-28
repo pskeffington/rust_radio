@@ -18,6 +18,7 @@ use rust_radio_audio::discovery::{InputReport, InputScan};
 use std::time::Instant;
 mod ip_settings;
 mod ip_stations;
+mod presentation;
 mod settings;
 mod station_menu;
 mod theme;
@@ -78,6 +79,7 @@ pub struct RadioPanel {
     #[cfg(feature = "soapy-sdr")]
     usb_frequency: String,
     volume: u8,
+    unmuted_volume: u8,
     output: String,
     outputs: Vec<OutputDeviceInfo>,
     engine: Option<NativeRadioEngine>,
@@ -142,6 +144,7 @@ impl Default for RadioPanel {
             #[cfg(feature = "soapy-sdr")]
             usb_frequency: "99100000".into(),
             volume: 60,
+            unmuted_volume: 60,
             output: "system".into(),
             outputs: Vec::new(),
             engine: None,
@@ -665,11 +668,7 @@ impl RadioPanel {
             );
         }
         if self.direct_selected {
-            return self
-                .direct_validation
-                .as_ref()
-                .map(|report| report.detail.clone())
-                .unwrap_or_else(|| "CUSTOM STREAM / PUBLIC HTTPS OR PRIVATE LAN".into());
+            return "Custom radio stream".into();
         }
         #[cfg(feature = "soapy-sdr")]
         if self.usb_selected {
@@ -679,13 +678,7 @@ impl RadioPanel {
         if self.sdr_selected {
             return format!("SDRCONNECT / {}", self.sdr_endpoint);
         }
-        let station = self.selected_station();
-        format!(
-            "{} / {} / {}",
-            self.validation_label(station.id),
-            station.category,
-            station.genre
-        )
+        self.selected_station().genre.replace(" / ", " · ")
     }
 
     fn selected_station(&self) -> &'static InternetStation {
