@@ -17,6 +17,9 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - A/B/C layout fit was repeated: at 295 px, full-category labels fit 24/25,
   names-only and compact labels fit 25/25; at 340 px all fit. This remains
   layout evidence, not listener preference.
+- Windows GNU `cargo test --workspace --no-run` passed for the default,
+  SDRconnect and direct nRSP-native feature configurations after the reader
+  fix; executables were cross-compiled but not run.
 - Next: continue physical audio, Pi, receiver/USB and publisher-rights gates;
   rerun Windows MSVC CI when Actions creates jobs.
 

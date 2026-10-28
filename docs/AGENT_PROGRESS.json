@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T22:46:00Z",
+  "updated_at_utc": "2026-10-28T22:46:45Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "2936b844d894ea9deb3e40241c58ffe88a86af88; Windows GNU test binaries compiled; A/B rerun passed",
@@ -103,7 +103,8 @@
     "re-ran station label A/B/C comparison at 22:37 UTC against all 25 catalog entries; same measured fit and compact-width result",
     "Bounded interactive CLI stdin commands to 4096 bytes and eight queued commands; oversized lines are drained and later commands remain usable.",
     "Fresh bounded validate-all sweep decoded all 25 catalog streams in 25 attempts at 2026-10-28T22:43Z; station-label A/B/C fit comparison repeated.",
-    "Separated oversized interactive CLI command errors from underlying stdin I/O errors; actual InvalidData read failures now terminate the reader worker instead of retrying as overlong lines."
+    "Separated oversized interactive CLI command errors from underlying stdin I/O errors; actual InvalidData read failures now terminate the reader worker instead of retrying as overlong lines.",
+    "Cross-compiled Windows GNU workspace test binaries with --no-run after the stdin error-path fix for default, SDRconnect and direct nRSP-native feature configurations; executables were not run."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -125,7 +126,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "passed on interactive CLI error-classification source: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked. Loopback tests required temporary elevated socket permission; existing manual native audio test remains ignored.",
-    "latest_code_head_ci": "PR #5 head 04e461d47afdb1bd51be0bd4525b589f5bd9fdbe Actions run 40782009062 (run 246) startup_failure before job creation; checks/statuses empty; Windows MSVC job unverified",
+    "latest_code_head_ci": "PR #5 source head 202db1111919e8ad705ffd1227df504e373270fc Actions run 40782495730 (run 248) startup_failure before job creation; checks/statuses empty; native Windows MSVC job unverified",
     "live_catalog_revalidation": "2026-10-28T22:43Z: bounded validate-all decoded 25/25 stations in 25 total attempts; point-in-time codec evidence only",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
     "layout_ab_recheck": "repeated 2026-10-28 22:46 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; fit only, not preference",
@@ -159,7 +160,7 @@
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #5 open and mergeable at 2936b844d894ea9deb3e40241c58ffe88a86af88 before this checkpoint",
+    "current_pr_state": "PR #5 open and mergeable at source commit 202db11; evidence checkpoint pending",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
     "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
     "catalog_mirror_parity": "passed; ordered runtime/JSON station metadata and third-party-player policy parity including all 25 records",
@@ -168,7 +169,7 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed Cargo check, strict Clippy, and cargo test --no-run with Cargo.lock for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native workspace configurations on x86_64-pc-windows-gnu; binaries compiled and listed, not executed",
+    "windows_gnu_cross_check": "passed cargo test --workspace --locked --no-run --target x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native configurations after stdin error fix; binaries compiled but not executed",
     "interactive_cli_input_bound": "passed focused regression: rejects a 4097-byte line, accepts a 4096-byte line, handles CRLF and reads subsequent commands",
     "interactive_cli_input_error_classification": "passed focused regression: over-limit lines drain and later commands work; underlying InvalidData reader error remains an I/O failure"
   },
@@ -184,11 +185,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40781375893,
-    "latest_pr_head": "2936b844d894ea9deb3e40241c58ffe88a86af88",
+    "latest_pr_run": 40782495730,
+    "latest_pr_head": "202db1111919e8ad705ffd1227df504e373270fc",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Latest observed run 244 on head 2936b84 failed before job creation; combined status empty. Native Windows test suites and MSVC Clippy remain unverified until a runner starts."
+    "details": "Run 248 on source head 202db11 failed before jobs were created; combined statuses empty. Native MSVC tests and Clippy remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
