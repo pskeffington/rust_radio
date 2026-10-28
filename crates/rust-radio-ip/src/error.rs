@@ -23,14 +23,16 @@ impl TransportError {
 
     pub(crate) fn http_status(status: reqwest::StatusCode) -> Self {
         let message = format!("Radio server responded HTTP {status}");
-        if status.is_server_error()
-            || matches!(
-                status,
-                reqwest::StatusCode::REQUEST_TIMEOUT
-                    | reqwest::StatusCode::TOO_EARLY
-                    | reqwest::StatusCode::TOO_MANY_REQUESTS
-            )
-        {
+        if matches!(
+            status,
+            reqwest::StatusCode::REQUEST_TIMEOUT
+                | reqwest::StatusCode::TOO_EARLY
+                | reqwest::StatusCode::TOO_MANY_REQUESTS
+                | reqwest::StatusCode::INTERNAL_SERVER_ERROR
+                | reqwest::StatusCode::BAD_GATEWAY
+                | reqwest::StatusCode::SERVICE_UNAVAILABLE
+                | reqwest::StatusCode::GATEWAY_TIMEOUT
+        ) {
             Self::Network(message)
         } else {
             Self::Permanent(message)
@@ -77,7 +79,9 @@ mod tests {
             ));
             assert_eq!(decide(error.class(), 3, false), RecoveryAction::Fail);
         }
-        for status in [400, 401, 403, 404, 410, 451] {
+        for status in [
+            400, 401, 403, 404, 410, 451, 501, 505, 506, 507, 508, 510, 511,
+        ] {
             let error = TransportError::http_status(reqwest::StatusCode::from_u16(status).unwrap());
             assert_eq!(error.class(), FailureClass::Permanent);
             assert_eq!(decide(error.class(), 0, false), RecoveryAction::Fail);
