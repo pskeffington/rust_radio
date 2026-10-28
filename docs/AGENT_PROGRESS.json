@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:40:50Z",
+  "updated_at_utc": "2026-10-28T23:41:19Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "878c4ac1ca6b7cf8fdf37f56e743dc7a4fee76ac; typed non-public DNS resolver rejection now maps to permanent transport failure; ordinary resolver errors remain transient.",
@@ -232,11 +232,11 @@
     "last_repeated_at_utc": "2026-10-28T23:40:50Z"
   },
   "ci": {
-    "latest_pr_run": 40788520012,
-    "latest_pr_head": "261a8e03f0a46364a134803c91322683f99c352b",
-    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_run": null,
+    "latest_pr_head": "3926f844343e13d343bcae3e2c17ee66a716c803",
+    "latest_pr_conclusion": "no_run_observed",
     "latest_pr_jobs": 0,
-    "details": "PR Actions run 278 (40788520012) for checkpoint 261a8e0 failed before job creation (startup_failure); combined statuses are empty. PR #5 remains open and mergeable. Native Windows MSVC execution remains unverified."
+    "details": "PR #5 is open and mergeable at checkpoint 3926f84. No PR-triggered run or combined status was observed for this head at 2026-10-28 23:41 UTC. Native Windows MSVC CI remains unverified; prior Actions startup failures are documented above."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -248,6 +248,6 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Continue source-aware playback recovery/cancellation work; separately complete physical Bluetooth/USB output, Raspberry Pi and receiver acceptance, publisher rights review, and native Windows MSVC CI.",
-  "current_pr_state": "PR #5 open and mergeable at checkpoint head 261a8e0; Actions run 278 failed before job creation (startup_failure), with no combined statuses.",
+  "current_pr_state": "PR #5 open and mergeable at checkpoint head 3926f84; no workflow run or combined status observed at 2026-10-28 23:41 UTC.",
   "live_catalog_revalidation": "2026-10-28T23:40:40Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no retries or failures; point-in-time codec evidence only."
 }

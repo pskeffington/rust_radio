@@ -18,8 +18,10 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Fresh bounded `validate-all --json` at 2026-10-28 23:40:40 UTC decoded 25/25
   feeds in 25 attempts with no retries/failures. Point-in-time codec evidence
   only; no audio output opened.
-- Implementation commit `878c4ac` is validated. Physical output/Pi/receiver,
-  publisher rights, and native Windows MSVC acceptance remain open.
+- Implementation commit `878c4ac` and checkpoint `3926f84` are pushed to open,
+  mergeable PR #5. No workflow run or combined status was observed for this
+  head at 23:41 UTC; physical output/Pi/receiver, publisher rights, and native
+  Windows MSVC acceptance remain open.
 - Next: continue tested playback lifecycle or transport recovery improvements;
   pursue actual device-loss acceptance when target hardware is available.
 
