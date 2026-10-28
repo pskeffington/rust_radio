@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:49:00Z",
+  "updated_at_utc": "2026-10-28T20:49:49Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "d7ee9ac",
@@ -103,9 +103,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40765170553,
-    "previous_head_run": 40765092086,
-    "conclusion": "PR head eec03033011b08004a509775fd769776c13421be had empty combined status; Actions run 40765170553 ended startup_failure with zero jobs. Remote CI remains unverified."
+    "latest_observed_head_run": 40766701430,
+    "previous_head_run": 40765170553,
+    "conclusion": "PR head 28cf32081fb4acc38a45b24a9a926a308ce3f156 has empty combined status. Actions run 40766701430 ended startup_failure with zero jobs; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",

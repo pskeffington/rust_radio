@@ -974,6 +974,7 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   names-only and compact category fit 25/25; all variants fit at 340 px. The
   compact variant preserves genre cues and saves 32 px; this is layout-fit
   evidence, not listener preference.
-- PR #3 remains open and mergeable. Run `40765170553` failed at startup with
-  zero jobs; no combined status or code-level CI result is available. Physical
-  audio, receiver and Pi runtime acceptance remains open.
+- PR #3 remains open and mergeable. Run `40766701430` for head `28cf320` failed
+  at startup with zero jobs; combined status is empty and no code-level CI
+  result is available. Physical audio, receiver and Pi runtime acceptance
+  remains open.
