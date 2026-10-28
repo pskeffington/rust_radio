@@ -1117,3 +1117,17 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - No audio, receiver, or Pi hardware was exercised. Next: validate the workflow
   configuration, run the full local gates on the final source, then continue
   physical acceptance and publisher-rights review when available.
+
+## Scheduled catalog report summary (2026-10-28)
+
+- The scheduled six-hour catalog job now adds an operator-visible Actions
+  summary beside the retained JSON artifact: total decoded, outcome counts and
+  per-station ID/status/stage/attempts/recovery. It intentionally omits stream
+  endpoints and server-provided error text.
+- Added label sanitization and tests for credential/error omission, Markdown
+  injection, status counts and malformed reports. All three Python tests,
+  workflow YAML parsing, Rust format check, progress JSON parse and `git diff
+  --check` passed.
+- No playback code changed in this increment; all six workspace gates passed
+  immediately before it. Remote workflow execution remains unavailable for
+  the current PR head, and no hardware acceptance is inferred.

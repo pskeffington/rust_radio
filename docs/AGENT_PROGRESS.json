@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:19:40Z",
+  "updated_at_utc": "2026-10-28T21:22:46Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -50,7 +50,8 @@
     "Closed the private-LAN redirect/playlist SSRF expansion: only same-origin HTTP at the explicitly selected private IPv4 address and port is allowed; all DNS lookups use public-only filtering.",
     "Reviewed WBUR as an NPR-affiliated catalog candidate: official pages document a live site/app stream but no stable direct endpoint, and say content is copyrighted with rare licensing approvals. No feed added without endpoint and written product-use permission.",
     "Extended catalog mirror regression to enforce six-hour freshness, decoded-audio validation, initial unverified state, publisher-directed endpoints, and redistribution-not-authorized policy.",
-    "Aligned scheduled catalog validation with its six-hour freshness TTL; the bounded live sweep decoded all 25 stations and the GUI label A/B/C regression passed."
+    "Aligned scheduled catalog validation with its six-hour freshness TTL; the bounded live sweep decoded all 25 stations and the GUI label A/B/C regression passed.",
+    "Added a credential-safe per-station GitHub Actions summary for scheduled catalog validation, with sanitized Markdown labels and synthetic regression tests."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -103,7 +104,8 @@
     "npr_member_station_candidate": "WBUR official Ways to Listen and content licensing pages reviewed 2026-10-28; official live player/app access is documented but no stable direct endpoint or product-use permission was found; candidate excluded pending rights",
     "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
     "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata",
-    "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI"
+    "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
+    "catalog_validation_summary": "passed 3 Python tests for decoded/unavailable/unverified statuses, endpoint/error omission, Markdown label sanitization and malformed report rejection; workflow YAML parsed and now runs these tests before the live sweep"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",

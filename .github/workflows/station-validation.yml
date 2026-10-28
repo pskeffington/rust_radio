@@ -9,11 +9,16 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Test credential-safe report formatter
+        run: python3 scripts/test_summarize_station_validation.py
       - name: Install Linux native audio headers
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
       - name: Run bounded silent catalog sweep
         run: cargo run --locked -p rust-radio-cli -- validate-all --json > station-validation.json
+      - name: Summarize station health without exposing endpoints
+        if: always() && hashFiles('station-validation.json') != ''
+        run: python3 scripts/summarize_station_validation.py station-validation.json >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve the point-in-time report
         if: always() && hashFiles('station-validation.json') != ''
         uses: actions/upload-artifact@v4
