@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T19:35:56Z",
+  "updated_at_utc": "2026-10-28T19:37:07Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "ca4cf00",
@@ -43,7 +43,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "ca4cf00; bounded native output callback-stall watchdog with deterministic failure/cancellation regressions",
     "latest_full_gate_run": "all six required gates passed on implementation commit ca4cf00; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "PR code head ca4cf00 had empty combined status and no workflow run visible at query time; previous head 2868270 run 40755284580 failed at startup with zero jobs",
+    "latest_code_head_ci": "PR code head ca4cf00 had empty combined status and no run visible at query time; docs head f273a7d run 40755786423 failed at startup with zero jobs",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head ca4cf00; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "category+name 24/25 vs names-only 25/25 at 295px; both 25/25 at 340px; 1776px text-width savings; fit metric only",
@@ -58,8 +58,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40755284580,
-    "conclusion": "previous PR head 2868270 had empty combined status; Actions run 40755284580 failed at startup and created zero jobs; current code head ca4cf00 has empty status and no workflow run visible"
+    "latest_observed_head_run": 40755786423,
+    "conclusion": "docs head f273a7d had empty combined status; Actions run 40755786423 failed at startup and created zero jobs; code head ca4cf00 passed local gates, with no separate remote check visible"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
