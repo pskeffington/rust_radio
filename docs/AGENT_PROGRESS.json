@@ -1,10 +1,14 @@
 {
-  "updated_at_utc": "2026-10-28T23:36:27Z",
+  "updated_at_utc": "2026-10-28T23:40:50Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "d019cbe400ba808ba7f972e70d783024d3ced737; custom stream validation now normalizes terminal DNS dots before blocking SomaFM root/subdomains.",
+  "implementation_commit": "878c4ac1ca6b7cf8fdf37f56e743dc7a4fee76ac; typed non-public DNS resolver rejection now maps to permanent transport failure; ordinary resolver errors remain transient.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Preserved the SafeResolver non-public-address marker through reqwest so unsafe DNS answers are terminal instead of consuming bounded retries; ordinary resolver timeouts remain transient.",
+    "Focused reqwest resolver-classification test and all six local gates passed.",
+    "Repeated A/B/C at 295px: full category 24/25, names-only/compact 25/25; all variants 25/25 at 340px; compact saves 192px and full category overflows wcrb. Fit only.",
+    "Fresh bounded validate-all at 2026-10-28T23:40:40Z decoded 25/25 feeds in 25 attempts without retries; point-in-time codec evidence only.",
     "Blocked terminal-dot SomaFM root and subdomain variants in direct custom URLs; focused hostname-policy regression passed.",
     "All six workspace gates passed after the URL policy fix. Fresh bounded validate-all at 2026-10-28T23:34:35Z decoded 25/25 feeds in 25 attempts, no retries/failures; codec evidence only.",
     "Repeated GUI label A/B/C at 295px: A 24/25, B/C 25/25; at 340px all 25/25; compact C saves 192px and A overflows wcrb. Layout fit only.",
@@ -210,7 +214,10 @@
     "output_start_cancellation": "passed tests proving a pre-canceled startup skips resource factory and clears stale progress; cancellation during resource startup drops the acquired resource and clears the callback progress Arc.",
     "host_policy_regression": "passed: rejects https://somafm.com./, uppercase absolute root form, and dotted subdomain; ordinary lookalike domain remains allowed",
     "six_required_gates": "passed on implementation commit d019cbe: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked",
-    "manual_hardware_test": "not run; one native audio output test remains ignored and no physical output/receiver was used"
+    "manual_hardware_test": "not run; one native audio output test remains ignored and no physical output/receiver was used",
+    "dns_policy_classification": "passed reqwest-backed resolver fixtures: non-public-address marker maps to permanent TransportError; ordinary DNS timeout remains Network/transient",
+    "six_required_gates_latest": "passed on implementation commit 878c4ac: fmt, default tests, strict default Clippy, all-feature tests, strict all-feature Clippy, all-feature check",
+    "manual_hardware_test_latest": "not run; native audio hardware test remains ignored"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -222,7 +229,7 @@
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data",
-    "last_repeated_at_utc": "2026-10-28T23:34:35Z"
+    "last_repeated_at_utc": "2026-10-28T23:40:50Z"
   },
   "ci": {
     "latest_pr_run": 40788520012,
@@ -240,7 +247,7 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue playback lifecycle/recovery reliability work; separately complete physical Bluetooth/USB output, Raspberry Pi and receiver acceptance, publisher distribution-rights review, and native Windows MSVC CI.",
+  "next_priority": "Continue source-aware playback recovery/cancellation work; separately complete physical Bluetooth/USB output, Raspberry Pi and receiver acceptance, publisher rights review, and native Windows MSVC CI.",
   "current_pr_state": "PR #5 open and mergeable at checkpoint head 261a8e0; Actions run 278 failed before job creation (startup_failure), with no combined statuses.",
-  "live_catalog_revalidation": "2026-10-28T23:34:35Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no retries or failures; point-in-time codec evidence only."
+  "live_catalog_revalidation": "2026-10-28T23:40:40Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no retries or failures; point-in-time codec evidence only."
 }

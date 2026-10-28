@@ -3,6 +3,26 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Permanent classification for blocked DNS resolutions (2026-10-28 23:40 UTC)
+
+- `SafeResolver` now emits a typed marker when a host resolves to a non-public
+  address. The reqwest error chain preserves that marker, so transport returns
+  a permanent endpoint-policy failure instead of spending network retries.
+  Ordinary DNS timeouts remain transient and retain bounded recovery.
+- Added a reqwest-backed fixture test proving both classifications. The focused
+  regression and all six required gates passed: format, default/all-feature
+  workspace tests, strict Clippy in both configurations and all-feature check.
+- Repeated GUI station-label A/B/C: at 295 px A full category 24/25, B names-only
+  25/25, C compact category 25/25; at 340 px all fit. C saves 192 px and A
+  overflows `wcrb`. This is layout fit evidence, not preference data.
+- Fresh bounded `validate-all --json` at 2026-10-28 23:40:40 UTC decoded 25/25
+  feeds in 25 attempts with no retries/failures. Point-in-time codec evidence
+  only; no audio output opened.
+- Implementation commit `878c4ac` is validated. Physical output/Pi/receiver,
+  publisher rights, and native Windows MSVC acceptance remain open.
+- Next: continue tested playback lifecycle or transport recovery improvements;
+  pursue actual device-loss acceptance when target hardware is available.
+
 ## Publisher-domain trailing-dot guard (2026-10-28 23:34 UTC)
 
 - Direct URL validation previously blocked `somafm.com` and its subdomains but
