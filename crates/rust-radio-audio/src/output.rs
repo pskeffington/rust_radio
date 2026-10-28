@@ -411,6 +411,52 @@ mod output_identity_tests {
         check_format!(f64);
     }
 
+    fn assert_live_volume_changes<T>()
+    where
+        T: SizedSample + FromSample<f32>,
+        f32: FromSample<T>,
+    {
+        let ring = HeapRb::<f32>::new(3);
+        let (mut producer, mut consumer) = ring.split();
+        for sample in [0.8f32, -0.8, 0.4] {
+            producer.try_push(sample).unwrap();
+        }
+        let volume = AtomicU8::new(100);
+        let played = AtomicU64::new(0);
+
+        for (volume_percent, expected) in [(100, 0.8f32), (50, -0.4), (0, 0.0)] {
+            volume.store(volume_percent, Ordering::Relaxed);
+            let mut output = [T::from_sample(0.0)];
+            render_samples(&mut output, &mut consumer, &volume, &played);
+            let actual = f32::from_sample(output[0]);
+            assert!(
+                (actual - expected).abs() <= 0.02,
+                "live volume conversion error: {actual} vs {expected} at {volume_percent}%"
+            );
+        }
+        assert_eq!(played.load(Ordering::Relaxed), 3);
+    }
+
+    #[test]
+    fn callback_applies_volume_changes_between_buffers_for_every_format() {
+        macro_rules! check_format {
+            ($sample_type:ty) => {
+                assert_live_volume_changes::<$sample_type>();
+            };
+        }
+        check_format!(i8);
+        check_format!(i16);
+        check_format!(cpal::I24);
+        check_format!(i32);
+        check_format!(i64);
+        check_format!(u8);
+        check_format!(u16);
+        check_format!(u32);
+        check_format!(u64);
+        check_format!(f32);
+        check_format!(f64);
+    }
+
     #[test]
     fn callback_applies_gain_and_silences_underrun_without_counting_silence() {
         let ring = HeapRb::<f32>::new(4);
