@@ -852,3 +852,24 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   `fe8ae3c` also has an Actions run (`40763293734`) that failed at startup with
   zero jobs; its combined status has no checks. Remote CI remains unverified.
   Physical nRSP reconnect and output-device recovery acceptance remain open.
+
+## nRSP WebSocket upgrade deadline and catalog recheck (2026-10-28)
+
+- Added a loopback case where a peer accepts TCP but leaves the HTTP WebSocket
+  upgrade unanswered. `Client::connect_until` returns `Timeout` at its 50 ms
+  deadline and within a 500 ms test bound, covering the earlier handshake
+  stage before the initial-Hello wait.
+- The focused timeout test passed. All six local gates passed on implementation
+  source `882e9c0`: formatting, default/all-features workspace tests, strict
+  Clippy in both configurations and all-features check. The station-label A/B
+  regression passed again: at 295 px the full-category variant fits 24/25,
+  names-only and compact category fit 25/25; all fit at 340 px. This measures
+  layout fit, not listener preference. Loopback fixtures used local socket
+  permission.
+- Fresh bounded silent catalog validation at 2026-10-28 20:28:20 UTC decoded
+  all 25 stations in 25 attempts. This is point-in-time codec evidence only;
+  it does not establish audible output or redistribution permission.
+- No hardware was exercised. The pushed code head has no workflow run visible;
+  the preceding documentation head's Actions run `40763293734` failed before
+  creating jobs. Remote CI remains unverified. Physical nRSP reconnect and
+  output-device recovery acceptance remain open.
