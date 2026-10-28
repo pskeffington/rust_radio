@@ -5,20 +5,19 @@ Updated 2026-10-28. Active priorities and ownership are in the
 
 ## Current module pass: station-list label A/B
 
-- Compared catalog rows that show `station · category` (A) with station-name-only
-  rows (B), using egui's proportional 14-point font and the popup's 274-pixel
-  text budget. Both variants fit all 25 curated stations without truncation;
-  B saves about 1,496 pixels across all labels but does not fit any additional
-  station names. Kept A because its category cue aids scanning without clipping.
-- Added a font-metric regression test to keep the current catalog labels within
-  the compact popup row width. This is an offline layout A/B, not a listener
-  cohort study; no audience preference was measured.
-- Pushed commit `af06e14` on `codex/station-label-layout-ab` and opened PR #3.
-  The local formatting, default/all-feature test, strict Clippy and all-feature
-  check gates passed. GitHub Actions run `40738637556` ended as
-  `startup_failure` before creating any jobs; the connector returned no job logs
-  or step diagnostics. Remote CI remains unverified, and no workflow change is
-  justified by the available evidence.
+- Re-ran the label comparison with the actual 14-point monospace button font.
+  At the existing 295-pixel row width (275 pixels after button padding),
+  `station · category` labels fit 24/25 stations and names alone fit 25/25;
+  names alone save 1,776 aggregate text pixels. Widening rows to 340 pixels
+  (320 pixels for text) lets all 25 category labels fit. Kept the category cue
+  and widened the popup rather than dropping useful scan context.
+- Added a font-metric regression test for both label variants and both widths.
+  This is an offline layout A/B, not a listener cohort study; no audience
+  preference was measured.
+- PR #3, `Polish compact radio UI and test station labels`, remains open on
+  `codex/station-label-layout-ab`. The latest observed Actions run
+  `40739532314` ended as `startup_failure` before creating any jobs; remote CI
+  remains unverified, and no workflow change is justified by that result.
 - Additional locked target checks passed for the headless module on
   `aarch64-unknown-linux-gnu` with both `nrsp-native` and `sdrconnect`, and the
   default IP module on `aarch64-apple-darwin`. These are compile checks, not Pi
@@ -28,6 +27,16 @@ Updated 2026-10-28. Active priorities and ownership are in the
   endpoint. This environment did not reach the stream; the result is not
   evidence that Skylab is unavailable or healthy, so a full live sweep remains
   pending working outbound stream access.
+
+- Follow-up UI polish: widened the station popup row cap to 340 pixels and
+  corrected the A/B test to measure egui's monospace font. The focused regression
+  passes with the expected 24/25, 25/25, and 25/25 fit counts. Formatting,
+  default workspace tests (147 passed, one ignored), all-feature tests (196
+  passed, two ignored), both strict Clippy configurations, and the all-feature
+  check passed. The default, `nrsp-native` and `sdrconnect` Apple Silicon GUI
+  cross-checks passed. Initial loopback fixture runs were denied by the sandbox;
+  both suites passed when rerun with local-network permission. No physical
+  hardware acceptance was performed.
 
 ## Current module pass: listener-focused interface
 

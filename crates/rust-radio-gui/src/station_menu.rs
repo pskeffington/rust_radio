@@ -171,7 +171,8 @@ impl RadioPanel {
             )
             .show_ui(ui, |ui| {
                 theme::apply(ui);
-                ui.set_width(295.0);
+                let row_width = ui.available_width().min(340.0);
+                ui.set_width(row_width);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                 for (index, name) in names.iter().enumerate() {
                     let health = if index == selected
@@ -191,7 +192,7 @@ impl RadioPanel {
                     let label = format!("{} {}", if index == selected { ">" } else { " " }, name);
                     let row = ui
                         .add_sized(
-                            [295.0, 28.0],
+                            [row_width, 28.0],
                             egui::Button::new(label)
                                 .selected(index == cursor)
                                 .truncate(),
@@ -265,10 +266,12 @@ mod label_ab_test {
         let mut results = None;
         let _ = context.run(Default::default(), |ctx| {
             results = Some(ctx.fonts(|fonts| {
-                let font = egui::FontId::proportional(14.0);
-                let row_text_width = 274.0;
-                let mut category_fit = 0;
-                let mut name_fit = 0;
+                let font = egui::FontId::monospace(14.0);
+                let current_row_text_width = 275.0;
+                let widened_row_text_width = 320.0;
+                let mut category_current_fit = 0;
+                let mut category_widened_fit = 0;
+                let mut name_current_fit = 0;
                 let mut saved_width = 0.0;
                 for station in curated_stations() {
                     let category = format!("> {}", station_menu_label(station, true));
@@ -281,20 +284,28 @@ mod label_ab_test {
                         .layout_no_wrap(name, font.clone(), egui::Color32::WHITE)
                         .size()
                         .x;
-                    category_fit += usize::from(category_width <= row_text_width);
-                    name_fit += usize::from(name_width <= row_text_width);
+                    category_current_fit += usize::from(category_width <= current_row_text_width);
+                    category_widened_fit += usize::from(category_width <= widened_row_text_width);
+                    name_current_fit += usize::from(name_width <= current_row_text_width);
                     saved_width += category_width - name_width;
                 }
-                (category_fit, name_fit, saved_width)
+                (
+                    category_current_fit,
+                    category_widened_fit,
+                    name_current_fit,
+                    saved_width,
+                )
             }));
         });
-        let (category_fit, name_fit, saved_width) = results.unwrap();
+        let (category_current_fit, category_widened_fit, name_current_fit, saved_width) =
+            results.unwrap();
         let station_count = curated_stations().len();
         eprintln!(
-            "Station label A/B: A {category_fit}/{station_count} rows fit; B {name_fit}/{station_count} fit; B saves {saved_width:.0}px total text width"
+            "Station label A/B (monospace 14): A at 295px {category_current_fit}/{station_count}, B at 295px {name_current_fit}/{station_count}, A at 340px {category_widened_fit}/{station_count}; B saves {saved_width:.0}px total text width"
         );
-        assert_eq!(category_fit, station_count);
-        assert_eq!(name_fit, station_count);
+        assert!(category_current_fit < name_current_fit);
+        assert_eq!(name_current_fit, station_count);
+        assert_eq!(category_widened_fit, station_count);
         assert!(saved_width > 0.0);
     }
 }
