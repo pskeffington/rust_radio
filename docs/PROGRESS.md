@@ -20,13 +20,12 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Repeated the compact station-row A/B: category+name 24/25 vs name-only 25/25
   at 295 px; both 25/25 at 340 px; name-only saves 1,776 text pixels. This is a
   fit metric, not a user preference measurement.
-- PR #3 is open and reports mergeable. GitHub returns no combined status for
-  head `9e6faa5`; latest Actions run `40749691975` failed during startup before
-  jobs were created. `git fetch` could not resolve `github.com`, but the local
-  remote-tracking ref already contained `e0f96f5` and `9e6faa5`, so the branch
-  was fast-forwarded to the validated checkpoint. Physical output recovery,
-  Pi runtime, USB SDR acceptance, publisher rights and Rust-Boy host exercise
-  remain open.
+- PR #3 is open and reports mergeable. GitHub reports no combined status for
+  remote head `626b446`; Actions run `40749877598` failed during startup before
+  jobs were created. `git fetch` could not resolve `github.com`, and a push of
+  local checkpoint `3647e42` was rejected because the branch advanced remotely.
+  Physical output recovery, Pi runtime, USB SDR acceptance, publisher rights and
+  Rust-Boy host exercise remain open.
 
 ## Current module pass: scheduled feed sweep and endpoint recovery
 
