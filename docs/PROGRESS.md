@@ -19,9 +19,11 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Repeated station-label A/B/C: at 295 px, A full category 24/25, B names-only
   25/25, C compact category 25/25; at 340 px all variants fit. C saves 192 px;
   A overflows `wcrb`. Layout fit only, not listener preference.
-- Implementation commit `d019cbe` is validated; PR and CI state will be recorded
-  with the evidence checkpoint. Physical output/Pi/receiver, rights and native
-  Windows MSVC acceptance remain open.
+- Implementation commit `d019cbe` and checkpoint `07ac138` are pushed to open,
+  mergeable PR #5. No workflow run or combined status was observed for the
+  latest head; Actions run 274 for the earlier `c3f2798` checkpoint failed
+  before jobs (`startup_failure`). Physical output/Pi/receiver, rights and
+  native Windows MSVC acceptance remain open.
 - Next: continue source-aware recovery or cancellation work; pursue target-device
   output recovery when hardware is available.
 
