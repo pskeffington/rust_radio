@@ -1173,3 +1173,15 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The live-sweep JSON path is unchanged; all 25 stations decoded in the latest
   real sweep, and the summary was verified against that CLI output before this
   contract tightening. No Rust source changed.
+
+## Strict summary integration and A/B recheck (2026-10-28)
+
+- Re-ran the strict schema-aware summary formatter against a fresh live CLI
+  report at 2026-10-28 21:28 UTC. All 25/25 stations decoded at
+  `decoded_audio`; the formatter emitted the real report's schema, count and
+  outcome summary successfully.
+- Repeated the label A/B/C test: at 295 px, A full category fit 24/25 and B
+  names-only/C compact category fit 25/25; at 340 px all variants fit 25/25.
+  Compact `CLASS` saves 32 px; layout-fit evidence only.
+- PR #3 was open and mergeable at `96e07cc`; no Actions run or status was
+  visible for that head. The automation memory records the exact current head.
