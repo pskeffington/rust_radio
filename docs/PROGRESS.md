@@ -848,6 +848,7 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   variants fit at 340 px. These are layout-fit measurements, not listener
   preference evidence. Loopback fixtures required local socket permission.
 - No receiver hardware was exercised. The preceding PR head's Actions run
-  `40762846108` failed at startup before creating jobs; no workflow run is
-  visible for `4b872d1` yet, so remote CI remains unverified. Physical nRSP
-  reconnect and output-device recovery acceptance remain open.
+  `40762846108` failed at startup before creating jobs. Documentation head
+  `fe8ae3c` also has an Actions run (`40763293734`) that failed at startup with
+  zero jobs; its combined status has no checks. Remote CI remains unverified.
+  Physical nRSP reconnect and output-device recovery acceptance remain open.

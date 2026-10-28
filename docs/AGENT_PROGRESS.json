@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:26:05Z",
+  "updated_at_utc": "2026-10-28T20:26:40Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "4b872d1",
@@ -57,7 +57,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on source 4b872d1: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
-    "latest_code_head_ci": "PR head 4b872d1: combined status empty; associated Actions run 40762846108 failed at startup before jobs were created; remote CI remains unverified",
+    "latest_code_head_ci": "Implementation source 4b872d1 passed local gates. Documentation head fe8ae3c has empty combined status; Actions run 40763293734 failed at startup with zero jobs.",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T20:16:30Z decoded 25/25 at decoded_audio in 25 total attempts; point-in-time evidence only; sandboxed attempt was not_checked and is not station-health evidence",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "passed on source 4b872d1: at 295px full category 24/25, names-only 25/25, compact category 25/25; all variants 25/25 at 340px; compact CLASS saves 32px; layout fit only",
@@ -90,9 +90,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": null,
+    "latest_observed_head_run": 40763293734,
     "previous_head_run": 40762846108,
-    "conclusion": "PR head 4b872d1 has an empty combined status and no associated PR workflow run visible at query time. Previous head 98e05f8 Actions run 40762846108 failed at startup before jobs were created; remote CI remains unverified."
+    "conclusion": "Documentation head fe8ae3c Actions run 40763293734 failed at startup with zero jobs; combined status contains no checks. The prior run 40762846108 also failed before jobs were created. Remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -100,5 +100,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Wait for remote CI on 4b872d1; continue physical nRSP interruption/reconnect and Bluetooth/USB output recovery acceptance."
+  "next_priority": "Investigate why GitHub Actions exits before job creation if accessible; continue physical nRSP interruption/reconnect and Bluetooth/USB output recovery acceptance."
 }
