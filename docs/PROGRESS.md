@@ -30,6 +30,10 @@ Updated 2026-10-28. Active priorities and ownership are in the
   Windows GNU test-binary cross-compiles and station-label A/B/C. PR #5 remains
   open and mergeable at `26e2066`; Actions run 253 also failed at startup with
   no combined statuses.
+- A fresh bounded `validate-all --json` sweep at 2026-10-28 22:58:15 UTC
+  decoded all 25 stations in 25 attempts, with no retries or failures. This is
+  point-in-time codec evidence only. PR #5 remains open and mergeable at
+  `a5df6ff`; Actions run 254 failed before jobs started, with no statuses.
 - Next: continue physical output-loss recovery and Pi/receiver acceptance,
   publisher-rights review and remote Windows MSVC CI when Actions starts jobs.
 

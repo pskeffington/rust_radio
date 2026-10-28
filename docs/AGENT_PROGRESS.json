@@ -1,10 +1,11 @@
 {
-  "updated_at_utc": "2026-10-28T22:55:53Z",
+  "updated_at_utc": "2026-10-28T22:58:26Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "Native CPAL output now supports all eleven CPAL 0.16 sample formats; conversion regression and workspace gates passed, with platform/hardware acceptance still open.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Fresh bounded validate-all sweep at 2026-10-28T22:58:15Z decoded 25/25 curated stations in 25 total attempts, no retries or failures; evidence is point-in-time codec validation only.",
     "Expanded the native callback conversion regression to cover full-scale negative/positive samples, zero and intermediate levels for every active CPAL 0.16 PCM format; confirmed CPAL excludes U24 from SampleFormat.",
     "Extended native CPAL output dispatch to all eleven CPAL 0.16 integer and floating sample formats and added callback conversion coverage for every format.",
     "Repeated station-label A/B/C fit measurement on all 25 entries: 24/25 full category and 25/25 names-only/compact at 295px; all fit at 340px; layout evidence only.",
@@ -132,8 +133,8 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "passed after full-scale conversion fixture change: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked; git diff --check. Loopback fixtures required local socket permission; one manual native audio test remains ignored.",
-    "latest_code_head_ci": "PR #5 source head 26e206697b002b1301c8edc648f2bace990be158 Actions run 40783655402 (run 253) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified.",
-    "live_catalog_revalidation": "2026-10-28T22:43Z: bounded validate-all decoded 25/25 stations in 25 total attempts; point-in-time codec evidence only",
+    "latest_code_head_ci": "PR #5 head a5df6ffb40006f7bebc55278aba507122f1ce36c Actions run 40783768203 (run 254) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified.",
+    "live_catalog_revalidation": "2026-10-28T22:58:15Z: bounded validate-all decoded 25/25 stations in 25 attempts; no retry/recovery or failure; point-in-time codec evidence only.",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
     "layout_ab_recheck": "repeated 2026-10-28 22:55 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; fit only, not preference.",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
@@ -192,11 +193,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40783655402,
-    "latest_pr_head": "26e206697b002b1301c8edc648f2bace990be158",
+    "latest_pr_run": 40783768203,
+    "latest_pr_head": "a5df6ffb40006f7bebc55278aba507122f1ce36c",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Run 253 for 26e2066 failed before jobs were created; combined statuses empty. Native MSVC checks remain unverified."
+    "details": "Run 254 for a5df6ff failed before jobs were created; combined statuses empty. Native MSVC checks remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -207,5 +208,5 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Investigate or retry remote CI after Actions runner startup recovers; continue physical output-loss, Pi/receiver acceptance and publisher-rights review."
+  "next_priority": "Continue synthetic output-loss/recovery reliability work; pursue physical output/Pi/receiver acceptance and publisher-rights review; retry remote CI when GitHub Actions runner startup recovers."
 }
