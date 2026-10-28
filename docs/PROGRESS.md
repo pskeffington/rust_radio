@@ -889,3 +889,20 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   for the current PR head; remote CI remains unverified after repeated startup
   failures with no jobs. Next: resolve the first-party station rights gate or
   perform receiver/output/Pi acceptance when the relevant hardware is available.
+## NPR stream identity and permission gate (2026-10-28)
+
+- Reviewed NPR's official SmartAudio guide: “play NPR” streams the listener's
+  local member station live, while “play the news from NPR” is a personalized
+  national/local mix powered by NPR One. This source does not identify a single
+  continuous national NPR News stream or grant embedding/redistribution rights.
+- Updated the literature matrix to require a named member station, its own
+  first-party direct endpoint and applicable reuse terms before catalog entry.
+  NPR CDS marks live broadcast audio with `isStreamable`; premium enclosures
+  require filtering unless express permission applies. This does not itself
+  establish permission for this product.
+- The NPR News entry remains out of the curated catalog pending endpoint and
+  rights review. Next: identify a member station with an official direct stream
+  and terms that permit the intended integration, or keep this gate open.
+- Re-ran the label A/B regression: at 295 px full category fits 24/25, while
+  names-only and compact category fit 25/25; all variants fit 25/25 at 340 px.
+  These results measure layout fit, not listener preference.

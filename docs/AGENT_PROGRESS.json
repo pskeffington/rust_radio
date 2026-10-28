@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:31:11Z",
+  "updated_at_utc": "2026-10-28T20:32:41Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "882e9c0",
@@ -38,7 +38,8 @@
     "Added a loopback nRSP connection regression for rejecting a non-Hello initial frame and enforcing the bounded initial-Hello timeout.",
     "Added a loopback nRSP WebSocket upgrade regression: an accepted TCP connection that never answers the HTTP upgrade returns Timeout at the configured connection deadline.",
     "Ran a fresh bounded silent catalog sweep on 2026-10-28T20:28:20Z; all 25 stations decoded in 25 attempts at decoded_audio.",
-    "Cross-compiled the headless direct nRSP Rust module for aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance."
+    "Cross-compiled the headless direct nRSP Rust module for aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance.",
+    "Reviewed NPR first-party SmartAudio and CDS documentation; clarified that NPR News is a personalized NPR One mix, while live streams are member-station-specific, and left catalog inclusion pending named broadcaster endpoint and rights review."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -81,7 +82,8 @@
     "gui_native_output_error_copy": "passed; unsupported native sample format, unsupported receiver output and CPAL stream configuration errors give output-selection guidance while setup retains exact error text",
     "nrsp_initial_hello_contract": "passed; a non-Hello first message returns Protocol(\"Expected initial Hello\"), while an open WebSocket that withholds Hello returns Timeout within the 50 ms fixture deadline and 500 ms test bound",
     "websocket_upgrade_deadline": "passed; loopback TCP peer accepts connection but never responds to WebSocket HTTP upgrade; connect_until returns Timeout at 50 ms deadline within a 500 ms bound",
-    "arm64_nrsp_native_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed on current implementation source; compile evidence only"
+    "arm64_nrsp_native_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed on current implementation source; compile evidence only",
+    "npr_stream_identity": "Official NPR SmartAudio guide distinguishes the NPR One personalized news mix from live local member-station streams; no single national NPR News continuous stream or product redistribution grant established"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -105,5 +107,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Resolve first-party station rights for an NPR News candidate without bundling unauthorized streams, or perform physical nRSP/output/Pi acceptance when the relevant hardware is available."
+  "next_priority": "Identify a named NPR member station with an official direct stream and applicable integration rights; otherwise preserve NPR News as an unresolved catalog gate."
 }
