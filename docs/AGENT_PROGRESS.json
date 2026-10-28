@@ -2,7 +2,7 @@
   "updated_at_utc": "2026-10-28T20:15:00Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "pending",
+  "implementation_commit": "bd48649",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -44,9 +44,9 @@
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
-    "implementation_commit": "pending; process-wide active playback lease and embedding contract update",
+    "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on implementation commit a417db6; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "pending push; previous Actions startup_failure had zero jobs",
+    "latest_code_head_ci": "bd48649 pushed and confirmed with git ls-remote; GitHub connector returned empty combined status and no PR-triggered Actions run at query time",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
@@ -66,8 +66,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40756513375,
-    "conclusion": "docs head d65eff5 had empty combined status; Actions run 40756513375 failed at startup and created zero jobs; code head 3b8cf74 passed local GUI tests and strict Clippy, with no separate remote check visible"
+    "latest_observed_head_run": null,
+    "conclusion": "bd48649 is present on the remote PR branch. The GitHub connector returned empty combined status and no associated PR-triggered workflow runs; its PR snapshot still showed the prior head, so remote CI remains pending/unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",

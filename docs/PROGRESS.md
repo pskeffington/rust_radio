@@ -639,3 +639,8 @@ tests cover rejection, normal release and panic release. The all-features test
 suite, strict Clippy and all-features check pass; local loopback permission is
 needed for the HTTP fixture suite. This does not validate physical device-loss
 recovery.
+
+The process-wide lease change is committed as `bd48649` and confirmed on the
+remote PR branch. At the post-push query, the GitHub connector returned no
+combined status or PR-triggered Actions run for this SHA; its PR snapshot still
+showed the prior head, so remote CI is pending/unverified.
