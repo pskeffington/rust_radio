@@ -1738,3 +1738,16 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 
 - Evidence checkpoint `37a7463` was pushed at 23:55 UTC. PR #5 remains open and
   mergeable; no run or combined status was visible for that head.
+
+
+## Latest catalog and CI recheck (2026-10-28 23:57 UTC)
+
+- Bounded live `validate-all --json` decoded 25/25 feeds in 25 attempts with no
+  retries or failures at 23:57:22 UTC. This is point-in-time codec evidence
+  only.
+- Repeated GUI A/B/C at 295 px: full category 24/25, names-only and compact
+  category 25/25; all variants fit at 340 px. Compact category saves 192 px and
+  full category overflows `wcrb`. Layout fit only.
+- PR #5 remains open and mergeable at `fdefa21`. Actions run 288
+  (`40790726207`) failed before job creation (`startup_failure`), with zero jobs
+  and no combined statuses. Remote CI remains unverified.

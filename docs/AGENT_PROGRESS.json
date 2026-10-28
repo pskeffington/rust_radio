@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:55:48Z",
+  "updated_at_utc": "2026-10-28T23:57:27Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
@@ -148,7 +148,10 @@
     "Ran ignored muted native GUI integration test on host CPAL with loopback fixture: callback reached Playing and rapid switching, redirect/playlist, stalled headers, invalid/unsupported streams, retry, refused endpoint, responsive rendering and Stop passed. No audible acceptance inferred.",
     "Windows GNU test binaries and strict Clippy passed for default, SDRconnect and direct nRSP-native/GUI features. Linux ARM64 check blocked because aarch64-linux-gnu-gcc is not installed; the failure is in ring build script tool discovery.",
     "Repeated station label A/B/C: 295px A 24/25, B/C 25/25; 340px all 25/25; compact saves 192px, A overflows wcrb; fit only.",
-    "Pushed acceptance evidence checkpoint 37a7463; PR #5 open and mergeable; no workflow run or combined status was visible for that head at 23:55:48 UTC."
+    "Pushed acceptance evidence checkpoint 37a7463; PR #5 open and mergeable; no workflow run or combined status was visible for that head at 23:55:48 UTC.",
+    "Fresh bounded live sweep at 2026-10-28T23:57:22Z decoded 25/25 curated feeds in 25 attempts without retries/failures; point-in-time codec evidence only.",
+    "Repeated GUI A/B/C: 295px full-category 24/25, names-only/compact 25/25; 340px all 25/25; compact saves 192px, A overflows wcrb; fit only.",
+    "Observed Actions run 288 (40790726207) for current head fdefa21: startup_failure before jobs; run jobs and combined statuses are empty."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -241,14 +244,14 @@
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data",
-    "last_repeated_at_utc": "2026-10-28T23:50:58Z"
+    "last_repeated_at_utc": "2026-10-28T23:57:21Z"
   },
   "ci": {
-    "latest_pr_run": 40790287485,
-    "latest_pr_head": "139c00cab1f7c0168d5c2b99344bdd358f14424b",
+    "latest_pr_run": 40790726207,
+    "latest_pr_head": "fdefa21dbc2b1dd712d1f0e4ce6d869752a30743",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Latest observed run 286 (40790287485) for 139c00c ended startup_failure before job creation; zero jobs and no combined statuses. Documentation head 37a7463 was then pushed and had no run/status visible at 23:55:48 UTC. PR #5 remains open and mergeable."
+    "details": "PR #5 open and mergeable at fdefa21. Actions run 288 (40790726207) failed before job creation with startup_failure; zero jobs and no combined statuses. Remote CI remains unverified; native Windows MSVC and physical hardware acceptance remain open."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -259,9 +262,9 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue source-aware playback recovery; pursue audible/device-loss, Pi and receiver acceptance on supported hardware. Supply the missing aarch64-linux-gnu-gcc to restore the AArch64 cross-check, and pursue native Windows MSVC CI.",
-  "current_pr_state": "PR #5 open and mergeable at 37a7463; no workflow run or combined status observed at 23:55:48 UTC. Latest observed prior run 286 for 139c00c failed before job creation.",
-  "live_catalog_revalidation": "2026-10-28T23:51:08Z: bounded validate-all decoded 25/25 stations in 25 attempts with no retries or failures; point-in-time codec evidence only.",
+  "next_priority": "Continue source-aware playback recovery and cancellation. Pursue audible/device-loss, Bluetooth/USB, Raspberry Pi and receiver acceptance; native Windows MSVC CI; publisher rights and national NPR source/rights; restore AArch64 cross-check with an available C toolchain.",
+  "current_pr_state": "PR #5 open and mergeable at fdefa21; run 288 failed before job creation with startup_failure, no jobs/statuses.",
+  "live_catalog_revalidation": "2026-10-28T23:57:22Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "passed on implementation commit f92f0fc: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
