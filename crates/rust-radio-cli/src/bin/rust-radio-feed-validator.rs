@@ -418,38 +418,101 @@ fn eligible_count(report: &Value, now: u64, strict: bool) -> usize {
         .unwrap_or(0)
 }
 
-/// Generic bounded sweep; injectable validator gives deterministic offline tests.
+/// The second decoder probe is only invoked after the first fails. This
+/// protects a working station against transient DNS, TLS, CDN and stream errors
+/// without multiplying requests to a healthy broadcaster.
+fn probe_with_retry(
+    station_id: &str,
+    retry_pause: Duration,
+    validate: &mut impl FnMut(&str) -> Result<StationValidation, String>,
+) -> (Value, usize) {
+    for attempt in 1..=REDUNDANT_PROBE_ATTEMPTS {
+        let report = validation_value(validate(station_id), SystemTime::now());
+        if decoded_at(&report).is_some() {
+            return (report, attempt);
+        }
+        if attempt == REDUNDANT_PROBE_ATTEMPTS {
+            return (report, attempt);
+        }
+        if !retry_pause.is_zero() {
+            thread::sleep(retry_pause);
+        }
+    }
+    unreachable!("at least one probe attempt is required")
+}
+
+/// Resumable bounded sweep. Failed attempts do not advance failure hysteresis
+/// until an entire sweep completes. A zero-success cross-publisher sweep is
+/// classified as a possible *host-wide* outage, not 25 broken stations.
 fn sweep_with(
     path: &Path,
     pause: Duration,
+    retry_pause: Duration,
     mut validate: impl FnMut(&str) -> Result<StationValidation, String>,
 ) -> io::Result<usize> {
+    let previous = read_with_redundancy(path).map_err(io::Error::other)?;
+    let old = previous
+        .as_ref()
+        .and_then(|report| report["stations"].as_array());
     let now = SystemTime::now();
     let started = unix_seconds(now).unwrap_or(0);
-    let mut stations: Vec<_> = curated_stations().iter().map(empty_station).collect();
+    let mut stations: Vec<_> = curated_stations()
+        .iter()
+        .enumerate()
+        .map(|(index, station)| restore_station(station, old.and_then(|entries| entries.get(index))))
+        .collect();
     let total = stations.len();
-    atomic_save(path, &snapshot(&stations, 0, false, started, started))?;
+    let mut successes = 0usize;
+    atomic_save(path, &snapshot(&stations, 0, false, started, started, false))?;
     for (index, station) in curated_stations().iter().enumerate() {
         eprintln!("[{}/{}] {} / {}", index + 1, total, station.id, station.genre);
-        let validation = validation_value(validate(station.id), SystemTime::now());
-        stations[index]["validation"] = validation;
+        let (report, attempts) = probe_with_retry(station.id, retry_pause, &mut validate);
+        let passed = decoded_at(&report).is_some();
+        stations[index]["validation"] = report.clone();
+        stations[index]["probe_attempts"] = json!(attempts);
+        if passed {
+            successes += 1;
+            stations[index]["last_good"] = report;
+            stations[index]["consecutive_failed_sweeps"] = json!(0);
+        }
         let at = unix_seconds(SystemTime::now()).unwrap_or(started);
-        let partial = snapshot(&stations, index + 1, index + 1 == total, started, at);
+        let partial = snapshot(&stations, index + 1, false, started, at, false);
         eprintln!(
-            "  {}: {}",
+            "  {}: {} ({} probe{})",
             station.id,
-            partial["stations"][index]["health"].as_str().unwrap_or("failed")
+            partial["stations"][index]["health"].as_str().unwrap_or("unverified"),
+            attempts,
+            if attempts == 1 { "" } else { "s" },
         );
         atomic_save(path, &partial)?;
         if index + 1 < total && !pause.is_zero() {
             thread::sleep(pause);
         }
     }
-    let now = unix_seconds(SystemTime::now()).unwrap_or(started);
-    Ok(fresh_count(
-        &snapshot(&stations, total, true, started, now),
-        now,
-    ))
+    let network_incident = successes == 0 && total > 1;
+    if !network_incident {
+        for station in &mut stations {
+            if decoded_at(&station["validation"]).is_none() {
+                let prior = station["consecutive_failed_sweeps"]
+                    .as_u64()
+                    .unwrap_or(0)
+                    .min(FAILURE_SWEEPS_TO_UNAVAILABLE);
+                station["consecutive_failed_sweeps"] =
+                    json!((prior + 1).min(FAILURE_SWEEPS_TO_UNAVAILABLE));
+            }
+        }
+    } else {
+        eprintln!(
+            "WARNING: every publisher probe failed; treating this as a possible network/host incident"
+        );
+    }
+    let at = unix_seconds(SystemTime::now()).unwrap_or(started);
+    let completed = snapshot(&stations, total, true, started, at, network_incident);
+    atomic_save(path, &completed)?;
+    // Backup is updated *only* after a completed sweep. A crash or partial
+    // scan never destroys the last complete copy.
+    atomic_save(&backup_path(path), &completed)?;
+    Ok(fresh_count(&completed, at))
 }
 
 fn show_report(path: &Path, eligible_only: bool) -> Result<bool, String> {
