@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:22:36Z",
+  "updated_at_utc": "2026-10-28T22:25:55Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "ae5028db2ce29385ad6b561ffaa2ee2328692793; discovery cancellation regression and documentation corrections passed all required local gates",
+  "implementation_commit": "ae5028db2ce29385ad6b561ffaa2ee2328692793; latest functional code, full gates passed; live-validation evidence checkpoint follows",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -95,7 +95,8 @@
     "full workspace tests, format, default/all-feature strict Clippy, all-feature tests/check, and three AArch64 headless feature checks passed",
     "added a deterministic discovery-worker lifecycle regression: dropping InputScan returns while synthetic worker is blocked, signals cancellation, and discards the late result",
     "corrected standalone acceptance evidence to record the 2026-10-28T22:14:21Z 25/25 decoder sweep instead of claiming it was pending",
-    "corrected catalog validation documentation: configured workflow is six-hour/manual, and is not active until merge; corrected roadmap numbering"
+    "corrected catalog validation documentation: configured workflow is six-hour/manual, and is not active until merge; corrected roadmap numbering",
+    "fresh bounded validate-all sweep at 2026-10-28T22:25:38Z decoded all 25 stations in 25 total attempts; GUI label A/B/C regression rerun"
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -118,9 +119,9 @@
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "passed: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features",
     "latest_code_head_ci": "PR #5 head ae5028d Actions run 40779428686 (run 239) startup_failure before job creation; combined status empty; remote CI unverified",
-    "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
+    "live_catalog_revalidation": "2026-10-28T22:25:38Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no failures; point-in-time decoder evidence only",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
-    "layout_ab_recheck": "A 24/25, B 25/25, C 25/25 at 295px; all 25/25 at 340px; C saves 192 text pixels vs A; wcrb is A overflow; fit measurement, not preference evidence",
+    "layout_ab_recheck": "rerun at 2026-10-28: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all 25/25 at 340px; C saves 192px vs A; layout fit only, not preference evidence",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -151,7 +152,7 @@
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #5 open and mergeable at ae5028db2ce29385ad6b561ffaa2ee2328692793; description updated with discovery lifecycle test",
+    "current_pr_state": "PR #5 open and mergeable at pre-evidence-checkpoint head 4e8c8c985d0ac24606af85c61418a041184f306d",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
     "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
     "catalog_mirror_parity": "passed; ordered runtime/JSON station metadata and third-party-player policy parity including all 25 records",
@@ -173,11 +174,11 @@
     "interpretation": "compact-layout measurement on the current nineteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40779428686,
-    "latest_pr_head": "ae5028db2ce29385ad6b561ffaa2ee2328692793",
+    "latest_pr_run": 40779515329,
+    "latest_pr_head": "4e8c8c985d0ac24606af85c61418a041184f306d",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Latest observed run 239 on PR #5 head ae5028d failed before job creation; combined commit status was empty. The full local workspace and AArch64 gates passed."
+    "details": "Latest observed run 240 on PR #5 head 4e8c8c9 failed before job creation; no commit status. This evidence-only documentation checkpoint needs its own CI observation."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -187,5 +188,5 @@
     "National continuous NPR feed inclusion requires a named endpoint and applicable rights evidence; WRVO 1 supplies NPR member-station news programming",
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation"
   ],
-  "next_priority": "Continue physical output, Pi and receiver acceptance when devices are available; diagnose GitHub Actions startup_failure from external runner state. Keep station count at 25 unless rights or reliability evidence supports a catalog change."
+  "next_priority": "Complete physical output/Pi/receiver acceptance when available and obtain actionable runner diagnostics. Keep catalog scope at 25; last bounded sweep decoded all entries."
 }

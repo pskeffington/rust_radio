@@ -3,6 +3,13 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Fresh 25-feed sweep and label-fit rerun (2026-10-28 22:25 UTC)
+
+- The bounded CLI decoder validator checked all 25 curated stations at 22:25:38 UTC. All 25 decoded, in 25 total attempts, with no retry or failure. This is point-in-time decoder evidence only and does not establish physical output.
+- Re-ran the GUI station label A/B/C regression: at 295 px, A full category 24/25, B names-only 25/25, C compact category 25/25; at 340 px all variants fit 25/25. C saves 192 text pixels; this is layout fit, not preference evidence.
+- No catalog or playback code changes were warranted by this sweep. Current PR #5 was open and mergeable at code head `4e8c8c9`; its latest Actions run 240 failed before job creation with no commit status. The new checkpoint commit needs a fresh CI observation.
+- Next priority: physical output/Pi/receiver acceptance when available and runner-side diagnosis; preserve the current 25-entry set absent new source or rights evidence.
+
 ## Input scan cancellation and evidence cleanup (2026-10-28 22:21 UTC)
 
 - Added a bounded lifecycle regression for the discovery worker: the test blocks synthetic driver work, drops its `InputScan`, confirms Drop returns without waiting, and then verifies the worker observes cancellation. The audio crate test and both workspace suites pass with it.
