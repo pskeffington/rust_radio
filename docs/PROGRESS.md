@@ -1200,3 +1200,5 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The real CLI/report formatter and local synthetic tests remain validated.
   Remote execution and artifact creation are not verified; continue local
   checks and revisit after an eligible Actions run is available.
+- The findings are recorded in commit `52be452`; PR #3 remains open and
+  mergeable at that head. No workflow run is visible for the checkpoint commit.

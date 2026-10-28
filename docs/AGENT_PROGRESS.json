@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:31:01Z",
+  "updated_at_utc": "2026-10-28T21:31:49Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -55,7 +55,8 @@
     "Cross-checked the headless AArch64 Linux matrix for core-only, SDRconnect and direct nRSP-native feature configurations.",
     "Validated the credential-safe report summary against a fresh real 25-station CLI report; all station decodes were summarized and the GUI label A/B/C test repeated.",
     "Closed the summary formatter's missing check_error outcome and permissive-stage gap by matching all CLI status/stage enums and requiring schema version 1.",
-    "Revalidated strict summary formatting against a fresh live CLI report at 21:28 UTC and repeated the station-label A/B/C regression."
+    "Revalidated strict summary formatting against a fresh live CLI report at 21:28 UTC and repeated the station-label A/B/C regression.",
+    "Inspected repository Actions policy and workflow history; confirmed the catalog schedule is not active until the PR workflow reaches default branch main, while current required PR runs fail before job creation."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -77,7 +78,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
-    "latest_code_head_ci": "Current PR head 96e07cc has no workflow run or status checks visible; previous Actions run 40770761885 on 2bd4bfd failed at startup before jobs were created; remote CI remains unverified",
+    "latest_code_head_ci": "Current PR head 52be452 has no workflow run or status checks visible yet; latest Actions run 40772372085 on 62e35f0 failed at startup before jobs were created; remote CI remains unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
     "arm64_headless_check": "on current head 3b57855, cargo check passed for core-only, sdrconnect and nrsp-native with --no-default-features on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
@@ -111,7 +112,7 @@
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #3 open and mergeable at 62e35f0; local git merge-tree origin/main HEAD reports no conflicts",
+    "current_pr_state": "PR #3 open and mergeable at 52be452; local git merge-tree origin/main HEAD reports no conflicts",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met"
   },
   "a_b_test": {
@@ -136,5 +137,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Obtain a first-party NPR member-stream endpoint and written product-use permission before catalog inclusion; continue physical audio/output, receiver, Pi and USB SDR acceptance when hardware is available."
+  "next_priority": "Continue local reliability validation while remote Actions startup failures remain unexplained; the catalog cron cannot activate until merge to main. Complete physical audio/output, receiver, Pi and USB SDR acceptance when hardware is available."
 }
