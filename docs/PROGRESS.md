@@ -686,3 +686,22 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Code commit `bf14d59` is pushed. PR #3 is open and reported mergeable. The
   connector showed no combined status or PR-triggered run for this head; prior
   run `40757657155` ended at startup with zero jobs.
+
+## Direct nRSP-ST stream interruption recovery (2026-10-28)
+
+- Direct native nRSP-ST audio now applies the bounded network recovery policy
+  to transport failures and audio inactivity timeouts after an active stream
+  has been established. Initial connection and receiver activation failures
+  remain terminal, so startup does not silently repeat activation.
+- Each retry reconnects and reapplies the latest requested frequency, mode,
+  bandwidth and FM settings. A regression checks the retained desired settings;
+  classification tests distinguish active-stream transport loss from startup
+  and protocol failures. Native output converter setup errors are surfaced as
+  output failures so hosts can offer device selection.
+- Code commit `00576b1` passed formatting, default and all-feature workspace
+  tests, strict default and all-feature Clippy, all-feature check and the station
+  label A/B regression. Loopback fixtures used local socket permission. The
+  tests exercise policy and state; physical receiver interruption acceptance
+  remains open.
+- PR #3 remains open. At query time GitHub returned no status checks or
+  PR-triggered run for `00576b1`; remote CI remains unverified.
