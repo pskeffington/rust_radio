@@ -19,6 +19,10 @@ Updated 2026-10-28. Active priorities and ownership are in the
   `startup_failure` before creating any jobs; the connector returned no job logs
   or step diagnostics. Remote CI remains unverified, and no workflow change is
   justified by the available evidence.
+- Additional locked target checks passed for the headless module on
+  `aarch64-unknown-linux-gnu` with both `nrsp-native` and `sdrconnect`, and the
+  default IP module on `aarch64-apple-darwin`. These are compile checks, not Pi
+  runtime or native device acceptance.
 
 ## Current module pass: listener-focused interface
 
