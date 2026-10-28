@@ -264,3 +264,9 @@ fixtures required running tests outside the default network sandbox. GitHub
 reported no check statuses or Actions runs for the updated commit; remote CI
 is therefore still unverified. A live 25-station sweep and hardware acceptance
 remain outstanding.
+
+A post-validation live `cargo run -p rust-radio-cli -- validate skylab` on the
+current `main` checkout returned `Unavailable` at `NotChecked` with no resolved
+endpoint (exit 2). This environment did not establish endpoint availability;
+no successful live stream evidence was obtained. A full 25-station sweep remains
+pending a network-enabled run.
