@@ -3,6 +3,27 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Decoder probe cancellation guard (2026-10-28 23:21 UTC)
+
+- `decode_and_play` now exits before opening output if Stop is already set.
+  Format probing checks cancellation before starting and after the synchronous
+  probe returns, so a cancellation-triggered reader error is discarded instead
+  of being surfaced/classified as a transient stream failure. Added focused
+  tests for pre-probe Stop and Stop during a probe I/O error.
+- Focused probe regressions passed. All six required local gates passed:
+  formatting, default/all-feature tests, strict Clippy for both configurations
+  and all-feature check. Windows GNU test binaries compiled for default,
+  SDRconnect and direct nRSP-native; they were not run.
+- Repeated GUI label A/B/C: at 295 px, A full-category 24/25, B names-only and
+  C compact-category 25/25; all variants fit at 340 px; C saves 192 px. This is
+  layout-fit evidence, not listener preference evidence.
+- Source commit `2cad1cb` is pushed to open, mergeable PR #5. No workflow run or
+  combined status was observed for this head; previous run 264 failed before
+  job creation (`startup_failure`).
+- Next: add cancellation coverage for shutdown during native output startup and
+  check that stale progress cannot reappear; physical output, Pi/receiver and
+  publisher-rights gates remain open.
+
 ## Cancellation after audio headers (2026-10-28 23:16 UTC)
 
 - Added a loopback HTTP fixture that returns successful audio headers then

@@ -1,10 +1,12 @@
 {
-  "updated_at_utc": "2026-10-28T23:16:58Z",
+  "updated_at_utc": "2026-10-28T23:21:04Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "3264bc779331e6b7e38bb45571fff6abaa15270d; loopback integration test covers cancellation after successful audio headers while first body read is pending.",
+  "implementation_commit": "2cad1cb4f26b0f8069f1e7d45fae7b638474fc53; decoder format probe and output startup are cancellation-aware.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Made decode_and_play return before opening audio if already canceled; added probe_if_active to skip pre-canceled probes and suppress probe errors that complete after Stop.",
+    "Added two synthetic decoder-probe cancellation regressions; focused tests and all six workspace gates passed. Windows GNU test bins compiled for three feature sets and GUI A/B/C was repeated.",
     "Added cancellation_after_audio_headers_interrupts_the_first_reader_wait: after 200 audio headers but before body data, cancel aborts ChunkReader promptly and transport cleanup completes within 500ms.",
     "Added playback Stop/transient-failure race test; full local workspace gates passed, Windows GNU binaries compiled in three feature configurations, repeated GUI A/B/C.",
     "Added stop_racing_with_transient_failure_skips_retry_and_recovery_event: Stop concurrent with transient failure suppresses wait, retry and stale state event.",
@@ -188,15 +190,16 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed locked cargo test --workspace --no-run targeting x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native after diagnostics change; binaries cross-compiled, not run.",
+    "windows_gnu_cross_check": "passed locked cargo test --workspace --no-run targeting x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native after probe cancellation changes; binaries compiled, not run.",
     "interactive_cli_input_bound": "passed focused regression: rejects a 4097-byte line, accepts a 4096-byte line, handles CRLF and reads subsequent commands",
     "interactive_cli_input_error_classification": "passed: oversized input is distinguished from stdin I/O failure; actual InvalidData reader errors stay classified as I/O and are printed once before the worker exits",
     "native_audio_sample_formats": "passed callback conversion and gain regression for all eleven active CPAL 0.16 PCM formats (I8, I16, I24, I32, I64, U8, U16, U32, U64, F32, F64), testing -1.0, -0.5, 0, 0.75, 1.0 at 100%, 50%, and 0% volume plus played-sample accounting.",
     "native_live_volume_changes": "passed for I8, I16, I24, I32, I64, U8, U16, U32, U64, F32 and F64; separate callback buffers picked up 100%, 50% and 0% volume and consumed-sample count reached three.",
     "native_output_failure_diagnostics": "passed focused tests for recording asynchronous backend diagnostics and propagation into PlaybackFailure; no hardware used.",
-    "station_label_ab": "passed repeat: at 295px A full category 24/25, B names-only and C compact category 25/25; all fit at 340px; C saves 192px vs A. Layout measurement, not listener preference.",
+    "station_label_ab": "passed repeat: at 295px A full category 24/25; B names-only and C compact category 25/25; all fit at 340px; compact saves 192px vs A. Fit measurement only.",
     "playback_stop_retry_race": "passed focused deterministic test: Stop during transient attempt failure performs no wait/retry and rejects stale ConnectionLost/Error events.",
-    "post_header_stream_cancellation": "passed loopback HTTP integration: server returns audio/mpeg headers and stalls before body; cancellation produces ConnectionAborted, releases NetworkGuard worker under 500ms, one request only."
+    "post_header_stream_cancellation": "passed loopback HTTP integration: server returns audio/mpeg headers and stalls before body; cancellation produces ConnectionAborted, releases NetworkGuard worker under 500ms, one request only.",
+    "playback_probe_cancellation": "passed tests proving a pre-canceled playback skips format probing and Stop during probe I/O error returns cancellation without reading output failure details or classifying transient network failure."
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -211,10 +214,10 @@
   },
   "ci": {
     "latest_pr_run": null,
-    "latest_pr_head": "3264bc779331e6b7e38bb45571fff6abaa15270d",
+    "latest_pr_head": "2cad1cb4f26b0f8069f1e7d45fae7b638474fc53",
     "latest_pr_conclusion": "no_run_observed",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at source head 3264bc7. No PR-triggered workflow run or combined status observed for this commit. Previous run 264 for head 0ede192 failed before job creation (startup_failure); native MSVC CI remains unverified."
+    "details": "PR #5 open and mergeable at source head 2cad1cb. No PR-triggered workflow run or combined status observed for this commit. Previous run 264 on head 0ede192 failed before job creation (startup_failure); native MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -225,6 +228,6 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Inspect cancellation during decoder probing and native output startup, then continue physical Bluetooth/USB, Raspberry Pi and receiver acceptance, publisher distribution review and retry Windows MSVC CI when Actions starts jobs.",
-  "current_pr_state": "PR #5 open and mergeable at source head 3264bc7; no run/status observed for this head."
+  "next_priority": "Add cancellation coverage for Stop during native output startup and ensure canceled sessions cannot report stale callback progress; physical Bluetooth/USB, Pi/receiver, publisher distribution rights and healthy Windows MSVC CI remain open.",
+  "current_pr_state": "PR #5 open and mergeable at source head 2cad1cb; no workflow run or combined status observed for this head."
 }
