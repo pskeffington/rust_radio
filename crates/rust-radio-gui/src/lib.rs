@@ -5,8 +5,9 @@ use rust_radio_audio::output::{available_outputs, OutputDeviceInfo};
 use rust_radio_audio::playback::NativeRadioEngine;
 use rust_radio_audio::validation::StationValidationTask;
 use rust_radio_core::directory::{curated_stations, station_by_id, InternetStation};
-use rust_radio_core::validation::{StationValidation, ValidationStatus};
+use rust_radio_core::validation::{FeedHealth, StationValidation, ValidationStatus};
 use std::collections::BTreeMap;
+use std::time::SystemTime;
 
 #[cfg(feature = "nrsp-native")]
 mod fm_presets;
@@ -491,7 +492,12 @@ impl RadioPanel {
             }
         }
         match self.validations.get(id) {
-            Some(report) if report.is_decoded() => "DECODED",
+            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Fresh => {
+                "FRESH / DECODED"
+            }
+            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Stale => {
+                "STALE / RECHECK"
+            }
             Some(report) => match report.status {
                 ValidationStatus::Unavailable => "UNAVAILABLE",
                 ValidationStatus::InvalidStream => "INVALID STREAM",

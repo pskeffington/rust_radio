@@ -163,10 +163,17 @@ impl RadioPanel {
             } else {
                 self.validations.get(self.selected_station().id)
             };
-            if report.is_some_and(|report| report.is_decoded()) {
-                "Stream check passed. Press Play to listen."
-            } else {
-                "The stream is checked when you press Play."
+            match report.map(|report| report.health_at(std::time::SystemTime::now())) {
+                Some(rust_radio_core::validation::FeedHealth::Fresh) => {
+                    "Stream check passed. Press Play to listen."
+                }
+                Some(rust_radio_core::validation::FeedHealth::Stale) => {
+                    "The previous check is over 6 hours old. Press Play to check again."
+                }
+                Some(rust_radio_core::validation::FeedHealth::Failed) => {
+                    "The last check failed. Retry or choose another station."
+                }
+                _ => "The stream is checked when you press Play.",
             }
         }
     }

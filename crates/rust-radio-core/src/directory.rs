@@ -24,7 +24,7 @@ pub struct InternetStation {
 /// Inclusion is not proof a stream is online, licensed for redistribution,
 /// or supported by the local decoder at runtime.
 /// The broadcaster's conditions allow personal listening, not rebroadcasting.
-pub const CURATED_STATIONS: [InternetStation; 11] = [
+pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "skylab",
         name: "Skylab Radio (UK)",
@@ -135,6 +135,146 @@ pub const CURATED_STATIONS: [InternetStation; 11] = [
         nominal_kbps: 128,
         format: "MP3",
     },
+    InternetStation {
+        id: "indiepop",
+        name: "Indie Pop Rocks!",
+        genre: "Indie pop / alternative",
+        category: "INDIE",
+        playlist_url: "https://somafm.com/m3u/indiepop.m3u",
+        publisher_reference_url: "https://somafm.com/indiepop/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "folkfwd",
+        name: "Folk Forward",
+        genre: "Indie folk / acoustic",
+        category: "FOLK",
+        playlist_url: "https://somafm.com/m3u/folkfwd.m3u",
+        publisher_reference_url: "https://somafm.com/folkfwd/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "metal",
+        name: "Metal Detector",
+        genre: "Metal / hard rock",
+        category: "ROCK",
+        playlist_url: "https://somafm.com/m3u/metal.m3u",
+        publisher_reference_url: "https://somafm.com/metal/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "bootliquor",
+        name: "Boot Liquor",
+        genre: "Americana / roots / country",
+        category: "ROOTS",
+        playlist_url: "https://somafm.com/m3u/bootliquor.m3u",
+        publisher_reference_url: "https://somafm.com/bootliquor/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "sonicuniverse",
+        name: "Sonic Universe",
+        genre: "Modern jazz / avant-garde",
+        category: "JAZZ",
+        playlist_url: "https://somafm.com/m3u/sonicuniverse.m3u",
+        publisher_reference_url: "https://somafm.com/sonicuniverse/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "bossa",
+        name: "Bossa Beyond",
+        genre: "Bossa nova / Brazilian",
+        category: "WORLD",
+        playlist_url: "https://somafm.com/m3u/bossa.m3u",
+        publisher_reference_url: "https://somafm.com/bossa/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "reggae",
+        name: "Heavyweight Reggae",
+        genre: "Reggae / ska / rocksteady",
+        category: "WORLD",
+        playlist_url: "https://somafm.com/m3u/reggae.m3u",
+        publisher_reference_url: "https://somafm.com/reggae/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "thistle",
+        name: "ThistleRadio",
+        genre: "Celtic / traditional",
+        category: "WORLD",
+        playlist_url: "https://somafm.com/m3u/thistle.m3u",
+        publisher_reference_url: "https://somafm.com/thistle/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "fluid",
+        name: "Fluid",
+        genre: "Instrumental hip-hop / future soul",
+        category: "HIPHOP",
+        playlist_url: "https://somafm.com/m3u/fluid.m3u",
+        publisher_reference_url: "https://somafm.com/fluid/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "cliqhop",
+        name: "cliqhop idm",
+        genre: "IDM / experimental electronic",
+        category: "ELECTRONIC",
+        playlist_url: "https://somafm.com/m3u/cliqhop.m3u",
+        publisher_reference_url: "https://somafm.com/cliqhop/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "thetrip",
+        name: "The Trip",
+        genre: "Progressive house / trance",
+        category: "DANCE",
+        playlist_url: "https://somafm.com/m3u/thetrip.m3u",
+        publisher_reference_url: "https://somafm.com/thetrip/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "poptron",
+        name: "PopTron",
+        genre: "Electropop / indie dance",
+        category: "POP",
+        playlist_url: "https://somafm.com/m3u/poptron.m3u",
+        publisher_reference_url: "https://somafm.com/poptron/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "leftcoast70s",
+        name: "Left Coast 70s",
+        genre: "1970s album rock / soft rock",
+        category: "RETRO",
+        playlist_url: "https://somafm.com/m3u/leftcoast70s.m3u",
+        publisher_reference_url: "https://somafm.com/leftcoast70s/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "illstreet",
+        name: "Illinois Street Lounge",
+        genre: "Exotica / vintage lounge",
+        category: "LOUNGE",
+        playlist_url: "https://somafm.com/m3u/illstreet.m3u",
+        publisher_reference_url: "https://somafm.com/illstreet/directstreamlinks.html",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
 ];
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RadioSource {
@@ -231,7 +371,9 @@ pub fn station_tcp_reachable(id: &str, timeout: Duration) -> Option<IpReachabili
     let (host, port) = match id {
         "skylab" => ("uksoutha.streaming.broadcast.radio", 29690),
         "groovesalad" | "secretagent" | "lush" | "dronezone" | "deepspaceone" | "spacestation"
-        | "beatblender" | "defcon" | "u80s" => ("somafm.com", 443),
+        | "beatblender" | "defcon" | "u80s" | "indiepop" | "folkfwd" | "metal" | "bootliquor"
+        | "sonicuniverse" | "bossa" | "reggae" | "thistle" | "fluid" | "cliqhop" | "thetrip"
+        | "poptron" | "leftcoast70s" | "illstreet" => ("somafm.com", 443),
         _ => return None,
     };
     let timeout = timeout.min(Duration::from_secs(3));
@@ -308,12 +450,28 @@ mod tests {
     }
     #[test]
     fn curated_urls_have_publisher_provenance() {
-        assert_eq!(curated_stations().len(), 11);
+        assert_eq!(curated_stations().len(), 25);
         let mut ids = std::collections::BTreeSet::new();
         for station in curated_stations() {
             assert!(ids.insert(station.id), "duplicate station ID");
-            assert!(["CHILL", "AMBIENT", "ELECTRONIC", "RETRO", "CLASSICAL"]
-                .contains(&station.category));
+            assert!([
+                "CHILL",
+                "AMBIENT",
+                "ELECTRONIC",
+                "RETRO",
+                "CLASSICAL",
+                "INDIE",
+                "FOLK",
+                "ROCK",
+                "ROOTS",
+                "JAZZ",
+                "WORLD",
+                "HIPHOP",
+                "DANCE",
+                "POP",
+                "LOUNGE"
+            ]
+            .contains(&station.category));
             assert!(!station.genre.is_empty());
             assert!(station.playlist_url.starts_with("https://"));
             assert!(station.publisher_reference_url.starts_with("https://"));

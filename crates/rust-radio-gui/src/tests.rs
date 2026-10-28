@@ -126,7 +126,7 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     let release = hold_check(&mut panel);
     release.send(()).unwrap();
     finish_panel(&mut panel);
-    assert_eq!(panel.validation_label("skylab"), "DECODED");
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
     assert!(panel.validations["skylab"].is_decoded());
     let evidence = panel.validations["skylab"].clone();
     panel.step_station(1);
@@ -140,7 +140,7 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     release.send(()).unwrap();
     finish_panel(&mut panel);
     assert_eq!(panel.validations["skylab"], evidence);
-    assert_eq!(panel.validation_label("skylab"), "DECODED");
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
 }
 
 #[test]
@@ -936,4 +936,24 @@ fn stream_errors_offer_listener_actions_with_original_diagnostics_retained() {
         assert_eq!(panel.playback_error().as_deref(), Some(error));
         render_panel(&mut panel);
     }
+}
+
+#[test]
+fn setup_preserves_six_hour_feed_freshness_without_blocking_playback() {
+    let mut panel = RadioPanel::new();
+    let mut report = StationValidation::unverified("skylab");
+    report.status = ValidationStatus::Decoded;
+    report.stage = rust_radio_core::validation::ValidationStage::DecodedAudio;
+    report.decoded_frames = 256;
+    report.checked_at = Some(SystemTime::now());
+    panel.validations.insert("skylab", report);
+    assert!(panel.stream_check_summary().contains("passed"));
+    panel.validations.get_mut("skylab").unwrap().checked_at = Some(
+        SystemTime::now()
+            - rust_radio_core::validation::FEED_FRESHNESS_TTL
+            - Duration::from_secs(1),
+    );
+    assert!(panel.stream_check_summary().contains("over 6 hours old"));
+    assert_eq!(panel.validation_label("skylab"), "STALE / RECHECK");
+    assert!(!panel.is_active());
 }

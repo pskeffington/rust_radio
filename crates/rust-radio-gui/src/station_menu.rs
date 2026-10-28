@@ -122,7 +122,7 @@ impl RadioPanel {
         let mut choice = None;
         let names: Vec<String> = curated_stations()
             .iter()
-            .map(|station| station.name.to_owned())
+            .map(|station| format!("{} · {}", station.name, station.category))
             .chain(self.ip_stations.iter().map(|station| station.name.clone()))
             .chain(std::iter::once("Custom public / LAN stream".into()))
             .collect();
@@ -174,6 +174,20 @@ impl RadioPanel {
                 ui.set_width(295.0);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                 for (index, name) in names.iter().enumerate() {
+                    let health = if index == selected
+                        && self.engine.as_ref().is_some_and(|engine| {
+                            engine.status().state
+                                == rust_radio_audio::compat_controller::PlaybackState::Playing
+                        }) {
+                        "Playing now".to_owned()
+                    } else {
+                        curated_stations()
+                            .get(index)
+                            .map(|station| {
+                                format!("Last silent check: {}", self.validation_label(station.id))
+                            })
+                            .unwrap_or_else(|| "Custom stream".into())
+                    };
                     let label = format!("{} {}", if index == selected { ">" } else { " " }, name);
                     let row = ui
                         .add_sized(
@@ -182,7 +196,17 @@ impl RadioPanel {
                                 .selected(index == cursor)
                                 .truncate(),
                         )
-                        .on_hover_text(name);
+                        .on_hover_text(if let Some(station) = curated_stations().get(index) {
+                            format!(
+                                "{}\nGenre: {}\n{}\nPublisher: {}",
+                                station.name,
+                                station.genre,
+                                health,
+                                station.publisher_reference_url
+                            )
+                        } else {
+                            name.clone()
+                        });
                     if row.clicked() {
                         choice = Some(index);
                     }

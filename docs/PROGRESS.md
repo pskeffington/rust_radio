@@ -21,9 +21,12 @@ Updated 2026-10-28. Active priorities and ownership are in the
   persistence and embeddable host APIs remain intact.
 - Visually inspected the redesigned macOS app. Added regression coverage for
   all listening states, stale check results, diagnostic-free Playing, mute
-  restoration and long-error bounds. Final verification passed **193 all-feature
-  tests**, **144 default tests**, the separate native muted acceptance, formatting,
+  restoration and long-error bounds. Final verification passed **195 all-feature
+  tests**, **146 default tests**, the separate native muted acceptance, formatting,
   strict Clippy in both configurations, workspace check and all-feature build.
+  Integrated concurrent main changes: the 25-station directory, machine-readable
+  catalog and six-hour feed freshness policy are preserved. Live playback takes
+  priority; historical freshness remains visible in setup and qualified tooltips.
   The rebuilt standalone bundle is in `target/debug/Rust Radio.app`. Physical
   touch/Pi rendering remain open.
 
