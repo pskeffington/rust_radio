@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:37:02Z",
+  "updated_at_utc": "2026-10-28T22:37:52Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "pending commit for Windows MSVC test execution coverage",
+  "implementation_commit": "2936b844d894ea9deb3e40241c58ffe88a86af88; Windows GNU test binaries compiled; A/B rerun passed",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -99,7 +99,8 @@
     "fresh bounded validate-all sweep at 2026-10-28T22:25:38Z decoded all 25 stations in 25 total attempts; GUI label A/B/C regression rerun",
     "added Windows MSVC CI job for default workspace, SDRconnect, and direct nRSP-native feature configurations; locally cross-checked all three with x86_64-pc-windows-gnu",
     "added three strict Clippy steps to the Windows MSVC job after equivalent Windows GNU checks passed for default, SDRconnect and direct nRSP-native configurations",
-    "compiled Windows GNU test binaries without executing them for default, SDRconnect and direct nRSP-native workspace configurations; configured native MSVC Actions test suites for all three"
+    "compiled Windows GNU test binaries without executing them for default, SDRconnect and direct nRSP-native workspace configurations; configured native MSVC Actions test suites for all three",
+    "re-ran station label A/B/C comparison at 22:37 UTC against all 25 catalog entries; same measured fit and compact-width result"
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -124,7 +125,7 @@
     "latest_code_head_ci": "PR #5 head 820e048 Actions run 40779950490 (run 241) startup_failure before job creation; combined status empty; the newly added Windows workflow job awaits healthy runner execution",
     "live_catalog_revalidation": "2026-10-28T22:25:38Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no failures; point-in-time decoder evidence only",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
-    "layout_ab_recheck": "rerun at 2026-10-28: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all 25/25 at 340px; C saves 192px vs A; layout fit only, not preference evidence",
+    "layout_ab_recheck": "rerun 2026-10-28 22:37 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; `wcrb` is only A overflow; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -155,7 +156,7 @@
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #5 open and mergeable at pre-evidence-checkpoint head 4e8c8c985d0ac24606af85c61418a041184f306d",
+    "current_pr_state": "PR #5 open and mergeable at 2936b844d894ea9deb3e40241c58ffe88a86af88 before this checkpoint",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
     "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
     "catalog_mirror_parity": "passed; ordered runtime/JSON station metadata and third-party-player policy parity including all 25 records",
@@ -164,7 +165,7 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed Cargo check, strict Clippy, and cargo test --no-run with Cargo.lock for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native workspace configurations on x86_64-pc-windows-gnu; test binaries compile only and were not run"
+    "windows_gnu_cross_check": "passed Cargo check, strict Clippy, and cargo test --no-run with Cargo.lock for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native workspace configurations on x86_64-pc-windows-gnu; binaries compiled and listed, not executed"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -178,11 +179,11 @@
     "interpretation": "compact-layout measurement on the current nineteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40779950490,
-    "latest_pr_head": "820e0487f41292238ad1055e8690c068a7358195",
+    "latest_pr_run": 40781375893,
+    "latest_pr_head": "2936b844d894ea9deb3e40241c58ffe88a86af88",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Latest observed run 241 on prior PR head 820e048 failed before job creation; combined status empty. The Windows MSVC job added in the pending increment cannot be verified until a GitHub runner starts."
+    "details": "Latest observed run 244 on head 2936b84 failed before job creation; combined status empty. Native Windows test suites and MSVC Clippy remain unverified until a runner starts."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -193,5 +194,5 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Run the Windows MSVC test suites when GitHub Actions starts; local GNU test binaries only establish compilation. Continue physical platform acceptance when hardware is available."
+  "next_priority": "Verify native Windows MSVC test, compile and Clippy jobs when Actions runner starts; then continue physical output/Pi/receiver acceptance and publisher distribution rights."
 }

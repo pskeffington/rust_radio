@@ -3,6 +3,13 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Windows test-binary and station-label recheck (2026-10-28 22:37 UTC)
+
+- Local Windows GNU `cargo test --workspace --locked --no-run` passed for default, SDRconnect and direct nRSP-native workspace feature configurations. All workspace, GUI, CLI, receiver and integration-test executables linked successfully, but they were not run. The native Windows MSVC job now runs those three suites.
+- Re-ran the GUI label comparison: at 295 px A(full category) fits 24/25, B(names-only) 25/25, C(compact category) 25/25; at 340 px all variants fit. C saves 192 px; layout fit only, not listener preference.
+- PR #5 was open and mergeable at `2936b84`. Actions run 244 failed before creating jobs and reported no commit status. Native Windows execution remains unverified.
+- Next: obtain a healthy runner for the Windows tests; preserve physical output, Pi/GUI/touch, receiver/USB, and broadcaster-rights acceptance as open gates.
+
 ## Windows cross-target coverage (2026-10-28 22:33 UTC)
 
 - Added a `windows-latest` CI job that compile-checks, strictly lints, and runs the workspace tests for the default, SDRconnect, and direct nRSP-native CLI/GUI feature combinations with Cargo.lock enforced. This uses the runner's native MSVC environment.
