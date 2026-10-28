@@ -3,6 +3,23 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Portability and layout recheck (2026-10-28)
+
+- On pushed head `66f9efd`, `cargo check --locked -p rust-radio
+  --no-default-features --features sdrconnect --target
+  aarch64-unknown-linux-gnu` passed locally using the installed ARM64 target.
+  This checks headless compilation only; it is not Raspberry Pi runtime or
+  audio/display acceptance.
+- Repeated `name_plus_category_rows_fit_without_truncation`: category+name
+  fit 24/25 rows at 295 px versus 25/25 for names-only; both fit 25/25 at
+  340 px. Names-only saves 1,776 aggregate text pixels. This is a layout-fit
+  metric, not listener preference evidence.
+- PR #3 remains open and mergeable; current head `66f9efd` has empty combined
+  status. Latest run `40752135344` still failed before creating jobs.
+- Rust-Boy’s actual product surface is its HTML/HUD host adapter; adding only
+  the new egui history API pin would not exercise it. Host adoption remains a
+  separate integration task, along with physical hardware and rights gates.
+
 ## Current pushed-head verification (2026-10-28)
 
 - Revalidated exact head `cd239e2`: formatting, default and all-feature workspace

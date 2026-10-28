@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T19:10:57Z",
+  "updated_at_utc": "2026-10-28T19:14:15Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "52b85cc",
@@ -40,8 +40,10 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "52b85cc; shared headless feed-history parser",
     "latest_full_gate_run": "all six required gates passed on pushed head cd239e2; default and all-feature loopback fixtures required local network permission; native audio manual test remains ignored",
-    "current_head_ci": "head cd239e2 has empty combined status; workflow run 40751673743 failed at startup and returned zero jobs",
-    "live_catalog_revalidation": "25/25 decoded at decoded_audio in 25 attempts on 2026-10-28; point-in-time evidence only"
+    "current_head_ci": "head 66f9efd has empty combined status; workflow run 40752135344 failed at startup and returned zero jobs",
+    "live_catalog_revalidation": "25/25 decoded at decoded_audio in 25 attempts on 2026-10-28; point-in-time evidence only",
+    "arm64_headless_check": "cargo check -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on head 66f9efd; compile evidence only, not Pi runtime",
+    "layout_ab_recheck": "category+name 24/25 vs names-only 25/25 at 295px; both 25/25 at 340px; 1776px text-width savings; fit metric only"
   },
   "a_b_test": {
     "variant_a": "category plus station name",
@@ -52,8 +54,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40751673743,
-    "conclusion": "head cd239e2 has empty combined status; Actions run 40751673743 failed at startup and returned zero jobs"
+    "latest_observed_head_run": 40752135344,
+    "conclusion": "head 66f9efd has empty combined status; Actions run 40752135344 failed at startup and returned zero jobs"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
