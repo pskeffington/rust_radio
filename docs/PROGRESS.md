@@ -803,3 +803,20 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   `40761496510` failed at startup before creating jobs. Remote CI remains
   unverified. Next: run physical output-device recovery acceptance when
   Bluetooth/USB hardware is available.
+
+## Output progress isolation across a network retry (2026-10-28)
+
+- Expanded the synthetic IP recovery regression to sequence a network transport
+  failure followed by output-device loss. It verifies the first callback
+  progress handle is cleared before the one-second retry wait and remains
+  detached before the second attempt starts.
+- The retry creates a distinct progress counter. When that attempt reports
+  Bluetooth output loss, recovery returns `OutputUnavailable` without another
+  retry wait and clears the second handle. This covers cross-attempt cleanup
+  through the same helper used by production IP playback.
+- Focused coverage and all six local gates passed: formatting, default and
+  all-feature workspace tests, strict Clippy in both configurations and
+  all-feature check. The compact station-label A/B regression passed again.
+- Code commit `73d7eb2` is pushed. PR #3 is open and mergeable; its current head
+  has no status checks or associated workflow run visible at query time. Prior
+  run `40761915140` failed before creating jobs. Remote CI remains unverified.
