@@ -29,9 +29,13 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Catalog label A/B/C passed at 295 px: A full category 14/15, B names-only
   15/15, C compact category 15/15; all variants fit at 340 px. No physical
   output or receiver hardware was exercised.
-- Highest priority: push the validated catalog expansion and checkpoint to
-  PR #5, monitor remote CI, then continue toward 25 from first-party
-  documented sources.
+- Committed as `6f11777` with checkpoint `5211b18` and pushed to PR #5. The PR
+  remains open and GitHub reports it mergeable. Latest Actions run
+  `40777122410` failed before job creation (`startup_failure`); combined status
+  is empty, so remote CI remains unverified.
+- Highest priority: source and validate more authorized diverse stations
+  toward 25; separately track hardware acceptance and the recurring Actions
+  startup failure.
 
 ## Publisher-supported catalog expansion (2026-10-28)
 

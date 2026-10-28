@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:04:05Z",
+  "updated_at_utc": "2026-10-28T22:04:54Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "6f11777 (machine checkpoint commit follows)",
+  "implementation_commit": "6f1177742a35243d49fade107c867dfebd61140f (checkpoint 5211b1831dda50a792901ffadba23532dcb343d6)",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -73,7 +73,10 @@
     "All six required Rust validation gates passed after the WRVO addition; one native audio hardware test remains ignored.",
     "Headless AArch64 Linux checks passed for core-only, SDRconnect and direct nRSP-native configurations.",
     "PR #5 was open and mergeable before this current source increment; previous remote Actions run 40775465859 failed startup before jobs were created.",
-    "Committed WRVO catalog expansion and validation as 6f1177742a35243d49fade107c867dfebd61140f on codex/catalog-publisher-permissions."
+    "Committed WRVO catalog expansion and validation as 6f1177742a35243d49fade107c867dfebd61140f on codex/catalog-publisher-permissions.",
+    "Pushed source commit 6f11777 and checkpoint commit 5211b18 to origin/codex/catalog-publisher-permissions.",
+    "Updated PR #5 description with the 15-station source review, validation evidence and remaining hardware/rights gates; GitHub reports open and mergeable.",
+    "Latest pushed-head workflow run 40777122410 ended startup_failure before job creation; combined commit status is empty and remote CI remains unverified."
   ],
   "validation": {
     "fmt": "passed on WRVO catalog expansion",
@@ -95,7 +98,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
-    "latest_code_head_ci": "PR #5 previous head 506aae8 has startup_failure run 40775465859 before jobs; current source increment not yet committed or pushed; remote CI unverified",
+    "latest_code_head_ci": "PR #5 pushed head 5211b18 has Actions run 40777122410 startup_failure before job creation; combined status empty, remote CI unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
     "arm64_headless_check": "passed on current source for core-only, sdrconnect and nrsp-native; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
@@ -147,11 +150,11 @@
     "interpretation": "compact-layout measurement on the current fifteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40775465859,
-    "latest_pr_head": "506aae8b3923c10c66cafdbe7b103e7a3d955b44",
+    "latest_pr_run": 40777122410,
+    "latest_pr_head": "5211b1831dda50a792901ffadba23532dcb343d6",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Previous GitHub Actions run failed before job creation; current catalog increment is validated locally but not yet pushed. Remote CI remains unverified."
+    "details": "GitHub Actions failed before job creation on pushed head; combined commit status is empty. Local required gates passed; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -161,5 +164,5 @@
     "Expand the fifteen-station safe catalog toward the approximately 25-station target using documented third-party player sources",
     "National continuous NPR feed inclusion requires a named endpoint and applicable rights evidence; WRVO 1 supplies NPR member-station news programming"
   ],
-  "next_priority": "Commit and push the validated 15-station WRVO expansion to PR #5, monitor remote CI, then continue sourcing publisher-documented feeds toward approximately 25 while preserving physical hardware acceptance gates."
+  "next_priority": "Research and add further publisher-documented diverse stations toward approximately 25; monitor recurring Actions startup failures and continue physical output, Pi and receiver acceptance when hardware is available."
 }
