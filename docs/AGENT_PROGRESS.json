@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T19:42:59Z",
+  "updated_at_utc": "2026-10-28T20:15:00Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "a417db6",
+  "implementation_commit": "pending",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -23,13 +23,14 @@
     "Extended callback-consumed status reconciliation to direct nRSP-native, SDRconnect and Soapy playback; clear failed attempt progress before recovery.",
     "Extracted native output full-ring callback watchdog logic and added deterministic no-callback failure and cancellation classification regressions.",
     "Added compact station category label chosen by three-variant A/B/C measurement; all 25 curated labels fit at 295px while retaining genre cues.",
-    "Strengthened the layout regression to prove non-WCRB category labels remain unchanged; GUI crate tests and strict Clippy passed."
+    "Strengthened the layout regression to prove non-WCRB category labels remain unchanged; GUI crate tests and strict Clippy passed.",
+    "Enforced exactly one process-wide native playback worker across NativeRadioEngine instances with an atomic RAII lease; a second start is rejected before resource opening and release is covered for normal exit and unwinding."
   ],
   "validation": {
     "fmt": "passed",
     "workspace_tests": "passed; loopback fixtures allowed",
     "workspace_clippy_strict": "passed",
-    "all_features_tests": "passed; native audio manual test remains ignored",
+    "all_features_tests": "passed; localhost fixture tests required loopback permission; one physical audio test ignored",
     "all_features_clippy_strict": "passed",
     "all_features_check": "passed",
     "live_catalog_decode": "25/25 decoded in 25 attempts; point-in-time only",
@@ -43,14 +44,15 @@
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
-    "implementation_commit": "a417db6; compact CLASSICAL-to-CLASS station category label chosen by three-variant fit comparison",
+    "implementation_commit": "pending; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on implementation commit a417db6; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "PR code head 3b8cf74 had empty combined status and no workflow run visible at query time; prior docs head d65eff5 run 40756513375 failed at startup with zero jobs",
+    "latest_code_head_ci": "pending push; previous Actions startup_failure had zero jobs",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
-    "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy"
+    "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
+    "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -73,5 +75,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Continue native output-loss reliability audit and add deterministic tests for any concrete gaps; pursue physical output-loss, Pi, receiver/USB and Rust-Boy host adoption gates."
+  "next_priority": "Continue deterministic native device-loss/recovery work where a concrete software gap is found; maintain output-loss, Pi, receiver/USB and Rust-Boy field/adoption gates."
 }

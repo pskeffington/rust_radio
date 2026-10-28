@@ -627,3 +627,15 @@ Station history can be persisted by the CLI to an opt-in bounded file and
 imported by an egui host; saved history remains informational and never gates
 playback. HLS transport and satellite adapters remain deferred; they are not
 prerequisites for the accepted MP3/AAC/native PCM paths.
+
+## Process-wide playback session admission (2026-10-28)
+
+A reliability audit found that the single-worker invariant applied only within
+one `NativeRadioEngine`; separate host instances could each spawn their own
+native playback worker. The audio crate now acquires a process-wide atomic RAII
+lease before starting the worker. A concurrent start fails before opening audio
+or network resources, and worker exit or unwinding releases the lease. Focused
+tests cover rejection, normal release and panic release. The all-features test
+suite, strict Clippy and all-features check pass; local loopback permission is
+needed for the HTTP fixture suite. This does not validate physical device-loss
+recovery.

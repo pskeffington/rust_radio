@@ -59,6 +59,39 @@ enum PlaybackSource {
     },
 }
 
+struct ActivePlaybackSlot {
+    active: AtomicBool,
+}
+
+impl ActivePlaybackSlot {
+    const fn new() -> Self {
+        Self {
+            active: AtomicBool::new(false),
+        }
+    }
+
+    fn acquire(&self) -> Result<ActivePlaybackGuard<'_>, String> {
+        self.active
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .map(|_| ActivePlaybackGuard {
+                active: &self.active,
+            })
+            .map_err(|_| "A radio playback session is already active".into())
+    }
+}
+
+struct ActivePlaybackGuard<'a> {
+    active: &'a AtomicBool,
+}
+
+impl Drop for ActivePlaybackGuard<'_> {
+    fn drop(&mut self) {
+        self.active.store(false, Ordering::Release);
+    }
+}
+
+static ACTIVE_PLAYBACK_SLOT: ActivePlaybackSlot = ActivePlaybackSlot::new();
+
 pub(super) type OutputProgress = Arc<Mutex<Option<Arc<AtomicU64>>>>;
 
 pub(super) struct PlaybackContext<'a> {
@@ -125,7 +158,8 @@ fn probe_failure(error: DecodeError) -> PlaybackFailure {
 }
 
 /// No direct audio output or network access occurs until the caller issues
-/// an explicit internet or SDRconnect Play command. One engine owns one active worker.
+/// an explicit internet or SDRconnect Play command. A process-wide lease admits
+/// only one playback worker, including across multiple engine instances.
 pub struct NativeRadioEngine {
     controller: Arc<Mutex<RadioController>>,
     cancelled: Arc<AtomicBool>,
@@ -309,9 +343,11 @@ impl NativeRadioEngine {
         #[cfg(feature = "nrsp-native")]
         let worker_native = native_control.clone();
         let selected_output = output_id.to_owned();
+        let active_playback = ACTIVE_PLAYBACK_SLOT.acquire()?;
         let worker = thread::Builder::new()
             .name("rust-radio-playback".into())
             .spawn(move || {
+                let _active_playback = active_playback;
                 let result = match source {
                     PlaybackSource::Internet(id) => play_with_recovery(
                         &id,
@@ -962,6 +998,40 @@ mod tests {
             })
             .unwrap();
         (Arc::new(Mutex::new(controller)), generation)
+    }
+
+    #[test]
+    fn playback_slot_releases_after_drop_and_unwind() {
+        let slot = ActivePlaybackSlot::new();
+        let guard = slot.acquire().unwrap();
+        assert_eq!(
+            slot.acquire().err().as_deref(),
+            Some("A radio playback session is already active")
+        );
+        drop(guard);
+        assert!(slot.acquire().is_ok());
+
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = slot.acquire().unwrap();
+            panic!("simulated playback worker panic");
+        }));
+        assert!(panic.is_err());
+        assert!(slot.acquire().is_ok());
+    }
+
+    #[test]
+    fn native_engine_refuses_a_second_worker_before_opening_resources() {
+        let _active = ACTIVE_PLAYBACK_SLOT.acquire().unwrap();
+        let result =
+            NativeRadioEngine::start(PlaybackSource::Internet("skylab".into()), 60, "system");
+        let error = match result {
+            Err(error) => error,
+            Ok(mut engine) => {
+                engine.stop();
+                panic!("a second playback worker was admitted")
+            }
+        };
+        assert_eq!(error, "A radio playback session is already active");
     }
 
     #[test]

@@ -5,6 +5,7 @@ Status: implemented in the standalone module and consumed by Pip-Boy through a p
 ## Worker ownership
 
 - A single coordinator owns current session generation, network receiver, decoder worker, PCM queue and CPAL output.
+- A process-wide atomic session lease admits one playback worker across all `NativeRadioEngine` instances. A second start fails before output or network resources open; the lease releases when the worker exits or unwinds.
 - Starting a station is a deliberate operator command. Directory listing, favorites, startup, navigation and output enumeration are non-playing operations.
 - Receiver worker resolves only `ApprovedEndpoint` values. The HTTP client must disable implicit redirects and proxies, validate TLS, impose connect and inactivity deadlines, and implement cancellation.
 - The decoder produces bounded PCM frames; the CPAL callback consumes those frames without network requests, locks or per-callback allocation.

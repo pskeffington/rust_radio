@@ -56,8 +56,10 @@ fn play_after_user_command(station_id: &str) -> Result<(), String> {
 }
 ```
 
-Hosts retain ownership of their UI, preferences and one engine at a time. The
-standalone egui panel is not required by pip_boy's HTML HUD. Stable station IDs,
+Hosts retain ownership of their UI and preferences. The audio crate enforces one
+process-wide playback worker, even if a host accidentally creates multiple
+engine instances. A new start returns an error until the prior worker exits.
+The standalone egui panel is not required by pip_boy's HTML HUD. Stable station IDs,
 playback states and generation-tagged commands/events are shared through
 `rust_radio::controller`; directory, parser, PCM and recovery APIs are also
 available without loading audio dependencies. Host storage continues to use station IDs. Hosts can also explicitly call
