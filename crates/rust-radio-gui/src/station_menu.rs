@@ -279,6 +279,7 @@ mod label_ab_test {
                 let mut category_current_fit = 0;
                 let mut category_widened_fit = 0;
                 let mut name_current_fit = 0;
+                let mut name_widened_fit = 0;
                 let mut saved_width = 0.0;
                 for station in curated_stations() {
                     let category = format!("> {}", station_menu_label(station, true));
@@ -294,21 +295,28 @@ mod label_ab_test {
                     category_current_fit += usize::from(category_width <= current_row_text_width);
                     category_widened_fit += usize::from(category_width <= widened_row_text_width);
                     name_current_fit += usize::from(name_width <= current_row_text_width);
+                    name_widened_fit += usize::from(name_width <= widened_row_text_width);
                     saved_width += category_width - name_width;
                 }
                 (
                     category_current_fit,
                     category_widened_fit,
                     name_current_fit,
+                    name_widened_fit,
                     saved_width,
                 )
             }));
         });
-        let (category_current_fit, category_widened_fit, name_current_fit, saved_width) =
-            results.unwrap();
+        let (
+            category_current_fit,
+            category_widened_fit,
+            name_current_fit,
+            name_widened_fit,
+            saved_width,
+        ) = results.unwrap();
         let station_count = curated_stations().len();
         eprintln!(
-            "Station label A/B (monospace 14, {:.0}px button padding): A at {:.0}px {category_current_fit}/{station_count}, B at {:.0}px {name_current_fit}/{station_count}, A at {:.0}px {category_widened_fit}/{station_count}; B saves {saved_width:.0}px total text width",
+            "Station label A/B (monospace 14, {:.0}px button padding): A at {:.0}px {category_current_fit}/{station_count}, B at {:.0}px {name_current_fit}/{station_count}; A at {:.0}px {category_widened_fit}/{station_count}, B {name_widened_fit}/{station_count}; B saves {saved_width:.0}px total text width",
             button_horizontal_padding,
             PREVIOUS_STATION_MENU_ROW_WIDTH,
             PREVIOUS_STATION_MENU_ROW_WIDTH,
@@ -317,6 +325,7 @@ mod label_ab_test {
         assert!(category_current_fit < name_current_fit);
         assert_eq!(name_current_fit, station_count);
         assert_eq!(category_widened_fit, station_count);
+        assert_eq!(name_widened_fit, station_count);
         assert!(saved_width > 0.0);
     }
 }
