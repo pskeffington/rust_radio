@@ -1023,3 +1023,26 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - No physical radio, audio-device, USB SDR, or Pi hardware was exercised.
   Next: investigate Actions only if repository-level diagnostics appear;
   continue hardware acceptance and station-rights review when available.
+
+## Private-stream redirect boundary (2026-10-28)
+
+- A follow-up review found that the explicit private IPv4 HTTP exception also
+  enabled private DNS answers and redirects to unrelated private addresses.
+  That widened a user's explicit connection choice into a broader LAN request
+  surface, including custom playlist entries.
+- Private HTTP now remains on the exact selected IPv4 origin and port for
+  redirects and playlist URLs. DNS remains public-only for every input; the
+  selected private literal does not need DNS resolution. Public HTTP remains
+  forbidden, and public HTTPS destinations remain available if referenced.
+- Added regressions for same-origin private paths (allowed), different private
+  hosts, different ports, link-local ranges, HTTPS to the private origin, and
+  localhost DNS filtering. Loopback HTTP fixtures verify that redirects and
+  PLS entries to another private port are refused. Focused tests and all six
+  required gates passed.
+- Repeated the station-label A/B: at 295 px, full category fits 24/25 and
+  names-only/compact fit 25/25; all variants fit at 340 px. This measures layout
+  fit only. Headless direct nRSP ARM64 compilation passed.
+- Code fix is committed as `bce23e1` on the active PR branch; no hardware was
+  exercised. Next:
+  pursue physical output/receiver/Pi acceptance and publisher rights review;
+  monitor remote CI only if a run or diagnostic appears.

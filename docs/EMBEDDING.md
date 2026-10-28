@@ -68,7 +68,9 @@ URL; it is retained only for that engine session. Direct input accepts HTTPS
 or private/loopback literal IPv4 HTTP, rejects non-public HTTPS literal-IP
 targets, credentials and fragments, and
 supports bounded redirects and M3U/PLS (including relative entries), with URL
-validation on every hop and no HTTPS downgrade. HLS remains unsupported.
+validation on every hop and no HTTPS downgrade. Private HTTP redirects remain
+on the selected private origin, and DNS answers remain public-only. HLS remains
+unsupported.
 Hosts should protect query tokens and ask for an explicit Play action before
 starting audio. `StationValidationTask::start_input(target, direct)` checks the
 same transport silently without opening audio output.
