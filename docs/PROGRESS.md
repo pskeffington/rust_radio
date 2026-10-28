@@ -5,6 +5,19 @@ Updated 2026-10-27. Active priorities and ownership are in the
 
 ## Current module pass
 
+- Corrected IP playback when one decoded packet is larger than the paused
+  native output ring. The worker now starts output while delivering the packet,
+  once prebuffered, rather than waiting until the entire packet is queued.
+  Bounded-sink regressions cover large packets, start failure and cancellation;
+  Playing still requires native callback consumption.
+- All-feature workspace format, check, strict Clippy, **133 tests** and build
+  passed. The headless SDRconnect AArch64 Linux compile check passed. An explicit
+  eight-second Skylab session at zero volume exited successfully after native
+  callback playback on the Mac system output. This is callback evidence, not a
+  fresh audible listening or physical Pi acceptance.
+
+## Previous module pass
+
 - Fixed unconfirmed SDRconnect startup being treated as a transient network
   timeout. After one activation, missing confirmation now returns `StartTimeout`
   after three seconds and requires explicit Play again. Native output is opened

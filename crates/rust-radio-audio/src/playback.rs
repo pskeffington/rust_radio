@@ -26,6 +26,7 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
+mod ip_pcm;
 #[cfg(feature = "sdrconnect")]
 mod sdrconnect;
 
@@ -465,8 +466,7 @@ fn decode_and_play(
         .map_err(|e| format!("Unsupported radio codec: {e}"))?;
     let mut converter: Option<PcmConverter> = None;
     let mut previous_format: Option<(u32, usize)> = None;
-    let mut started = false;
-    let mut announced = false;
+    let mut sink_state = ip_pcm::SinkState::default();
 
     while !cancelled.load(Ordering::Acquire) {
         if output.has_failed() {
@@ -531,13 +531,13 @@ fn decode_and_play(
         }
         let mut samples = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
         samples.copy_interleaved_ref(decoded);
-        let keep_going = converter
-            .as_mut()
-            .expect("PCM converter is initialized")
-            .convert(samples.samples(), |frame| {
-                output.push_frame(frame, cancelled)
-            })
-            .map_err(|e| format!("Radio PCM conversion failed: {e:?}"))?;
+        let keep_going = sink_state.feed(
+            converter.as_mut().expect("PCM converter is initialized"),
+            samples.samples(),
+            &mut output,
+            cancelled,
+            |event| signal(controller, generation, event),
+        )?;
         if !keep_going {
             if output.has_failed() && !cancelled.load(Ordering::Acquire) {
                 return Err(PlaybackFailure::Output(
@@ -545,16 +545,6 @@ fn decode_and_play(
                 ));
             }
             return Ok(());
-        }
-
-        if !started && output.buffered_samples() >= output.minimum_prebuffer_samples() {
-            output.start().map_err(PlaybackFailure::Output)?;
-            started = true;
-            signal(controller, generation, PlaybackEvent::Buffered);
-        }
-        if started && !announced && output.played_samples() > 0 {
-            signal(controller, generation, PlaybackEvent::PlaybackStarted);
-            announced = true;
         }
     }
     Ok(())
