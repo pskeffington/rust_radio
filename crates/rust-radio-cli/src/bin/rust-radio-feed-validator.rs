@@ -17,6 +17,10 @@ const MIN_INTERVAL_MINUTES: u64 = 15;
 const MAX_INTERVAL_MINUTES: u64 = 240;
 const INTER_STATION_PAUSE: Duration = Duration::from_millis(500);
 const MAX_REPORT_BYTES: u64 = 512 * 1024;
+const REDUNDANT_PROBE_ATTEMPTS: usize = 2;
+const PROBE_RETRY_DELAY: Duration = Duration::from_millis(1_500);
+const FAILURE_SWEEPS_TO_UNAVAILABLE: u64 = 3;
+const LAST_GOOD_GRACE: Duration = Duration::from_secs(24 * 60 * 60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Mode {
@@ -24,6 +28,7 @@ enum Mode {
     Daemon,
     Status,
     Eligible,
+    StrictEligible,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -35,11 +40,12 @@ struct Options {
 
 fn help() {
     println!(
-        r#"Usage: rust-radio-feed-validator [--once|--daemon|--status|--eligible] [--output PATH] [--interval-minutes 15..240]
---once: scan curated stations; return nonzero if any fail
+        r#"Usage: rust-radio-feed-validator [--once|--daemon|--status|--eligible|--strict-eligible] [--output PATH] [--interval-minutes 15..240]
+--once: scan curated stations; return nonzero for ineligible stations
 --daemon: scan immediately and repeat every four hours
 --status: summarize health, applying the six-hour TTL
---eligible: output JSON IDs with fresh decoded-audio evidence
+--eligible: output JSON IDs for fresh or temporarily degraded stations
+--strict-eligible: output only IDs with fresh decoded audio
 Default output: target/radio-feed-health.json"#
     );
 }
@@ -53,7 +59,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
-            "--once" | "--daemon" | "--status" | "--eligible" => {
+            "--once" | "--daemon" | "--status" | "--eligible" | "--strict-eligible" => {
                 if mode_supplied {
                     return Err("Supply only one mode".into());
                 }
@@ -61,6 +67,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
                     "--daemon" => Mode::Daemon,
                     "--status" => Mode::Status,
                     "--eligible" => Mode::Eligible,
+                    "--strict-eligible" => Mode::StrictEligible,
                     _ => Mode::Once,
                 };
                 mode_supplied = true;
