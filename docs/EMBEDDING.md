@@ -65,7 +65,8 @@ playback states and generation-tagged commands/events are shared through
 available without loading audio dependencies. Host storage continues to use station IDs. Hosts can also explicitly call
 `NativeRadioEngine::start_stream(url, volume, output)` for a direct MP3/AAC
 URL; it is retained only for that engine session. Direct input accepts HTTPS
-or private/loopback literal IPv4 HTTP, rejects credentials and fragments, and
+or private/loopback literal IPv4 HTTP, rejects non-public HTTPS literal-IP
+targets, credentials and fragments, and
 supports bounded redirects and M3U/PLS (including relative entries), with URL
 validation on every hop and no HTTPS downgrade. HLS remains unsupported.
 Hosts should protect query tokens and ask for an explicit Play action before

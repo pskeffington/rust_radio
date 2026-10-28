@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T20:55:36Z",
+  "updated_at_utc": "2026-10-28T21:01:53Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "610b4c8",
+  "implementation_commit": "5087ca3",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -44,7 +44,8 @@
     "Repeated station-label A/B/C regression on current head: at 295px full category 24/25, names-only and compact category 25/25; at 340px all 25/25; fit evidence only.",
     "Added a loopback SDRconnect regression proving an unresponsive WebSocket upgrade peer returns Timeout at the connection deadline.",
     "Added a checked-address DNS resolver to radio playback, station probes, and connectivity checks; implementation commit d7ee9ac validates and pins public stream addresses while preserving explicitly entered private IPv4 HTTP.",
-    "Added regression vectors for current IANA IPv4/IPv6 special-purpose ranges and corrected stale direct-stream redirect and optional feed-history documentation."
+    "Added regression vectors for current IANA IPv4/IPv6 special-purpose ranges and corrected stale direct-stream redirect and optional feed-history documentation.",
+    "Closed the direct HTTPS literal-IP resolver bypass: reject non-public IP literals before network access, with IPv4/IPv6 regressions; public HTTPS literals and explicit private IPv4 HTTP remain supported."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -59,13 +60,13 @@
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed on current source: 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all 25/25; compact CLASS saves 32px; fit measure only",
+    "repeatable_layout_ab": "passed on 2026-10-28: at 295px full category 24/25, names-only and compact 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required workspace gates passed after IANA-derived address tests: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures ran with socket permission",
+    "latest_full_gate_run": "all six requested gates passed after HTTPS literal-IP protection; loopback socket access was required for HTTP fixture tests",
     "latest_code_head_ci": "Implementation source 882e9c0 has empty combined status and no associated PR workflow run visible; previous docs head fe8ae3c Actions run 40763293734 failed at startup before jobs were created",
     "live_catalog_revalidation": "2026-10-28T20:46:29Z bounded validator run decoded 25/25 curated stations in 25 attempts through the checked-address resolver; point-in-time codec evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
@@ -91,7 +92,8 @@
     "npr_stream_identity": "Official NPR SmartAudio guide distinguishes the NPR One personalized news mix from live local member-station streams; no single national NPR News continuous stream or product redistribution grant established",
     "dns_address_safety": "passed; rejects non-public/private/special-use DNS results for curated/public URLs; checked resolver address set is used by reqwest; explicit private IPv4 HTTP allows only private/loopback unicast targets",
     "dns_address_safety_tests": "passed; IPv4/IPv6 range classification, localhost resolver rejection, explicit private-mode allowance, and non-public HTTPS redirect rejection",
-    "iana_address_range_regressions": "passed; IPv4-mapped IPv6, NAT64, discard-only, transition, documentation, benchmarking and reserved ranges; conservative aggregate blocks"
+    "iana_address_range_regressions": "passed; IPv4-mapped IPv6, NAT64, discard-only, transition, documentation, benchmarking and reserved ranges; conservative aggregate blocks",
+    "https_literal_ip_safety": "passed; direct HTTPS private/loopback/shared/link-local/mapped IPv6 literals rejected; public IPv4 literal accepted"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -105,9 +107,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40766775155,
-    "previous_head_run": 40766701430,
-    "conclusion": "Actions run 40766775155 for head 5f309550d4a8a245be6d68ac225f8b05d8e642eb ended startup_failure with zero jobs. New head 610b4c81a525bc69bfec53d1b37023a7a5d430d4 has no visible run or combined checks yet; remote CI remains unverified."
+    "latest_observed_head_run": 40767806650,
+    "observed_head": "d38e077",
+    "conclusion": "PR workflow run 40767806650 ended startup_failure with zero jobs on d38e077; no logs or status checks expose a code-level failure. Remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -115,5 +117,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "After this PR is accepted, update and validate Rust-Boy against its pinned revision 3d77d11; continue physical receiver/output/Pi acceptance when hardware is available."
+  "next_priority": "Investigate GitHub Actions startup failures if repository-level diagnostics become available; pursue physical audio/output, receiver, Pi, USB SDR and station-rights acceptance; then update Rust-Boy's pinned dependency after PR acceptance."
 }

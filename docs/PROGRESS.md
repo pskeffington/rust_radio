@@ -1001,3 +1001,25 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Rust-Boy's local workspace still pins revision `3d77d11`; update and validate
   that integration pin only after this module's PR is accepted. Next: check
   host compatibility, then run receiver/output/Pi field acceptance.
+
+## HTTPS literal-IP target protection (2026-10-28)
+
+- Review found that DNS filtering did not cover a direct HTTPS URL whose host
+  was already an IP literal: HTTP clients can connect to that address without
+  invoking the DNS resolver. Direct input validation previously accepted such
+  non-public targets.
+- HTTPS direct URLs now reject literal private, loopback, link-local, shared,
+  reserved, documentation, and other non-public addresses before networking.
+  Public HTTPS literal IPs remain valid; explicitly entered private/loopback
+  IPv4 HTTP remains available. Redirect validation uses the same policy.
+- Added regressions for loopback/private IPv4, loopback/mapped/link-local IPv6,
+  shared IPv4, and public IPv4. Focused test passed.
+- All six workspace gates passed. The first sandboxed workspace attempt could
+  not bind loopback fixtures; rerun with local socket permission passed. The
+  station-label A/B remains A 24/25, B/C 25/25 at 295 px and all 25/25 at
+  340 px; layout-fit evidence only. Headless nRSP ARM64 cross-check passed.
+- GitHub Actions run `40767806650` remained `startup_failure` with zero jobs;
+  no logs or checks expose a code-level failure. Remote CI remains unverified.
+- No physical radio, audio-device, USB SDR, or Pi hardware was exercised.
+  Next: investigate Actions only if repository-level diagnostics appear;
+  continue hardware acceptance and station-rights review when available.
