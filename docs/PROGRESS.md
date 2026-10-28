@@ -906,3 +906,17 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Re-ran the label A/B regression: at 295 px full category fits 24/25, while
   names-only and compact category fit 25/25; all variants fit 25/25 at 340 px.
   These results measure layout fit, not listener preference.
+
+## Fresh bounded catalog sweep (2026-10-28)
+
+- Re-ran `cargo run --locked -p rust-radio-cli -- validate-all --json` at
+  2026-10-28 20:34:19 UTC. All 25 curated streams decoded supported MP3/AAC
+  audio in one attempt each (25/25 at `decoded_audio`). The earlier sweep at
+  20:28:20 UTC was also 25/25; both are point-in-time codec checks, not audible
+  playback, long-term uptime, or distribution-rights evidence.
+- Re-ran the station-label A/B test. At 295 px full category fits 24/25,
+  names-only and compact category fit 25/25; all three fit 25/25 at 340 px.
+  This is layout-fit evidence, not listener preference.
+- No stream or authorization policy changed. Next: obtain written rights for a
+  named NPR member station or preserve that gate, and continue physical device
+  acceptance when hardware is available.

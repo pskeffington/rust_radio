@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:32:41Z",
+  "updated_at_utc": "2026-10-28T20:34:19Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "882e9c0",
@@ -39,7 +39,9 @@
     "Added a loopback nRSP WebSocket upgrade regression: an accepted TCP connection that never answers the HTTP upgrade returns Timeout at the configured connection deadline.",
     "Ran a fresh bounded silent catalog sweep on 2026-10-28T20:28:20Z; all 25 stations decoded in 25 attempts at decoded_audio.",
     "Cross-compiled the headless direct nRSP Rust module for aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance.",
-    "Reviewed NPR first-party SmartAudio and CDS documentation; clarified that NPR News is a personalized NPR One mix, while live streams are member-station-specific, and left catalog inclusion pending named broadcaster endpoint and rights review."
+    "Reviewed NPR first-party SmartAudio and CDS documentation; clarified that NPR News is a personalized NPR One mix, while live streams are member-station-specific, and left catalog inclusion pending named broadcaster endpoint and rights review.",
+    "Repeated bounded silent catalog validation at 2026-10-28T20:34:19Z; all 25 stations decoded in one attempt each, 25/25 at decoded_audio.",
+    "Repeated station-label A/B/C regression on current head: at 295px full category 24/25, names-only and compact category 25/25; at 340px all 25/25; fit evidence only."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -62,9 +64,9 @@
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on source 882e9c0: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
     "latest_code_head_ci": "Implementation source 882e9c0 has empty combined status and no associated PR workflow run visible; previous docs head fe8ae3c Actions run 40763293734 failed at startup before jobs were created",
-    "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T20:28:20Z decoded 25/25 at decoded_audio in 25 total attempts; point-in-time codec evidence only",
+    "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T20:34:19Z decoded 25/25 at decoded_audio in 25 total attempts; point-in-time codec evidence only; previous 20:28:20Z sweep also 25/25",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
-    "layout_ab_recheck": "passed on current source: at 295px full category 24/25, names-only 25/25, compact category 25/25; all variants 25/25 at 340px; compact CLASS saves 32px; layout fit only",
+    "layout_ab_recheck": "passed on current head: at 295px full category 24/25, names-only 25/25, compact category 25/25; all variants 25/25 at 340px; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -107,5 +109,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Identify a named NPR member station with an official direct stream and applicable integration rights; otherwise preserve NPR News as an unresolved catalog gate."
+  "next_priority": "Obtain rights and a named official stream for an NPR member station without assuming permission; continue physical receiver/output/Pi acceptance when hardware is available."
 }
