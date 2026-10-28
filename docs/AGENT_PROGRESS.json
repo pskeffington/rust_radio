@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T18:55:45Z",
+  "updated_at_utc": "2026-10-28T18:56:55Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "e0f96f5",
@@ -42,8 +42,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_prior_head_run": 40746359995,
-    "conclusion": "head e0f96f5 has empty combined status and no PR workflow runs; prior observed run failed before jobs"
+    "latest_observed_prior_head_run": 40749691975,
+    "conclusion": "head 9e6faa5 has empty combined status; PR workflow run 40749691975 failed at startup with zero jobs; previous run 40746359995 also failed before jobs"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
