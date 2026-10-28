@@ -3,6 +3,26 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Cancellation-safe native output startup (2026-10-28 23:25 UTC)
+
+- Added `start_resource_if_active` around native output creation. Stop set before
+  startup skips the output factory; Stop arriving while startup runs drops the
+  newly created output before the worker proceeds, and clears the callback
+  progress slot. Synthetic RAII/counter tests cover both boundaries.
+- Focused tests passed. All six local gates passed for this implementation;
+  after a final tuple simplification, formatting and both focused startup tests
+  passed again. Windows GNU workspace test binaries compiled for default,
+  SDRconnect and direct nRSP-native; they were not run.
+- Repeated GUI label A/B/C: at 295 px A full category fit 24/25, B names-only
+  and C compact category 25/25; all fit at 340 px; C saves 192 px. Layout fit
+  only, not listener preference evidence.
+- Source commit `6069543` is pushed to PR #5. GitHub's PR API currently reports
+  the head mergeable/clean, although one normalized connector read briefly
+  returned `mergeable=false`; no workflow run or combined status was observed.
+- Next: exercise output-factory failure concurrent with Stop and verify the
+  callback progress slot clears on failure; physical output/Pi/receiver and
+  publisher-rights gates remain open.
+
 ## Decoder probe cancellation guard (2026-10-28 23:21 UTC)
 
 - `decode_and_play` now exits before opening output if Stop is already set.
