@@ -23,6 +23,11 @@ Updated 2026-10-28. Active priorities and ownership are in the
   `aarch64-unknown-linux-gnu` with both `nrsp-native` and `sdrconnect`, and the
   default IP module on `aarch64-apple-darwin`. These are compile checks, not Pi
   runtime or native device acceptance.
+- A bounded live `cargo run -p rust-radio-cli -- validate skylab` returned exit
+  2 with `Unavailable`, `NotChecked`, `TransportUnavailable`, and no resolved
+  endpoint. This environment did not reach the stream; the result is not
+  evidence that Skylab is unavailable or healthy, so a full live sweep remains
+  pending working outbound stream access.
 
 ## Current module pass: listener-focused interface
 
