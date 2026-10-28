@@ -81,6 +81,12 @@ Updated 2026-10-28. Active priorities and ownership are in the
   never starts or gates playback.
 - GUI tests verify saved success expiry, malformed/future evidence rejection,
   live-result precedence and no autoplay. Full default/all-feature gates pass.
+- CLI and GUI now both consume the same checked-in version-one history fixture;
+  the CLI preserves its last decoded timestamp on failure, while the GUI
+  ignores the fixture's historical `fresh` label and recomputes it as stale.
+- Re-ran the font-metric A/B regression: category-plus-name fits 24/25 rows at
+  295px versus 25/25 names-only; both fit 25/25 at 340px, and names-only saves
+  1,776 aggregate text pixels.
 
 ## Current module pass: catalog mirror parity
 

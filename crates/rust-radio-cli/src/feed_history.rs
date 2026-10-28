@@ -281,4 +281,16 @@ mod tests {
         assert_eq!(fs::read_to_string(&path).unwrap(), "not-json");
         let _ = fs::remove_file(path);
     }
+
+    #[test]
+    fn cli_merges_the_shared_v1_history_fixture() {
+        let previous = include_str!("../../../testdata/feed-health-v1.json");
+        let updated = merge(Some(previous), &report(1_700_000_100, "unavailable", false)).unwrap();
+        assert_eq!(updated["stations"]["skylab"]["last_status"], "unavailable");
+        assert_eq!(
+            updated["stations"]["skylab"]["last_decoded_at_unix"],
+            1_700_000_000
+        );
+        assert_eq!(updated["stations"]["skylab"]["consecutive_failures"], 1);
+    }
 }

@@ -168,4 +168,11 @@ mod tests {
         assert!(parse_history(&history("decoded", Some(1_000_001), 1_000_000)).is_err());
         assert!(parse_history(&history("decoded", None, 1_000_000)).is_err());
     }
+
+    #[test]
+    fn gui_imports_shared_cli_history_and_recomputes_stale_health() {
+        let history = include_str!("../../../testdata/feed-health-v1.json");
+        let parsed = parse_history(history).unwrap();
+        assert_eq!(label(parsed["skylab"], SystemTime::now()), "SAVED / STALE");
+    }
 }
