@@ -3,6 +3,23 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Interactive CLI input error handling (2026-10-28 22:46 UTC)
+
+- Follow-up review found the bounded line reader classified every
+  `InvalidData` I/O error as an oversized command. A persistent stdin failure
+  could therefore be reported repeatedly instead of terminating the reader.
+- The reader now distinguishes its overlong-line outcome from underlying I/O
+  errors. Oversized input is still drained and reported; actual read failures
+  now stop the input worker.
+- Focused regressions cover an over-limit line followed by valid commands and
+  a reader that itself returns `InvalidData`. Default and all-feature workspace
+  test suites, formatting, both strict Clippy gates and all-feature check pass.
+- A/B/C layout fit was repeated: at 295 px, full-category labels fit 24/25,
+  names-only and compact labels fit 25/25; at 340 px all fit. This remains
+  layout evidence, not listener preference.
+- Next: continue physical audio, Pi, receiver/USB and publisher-rights gates;
+  rerun Windows MSVC CI when Actions creates jobs.
+
 ## Live catalog and label comparison recheck (2026-10-28 22:43 UTC)
 
 - A fresh bounded `validate-all --json` run decoded all 25 catalog streams

@@ -308,10 +308,10 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                         }
                     }
                     Ok(None) => break,
-                    Err(error) if error.kind() == io::ErrorKind::InvalidData => {
+                    Err(InteractiveCommandReadError::TooLong) => {
                         eprintln!("Interactive command ignored: line exceeds {INTERACTIVE_COMMAND_MAX_BYTES} bytes");
                     }
-                    Err(_) => break,
+                    Err(InteractiveCommandReadError::Io) => break,
                 }
             }
             let _ = tx.send("stop".to_owned());
@@ -437,10 +437,22 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
 /// Read one bounded command without allowing a long line or a fast producer to
 /// grow the interactive CLI's memory use without limit. Oversized lines are
 /// drained through their newline so the next command can still be processed.
+#[derive(Debug)]
+enum InteractiveCommandReadError {
+    TooLong,
+    Io,
+}
+
+impl From<io::Error> for InteractiveCommandReadError {
+    fn from(_error: io::Error) -> Self {
+        Self::Io
+    }
+}
+
 fn read_interactive_command<R: BufRead>(
     reader: &mut R,
     max_bytes: usize,
-) -> io::Result<Option<String>> {
+) -> Result<Option<String>, InteractiveCommandReadError> {
     let mut command = Vec::with_capacity(max_bytes.min(256));
     let mut saw_input = false;
     let mut oversized = false;
@@ -472,20 +484,14 @@ fn read_interactive_command<R: BufRead>(
                 return Ok(None);
             }
             if oversized {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "interactive command is too long",
-                ));
+                return Err(InteractiveCommandReadError::TooLong);
             }
             break;
         }
         reader.consume(consumed);
         if newline {
             if oversized {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "interactive command is too long",
-                ));
+                return Err(InteractiveCommandReadError::TooLong);
             }
             break;
         }
@@ -630,13 +636,31 @@ mod tests {
         raw.iter().map(|s| (*s).to_owned()).collect()
     }
 
+    struct InvalidDataReader;
+
+    impl io::Read for InvalidDataReader {
+        fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::InvalidData, "stdin failure"))
+        }
+    }
+
+    impl BufRead for InvalidDataReader {
+        fn fill_buf(&mut self) -> io::Result<&[u8]> {
+            Err(io::Error::new(io::ErrorKind::InvalidData, "stdin failure"))
+        }
+
+        fn consume(&mut self, _amount: usize) {}
+    }
+
     #[test]
     fn interactive_input_bounds_lines_and_recovers_after_oversized_input() {
         let input = format!("{}\n{}\nok\r\n", "x".repeat(4097), "y".repeat(4096));
         let mut reader = io::Cursor::new(input.into_bytes());
 
-        let error = read_interactive_command(&mut reader, 4096).unwrap_err();
-        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            read_interactive_command(&mut reader, 4096),
+            Err(InteractiveCommandReadError::TooLong)
+        ));
         assert_eq!(
             read_interactive_command(&mut reader, 4096).unwrap(),
             Some("y".repeat(4096))
@@ -646,6 +670,15 @@ mod tests {
             Some("ok".into())
         );
         assert_eq!(read_interactive_command(&mut reader, 4096).unwrap(), None);
+    }
+
+    #[test]
+    fn interactive_input_preserves_reader_errors_instead_of_treating_them_as_long_lines() {
+        let mut reader = InvalidDataReader;
+        assert!(matches!(
+            read_interactive_command(&mut reader, 4096),
+            Err(InteractiveCommandReadError::Io)
+        ));
     }
 
     #[test]
