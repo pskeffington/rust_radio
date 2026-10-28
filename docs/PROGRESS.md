@@ -15,6 +15,12 @@ Updated 2026-10-27. Active priorities and ownership are in the
   eight-second Skylab session at zero volume exited successfully after native
   callback playback on the Mac system output. This is callback evidence, not a
   fresh audible listening or physical Pi acceptance.
+- Pip-Boy `81de2d5` pins module `3d77d11`; the host passed 344 tests serially,
+  formatting, strict Clippy, build and UI/security checks. Its zero-volume smoke
+  switched from synthetic SDR PCM to live Skylab and reached native callback
+  playback. The primary host checkout was updated and rebuilt. Upstream sync
+  formatting and explicit lock-file open mode were repaired in separate host
+  commit `3e2488d` before the checks.
 
 ## Previous module pass
 
@@ -69,8 +75,8 @@ are recorded separately from real-receiver evidence.
   station controls currently support IP radio; Pip-Boy owns its SDR selector.
 - **USB SDR:** the adapter compiles/links, but no supported device or driver was
   discovered on this Mac. RawIq ingress is implemented; local RF DSP audio is not.
-- **CI:** the inspected [Rust Radio run at `21045b3`](https://github.com/pskeffington/rust_radio/actions/runs/40622415593)
-  and [Pip-Boy run at `beaa719`](https://github.com/pskeffington/pip_boy/actions/runs/40622963504)
+- **CI:** the inspected [Rust Radio run at `3d77d11`](https://github.com/pskeffington/rust_radio/actions/runs/40624628207)
+  and [Pip-Boy run at `81de2d5`](https://github.com/pskeffington/pip_boy/actions/runs/40624801806)
   reported `startup_failure` with zero jobs. Earlier failed-run retry requests
   were refused by GitHub. No underlying cause or remote green result is established.
 - **Host test reliability:** an existing dashboard role-activation test again
