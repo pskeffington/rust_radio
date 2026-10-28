@@ -947,3 +947,33 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - GitHub Actions run `40765092086` ended `startup_failure` with zero jobs.
   No job logs exist, so this provides no code-level CI result; remote CI remains
   unverified. The local six-gate run on implementation source `d7c9f12` passed.
+
+## DNS address pinning for radio HTTP (2026-10-28)
+
+- The shared radio HTTP transport contract requires DNS/address safety, but the
+  blocking probe client and live playback client previously used reqwest's
+  default resolver. A public station or HTTPS redirect could therefore resolve
+  to loopback or a private target, and DNS could change between a check and its
+  connection.
+- Added a custom resolver that rejects private, loopback, link-local,
+  documentation, multicast, reserved and other special-use addresses for
+  curated stations and public HTTPS streams. Reqwest connects using the checked
+  address set returned by that resolver. Direct user-entered private IPv4 HTTP
+  remains supported by explicit choice, with only private/loopback addresses
+  allowed in that mode. Public HTTPS literal-IP redirects to non-public ranges
+  are refused before connection.
+- Regressions cover IPv4/IPv6 special-use ranges, localhost resolution,
+  private-source exceptions and redirect target checks. `rust-radio-ip` tests,
+  including loopback HTTP fixtures, passed. All six workspace gates and the
+  headless nRSP ARM64 check passed.
+- Implementation is committed as `d7ee9ac` on the active PR branch.
+- A fresh bounded live sweep at 2026-10-28 20:46 UTC decoded all 25/25 stations
+  in 25 attempts through the new resolver. This remains point-in-time codec
+  evidence only.
+- Repeated the station-label A/B/C test: at 295 px full category fits 24/25;
+  names-only and compact category fit 25/25; all variants fit at 340 px. The
+  compact variant preserves genre cues and saves 32 px; this is layout-fit
+  evidence, not listener preference.
+- PR #3 remains open and mergeable. Run `40765170553` failed at startup with
+  zero jobs; no combined status or code-level CI result is available. Physical
+  audio, receiver and Pi runtime acceptance remains open.
