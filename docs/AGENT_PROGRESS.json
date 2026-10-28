@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:01:41Z",
+  "updated_at_utc": "2026-10-28T23:02:21Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "452f444; native CPAL format callback regression now verifies full, half and mute gain across all eleven active sample formats.",
@@ -7,6 +7,7 @@
   "completed_this_run": [
     "Extended native callback coverage to verify 100%, 50% and 0% gain at full-scale and intermediate PCM levels for every active CPAL sample format, including consumed-sample accounting.",
     "Repeated the station-label A/B/C fit comparison after the audio regression change: A 24/25 and B/C 25/25 at 295px; all fit at 340px; layout-fit evidence only.",
+    "Observed PR Actions run 256 for source commit 452f444; it failed before job creation with startup_failure and no combined statuses.",
     "Fresh bounded validate-all sweep at 2026-10-28T22:58:15Z decoded 25/25 curated stations in 25 total attempts, no retries or failures; evidence is point-in-time codec validation only.",
     "Expanded the native callback conversion regression to cover full-scale negative/positive samples, zero and intermediate levels for every active CPAL 0.16 PCM format; confirmed CPAL excludes U24 from SampleFormat.",
     "Extended native CPAL output dispatch to all eleven CPAL 0.16 integer and floating sample formats and added callback conversion coverage for every format.",
@@ -135,7 +136,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "passed after all-format gain regression: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked; git diff --check. Loopback fixtures needed local socket permission; physical native audio test remains ignored.",
-    "latest_code_head_ci": "PR #5 source head 452f444eb1c196cec615d2ee2c53f2429bd40b66 has no workflow run/status observed yet. Most recent observed run 255 (40784010963) for prior docs head 1eed8ec ended startup_failure before job creation; combined statuses empty.",
+    "latest_code_head_ci": "PR #5 source head 452f444eb1c196cec615d2ee2c53f2429bd40b66 Actions run 40784386286 (run 256) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified. Evidence checkpoint aa557f0 has no run/status observed.",
     "live_catalog_revalidation": "2026-10-28T22:58:15Z: bounded validate-all decoded 25/25 stations in 25 attempts; no retry/recovery or failure; point-in-time codec evidence only.",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
     "layout_ab_recheck": "repeated 2026-10-28 23:00 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; compact saves 192px; fit only, not preference.",
@@ -195,11 +196,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40784010963,
-    "latest_pr_head": "1eed8ec1ead2b7a497c314360f7d235ac5402f34",
+    "latest_pr_run": 40784386286,
+    "latest_pr_head": "452f444eb1c196cec615d2ee2c53f2429bd40b66",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Run 255 for prior docs head 1eed8ec failed before jobs were created; combined statuses empty. New source head 452f444 has no run/status observed. Native MSVC checks remain unverified."
+    "details": "Run 256 for source head 452f444 failed before jobs were created; combined statuses empty. Evidence checkpoint aa557f0 has no run/status observed. Native MSVC checks remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",

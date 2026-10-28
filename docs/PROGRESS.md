@@ -17,7 +17,8 @@ Updated 2026-10-28. Active priorities and ownership are in the
   Layout fit only, not listener preference.
 - Source commit `452f444` is pushed to open, mergeable PR #5. The previous
   checkpoint's Actions run 255 failed at startup before creating jobs; the
-  current source head has no run/status observed yet.
+  source head's run 256 also failed at startup before jobs, with no statuses.
+  The final evidence checkpoint commit does not have an observed run yet.
 - Next: continue source-driven recovery coverage; physical audio/Pi/receiver
   acceptance, distribution rights and healthy Actions/MSVC validation remain.
 
