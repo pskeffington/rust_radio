@@ -1,6 +1,30 @@
-# SDRplay nRSP-ST via SDRconnect
+# SDRplay nRSP-ST access
 
-The first network receiver target is the nRSP-ST. SDRplay directs this model to
+## Direct device status
+
+The `sdr` feature can check the receiver's own network services without
+SDRconnect, using the direct-service findings from Fides Supra main `2447fdc`:
+
+```sh
+cargo run --locked -p rust-radio-cli --features sdr -- nrsp-status PRIVATE_IPV4
+```
+
+This explicit, bounded check requests the built-in web service on TCP 9001 and
+opens/closes TCP 50000 without a device command. It accepts literal private or
+loopback IPv4 addresses, does not follow HTTP redirects, and never scans a LAN.
+The library API is `rust_radio::receiver::nrsp::Host`. An open service indicates
+reachability only; it does not prove identity, tuning, I/Q, or audio. Fides
+Supra's proven native display path uses a passive browser-session tap and does
+not document a native audio or receiver-control client. Direct native nRSP-ST
+audio and tuning are therefore still unimplemented.
+
+On 2026-10-27, the operator-identified NETRADIO host returned HTTP 200 on port
+9001 and accepted TCP 50000 when checked directly by this CLI. No radio command
+or audio subscription was sent. Device addresses remain local configuration.
+
+## SDRconnect audio adapter
+
+The first network receiver target is the nRSP-ST. For third-party audio SDRplay directs this model to
 the [SDRconnect WebSocket API](https://sdrplay.com/websocket-api/), rather than the
 [USB hardware API](https://sdrplay.com/hardware-api/). Pip-Boy consumes the same
 standalone module; no receiver implementation is copied into the host.

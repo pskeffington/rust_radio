@@ -11,6 +11,7 @@ use std::time::UNIX_EPOCH;
 use std::time::{Duration, Instant};
 use std::{env, process};
 
+mod nrsp;
 mod sdr;
 mod sdrconnect;
 
@@ -27,6 +28,7 @@ fn usage() {
     eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
     eprintln!("Interactive listen commands: status | volume N | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
+    eprintln!("Direct nRSP-ST reachability: nrsp-status PRIVATE_IPV4 (enable sdr)");
     eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
     eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
 }
@@ -225,6 +227,7 @@ fn run(args: &[String]) -> Result<(), String> {
         Some("listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
         Some("sdr-devices") if args.len() == 1 => sdr::devices(),
         Some("sdr-capture") => sdr::capture(args),
+        Some("nrsp-status") => nrsp::status(args),
         Some("sdrconnect-status" | "sdrconnect-capture") => sdrconnect::run(args),
         _ => {
             usage();

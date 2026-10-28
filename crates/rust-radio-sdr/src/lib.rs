@@ -13,3 +13,6 @@ pub use soapy::{discover, ReceiverInfo, SampleRateRange, SoapyReceiver};
 /// SDK-independent SDRconnect WebSocket API, including nRSP-ST bridges.
 #[cfg(feature = "sdrconnect")]
 pub mod sdrconnect;
+
+/// Direct, read-only reachability checks for the nRSP-ST network services.
+pub mod nrsp;

@@ -5,6 +5,22 @@ Updated 2026-10-27. Active priorities and ownership are in the
 
 ## Current module pass
 
+- Cloned and reviewed Fides Supra main `2447fdc` in a temporary checkout. Its
+  direct nRSP-ST work establishes web/device service checks and a passive
+  browser-observed spectrum path; it does not provide direct audio or tuning.
+- Added `nrsp-status` and a reusable direct status API without SDRconnect. A
+  check of the operator-identified NETRADIO host returned HTTP 200 on port 9001
+  and a TCP connection on port 50000. This is service reachability evidence,
+  not receiver identity or audio/IQ evidence. No device address was saved. The
+  Mac's SDRconnect app was running during the live check, but the command only
+  contacted the device's two direct services.
+- All-feature workspace formatting, check, strict Clippy, **140 tests** and build
+  passed, along with the headless `sdr` AArch64 Linux compile check. Direct
+  loopback fixtures cover local-address restrictions, cancellation, redirects
+  and closing the device-service connection without sending a command.
+
+## Previous module pass: GUI
+
 - Added a locally scoped, classic phosphor-green retro skin to the 480×320
   standalone panel and settings. The optional `sdrconnect` feature adds an
   nRSP-ST source and in-memory API address field using the shared native engine.

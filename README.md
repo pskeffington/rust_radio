@@ -1,6 +1,6 @@
 # rust_radio
 
-Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. Intended backends: curated HTTPS internet streams, optional USB SDR receivers and future satellite receive adapters.
+Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. USB SDR raw I/Q and direct nRSP-ST service checks are optional; native USB and nRSP-ST audio remain development work.
 
 ## Status (2026-10-27)
 
@@ -13,6 +13,7 @@ IP radio and nRSP-ST PCM have reached native output callbacks in standalone and 
 - [Standalone module and embedding API](docs/EMBEDDING.md)
 - [Optional SDR receive adapter and hardware gates](docs/SDR_RECEIVE.md)
 - [SDRplay nRSP-ST network receiver via SDRconnect](docs/NRSP_ST.md)
+- [Direct nRSP-ST service status](docs/NRSP_ST.md#direct-device-status)
 - [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
 - [Roadmap and component ownership](docs/PORTING_PLAN.md)
 - [Progress notes and verification evidence](docs/PROGRESS.md)
