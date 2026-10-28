@@ -1131,3 +1131,7 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - No playback code changed in this increment; all six workspace gates passed
   immediately before it. Remote workflow execution remains unavailable for
   the current PR head, and no hardware acceptance is inferred.
+- At checkpoint, PR #3 is open and mergeable at `fab6f63`. No workflow run or
+  status checks are visible for this head; prior Actions run `40770761885`
+  failed before creating jobs. Local `git merge-tree origin/main HEAD` found
+  no conflicts.

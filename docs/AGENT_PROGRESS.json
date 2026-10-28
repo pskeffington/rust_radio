@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:22:46Z",
+  "updated_at_utc": "2026-10-28T21:23:35Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -73,7 +73,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
-    "latest_code_head_ci": "Implementation source 882e9c0 has empty combined status and no associated PR workflow run visible; previous docs head fe8ae3c Actions run 40763293734 failed at startup before jobs were created",
+    "latest_code_head_ci": "Current PR head fab6f63 has no workflow run or status checks visible; previous Actions run 40770761885 on 2bd4bfd failed at startup before jobs were created; remote CI remains unverified",
     "live_catalog_revalidation": "2026-10-28T21:18:27Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; point-in-time codec evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed this run; compile evidence only",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
@@ -105,7 +105,8 @@
     "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
     "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata",
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
-    "catalog_validation_summary": "passed 3 Python tests for decoded/unavailable/unverified statuses, endpoint/error omission, Markdown label sanitization and malformed report rejection; workflow YAML parsed and now runs these tests before the live sweep"
+    "catalog_validation_summary": "passed 3 Python tests for decoded/unavailable/unverified statuses, endpoint/error omission, Markdown label sanitization and malformed report rejection; workflow YAML parsed and now runs these tests before the live sweep",
+    "current_pr_state": "PR #3 open and mergeable at fab6f63; local git merge-tree origin/main HEAD reports no conflicts"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
