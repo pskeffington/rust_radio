@@ -238,12 +238,22 @@ mod tests {
             stream_failure(Error::Protocol("invalid frame")).class(),
             FailureClass::Permanent
         );
+        let disconnected = stream_failure(Error::Disconnected(3));
+        assert_eq!(disconnected.class(), FailureClass::Permanent);
+        assert_eq!(
+            disconnected.message(),
+            "Receiver ended the native session (reason 3)"
+        );
         assert_eq!(
             startup_failure(Error::Timeout, false).class(),
             FailureClass::Permanent
         );
         assert_eq!(
             startup_failure(Error::Transport("receiver unavailable".into()), false).class(),
+            FailureClass::Permanent
+        );
+        assert_eq!(
+            startup_failure(Error::Protocol("invalid reconnect hello"), true).class(),
             FailureClass::Permanent
         );
         assert_eq!(

@@ -1272,6 +1272,48 @@ mod tests {
         assert_eq!(calls, [(initial, None, false), (requested, Some(fm), true)]);
     }
 
+    #[cfg(feature = "nrsp-native")]
+    #[test]
+    fn nrsp_reconnect_fixture_stops_after_terminal_setup_failure() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let initial =
+            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
+                .unwrap();
+        let control = nrsp_native::Control::new(initial, None);
+        let mut reconnect_states = Vec::new();
+        let mut waits = Vec::new();
+        let mut output_attempts_cleared = 0;
+
+        let error = recover_nrsp_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            &control,
+            |_config, _fm, reconnecting| {
+                reconnect_states.push(reconnecting);
+                if reconnecting {
+                    Err(PlaybackFailure::Permanent(
+                        "receiver rejected reconnect setup".into(),
+                    ))
+                } else {
+                    Err(PlaybackFailure::Network("receiver stream timed out".into()))
+                }
+            },
+            || output_attempts_cleared += 1,
+            |delay| {
+                waits.push(delay);
+                true
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error.class(), FailureClass::Permanent);
+        assert_eq!(reconnect_states, [false, true]);
+        assert_eq!(waits, [Duration::from_secs(1)]);
+        assert_eq!(output_attempts_cleared, 2);
+    }
+
     fn completed_test_engine(panics: bool) -> NativeRadioEngine {
         let mut controller = RadioController::default();
         controller
