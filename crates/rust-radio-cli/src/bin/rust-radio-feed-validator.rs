@@ -627,7 +627,10 @@ fn run(options: Options) -> Result<bool, String> {
                             options.output.display(),
                         );
                         if options.mode == Mode::Once {
-                            return Ok(eligible == curated_stations().len());
+                            return Ok(
+                                eligible == curated_stations().len()
+                                    && report["network_incident_suspected"].as_bool() != Some(true),
+                            );
                         }
                     }
                     Err(error) => {
