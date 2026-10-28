@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:46:45Z",
+  "updated_at_utc": "2026-10-28T22:48:39Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "2936b844d894ea9deb3e40241c58ffe88a86af88; Windows GNU test binaries compiled; A/B rerun passed",
+  "implementation_commit": "Interactive CLI stdin hardening: bounded input (04e461d), explicit read-error classification (202db11), and stderr diagnostics for genuine stdin failures validated in this checkpoint.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -104,7 +104,8 @@
     "Bounded interactive CLI stdin commands to 4096 bytes and eight queued commands; oversized lines are drained and later commands remain usable.",
     "Fresh bounded validate-all sweep decoded all 25 catalog streams in 25 attempts at 2026-10-28T22:43Z; station-label A/B/C fit comparison repeated.",
     "Separated oversized interactive CLI command errors from underlying stdin I/O errors; actual InvalidData read failures now terminate the reader worker instead of retrying as overlong lines.",
-    "Cross-compiled Windows GNU workspace test binaries with --no-run after the stdin error-path fix for default, SDRconnect and direct nRSP-native feature configurations; executables were not run."
+    "Cross-compiled Windows GNU workspace test binaries with --no-run after the stdin error-path fix for default, SDRconnect and direct nRSP-native feature configurations; executables were not run.",
+    "Preserved and printed the original stdin I/O error when the bounded interactive reader exits; reran focused tests and the full validation matrices."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -125,11 +126,11 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "passed on interactive CLI error-classification source: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked. Loopback tests required temporary elevated socket permission; existing manual native audio test remains ignored.",
+    "latest_full_gate_run": "passed after stdin error diagnostic change: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked. Loopback tests required temporary elevated socket permission; one manual native audio test remains ignored.",
     "latest_code_head_ci": "PR #5 source head 202db1111919e8ad705ffd1227df504e373270fc Actions run 40782495730 (run 248) startup_failure before job creation; checks/statuses empty; native Windows MSVC job unverified",
     "live_catalog_revalidation": "2026-10-28T22:43Z: bounded validate-all decoded 25/25 stations in 25 total attempts; point-in-time codec evidence only",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
-    "layout_ab_recheck": "repeated 2026-10-28 22:46 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; fit only, not preference",
+    "layout_ab_recheck": "repeated 2026-10-28 22:48 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; fit only, not preference",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -169,9 +170,9 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed cargo test --workspace --locked --no-run --target x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native configurations after stdin error fix; binaries compiled but not executed",
+    "windows_gnu_cross_check": "passed cargo test --workspace --locked --no-run --target x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native configurations after stdin diagnostic change; binaries compiled but not run",
     "interactive_cli_input_bound": "passed focused regression: rejects a 4097-byte line, accepts a 4096-byte line, handles CRLF and reads subsequent commands",
-    "interactive_cli_input_error_classification": "passed focused regression: over-limit lines drain and later commands work; underlying InvalidData reader error remains an I/O failure"
+    "interactive_cli_input_error_classification": "passed: oversized input is distinguished from stdin I/O failure; actual InvalidData reader errors stay classified as I/O and are printed once before the worker exits"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",

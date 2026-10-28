@@ -311,7 +311,10 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                     Err(InteractiveCommandReadError::TooLong) => {
                         eprintln!("Interactive command ignored: line exceeds {INTERACTIVE_COMMAND_MAX_BYTES} bytes");
                     }
-                    Err(InteractiveCommandReadError::Io) => break,
+                    Err(InteractiveCommandReadError::Io(error)) => {
+                        eprintln!("Interactive input failed: {error}");
+                        break;
+                    }
                 }
             }
             let _ = tx.send("stop".to_owned());
@@ -440,12 +443,12 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
 #[derive(Debug)]
 enum InteractiveCommandReadError {
     TooLong,
-    Io,
+    Io(io::Error),
 }
 
 impl From<io::Error> for InteractiveCommandReadError {
-    fn from(_error: io::Error) -> Self {
-        Self::Io
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
     }
 }
 
@@ -677,7 +680,8 @@ mod tests {
         let mut reader = InvalidDataReader;
         assert!(matches!(
             read_interactive_command(&mut reader, 4096),
-            Err(InteractiveCommandReadError::Io)
+            Err(InteractiveCommandReadError::Io(error))
+                if error.kind() == io::ErrorKind::InvalidData
         ));
     }
 

@@ -3,14 +3,14 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Interactive CLI input error handling (2026-10-28 22:46 UTC)
+## Interactive CLI input error handling (2026-10-28 22:48 UTC)
 
 - Follow-up review found the bounded line reader classified every
   `InvalidData` I/O error as an oversized command. A persistent stdin failure
   could therefore be reported repeatedly instead of terminating the reader.
 - The reader now distinguishes its overlong-line outcome from underlying I/O
   errors. Oversized input is still drained and reported; actual read failures
-  now stop the input worker.
+  now print the underlying diagnostic and stop the input worker.
 - Focused regressions cover an over-limit line followed by valid commands and
   a reader that itself returns `InvalidData`. Default and all-feature workspace
   test suites, formatting, both strict Clippy gates and all-feature check pass.
@@ -19,7 +19,8 @@ Updated 2026-10-28. Active priorities and ownership are in the
   layout evidence, not listener preference.
 - Windows GNU `cargo test --workspace --no-run` passed for the default,
   SDRconnect and direct nRSP-native feature configurations after the reader
-  fix; executables were cross-compiled but not run.
+  fix; executables were cross-compiled but not run. Repeated the compile after
+  adding stdin error diagnostics.
 - Next: continue physical audio, Pi, receiver/USB and publisher-rights gates;
   rerun Windows MSVC CI when Actions creates jobs.
 
