@@ -10,9 +10,12 @@ Updated 2026-10-28. Active priorities and ownership are in the
   integer/float formats. Previously unhandled device defaults failed as
   unsupported even when the backend could convert them.
 - A focused conversion regression covers each supported type and confirms
-  callback consumption accounting. The default and all-feature workspace
-  suites, both strict Clippy configurations, formatting, all-feature check and
-  diff validation passed. One manual physical audio test remains ignored.
+  callback consumption accounting at full scale (-1.0 and 1.0), zero and
+  intermediate values. CPAL 0.16 exposes eleven active PCM formats; U24 is
+  present in its sample wrapper crate but excluded from CPAL's active format
+  enum. The default and all-feature workspace suites, both strict Clippy
+  configurations, formatting, all-feature check and diff validation passed.
+  One manual physical audio test remains ignored.
 - Repeated the 25-station station-label A/B/C fit test: at 295 px, full genre
   labels fit 24/25 and names-only/compact labels fit 25/25; all fit at 340 px.
   This is layout evidence only, not listener preference.

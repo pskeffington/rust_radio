@@ -365,7 +365,7 @@ mod output_identity_tests {
         T: SizedSample + FromSample<f32>,
         f32: FromSample<T>,
     {
-        let expected = [-0.5f32, 0.0, 0.75];
+        let expected = [-1.0f32, -0.5, 0.0, 0.75, 1.0];
         let ring = HeapRb::<f32>::new(expected.len());
         let (mut producer, mut consumer) = ring.split();
         for sample in expected {
