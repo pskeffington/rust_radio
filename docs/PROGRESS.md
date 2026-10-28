@@ -3,6 +3,25 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Live volume changes across output formats (2026-10-28 23:05 UTC)
+
+- Added a callback regression that changes volume between successive buffers
+  for each of the eleven active CPAL 0.16 PCM formats. It verifies full volume,
+  half volume, mute, output scaling and callback-consumed sample counts.
+- Focused regression passed. Formatting, default/all-feature workspace tests,
+  strict Clippy gates and all-feature check passed. Windows GNU workspace test
+  binaries compiled for default, SDRconnect and direct nRSP-native features;
+  they were not run.
+- Repeated the station-label A/B/C comparison: at 295 px, full categories fit
+  24/25 and names-only/compact labels fit 25/25; all fit at 340 px. Layout
+  evidence only, not listener preference.
+- Source commit `002c86f` is pushed to open, mergeable PR #5. Latest observed
+  Actions run 256 on the preceding source head failed before job creation; the
+  new source head has no run/status observed yet.
+- Next: continue synthetic playback/output-recovery testing. Physical
+  Bluetooth/USB, Pi, receiver, publisher-rights and healthy Windows CI gates
+  remain open.
+
 ## Native output gain coverage (2026-10-28 23:01 UTC)
 
 - Extended the generic CPAL callback regression so all eleven active PCM

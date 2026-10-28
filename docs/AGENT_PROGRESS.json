@@ -1,10 +1,12 @@
 {
-  "updated_at_utc": "2026-10-28T23:02:21Z",
+  "updated_at_utc": "2026-10-28T23:05:55Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "452f444; native CPAL format callback regression now verifies full, half and mute gain across all eleven active sample formats.",
+  "implementation_commit": "002c86f; callback tests confirm volume updates between buffers for every active CPAL 0.16 PCM format.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Added a generic native output callback regression for volume changes between buffers at 100%, 50% and 0% across all eleven active CPAL PCM formats, including sample accounting.",
+    "Repeated station-label A/B/C fit measurement after the callback test change: 24/25 full category and 25/25 names-only/compact at 295px; all variants fit at 340px.",
     "Extended native callback coverage to verify 100%, 50% and 0% gain at full-scale and intermediate PCM levels for every active CPAL sample format, including consumed-sample accounting.",
     "Repeated the station-label A/B/C fit comparison after the audio regression change: A 24/25 and B/C 25/25 at 295px; all fit at 340px; layout-fit evidence only.",
     "Observed PR Actions run 256 for source commit 452f444; it failed before job creation with startup_failure and no combined statuses.",
@@ -135,11 +137,11 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "passed after all-format gain regression: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked; git diff --check. Loopback fixtures needed local socket permission; physical native audio test remains ignored.",
-    "latest_code_head_ci": "PR #5 source head 452f444eb1c196cec615d2ee2c53f2429bd40b66 Actions run 40784386286 (run 256) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified. Evidence checkpoint aa557f0 has no run/status observed.",
+    "latest_full_gate_run": "passed after live volume transition test: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked; git diff --check. Loopback fixtures needed local socket permission; physical audio test remains ignored.",
+    "latest_code_head_ci": "PR #5 source head 002c86fc835992f31ad170c18c91ab0af5ff6ef0 has no workflow run/status observed yet. Latest observed run 256 (40784386286) on prior source head 452f444 failed startup before job creation; combined statuses empty.",
     "live_catalog_revalidation": "2026-10-28T22:58:15Z: bounded validate-all decoded 25/25 stations in 25 attempts; no retry/recovery or failure; point-in-time codec evidence only.",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
-    "layout_ab_recheck": "repeated 2026-10-28 23:00 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; compact saves 192px; fit only, not preference.",
+    "layout_ab_recheck": "repeated 2026-10-28 23:04 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; layout fit only, not listener preference.",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -179,10 +181,11 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed cargo test --workspace --locked --no-run targeting x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native after gain test extension; binaries cross-compiled, not run.",
+    "windows_gnu_cross_check": "passed locked cargo test --workspace --no-run targeting x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native with live volume transition test; binaries cross-compiled, not run.",
     "interactive_cli_input_bound": "passed focused regression: rejects a 4097-byte line, accepts a 4096-byte line, handles CRLF and reads subsequent commands",
     "interactive_cli_input_error_classification": "passed: oversized input is distinguished from stdin I/O failure; actual InvalidData reader errors stay classified as I/O and are printed once before the worker exits",
-    "native_audio_sample_formats": "passed callback conversion and gain regression for all eleven active CPAL 0.16 PCM formats (I8, I16, I24, I32, I64, U8, U16, U32, U64, F32, F64), testing -1.0, -0.5, 0, 0.75, 1.0 at 100%, 50%, and 0% volume plus played-sample accounting."
+    "native_audio_sample_formats": "passed callback conversion and gain regression for all eleven active CPAL 0.16 PCM formats (I8, I16, I24, I32, I64, U8, U16, U32, U64, F32, F64), testing -1.0, -0.5, 0, 0.75, 1.0 at 100%, 50%, and 0% volume plus played-sample accounting.",
+    "native_live_volume_changes": "passed for I8, I16, I24, I32, I64, U8, U16, U32, U64, F32 and F64; separate callback buffers picked up 100%, 50% and 0% volume and consumed-sample count reached three."
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -200,7 +203,7 @@
     "latest_pr_head": "452f444eb1c196cec615d2ee2c53f2429bd40b66",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Run 256 for source head 452f444 failed before jobs were created; combined statuses empty. Evidence checkpoint aa557f0 has no run/status observed. Native MSVC checks remain unverified."
+    "details": "Run 256 on source head 452f444 failed before jobs were created; combined statuses empty. New source head 002c86f has no run/status observed. Native MSVC checks remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -211,5 +214,5 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue source-driven synthetic playback/output-recovery reliability work; pursue physical output/Pi/receiver acceptance and publisher-rights review; retry native MSVC validation when Actions runner starts jobs."
+  "next_priority": "Continue synthetic playback/output-recovery testing; pursue physical Bluetooth/USB output, Raspberry Pi, receiver acceptance and publisher-rights review; retry native Windows CI after runner startup recovers."
 }
