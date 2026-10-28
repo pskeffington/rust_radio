@@ -996,6 +996,15 @@ fn stream_errors_offer_listener_actions_with_original_diagnostics_retained() {
             "Native audio output device disconnected",
             "select an output",
         ),
+        ("Unsupported native sample format: I32", "select an output"),
+        (
+            "Unsupported native receiver output: UnsupportedChannels",
+            "select an output",
+        ),
+        (
+            "Cannot configure native audio stream: device unavailable",
+            "select an output",
+        ),
     ] {
         panel.last_session = Some(RadioSession {
             state: PlaybackState::Failed,

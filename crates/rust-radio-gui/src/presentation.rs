@@ -111,7 +111,12 @@ impl RadioPanel {
             "The station took too long to respond. Check your connection and retry."
         } else if message.contains("stream connection failed") {
             "Could not reach the station. Check your connection or stream address, then retry."
-        } else if message.contains("audio output") || message.contains("audio device") {
+        } else if message.contains("audio output")
+            || message.contains("audio device")
+            || message.contains("native sample format")
+            || message.contains("native receiver output")
+            || message.contains("cannot configure native audio stream")
+        {
             "Your audio output is unavailable. Open IP Radio to select an output, then retry."
         } else {
             return raw;
