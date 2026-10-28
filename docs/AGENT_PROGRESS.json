@@ -2,7 +2,7 @@
   "updated_at_utc": "2026-10-28T18:33:05Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "head_commit": "f11618e",
+  "implementation_commit": "f11618e",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
