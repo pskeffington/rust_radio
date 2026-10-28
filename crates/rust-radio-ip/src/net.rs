@@ -2,6 +2,7 @@
 //! Network I/O runs outside the Symphonia worker and CPAL callback.
 
 use crate::error::TransportError;
+use crate::safe_dns::{is_allowed_address, SafeResolver};
 use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
@@ -339,9 +340,16 @@ async fn pump_input(
     };
     let mut next = reqwest::Url::parse(initial).map_err(|_| "Invalid stream URL")?;
     check_hop(initial, &next, direct, station_id)?;
+    let allow_private = direct && initial.starts_with("http:");
+    let resolver = if allow_private {
+        SafeResolver::explicit_private_source()
+    } else {
+        SafeResolver::public_only()
+    };
     let client = reqwest::Client::builder()
         .redirect(Policy::none())
         .no_proxy()
+        .dns_resolver(resolver)
         .connect_timeout(Duration::from_secs(5))
         .user_agent("Rust-Radio/0.1 (native audio)")
         .build()
@@ -459,6 +467,19 @@ fn check_hop(
 ) -> Result<(), String> {
     if direct {
         validate_direct_url(next.as_str())?;
+        let allow_private = initial.starts_with("http:");
+        if next
+            .host_str()
+            .and_then(|host| {
+                host.trim_start_matches('[')
+                    .trim_end_matches(']')
+                    .parse::<std::net::IpAddr>()
+                    .ok()
+            })
+            .is_some_and(|address| !is_allowed_address(address, allow_private))
+        {
+            return Err("Radio URL cannot target a non-routable address".into());
+        }
         if initial.starts_with("https:") && next.scheme() != "https" {
             return Err("Radio redirect cannot downgrade HTTPS to HTTP".into());
         }
@@ -551,6 +572,15 @@ mod tests {
             ""
         )
         .is_ok());
+        for address in ["127.0.0.1", "192.168.1.5", "169.254.1.2", "[::1]"] {
+            let target = reqwest::Url::parse(&format!("https://{address}/audio")).unwrap();
+            assert!(
+                check_hop("https://public.example/audio", &target, true, "").is_err(),
+                "{address}"
+            );
+        }
+        let public_ip = reqwest::Url::parse("https://8.8.8.8/audio").unwrap();
+        assert!(check_hop("https://public.example/audio", &public_ip, true, "").is_ok());
     }
 
     #[test]
