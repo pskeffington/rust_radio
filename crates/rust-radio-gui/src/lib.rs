@@ -8,6 +8,10 @@ use rust_radio_core::directory::{curated_stations, station_by_id, InternetStatio
 use rust_radio_core::validation::{StationValidation, ValidationStatus};
 use std::collections::BTreeMap;
 
+mod inputs;
+use inputs::Segment;
+use rust_radio_audio::discovery::{InputReport, InputScan};
+use std::time::Instant;
 mod settings;
 mod theme;
 mod view;
@@ -17,6 +21,12 @@ pub const PANEL_HEIGHT: f32 = 320.0;
 
 /// Owns one radio session. Embed with `panel.show(ui)` inside an existing HUD.
 pub struct RadioPanel {
+    segment: Segment,
+    inputs: InputReport,
+    input_scan: Option<InputScan>,
+    scan_enabled: bool,
+    source_user_selected: bool,
+    last_scan: Option<Instant>,
     station_index: usize,
     direct_selected: bool,
     direct_url: String,
@@ -55,6 +65,12 @@ pub struct RadioPanel {
 impl Default for RadioPanel {
     fn default() -> Self {
         Self {
+            segment: Segment::Ip,
+            inputs: InputReport::default(),
+            input_scan: None,
+            scan_enabled: false,
+            source_user_selected: false,
+            last_scan: None,
             station_index: 0,
             direct_selected: false,
             direct_url: String::new(),
@@ -100,6 +116,10 @@ impl RadioPanel {
     /// Begin cancellation without blocking the host UI. Keep rendering the panel
     /// (or call `poll_shutdown`) until `is_active` becomes false before dismounting.
     pub fn stop(&mut self) {
+        if let Some(scan) = &self.input_scan {
+            scan.cancel();
+            self.last_scan = Some(Instant::now());
+        }
         let active = self.is_active();
         if let Some(engine) = &self.engine {
             engine.request_stop();
@@ -121,6 +141,7 @@ impl RadioPanel {
     /// a worker still owns resources. A completed failure remains visible until
     /// the operator explicitly starts another session or clears it with Stop.
     pub fn poll_shutdown(&mut self) -> bool {
+        self.poll_inputs();
         if let Some(engine) = self.engine.as_mut() {
             if engine.try_finish() {
                 let session = engine.status();
@@ -157,7 +178,7 @@ impl RadioPanel {
     }
 
     pub fn is_active(&self) -> bool {
-        self.engine.is_some() || self.validation.is_some()
+        self.engine.is_some() || self.validation.is_some() || self.input_scan.is_some()
     }
 
     fn play(&mut self) {
@@ -178,6 +199,9 @@ impl RadioPanel {
     }
 
     fn start_selected(&self) -> Result<NativeRadioEngine, String> {
+        if !self.segment_supported() {
+            return Err("This receiver type is not included in this build".into());
+        }
         #[cfg(feature = "nrsp-native")]
         if self.native_selected {
             let frequency = self
@@ -249,7 +273,11 @@ impl RadioPanel {
     }
 
     fn start_validation(&mut self) {
-        if self.is_active() || self.is_receiver_selected() || self.direct_selected {
+        if self.is_active()
+            || self.segment != Segment::Ip
+            || self.is_receiver_selected()
+            || self.direct_selected
+        {
             return;
         }
         match StationValidationTask::start(self.selected_station().id) {
@@ -263,7 +291,8 @@ impl RadioPanel {
 
     fn cancel_stale_validation(&mut self) {
         if let Some(task) = &self.validation {
-            if self.is_receiver_selected()
+            if self.segment != Segment::Ip
+                || self.is_receiver_selected()
                 || self.direct_selected
                 || task.station_id() != self.selected_station().id
             {
@@ -304,6 +333,7 @@ impl RadioPanel {
         }
     }
 
+    #[cfg(test)]
     fn step_station(&mut self, direction: isize) {
         let count = curated_stations().len()
             + usize::from(cfg!(feature = "sdrconnect"))
@@ -338,6 +368,7 @@ impl RadioPanel {
     }
 
     fn select_source(&mut self, index: usize) {
+        self.source_user_selected = true;
         #[cfg(feature = "nrsp-native")]
         {
             self.native_selected = index
@@ -362,6 +393,13 @@ impl RadioPanel {
         if index < curated_stations().len() {
             self.station_index = index;
         }
+        self.segment = if self.is_native_selected() || self.is_sdr_selected() {
+            Segment::Network
+        } else if self.is_usb_selected() {
+            Segment::Usb
+        } else {
+            Segment::Ip
+        };
         self.cancel_stale_validation();
     }
 
@@ -403,6 +441,12 @@ impl RadioPanel {
     }
 
     fn source_detail(&self) -> String {
+        if !self.segment_supported() {
+            return format!(
+                "{} / SUPPORT NOT INCLUDED IN THIS BUILD",
+                self.segment.label()
+            );
+        }
         #[cfg(feature = "nrsp-native")]
         if self.native_selected {
             if let Some(status) = self

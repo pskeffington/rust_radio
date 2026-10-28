@@ -11,7 +11,7 @@ pub use rust_radio_core::{
 #[cfg(feature = "ip-radio")]
 pub use rust_radio_audio::playback::NativeRadioEngine;
 #[cfg(feature = "ip-radio")]
-pub use rust_radio_audio::{output, playback, validation};
+pub use rust_radio_audio::{discovery, output, playback, validation};
 #[cfg(feature = "ip-radio")]
 pub use rust_radio_ip::{net, probe};
 

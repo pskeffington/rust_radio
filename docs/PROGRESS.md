@@ -3,7 +3,28 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Current module pass: direct native nRSP-ST
+## Current module pass: input discovery and header setup
+
+- Replaced the header label with IP Radio | nSDR | USB source buttons. Availability
+  drives green glow; selection has its own underline. Each input button opens
+  its setup panel, replacing the general Settings button.
+- Added explicit reusable background discovery and standalone startup/30-second
+  idle scans. Internet, native network receivers and supported USB descriptors
+  are checked independently. Discovery selects available hardware controls but
+  never starts reception or output, and cannot switch an active engine.
+- Live discovery found the real nRSP-ST automatically and reported internet
+  available with no USB receiver attached. The native scan checks private local
+  neighborhoods and confirms device Hello identity, rather than assuming that
+  an open port means a working receiver.
+- Visually checked the running GUI: IP Radio and nSDR glowed, USB stayed dim,
+  and the discovered nRSP-ST controls were selected with reception stopped.
+- Fixture coverage includes the offline USB-only glow case, multiple inputs,
+  unavailable sources, setup bounds, cancelled scans and receiver discovery
+  without control commands. All-feature acceptance passed **169 tests** (one
+  manual output test ignored); the default suite, formatting, strict Clippy and
+  headless AArch64 compile checks passed. Physical USB reception is still unverified.
+
+## Previous module pass: direct native nRSP-ST
 
 - Established a direct Rust receiver session on the device's port 9001 without
   SDRconnect or a browser. Implemented native handshake/session framing, explicit

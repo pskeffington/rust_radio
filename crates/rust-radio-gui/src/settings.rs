@@ -1,10 +1,10 @@
-use super::{theme, RadioPanel};
+use super::{theme, RadioPanel, Segment};
 use eframe::egui;
 
 impl RadioPanel {
     pub(super) fn show_settings(&mut self, ctx: &egui::Context) -> Option<egui::Rect> {
         egui::Window::new(
-            egui::RichText::new("RADIO / SETTINGS")
+            egui::RichText::new(format!("{} / SETUP", self.segment.label()))
                 .monospace()
                 .color(theme::GREEN),
         )
@@ -57,6 +57,52 @@ impl RadioPanel {
                 }
             });
             ui.separator();
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        self.input_scan.is_none() && self.engine.is_none(),
+                        egui::Button::new(if self.input_scan.is_some() {
+                            "SCANNING…"
+                        } else {
+                            "SCAN INPUTS"
+                        }),
+                    )
+                    .clicked()
+                {
+                    self.scan_inputs();
+                }
+                ui.label(match self.segment {
+                    Segment::Ip => {
+                        if self.inputs.internet {
+                            "INTERNET AVAILABLE"
+                        } else {
+                            "INTERNET NOT VERIFIED"
+                        }
+                    }
+                    Segment::Network => {
+                        if self.inputs.network_available() {
+                            "RECEIVER FOUND"
+                        } else {
+                            "NO READY NETWORK RECEIVER"
+                        }
+                    }
+                    Segment::Usb => {
+                        if self.inputs.usb_available() {
+                            "RECEIVER FOUND"
+                        } else {
+                            "NO USB RECEIVER"
+                        }
+                    }
+                });
+            });
+            if !self.segment_supported() {
+                ui.label(match self.segment {
+                    Segment::Network => &self.inputs.network_note,
+                    Segment::Usb => &self.inputs.usb_note,
+                    Segment::Ip => "",
+                });
+                return;
+            }
             #[cfg(feature = "nrsp-native")]
             if self.native_selected {
                 let enabled = !self.stopping;
@@ -67,9 +113,26 @@ impl RadioPanel {
                             self.engine.is_none(),
                             egui::TextEdit::singleline(&mut self.native_endpoint)
                                 .hint_text("IP:9001")
-                                .desired_width(230.0)
+                                .desired_width(180.0)
                                 .char_limit(40),
                         );
+                        egui::ComboBox::from_id_salt("rust_radio_native_found")
+                            .width(35.0)
+                            .selected_text("▼")
+                            .show_ui(ui, |ui| {
+                                for device in &self.inputs.network {
+                                    ui.add_enabled_ui(
+                                        device.ready && self.engine.is_none(),
+                                        |ui| {
+                                            ui.selectable_value(
+                                                &mut self.native_endpoint,
+                                                device.id.clone(),
+                                                format!("{} / {}", device.label, device.id),
+                                            );
+                                        },
+                                    );
+                                }
+                            });
                     });
                     ui.horizontal(|ui| {
                         ui.label("FREQ Hz");
@@ -141,14 +204,26 @@ impl RadioPanel {
             #[cfg(feature = "soapy-sdr")]
             if self.is_usb_selected() {
                 let enabled = !self.is_active();
-                ui.horizontal(|ui| {
-                    ui.label("DEVICE ID");
-                    ui.add_enabled(
-                        enabled,
-                        egui::TextEdit::singleline(&mut self.usb_id)
-                            .desired_width(235.0)
-                            .char_limit(22),
-                    );
+                ui.add_enabled_ui(enabled, |ui| {
+                    egui::ComboBox::from_id_salt("rust_radio_usb_found")
+                        .width(320.0)
+                        .selected_text(
+                            self.inputs
+                                .usb
+                                .iter()
+                                .find(|device| device.id == self.usb_id)
+                                .map(|device| device.label.as_str())
+                                .unwrap_or("No USB receiver found"),
+                        )
+                        .show_ui(ui, |ui| {
+                            for device in &self.inputs.usb {
+                                ui.selectable_value(
+                                    &mut self.usb_id,
+                                    device.id.clone(),
+                                    &device.label,
+                                );
+                            }
+                        });
                 });
                 ui.horizontal(|ui| {
                     ui.label("FM FREQ Hz");
@@ -159,7 +234,7 @@ impl RadioPanel {
                             .char_limit(12),
                     );
                 });
-                ui.label("Get ID with sdr-devices / 75 us de-emphasis.");
+                ui.label("Scan after attaching a receiver / mono FM.");
                 return;
             }
             #[cfg(feature = "sdrconnect")]

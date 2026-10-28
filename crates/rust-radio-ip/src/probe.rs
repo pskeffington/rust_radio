@@ -168,6 +168,23 @@ fn header_value(
         .transpose()
 }
 
+/// Short HTTPS reachability check used by explicitly enabled input discovery.
+/// HEAD fetches no radio audio and does not follow redirects or use a proxy.
+pub fn internet_available(cancelled: &AtomicBool) -> bool {
+    if cancelled.load(Ordering::Acquire) {
+        return false;
+    }
+    let result = Client::builder()
+        .https_only(true)
+        .redirect(Policy::none())
+        .no_proxy()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .and_then(|client| client.head("https://somafm.com/").send());
+    !cancelled.load(Ordering::Acquire)
+        && result.is_ok_and(|response| response.status().is_success())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

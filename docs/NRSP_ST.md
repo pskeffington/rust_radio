@@ -17,7 +17,7 @@ cargo run --locked -p rust-radio-cli --features nrsp-native -- \
 cargo run --locked -p rust-radio-gui --features nrsp-native --bin rust-radio-gui
 ```
 
-In the GUI, select **nRSP-ST / Direct**, open SETTINGS, enter the receiver
+In the GUI, click **nSDR** to open setup and select or enter the receiver
 `IP:9001`, frequency in Hz, mode and bandwidth, then press PLAY. During playback,
 edit frequency/mode/bandwidth and press APPLY TUNING. The main source line shows
 the observed center frequency. The address stays locked during playback. STOP

@@ -112,3 +112,12 @@ performs I/O. Keep one engine and continue calling `try_finish` after Stop.
 Enable `gui` as well for the optional direct receiver controls in `RadioPanel`.
 The host owns address/preferences; runtime session state and keys are not saved.
 See [receiver setup and limits](NRSP_ST.md#direct-native-control-and-audio).
+
+## Input availability
+
+`rust_radio::discovery::InputScan` runs explicit read-only internet, network
+receiver and supported USB descriptor discovery on background workers. Poll
+`try_finish()` and use the returned availability/device lists to enable input
+controls. No receiver or output starts during discovery. `cancel()` discards
+late results. For the embedded egui panel, use `scan_inputs()` explicitly or
+opt into startup/idle scanning with `enable_input_discovery()`.

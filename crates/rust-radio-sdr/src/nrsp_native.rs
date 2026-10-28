@@ -11,6 +11,9 @@ use tungstenite::handshake::HandshakeError;
 use tungstenite::protocol::WebSocketConfig;
 use tungstenite::{Message, WebSocket};
 
+mod discovery;
+pub use discovery::{discover, DiscoveredReceiver};
+
 const INITIAL_MASK: u32 = 0x3f5e220a;
 // Public web-client bootstrap constants, not operator credentials. Subsequent
 // keys are negotiated per connection, kept private and never logged or stored.
@@ -591,21 +594,25 @@ mod tests {
         }
         server_frame(201, &payload, &Session::initial())
     }
-    fn fixture(
+    pub(super) fn fixture(
         auth: bool,
         server: impl FnOnce(WebSocket<TcpStream>, TcpListener) + Send + 'static,
     ) -> (Endpoint, thread::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let endpoint = Endpoint(listener.local_addr().unwrap());
         let worker = thread::spawn(move || {
-            let (socket, _) = listener.accept().unwrap();
-            socket
-                .set_read_timeout(Some(Duration::from_secs(4)))
-                .unwrap();
-            socket
-                .set_write_timeout(Some(Duration::from_secs(4)))
-                .unwrap();
-            let mut socket = tungstenite::accept(socket).unwrap();
+            let mut socket = loop {
+                let (socket, _) = listener.accept().unwrap();
+                socket
+                    .set_read_timeout(Some(Duration::from_secs(4)))
+                    .unwrap();
+                socket
+                    .set_write_timeout(Some(Duration::from_secs(4)))
+                    .unwrap();
+                if let Ok(socket) = tungstenite::accept(socket) {
+                    break socket;
+                }
+            };
             socket.send(Message::Binary(hello(auth).into())).unwrap();
             server(socket, listener);
         });

@@ -439,3 +439,106 @@ fn native_receiver_configuration_is_offline_and_fits_the_viewport() {
     panel.select_source(0);
     assert!(!panel.is_native_selected());
 }
+
+#[test]
+fn input_glow_tracks_availability_independently_of_selection() {
+    use rust_radio_audio::discovery::{InputDevice, InputReport};
+    for (internet, network, usb) in [
+        (false, false, true),
+        (false, true, false),
+        (true, false, false),
+        (true, true, true),
+        (false, false, false),
+    ] {
+        let mut panel = RadioPanel::new();
+        panel.apply_inputs(InputReport {
+            internet,
+            network: if network {
+                vec![InputDevice {
+                    id: "127.0.0.1:9001".into(),
+                    label: "Fixture network radio".into(),
+                    ready: true,
+                }]
+            } else {
+                vec![]
+            },
+            usb: if usb {
+                vec![InputDevice {
+                    id: "soapy-0000000000000000".into(),
+                    label: "Fixture USB radio".into(),
+                    ready: true,
+                }]
+            } else {
+                vec![]
+            },
+            ..Default::default()
+        });
+        assert_eq!(panel.segment_available(Segment::Ip), internet);
+        assert_eq!(panel.segment_available(Segment::Network), network);
+        assert_eq!(panel.segment_available(Segment::Usb), usb);
+        assert_eq!(
+            panel.segment,
+            if network {
+                Segment::Network
+            } else if usb {
+                Segment::Usb
+            } else {
+                Segment::Ip
+            }
+        );
+        assert!(!panel.is_active(), "Detection never starts reception");
+        render_panel(&mut panel);
+    }
+}
+#[test]
+fn input_setup_buttons_preserve_explicit_choice_and_stay_offline() {
+    use rust_radio_audio::discovery::InputReport;
+    let mut panel = RadioPanel::new();
+    panel.select_segment(Segment::Ip, false);
+    panel.apply_inputs(InputReport {
+        internet: true,
+        ..Default::default()
+    });
+    assert_eq!(panel.segment, Segment::Ip);
+    for segment in [Segment::Ip, Segment::Network, Segment::Usb] {
+        panel.select_segment(segment, false);
+        assert_eq!(panel.segment, segment);
+        assert!(!panel.is_active());
+        panel.settings_open = true;
+        let ctx = egui::Context::default();
+        let screen =
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+        let mut bounds = None;
+        for _ in 0..2 {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |ctx| {
+                    bounds = panel.show_settings(ctx);
+                },
+            );
+        }
+        assert!(
+            screen.contains_rect(bounds.unwrap()),
+            "{} setup must fit viewport",
+            segment.label()
+        );
+    }
+}
+
+#[test]
+fn opening_ip_setup_preserves_the_selected_direct_stream() {
+    let mut panel = RadioPanel::new();
+    panel.select_source(
+        curated_stations().len()
+            + usize::from(cfg!(feature = "sdrconnect"))
+            + usize::from(cfg!(feature = "soapy-sdr")),
+    );
+    panel.direct_url = "https://example.org/live.aac".into();
+    panel.select_segment(Segment::Ip, false);
+    assert!(panel.direct_selected);
+    assert_eq!(panel.direct_url, "https://example.org/live.aac");
+    assert!(!panel.is_active());
+}

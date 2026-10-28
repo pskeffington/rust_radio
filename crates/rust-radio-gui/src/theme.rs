@@ -59,3 +59,42 @@ pub(super) fn scanlines(ui: &egui::Ui) {
         );
     }
 }
+
+pub(super) fn input_button(
+    ui: &mut egui::Ui,
+    label: &str,
+    available: bool,
+    selected: bool,
+) -> egui::Response {
+    let color = if available {
+        GREEN
+    } else {
+        Color32::from_rgb(64, 91, 68)
+    };
+    let fill = if available {
+        Color32::from_rgb(20, 57, 24)
+    } else {
+        SCREEN
+    };
+    let response = ui.add(
+        egui::Button::new(egui::RichText::new(label).monospace().strong().color(color))
+            .fill(fill)
+            .stroke(Stroke::NONE)
+            .min_size(egui::vec2(0.0, 22.0)),
+    );
+    if available {
+        ui.painter().rect_stroke(
+            response.rect.expand(1.0),
+            2.0,
+            Stroke::new(2.0_f32, Color32::from_rgba_unmultiplied(100, 255, 120, 30)),
+            egui::StrokeKind::Outside,
+        );
+    }
+    if selected {
+        ui.painter().line_segment(
+            [response.rect.left_bottom(), response.rect.right_bottom()],
+            Stroke::new(1.0_f32, color),
+        );
+    }
+    response
+}

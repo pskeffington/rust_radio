@@ -3,6 +3,7 @@
 /// Transitional compatibility state machine preserving original Pip-Boy events.
 /// Consolidate with rust-radio-core after equivalence tests.
 pub mod compat_controller;
+pub mod discovery;
 mod media;
 pub mod output;
 pub mod playback;

@@ -25,9 +25,9 @@ fn main() -> eframe::Result<()> {
         "Rust Radio",
         options,
         Box::new(|_cc| {
-            Ok(Box::new(StandaloneRadio {
-                radio: RadioPanel::new(),
-            }))
+            let mut radio = RadioPanel::new();
+            radio.enable_input_discovery();
+            Ok(Box::new(StandaloneRadio { radio }))
         }),
     )
 }

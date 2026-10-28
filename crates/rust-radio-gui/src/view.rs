@@ -1,13 +1,14 @@
-use super::{theme, RadioPanel, PANEL_HEIGHT, PANEL_WIDTH};
+use super::{theme, RadioPanel, Segment, PANEL_HEIGHT, PANEL_WIDTH};
 use eframe::egui;
 use rust_radio_audio::compat_controller::PlaybackState;
 use rust_radio_core::directory::curated_stations;
 
 impl RadioPanel {
-    /// Pure touch-oriented presentation except when the user explicitly clicks Play,
-    /// Stop, output refresh, or adjusts the volume. No network traffic on render.
+    /// Render controls and poll owned workers. Opt-in discovery queues background
+    /// scans; receiver, network and audio work stays off the render thread.
     pub fn show(&mut self, ui: &mut egui::Ui) {
         self.poll_shutdown();
+        self.maybe_scan_inputs();
         let frame = egui::Frame::new()
             .fill(theme::SCREEN)
             .stroke(egui::Stroke::new(1.0_f32, theme::GREEN))
@@ -43,12 +44,28 @@ impl RadioPanel {
             }
 
             ui.horizontal(|ui| {
-                ui.strong(if self.is_receiver_selected() {
-                    "RADIO  /  SDR"
-                } else {
-                    "RADIO  /  IP"
-                });
-                ui.add_space(12.0);
+                ui.spacing_mut().item_spacing.x = 3.0;
+                ui.spacing_mut().button_padding = egui::vec2(5.0, 2.0);
+                for (index, segment) in [Segment::Ip, Segment::Network, Segment::Usb]
+                    .into_iter()
+                    .enumerate()
+                {
+                    if index > 0 {
+                        ui.colored_label(egui::Color32::from_rgb(45, 75, 49), "|");
+                    }
+                    let available = self.segment_available(segment);
+                    if theme::input_button(ui, segment.label(), available, self.segment == segment)
+                        .on_hover_text(if available {
+                            "Available — click for setup"
+                        } else {
+                            "Unavailable or not checked — click for setup and scan"
+                        })
+                        .clicked()
+                    {
+                        self.select_segment(segment, true);
+                    }
+                }
+                ui.add_space(6.0);
                 ui.label(if self.stopping {
                     "STOPPING".into()
                 } else {
@@ -62,13 +79,21 @@ impl RadioPanel {
 
             ui.add_enabled_ui(!running && !self.stopping, |ui| {
                 ui.horizontal(|ui| {
-                    if ui.add_sized([45.0, 43.0], egui::Button::new("◀")).clicked() {
-                        self.step_station(-1);
+                    if ui
+                        .add_enabled(
+                            self.segment == Segment::Ip,
+                            egui::Button::new("◀").min_size(egui::vec2(45.0, 43.0)),
+                        )
+                        .clicked()
+                    {
+                        self.step_segment_source(-1);
                     }
                     egui::ComboBox::from_id_salt("rust_radio_station")
                         .width(260.0)
                         .truncate()
-                        .selected_text(if self.is_native_selected() {
+                        .selected_text(if !self.segment_supported() {
+                            self.segment.label()
+                        } else if self.is_native_selected() {
                             "nRSP-ST / Direct"
                         } else if self.direct_selected {
                             "Direct IP stream"
@@ -80,7 +105,10 @@ impl RadioPanel {
                             self.selected_station().name
                         })
                         .show_ui(ui, |ui| {
-                            for (index, station) in curated_stations().iter().enumerate() {
+                            for (index, station) in curated_stations().iter().enumerate().filter({
+                                let is_ip = self.segment == Segment::Ip;
+                                move |_| is_ip
+                            }) {
                                 let label = format!(
                                     "{} [{}]",
                                     station.name,
@@ -94,7 +122,11 @@ impl RadioPanel {
                                 }
                             }
                             if ui
-                                .selectable_label(self.direct_selected, "Direct IP stream")
+                                .add_visible(
+                                    self.segment == Segment::Ip,
+                                    egui::Button::new("Direct IP stream")
+                                        .selected(self.direct_selected),
+                                )
                                 .clicked()
                             {
                                 self.select_source(
@@ -104,9 +136,10 @@ impl RadioPanel {
                                 );
                             }
                             #[cfg(feature = "nrsp-native")]
-                            if ui
-                                .selectable_label(self.is_native_selected(), "nRSP-ST / Direct")
-                                .clicked()
+                            if self.segment == Segment::Network
+                                && ui
+                                    .selectable_label(self.is_native_selected(), "nRSP-ST / Direct")
+                                    .clicked()
                             {
                                 self.select_source(
                                     curated_stations().len()
@@ -116,16 +149,21 @@ impl RadioPanel {
                                 );
                             }
                             #[cfg(feature = "sdrconnect")]
-                            if ui
-                                .selectable_label(self.is_sdr_selected(), "nRSP-ST / SDRconnect")
-                                .clicked()
+                            if self.segment == Segment::Network
+                                && ui
+                                    .selectable_label(
+                                        self.is_sdr_selected(),
+                                        "nRSP-ST / SDRconnect",
+                                    )
+                                    .clicked()
                             {
                                 self.select_source(curated_stations().len());
                             }
                             #[cfg(feature = "soapy-sdr")]
-                            if ui
-                                .selectable_label(self.is_usb_selected(), "USB SDR / mono FM")
-                                .clicked()
+                            if self.segment == Segment::Usb
+                                && ui
+                                    .selectable_label(self.is_usb_selected(), "USB SDR / mono FM")
+                                    .clicked()
                             {
                                 self.select_source(
                                     curated_stations().len()
@@ -133,8 +171,14 @@ impl RadioPanel {
                                 );
                             }
                         });
-                    if ui.add_sized([45.0, 43.0], egui::Button::new("▶")).clicked() {
-                        self.step_station(1);
+                    if ui
+                        .add_enabled(
+                            self.segment == Segment::Ip,
+                            egui::Button::new("▶").min_size(egui::vec2(45.0, 43.0)),
+                        )
+                        .clicked()
+                    {
+                        self.step_segment_source(1);
                     }
                 });
             });
@@ -144,7 +188,7 @@ impl RadioPanel {
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(
-                        !busy && !self.stopping,
+                        !busy && !self.stopping && self.segment_supported(),
                         egui::Button::new("▶  PLAY").min_size(egui::vec2(116.0, 44.0)),
                     )
                     .clicked()
@@ -176,15 +220,6 @@ impl RadioPanel {
             }
             ui.separator();
             ui.horizontal(|ui| {
-                if ui
-                    .add_sized([120.0, 38.0], egui::Button::new("SETTINGS ▾"))
-                    .clicked()
-                {
-                    self.settings_open = !self.settings_open;
-                    if self.settings_open {
-                        self.refresh_outputs();
-                    }
-                }
                 ui.add(egui::Label::new(egui::RichText::new(&self.note).small()).truncate())
                     .on_hover_text(&self.note);
             });

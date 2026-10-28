@@ -31,6 +31,7 @@ fn usage() {
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
     );
+    eprintln!("Input discovery: inputs (enable nrsp-native and/or soapy-sdr for receiver scans)");
     eprintln!("Interactive listen commands: status | volume N | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
@@ -256,6 +257,41 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
 
 fn run(args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
+        Some("inputs") if args.len() == 1 => {
+            let mut scan = rust_radio::discovery::InputScan::start(None)?;
+            let deadline = Instant::now() + Duration::from_secs(12);
+            loop {
+                if let Some(result) = scan.try_finish() {
+                    let report = result?.ok_or("Input scan cancelled")?;
+                    println!(
+                        "IP Radio / {}",
+                        if report.internet {
+                            "available"
+                        } else {
+                            "offline or not verified"
+                        }
+                    );
+                    println!(
+                        "nSDR / {} found / {}",
+                        report.network.len(),
+                        report.network_note
+                    );
+                    for device in report.network {
+                        println!("{} / {} / ready={}", device.id, device.label, device.ready);
+                    }
+                    println!("USB / {} found / {}", report.usb.len(), report.usb_note);
+                    for device in report.usb {
+                        println!("{} / {}", device.id, device.label);
+                    }
+                    return Ok(());
+                }
+                if Instant::now() >= deadline {
+                    scan.cancel();
+                    return Err("Input scan deadline expired".into());
+                }
+                thread::sleep(Duration::from_millis(10));
+            }
+        }
         Some("stations") if args.len() == 1 => {
             for station in curated_stations() {
                 println!("{}\t{}\t{}", station.id, station.name, station.category);

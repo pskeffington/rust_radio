@@ -62,19 +62,23 @@ cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
 cargo run -p rust-radio-gui --features soapy-sdr --bin rust-radio-gui
 ```
 
-With `nrsp-native`, select **nRSP-ST / Direct** and enter the receiver address (`IP:9001`), frequency, mode and bandwidth in SETTINGS. PLAY starts the session; APPLY TUNING changes the active receiver; STOP releases it. See [direct receiver setup and verification](docs/NRSP_ST.md#direct-native-control-and-audio).
+With `nrsp-native`, click **nSDR** for the receiver address (`IP:9001`), frequency, mode and bandwidth. PLAY starts the session; APPLY TUNING changes the active receiver; STOP releases it. See [direct receiver setup and verification](docs/NRSP_ST.md#direct-native-control-and-audio).
 
-The compact panel uses a green phosphor, monospaced retro skin. With `sdrconnect` enabled, select **nRSP-ST / SDRconnect**, enter the local API address in SETTINGS, and select the receiver in SDRconnect. Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous playback worker releases its resources. For IP stations, SETTINGS offers output selection and CHECK STATION, which decodes silently on a background worker. Station badges distinguish unverified, decoded, unavailable, unsupported and invalid streams. Stop, Cancel Check or browsing another source cancels a check; PLAY and another check remain locked until its worker finishes. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.
+The top-left **IP Radio | nSDR | USB** buttons are input selectors and setup entry points. Green glow means the input is available; dim means unavailable or not checked. The underline marks the selected input. For example, with no internet and only a supported USB receiver attached, only USB glows. More than one input can glow when several are available.
 
-With `soapy-sdr`, select **USB SDR / mono FM** and enter a device ID and FM
-frequency in SETTINGS. Get the ID using the `sdr-devices` CLI command shown in
-[USB receiver setup](docs/SDR_RECEIVE.md). This initial path requires a compatible
-SoapySDR driver supporting 240 ksample/s CS16 and has not yet been validated on a
-physical dongle.
-
-Select **WCRB Classical (Boston)** or **Skylab Radio** and press PLAY. For another broadcaster or a LAN source, select **Direct IP stream**, open SETTINGS, and enter its direct MP3 or AAC stream URL. A station website is not necessarily its audio URL; for example, GBH publishes the [WCRB direct stream](https://www.wgbh.org/help/how-to-access-live-radio-streams). The URL stays in panel memory only. The direct input accepts HTTPS URLs and HTTP URLs with a literal private or loopback IPv4 address. Credentials and fragments are rejected; redirects, playlists and HLS are not followed on this path. Direct URLs can include a query string: protect any token it contains, including from shell history when using the CLI.
+The standalone GUI scans on startup and every 30 seconds while idle. It checks HTTPS reachability, identifies native nRSP-ST receivers on local private IPv4 neighborhoods, and enumerates supported SoapySDR USB drivers. It selects detected hardware controls without starting reception; PLAY starts the radio. Click an input button for its output and source settings, detected-device selection, stream URL or tuning controls. SCAN INPUTS refreshes availability. Switching input types requires stopping playback first. Settings and runtime addresses stay in memory.
 
 ```sh
+# Network and USB receiver discovery and controls (SoapySDR SDK required):
+cargo run -p rust-radio-gui --features receivers --bin rust-radio-gui
+```
+
+IP Radio contains curated station selection, silent station checks and direct MP3/AAC stream URLs. Select **WCRB Classical (Boston)** or **Skylab Radio** and press PLAY. A station website may differ from its audio URL; GBH publishes the [WCRB direct stream](https://www.wgbh.org/help/how-to-access-live-radio-streams). Direct input accepts HTTPS and literal private/loopback IPv4 HTTP, rejects credentials and fragments, and does not follow redirects, playlists or HLS. Protect query tokens, including from shell history when using the CLI.
+
+nSDR contains the discovered receiver address, frequency, mode, bandwidth and live APPLY TUNING. USB contains the detected device picker and mono-FM frequency. USB playback requires a compatible driver supporting 240 ksample/s CS16; physical USB acceptance is still open. Builds without an optional receiver feature show its button dim and explain the missing support in setup. The headless and IP-only defaults remain independent of native SDR SDKs.
+
+```sh
+cargo run -p rust-radio-cli --features nrsp-native,soapy-sdr -- inputs
 cargo run -p rust-radio-cli -- listen wcrb --seconds 30
 cargo run -p rust-radio-cli -- stream-listen 'https://example.org/live.mp3' --seconds 30
 ```
