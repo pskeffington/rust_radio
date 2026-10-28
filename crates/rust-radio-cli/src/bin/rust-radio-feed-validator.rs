@@ -580,7 +580,7 @@ fn run(options: Options) -> Result<bool, String> {
                             .ok_or("Completed feed report is missing")?;
                         let eligible = eligible_count(&report, now, false);
                         eprintln!(
-                            "{fresh} fresh, {} eligible (including bounded grace), {} total; report: {}",
+                            "{fresh} fresh, {} degraded, {eligible} eligible / {} total; report: {}",
                             eligible.saturating_sub(fresh),
                             curated_stations().len(),
                             options.output.display(),
