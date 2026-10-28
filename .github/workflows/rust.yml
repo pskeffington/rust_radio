@@ -78,7 +78,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Check the default workspace on Windows MSVC
         run: cargo check --workspace --locked
+      - name: Lint the default workspace on Windows MSVC
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Check the optional SDRconnect receiver on Windows MSVC
         run: cargo check --workspace --locked --features rust-radio-cli/sdrconnect
+      - name: Lint the optional SDRconnect receiver on Windows MSVC
+        run: cargo clippy --workspace --all-targets --locked --features rust-radio-cli/sdrconnect -- -D warnings
       - name: Check the direct nRSP receiver and GUI on Windows MSVC
         run: cargo check --workspace --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native
+      - name: Lint the direct nRSP receiver and GUI on Windows MSVC
+        run: cargo clippy --workspace --all-targets --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native -- -D warnings

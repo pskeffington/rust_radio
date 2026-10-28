@@ -3,12 +3,12 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Windows cross-target coverage (2026-10-28 22:31 UTC)
+## Windows cross-target coverage (2026-10-28 22:33 UTC)
 
-- Added a `windows-latest` CI job that compile-checks the default workspace, SDRconnect, and direct nRSP-native CLI/GUI feature combinations with Cargo.lock enforced. This uses the runner's native MSVC environment.
-- Installed MinGW locally and passed all three equivalent locked `x86_64-pc-windows-gnu` workspace checks. These are cross-compilation evidence only; no Windows executable was run and this does not substitute for the native MSVC CI job.
+- Added a `windows-latest` CI job that compile-checks and strictly lints the default workspace, SDRconnect, and direct nRSP-native CLI/GUI feature combinations with Cargo.lock enforced. This uses the runner's native MSVC environment.
+- Installed MinGW locally and passed all three equivalent locked `x86_64-pc-windows-gnu` workspace checks and strict Clippy runs. These are cross-compilation evidence only; no Windows executable was run and this does not substitute for the native MSVC CI job.
 - Ruby parsed the workflow YAML and confirmed `jobs.windows` is present. `cargo fmt --all -- --check` and `git diff --check` passed.
-- PR #5 was open and mergeable at the prior head `820e048`. Its latest Actions run 241 failed before job creation, with no combined status. The new Windows MSVC job remains unverified until a runner starts.
+- PR #5 was open and mergeable at pre-lint head `96ddfb2`. Actions run 242 failed before job creation, with no combined status. The expanded Windows MSVC compile and Clippy job remains unverified until a runner starts.
 - Next priority: get the new platform job through remote CI, then complete physical output/Pi/receiver acceptance and publisher distribution-rights review.
 
 ## Fresh 25-feed sweep and label-fit rerun (2026-10-28 22:25 UTC)

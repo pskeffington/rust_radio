@@ -32,7 +32,7 @@ provenance remains in the extraction notes; dated evidence is in
 | nRSP-ST | Direct native handshake, activation, live frequency/mode/bandwidth and FM stereo/de-emphasis/filter controls, real stereo-lock reports, presets, Opus playback and owned session Stop; optional SDRconnect adapter | Native authenticated login, extended link interruption/reconnect, other demodulator/antenna field checks, physical Pi client and raw I/Q |
 | USB SDR | Optional SoapySDR discovery, bounded RawIq capture and initial 240 ksample/s mono-FM/native audio path; synthetic DSP and callback evidence | Supported physical receiver/driver, audible RF, unplug/replug and GUI hardware validation; stereo/AM/SSB remain unimplemented |
 | Raspberry Pi | Headless SDRconnect AArch64 Linux compile check, also configured in CI | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |
-| Remote CI | Linux core/native/receiver checks, ARM64 headless receiver checks, and Windows MSVC workspace/receiver compile checks configured | GitHub runs currently fail at startup before any jobs are created; Windows MSVC workflow execution remains unverified |
+| Remote CI | Linux core/native/receiver checks, ARM64 headless receiver checks, and Windows MSVC workspace/receiver compile and strict Clippy checks configured | GitHub runs currently fail at startup before any jobs are created; Windows MSVC workflow execution remains unverified |
 
 ## Next development priorities
 
