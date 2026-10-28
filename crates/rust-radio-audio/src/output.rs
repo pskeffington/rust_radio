@@ -360,7 +360,7 @@ mod output_identity_tests {
     use super::*;
     use cpal::Sample;
 
-    fn assert_rendered_samples_convert<T>()
+    fn assert_rendered_samples_convert<T>(volume_percent: u8)
     where
         T: SizedSample + FromSample<f32>,
         f32: FromSample<T>,
@@ -371,14 +371,16 @@ mod output_identity_tests {
         for sample in expected {
             producer.try_push(sample).unwrap();
         }
-        let volume = AtomicU8::new(100);
+        let volume = AtomicU8::new(volume_percent);
         let played = AtomicU64::new(0);
         let mut output = vec![T::from_sample(0.0); expected.len()];
 
         render_samples(&mut output, &mut consumer, &volume, &played);
 
         let converted: Vec<f32> = output.into_iter().map(f32::from_sample).collect();
-        for (actual, expected) in converted.into_iter().zip(expected) {
+        let gain = f32::from(volume_percent) / 100.0;
+        for (actual, input) in converted.into_iter().zip(expected) {
+            let expected = input * gain;
             assert!(
                 (actual - expected).abs() <= 0.02,
                 "sample conversion error: {actual} vs {expected}"
@@ -388,18 +390,25 @@ mod output_identity_tests {
     }
 
     #[test]
-    fn callback_converts_every_cpal_integer_and_float_output_format() {
-        assert_rendered_samples_convert::<i8>();
-        assert_rendered_samples_convert::<i16>();
-        assert_rendered_samples_convert::<cpal::I24>();
-        assert_rendered_samples_convert::<i32>();
-        assert_rendered_samples_convert::<i64>();
-        assert_rendered_samples_convert::<u8>();
-        assert_rendered_samples_convert::<u16>();
-        assert_rendered_samples_convert::<u32>();
-        assert_rendered_samples_convert::<u64>();
-        assert_rendered_samples_convert::<f32>();
-        assert_rendered_samples_convert::<f64>();
+    fn callback_converts_every_cpal_format_at_full_half_and_mute_gain() {
+        macro_rules! check_format {
+            ($sample_type:ty) => {
+                assert_rendered_samples_convert::<$sample_type>(100);
+                assert_rendered_samples_convert::<$sample_type>(50);
+                assert_rendered_samples_convert::<$sample_type>(0);
+            };
+        }
+        check_format!(i8);
+        check_format!(i16);
+        check_format!(cpal::I24);
+        check_format!(i32);
+        check_format!(i64);
+        check_format!(u8);
+        check_format!(u16);
+        check_format!(u32);
+        check_format!(u64);
+        check_format!(f32);
+        check_format!(f64);
     }
 
     #[test]
