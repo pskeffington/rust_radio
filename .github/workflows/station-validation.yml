@@ -1,7 +1,7 @@
 name: Curated station validation
 on:
   schedule:
-    - cron: '17 7 * * *'
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 jobs:
   validate-catalog:

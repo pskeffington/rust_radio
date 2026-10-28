@@ -1097,3 +1097,23 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Code/test commit `fbeb476`; hardware and publisher-rights acceptance remain
   open. Next: seek a first-party NPR endpoint and permission, and continue
   physical platform acceptance when hardware is available.
+
+## Catalog freshness cadence and validation refresh (2026-10-28)
+
+- The catalog declares a six-hour freshness TTL, while its scheduled silent
+  validation workflow previously ran once per day. Changed the schedule to
+  run at 17 minutes every six hours; manual dispatch and 30-day reports remain.
+- Fresh `validate-all --json` run at 2026-10-28 21:18 UTC decoded all 25
+  stations in 25 attempts. This is point-in-time codec evidence only.
+- Repeated the label A/B/C regression: at 295 px, A full category fits 24/25,
+  while B names-only and C compact category fit 25/25; all variants fit at
+  340 px. Compact `CLASS` saves 32 px. This measures layout fit, not listener
+  preference.
+- Catalog policy regression passed on `fbeb476`. All six required workspace
+  gates passed again against the current tree after the cadence change; Ruby's
+  YAML parser accepted the workflow file. The workflow schedule update awaits
+  remote CI; Actions run `40770761885` for head `2bd4bfd` failed before creating
+  jobs. PR #3 remains open and mergeable; remote CI is unverified.
+- No audio, receiver, or Pi hardware was exercised. Next: validate the workflow
+  configuration, run the full local gates on the final source, then continue
+  physical acceptance and publisher-rights review when available.

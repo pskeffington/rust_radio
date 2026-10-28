@@ -1,12 +1,12 @@
 {
-  "updated_at_utc": "2026-10-28T21:16:26Z",
+  "updated_at_utc": "2026-10-28T21:19:40Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
-    "Added a daily and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
+    "Added a six-hourly and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
     "Classified transient HTTP statuses separately from permanent endpoint rejection.",
     "Replaced the retired Left Coast 70s stream URL with SomaFM's publisher-listed MP3 M3U endpoint.",
     "Final live sweep decoded 25 of 25 catalog stations.",
@@ -49,7 +49,8 @@
     "Restricted explicitly selected private IPv4 HTTP streams to the same private origin and port for redirects and playlist entries; kept every DNS lookup public-only.",
     "Closed the private-LAN redirect/playlist SSRF expansion: only same-origin HTTP at the explicitly selected private IPv4 address and port is allowed; all DNS lookups use public-only filtering.",
     "Reviewed WBUR as an NPR-affiliated catalog candidate: official pages document a live site/app stream but no stable direct endpoint, and say content is copyrighted with rare licensing approvals. No feed added without endpoint and written product-use permission.",
-    "Extended catalog mirror regression to enforce six-hour freshness, decoded-audio validation, initial unverified state, publisher-directed endpoints, and redistribution-not-authorized policy."
+    "Extended catalog mirror regression to enforce six-hour freshness, decoded-audio validation, initial unverified state, publisher-directed endpoints, and redistribution-not-authorized policy.",
+    "Aligned scheduled catalog validation with its six-hour freshness TTL; the bounded live sweep decoded all 25 stations and the GUI label A/B/C regression passed."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -66,13 +67,13 @@
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
     "repeatable_layout_ab": "passed 2026-10-28 this run: at 295px A full category 24/25, B names-only 25/25, C compact category 25/25; at 340px all 25/25; compact CLASS saves 32px; layout-fit only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
-    "workflow_yaml": "parsed",
+    "workflow_yaml": "passed Ruby YAML parser on current station-validation.yml; cron cadence 17 */6 * * * matches the six-hour catalog freshness TTL",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on catalog policy test commit fbeb476: fmt, default/all-feature tests, strict default/all-feature Clippy, and all-feature check",
+    "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
     "latest_code_head_ci": "Implementation source 882e9c0 has empty combined status and no associated PR workflow run visible; previous docs head fe8ae3c Actions run 40763293734 failed at startup before jobs were created",
-    "live_catalog_revalidation": "2026-10-28T21:10:22Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; point-in-time codec evidence only",
+    "live_catalog_revalidation": "2026-10-28T21:18:27Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; point-in-time codec evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed this run; compile evidence only",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
@@ -101,7 +102,8 @@
     "private_redirect_boundary": "passed; same-origin relative path works; loopback redirect and PLS target to another private port are rejected; localhost DNS answer rejected",
     "npr_member_station_candidate": "WBUR official Ways to Listen and content licensing pages reviewed 2026-10-28; official live player/app access is documented but no stable direct endpoint or product-use permission was found; candidate excluded pending rights",
     "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
-    "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata"
+    "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata",
+    "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -115,9 +117,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40769883867,
-    "observed_head": "eabf106",
-    "conclusion": "Actions run 40769883867 for head eabf106 ended startup_failure with zero jobs, no status checks and no job logs. PR #3 remains open and mergeable; remote CI remains unverified."
+    "latest_observed_head_run": 40770761885,
+    "observed_head": "2bd4bfd",
+    "conclusion": "Actions run 40770761885 for head 2bd4bfd ended startup_failure with zero jobs; diagnostics have no jobs, annotations, statuses, or logs. PR #3 remains open and mergeable; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
