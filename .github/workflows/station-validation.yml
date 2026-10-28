@@ -1,0 +1,23 @@
+name: Curated station validation
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+jobs:
+  validate-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux native audio headers
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run bounded silent catalog sweep
+        run: cargo run --locked -p rust-radio-cli -- validate-all --json > station-validation.json
+      - name: Preserve the point-in-time report
+        if: always() && hashFiles('station-validation.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: station-validation-${{ github.run_id }}
+          path: station-validation.json
+          retention-days: 30

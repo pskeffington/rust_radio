@@ -2,13 +2,13 @@
 use rust_radio::directory::{curated_stations, station_by_id};
 use rust_radio::output::available_outputs;
 use rust_radio::validation::validate_station;
-use rust_radio::validation_types::StationValidation;
+use rust_radio::validation_types::{StationValidation, ValidationStage, ValidationStatus};
 use rust_radio::NativeRadioEngine;
+use std::collections::VecDeque;
 use std::io::{self, BufRead};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::UNIX_EPOCH;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, process};
 
 mod nrsp;
@@ -27,7 +27,7 @@ struct ListenArgs<'a> {
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
     );
@@ -40,6 +40,107 @@ fn usage() {
     eprintln!("Direct nRSP-ST reachability: nrsp-status PRIVATE_IPV4 (enable sdr)");
     eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
     eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
+}
+
+const VALIDATION_WORKERS: usize = 4;
+type CatalogValidationResult = Result<StationValidation, String>;
+type CatalogValidationResults = Vec<(String, CatalogValidationResult)>;
+
+fn collect_catalog_validations(
+    check: fn(&str) -> Result<StationValidation, String>,
+) -> Result<CatalogValidationResults, String> {
+    let ids: Vec<_> = curated_stations()
+        .iter()
+        .map(|station| station.id.to_owned())
+        .collect();
+    let queue = Arc::new(Mutex::new(
+        ids.iter()
+            .enumerate()
+            .map(|(i, id)| (i, id.clone()))
+            .collect::<VecDeque<_>>(),
+    ));
+    let (tx, rx) = mpsc::channel();
+    let mut workers = Vec::new();
+    for _ in 0..VALIDATION_WORKERS.min(ids.len()) {
+        let queue = Arc::clone(&queue);
+        let tx = tx.clone();
+        workers.push(
+            thread::Builder::new()
+                .name("rust-radio-catalog-validation".into())
+                .spawn(move || loop {
+                    let next = queue.lock().expect("validation queue poisoned").pop_front();
+                    let Some((index, id)) = next else { break };
+                    if tx.send((index, id.clone(), check(&id))).is_err() {
+                        break;
+                    }
+                })
+                .map_err(|error| format!("Unable to start catalog validation worker: {error}"))?,
+        );
+    }
+    drop(tx);
+    let mut results: Vec<_> = rx.into_iter().collect();
+    for worker in workers {
+        worker
+            .join()
+            .map_err(|_| "Catalog validation worker panicked".to_owned())?;
+    }
+    if results.len() != ids.len() {
+        return Err("Catalog validation ended before every station was checked".into());
+    }
+    results.sort_by_key(|(index, _, _)| *index);
+    Ok(results
+        .into_iter()
+        .map(|(_, id, result)| (id, result))
+        .collect())
+}
+
+fn batch_validation_json(results: CatalogValidationResults) -> Result<String, String> {
+    let checked_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "System clock predates Unix epoch".to_owned())?
+        .as_secs();
+    let stations: Vec<_> = results.into_iter().map(|(id, result)| match result {
+        Ok(report) => serde_json::json!({
+            "station_id": id,
+            "status": validation_status_name(report.status),
+            "stage": validation_stage_name(report.stage),
+            "checked_at_unix": report.checked_at.and_then(|time| time.duration_since(UNIX_EPOCH).ok()).map(|time| time.as_secs()),
+            "content_type": report.content_type,
+            "codec": report.codec,
+            "sample_rate": report.sample_rate,
+            "channels": report.channels,
+            "decoded_frames": report.decoded_frames,
+            "decoded": report.is_decoded(),
+        }),
+        Err(_) => serde_json::json!({"station_id": id, "status": "check_error", "decoded": false}),
+    }).collect();
+    serde_json::to_string_pretty(&serde_json::json!({
+        "schema_version": 1,
+        "checked_at_unix": checked_at,
+        "results": stations,
+    }))
+    .map_err(|error| format!("Unable to encode catalog validation report: {error}"))
+}
+
+fn validation_status_name(status: ValidationStatus) -> &'static str {
+    match status {
+        ValidationStatus::Unverified => "unverified",
+        ValidationStatus::Unavailable => "unavailable",
+        ValidationStatus::InvalidStream => "invalid_stream",
+        ValidationStatus::Unsupported => "unsupported",
+        ValidationStatus::Cancelled => "cancelled",
+        ValidationStatus::Decoded => "decoded",
+    }
+}
+
+fn validation_stage_name(stage: ValidationStage) -> &'static str {
+    match stage {
+        ValidationStage::NotChecked => "not_checked",
+        ValidationStage::EndpointReached => "endpoint_reached",
+        ValidationStage::StreamResponse => "stream_response",
+        ValidationStage::SupportedCodec => "supported_codec",
+        ValidationStage::DecodedAudio => "decoded_audio",
+    }
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -352,6 +453,11 @@ fn run(args: &[String]) -> Result<(), String> {
                 Err("Station did not pass decoded-audio validation".into())
             }
         }
+        Some("validate-all") if args.len() == 2 && args[1] == "--json" => {
+            let results = collect_catalog_validations(validate_station)?;
+            println!("{}", batch_validation_json(results)?);
+            Ok(())
+        }
         Some("listen" | "stream-listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
         Some("sdr-devices") if args.len() == 1 => sdr::devices(),
         Some("sdr-capture") => sdr::capture(args),
@@ -377,6 +483,18 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static ACTIVE_CHECKS: AtomicUsize = AtomicUsize::new(0);
+    static MAX_ACTIVE_CHECKS: AtomicUsize = AtomicUsize::new(0);
+
+    fn synthetic_check(station_id: &str) -> Result<StationValidation, String> {
+        let active = ACTIVE_CHECKS.fetch_add(1, Ordering::SeqCst) + 1;
+        MAX_ACTIVE_CHECKS.fetch_max(active, Ordering::SeqCst);
+        thread::sleep(Duration::from_millis(5));
+        ACTIVE_CHECKS.fetch_sub(1, Ordering::SeqCst);
+        Ok(StationValidation::unverified(station_id))
+    }
 
     fn options(raw: &[&str]) -> Vec<String> {
         raw.iter().map(|s| (*s).to_owned()).collect()
@@ -433,6 +551,31 @@ mod tests {
     #[test]
     fn listing_is_network_free() {
         assert!(run(&options(&["stations"])).is_ok());
+    }
+
+    #[test]
+    fn catalog_validation_is_bounded_ordered_and_machine_readable() {
+        ACTIVE_CHECKS.store(0, Ordering::SeqCst);
+        MAX_ACTIVE_CHECKS.store(0, Ordering::SeqCst);
+        let results = collect_catalog_validations(synthetic_check).unwrap();
+        let expected: Vec<_> = curated_stations()
+            .iter()
+            .map(|station| station.id)
+            .collect();
+        let actual: Vec<_> = results.iter().map(|(id, _)| id.as_str()).collect();
+        assert_eq!(actual, expected);
+        assert!(MAX_ACTIVE_CHECKS.load(Ordering::SeqCst) > 1);
+        assert!(MAX_ACTIVE_CHECKS.load(Ordering::SeqCst) <= VALIDATION_WORKERS);
+
+        let json: serde_json::Value =
+            serde_json::from_str(&batch_validation_json(results).unwrap()).unwrap();
+        assert_eq!(json["schema_version"].as_u64(), Some(1));
+        let stations = json["results"].as_array().unwrap();
+        assert_eq!(stations.len(), curated_stations().len());
+        assert_eq!(stations[0]["station_id"].as_str(), Some(expected[0]));
+        assert_eq!(stations[0]["status"].as_str(), Some("unverified"));
+        assert_eq!(stations[0]["decoded"].as_bool(), Some(false));
+        assert!(stations[0].get("resolved_url").is_none());
     }
 
     #[test]

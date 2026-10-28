@@ -3,6 +3,36 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: scheduled feed sweep and endpoint recovery
+
+- Added `rust-radio-cli validate-all --json`, which runs at most four checks at
+  once, preserves catalog order, uses each validator's bounded 18-second
+  no-retry request, and emits a credential-safe report without resolved URLs.
+  Individual feed failures remain report entries and do not remove stations or
+  fail the completed sweep. Offline regression coverage verifies concurrency,
+  ordered results, and JSON shape.
+- Added daily scheduled and manually dispatchable GitHub Actions validation;
+  the JSON report is retained for 30 days. Documented that this is point-in-time
+  evidence and does not implement persistent freshness or playback gating.
+- The first live sweep decoded 24/25 feeds. `leftcoast70s` returned HTTP 404,
+  exposing that the validator incorrectly classified every HTTP status as
+  temporary. HTTP 408, 425, 429 and 5xx remain `unavailable`; other rejected
+  responses now report `invalid_stream`. Synthetic tests cover 404 and 429.
+- SomaFM's official [Left Coast 70s stream page](https://somafm.com/seventies/directstreamlinks.html)
+  lists the permanent MP3 M3U URL `https://somafm.com/m3u/seventies.m3u` and
+  personal-use-only terms. Updated the runtime catalog and JSON mirror to that
+  authorized endpoint while preserving the station ID. The focused silent
+  decode passed; a second full live sweep decoded all 25/25 feeds.
+- Format, workspace tests, strict default/all-feature Clippy, all-feature tests
+  and all-feature check pass. The loopback HTTP fixtures require local-network
+  permission; both complete test suites passed after granting it. A live decode
+  verifies stream decoding only, not physical audio output or redistribution
+  rights.
+- Existing station-label layout A/B evidence remains: at 295px category labels
+  fit 24/25 vs names-only 25/25; at 340px both fit 25/25, and names-only saves
+  1,776 aggregate text pixels. This is a compact-layout measurement, not a
+  listener preference test.
+
 ## Current module pass: catalog mirror parity
 
 - The metadata implementation exposed a stale `catalog/curated-stations.json`
