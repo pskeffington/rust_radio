@@ -834,3 +834,20 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Code commit `176e169` is pushed. PR #3 is open and mergeable; current combined
   status is empty with no workflow run visible at query time. Prior Actions run
   `40762398646` failed before job creation, so remote CI remains unverified.
+
+## nRSP initial Hello validation and timeout coverage (2026-10-28)
+
+- Added a loopback protocol regression proving connection setup rejects a
+  non-Hello first frame and returns `Timeout` when the WebSocket opens but the
+  receiver never sends its required initial Hello. The timeout fixture uses a
+  50 ms deadline and completes within a 500 ms bound.
+- The focused test passed. All six local gates passed: formatting, default and
+  all-features workspace tests, strict Clippy in both configurations and
+  all-features check. The station-label A/B test passed again: at 295 px full
+  category labels fit 24/25 while names-only and compact labels fit 25/25; all
+  variants fit at 340 px. These are layout-fit measurements, not listener
+  preference evidence. Loopback fixtures required local socket permission.
+- No receiver hardware was exercised. The current PR head's Actions run
+  `40762846108` failed at startup before creating jobs; remote CI remains
+  unverified. Physical nRSP reconnect and output-device recovery acceptance
+  remain open.
