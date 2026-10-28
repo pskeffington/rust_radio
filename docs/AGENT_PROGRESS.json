@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T20:34:19Z",
+  "updated_at_utc": "2026-10-28T20:36:53Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "882e9c0",
+  "implementation_commit": "d7c9f12",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -41,7 +41,8 @@
     "Cross-compiled the headless direct nRSP Rust module for aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance.",
     "Reviewed NPR first-party SmartAudio and CDS documentation; clarified that NPR News is a personalized NPR One mix, while live streams are member-station-specific, and left catalog inclusion pending named broadcaster endpoint and rights review.",
     "Repeated bounded silent catalog validation at 2026-10-28T20:34:19Z; all 25 stations decoded in one attempt each, 25/25 at decoded_audio.",
-    "Repeated station-label A/B/C regression on current head: at 295px full category 24/25, names-only and compact category 25/25; at 340px all 25/25; fit evidence only."
+    "Repeated station-label A/B/C regression on current head: at 295px full category 24/25, names-only and compact category 25/25; at 340px all 25/25; fit evidence only.",
+    "Added a loopback SDRconnect regression proving an unresponsive WebSocket upgrade peer returns Timeout at the connection deadline."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -62,7 +63,7 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on source 882e9c0: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
+    "latest_full_gate_run": "all six required gates passed on code source d7c9f12: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check",
     "latest_code_head_ci": "Implementation source 882e9c0 has empty combined status and no associated PR workflow run visible; previous docs head fe8ae3c Actions run 40763293734 failed at startup before jobs were created",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T20:34:19Z decoded 25/25 at decoded_audio in 25 total attempts; point-in-time codec evidence only; previous 20:28:20Z sweep also 25/25",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
@@ -83,8 +84,8 @@
     "ip_output_loss_cleanup": "passed; synthetic Bluetooth output failure after a network retry uses a distinct callback-progress counter, detaches stale progress before backoff and stops without a second retry",
     "gui_native_output_error_copy": "passed; unsupported native sample format, unsupported receiver output and CPAL stream configuration errors give output-selection guidance while setup retains exact error text",
     "nrsp_initial_hello_contract": "passed; a non-Hello first message returns Protocol(\"Expected initial Hello\"), while an open WebSocket that withholds Hello returns Timeout within the 50 ms fixture deadline and 500 ms test bound",
-    "websocket_upgrade_deadline": "passed; loopback TCP peer accepts connection but never responds to WebSocket HTTP upgrade; connect_until returns Timeout at 50 ms deadline within a 500 ms bound",
-    "arm64_nrsp_native_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed on current implementation source; compile evidence only",
+    "websocket_upgrade_deadline": "passed; TCP peer accepts connection but never responds to WebSocket HTTP upgrade; 50 ms deadline, completed within 500 ms",
+    "arm64_nrsp_native_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed on code source d7c9f12; compile evidence only",
     "npr_stream_identity": "Official NPR SmartAudio guide distinguishes the NPR One personalized news mix from live local member-station streams; no single national NPR News continuous stream or product redistribution grant established"
   },
   "a_b_test": {
@@ -101,7 +102,7 @@
   "ci": {
     "latest_observed_head_run": null,
     "previous_head_run": 40763293734,
-    "conclusion": "Implementation head 882e9c0 has empty combined status and no associated PR workflow run visible. Previous docs head fe8ae3c Actions run 40763293734 failed at startup with zero jobs; remote CI remains unverified."
+    "conclusion": "PR #3 is open. No workflow run or combined check was visible for current code head d7c9f12 at query time. Prior Actions run 40763293734 failed before jobs were created; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -109,5 +110,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Obtain rights and a named official stream for an NPR member station without assuming permission; continue physical receiver/output/Pi acceptance when hardware is available."
+  "next_priority": "Perform physical receiver/output/Pi acceptance when hardware is available; resolve publisher reuse rights before adding an NPR member stream."
 }

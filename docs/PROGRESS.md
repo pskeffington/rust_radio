@@ -920,3 +920,22 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - No stream or authorization policy changed. Next: obtain written rights for a
   named NPR member station or preserve that gate, and continue physical device
   acceptance when hardware is available.
+
+## SDRconnect WebSocket upgrade deadline (2026-10-28)
+
+- Bound the TCP connect phase of SDRconnect's WebSocket setup by the same
+  absolute connection deadline used for the HTTP upgrade handshake. Expired
+  TCP connection attempts now report the typed timeout error.
+- Added a loopback regression where a TCP peer accepts the connection but
+  never answers the WebSocket upgrade. The client returned `Timeout` at the
+  50 ms fixture deadline and completed within the 500 ms test bound.
+- The focused regression and all six required workspace gates passed. The
+  direct nRSP headless ARM64 check also passed; this is compile evidence only.
+- The 25-station sweep and compact-label A/B were repeated earlier in this run;
+  they establish point-in-time codec and layout-fit results, not audible or
+  listener-preference acceptance.
+- PR #3 remains open. No current-head workflow run was visible at the latest
+  check; a prior Actions run failed before creating jobs, so remote CI is
+  unverified. No receiver, audio-output, or Pi hardware was exercised.
+- Next: perform receiver/output/Pi acceptance when hardware is available and
+  resolve publisher reuse rights before adding an NPR member stream.
