@@ -407,7 +407,7 @@ mod tests {
             .contains("unexpectedly"));
         assert!(panicked.try_finish().is_none());
         let mut wrong_station = StationValidationTask::spawn("skylab", |_| {
-            Ok(StationValidation::unverified("groovesalad"))
+            Ok(StationValidation::unverified("radio-paradise"))
         })
         .unwrap();
         assert!(finish_task(&mut wrong_station)

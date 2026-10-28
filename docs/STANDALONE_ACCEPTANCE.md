@@ -30,6 +30,18 @@ Offline tests cover stream parsing, recovery and silent MP3/AAC validation. Audi
 
 On 2026-10-27, explicit live `validate` checks decoded PCM from all ten curated stations without opening audio output. Skylab returned MP3 at 48 kHz stereo; Groove Salad, Secret Agent, Lush, Drone Zone, Deep Space One, Space Station Soma, Beat Blender, DEF CON Radio and Underground 80s returned MP3 at 44.1 kHz stereo. SomaFM required upgrading legacy HTTP playlist entries to their allowlisted HTTPS equivalents. These results establish point-in-time decoding only; rerun checks to establish current availability.
 
+## Catalog rights and current live evidence (2026-10-28)
+
+The earlier SomaFM sweep documents historical codec availability only. After
+reviewing the publisher's current Terms of Service, SomaFM presets and their
+HTTP-to-HTTPS playlist compatibility rule were removed pending written
+permission. The current five entries are Skylab Radio, WCRB Classical, GBH 89.7
+News Radio, KEXP 90.3 FM and Radio Paradise Main Mix. Each publisher documents
+listener playback in third-party radio players; this does not authorize
+redistribution or relay. A fresh bounded silent sweep decoded all five entries
+in one attempt each at 2026-10-28 21:48 UTC. This is point-in-time decoder
+evidence only. Physical output and hardware acceptance remain separate.
+
 
 ## Reliability pass: manual output and session control
 

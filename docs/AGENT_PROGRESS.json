@@ -1,9 +1,9 @@
 {
-  "updated_at_utc": "2026-10-28T21:32:32Z",
+  "updated_at_utc": "2026-10-28T21:49:00Z",
   "status": "in_progress",
-  "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "bce23e1",
-  "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
+  "branch": "codex/catalog-publisher-permissions",
+  "implementation_commit": "pending this change",
+  "pull_request": null,
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
     "Added a six-hourly and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
@@ -56,22 +56,28 @@
     "Validated the credential-safe report summary against a fresh real 25-station CLI report; all station decodes were summarized and the GUI label A/B/C test repeated.",
     "Closed the summary formatter's missing check_error outcome and permissive-stage gap by matching all CLI status/stage enums and requiring schema version 1.",
     "Revalidated strict summary formatting against a fresh live CLI report at 21:28 UTC and repeated the station-label A/B/C regression.",
-    "Inspected repository Actions policy and workflow history; confirmed the catalog schedule is not active until the PR workflow reaches default branch main, while current required PR runs fail before job creation."
+    "Inspected repository Actions policy and workflow history; confirmed the catalog schedule is not active until the PR workflow reaches default branch main, while current required PR runs fail before job creation.",
+    "Reviewed publisher playback policies; excluded SomaFM pending written approval and removed publisher-specific legacy HTTP playlist upgrading.",
+    "Rebuilt the runtime and JSON catalogs with five publisher-documented third-party-player streams and review dates; redistribution and relay remain unauthorized.",
+    "Added regressions rejecting unreviewed SomaFM preset endpoints and catalog entries without documented third-party player support.",
+    "Focused station-validation fixture suite passed 8/8; live bounded silent sweep decoded all five catalog stations in one attempt each at 2026-10-28T21:48Z.",
+    "Repeated GUI station-label A/B/C fit measurement on five stations: at 295px A 4/5, B/C 5/5; at 340px all 5/5; C saves 32px, layout-fit evidence only.",
+    "All six required Rust workspace validation gates passed; the loopback tests passed after rerunning with local-socket access."
   ],
   "validation": {
-    "fmt": "passed on current source",
-    "workspace_tests": "passed on current source; loopback fixtures allowed",
-    "workspace_clippy_strict": "passed on current source",
-    "all_features_tests": "passed on current source; loopback fixtures allowed; physical audio acceptance tests remain gated/ignored",
-    "all_features_clippy_strict": "passed on current source",
-    "all_features_check": "passed on current source",
-    "live_catalog_decode": "25/25 decoded in 25 attempts; point-in-time only",
+    "fmt": "passed on rights-corrected source",
+    "workspace_tests": "passed; loopback fixtures required local-socket permission after sandbox denial",
+    "workspace_clippy_strict": "passed with -D warnings",
+    "all_features_tests": "passed; loopback fixtures required local-socket permission; native output hardware tests remain ignored",
+    "all_features_clippy_strict": "passed with -D warnings",
+    "all_features_check": "passed",
+    "live_catalog_decode": "5/5 decoded_audio in 5 attempts, one per station, at 2026-10-28T21:48Z; point-in-time codec evidence only",
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
     "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed 2026-10-28 this run: at 295px A full category 24/25, B names-only 25/25, C compact category 25/25; at 340px all 25/25; compact CLASS saves 32px; layout-fit only",
+    "repeatable_layout_ab": "passed: at 295px A full category 4/5, B names-only 5/5, C compact category 5/5; at 340px all 5/5; C saves 32px; layout fit only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "passed Ruby YAML parser on current station-validation.yml; cron cadence 17 */6 * * * matches the six-hour catalog freshness TTL",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
@@ -113,18 +119,20 @@
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
     "current_pr_state": "PR #3 remains open at 1642027; local history has no conflict on preceding docs-only checkpoint 52be452; current GitHub mergeability is being recomputed after push",
-    "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met"
+    "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
+    "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
+    "catalog_mirror_parity": "passed; CLI regression validates ordered runtime/JSON station metadata and player-rights policy fields"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
     "variant_b": "station name only",
     "variant_c": "station name plus compact category (CLASSICAL becomes CLASS)",
-    "at_295px": "A 24/25; B 25/25; C 25/25 labels fit",
-    "at_340px": "A 25/25; B 25/25; C 25/25 labels fit",
+    "at_295px": "A 4/5; B 5/5; C 5/5 labels fit on the current five-station directory",
+    "at_340px": "A 5/5; B 5/5; C 5/5",
     "variant_c_text_width_savings_vs_a": 32,
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
-    "interpretation": "compact-layout measurement, not listener preference"
+    "interpretation": "compact-layout measurement on the current five-station directory, not listener preference"
   },
   "ci": {
     "latest_observed_head_run": 40772645579,
@@ -135,7 +143,9 @@
     "Physical Bluetooth and USB output loss/recovery",
     "Raspberry Pi native audio, display and touch acceptance",
     "Receiver hardware recovery and supported USB SDR acceptance",
-    "Publisher distribution permissions before bundling or redistribution"
+    "Publisher distribution permissions before bundling or redistribution",
+    "Expand the five-station safe catalog toward the approximately 25-station target using documented, authorized third-party player sources",
+    "NPR News inclusion requires a named broadcaster stream and applicable rights evidence"
   ],
-  "next_priority": "Continue local reliability validation while remote Actions startup failures remain unexplained; the catalog cron cannot activate until merge to main. Complete physical audio/output, receiver, Pi and USB SDR acceptance when hardware is available."
+  "next_priority": "Research, review and live-validate additional publisher-supported station endpoints; retain the current rights exclusions, then continue physical audio/output, Pi and receiver acceptance when hardware is available."
 }

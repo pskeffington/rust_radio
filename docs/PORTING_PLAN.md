@@ -1,6 +1,6 @@
 # Radio module roadmap and ownership
 
-Updated 2026-10-27. The standalone library is integrated into
+Updated 2026-10-28. The standalone library is integrated into
 [Pip-Boy](https://github.com/pskeffington/pip_boy) through a pinned Git dependency.
 The next work strengthens playback and completes platform acceptance. Source
 provenance remains in the extraction notes; dated evidence is in
@@ -26,7 +26,7 @@ provenance remains in the extraction notes; dated evidence is in
 | Area | Delivered | Remaining acceptance |
 | --- | --- | --- |
 | Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host; core exposes bounded typed feed-history parsing | Release/tag decision after CI and platform gates |
-| IP playback | Native MP3/AAC, WCRB/Skylab presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported; playlist playback uses the first entry |
+| IP playback and station catalog | Native MP3/AAC, five publisher-documented third-party-player presets (Skylab, WCRB, GBH News, KEXP and Radio Paradise), explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Grow the catalog toward ~25 diverse stations with publisher guidance and direct endpoints; find a specifically authorized NPR News stream; live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported |
 | Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
 | Compact GUI | Optional 480×320 egui panel with phosphor skin, availability-driven IP/nSDR/USB setup buttons, passive input discovery, direct nRSP-ST and USB controls, asynchronous station checks, saved public/LAN streams, keyboard menus and layout/lifecycle coverage | Physical touch and Pi rendering; fresh real-receiver GUI audio |
 | nRSP-ST | Direct native handshake, activation, live frequency/mode/bandwidth and FM stereo/de-emphasis/filter controls, real stereo-lock reports, presets, Opus playback and owned session Stop; optional SDRconnect adapter | Native authenticated login, extended link interruption/reconnect, other demodulator/antenna field checks, physical Pi client and raw I/Q |
@@ -36,14 +36,19 @@ provenance remains in the extraction notes; dated evidence is in
 
 ## Next development priorities
 
-1. Keep recovery source-aware: terminal receiver setup failures require explicit
+1. Expand the safe station catalog toward approximately 25 diverse stations,
+   with first-party direct endpoints and third-party radio-player guidance.
+   SomaFM remains excluded pending written permission; NPR News needs a named
+   authorized broadcaster stream. Temporary network outages must not remove
+   otherwise authorized stations.
+2. Keep recovery source-aware: terminal receiver setup failures require explicit
    retry; transient transport failures retain bounded recovery. Add regression
    evidence for demonstrated faults before expanding features.
-2. Exercise output loss/recovery and the standalone micro-GUI on actual hardware,
+3. Exercise output loss/recovery and the standalone micro-GUI on actual hardware,
    preserving the confirmed Mac speaker and Pip-Boy playback paths.
-3. Run the native module and Pip-Boy on the physical Pi with its intended sound
+4. Run the native module and Pip-Boy on the physical Pi with its intended sound
    output and display. Cross-compilation alone does not complete this gate.
-4. Develop a validated direct nRSP-ST audio/control path without depending on
+5. Develop a validated direct nRSP-ST audio/control path without depending on
    SDRconnect. Fides Supra's proven direct work currently covers reachability
    and display frames, not audio or tuning. Resolve the Full IQ firmware
    prerequisite before accepting raw I/Q. Keep USB/Soapy acceptance separate.

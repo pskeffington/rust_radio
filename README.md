@@ -6,6 +6,8 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 The standalone module provides bounded internet and private-LAN streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
 
+The current curated directory contains five streams whose publishers document playback in third-party radio players. SomaFM presets were removed pending written permission under the publisher's current terms. Growing the directory toward the approximately 25-station target, including a specifically authorized NPR News source, remains open work; player guidance does not grant redistribution or relay rights. See the [catalog policy](docs/CURATED_FEED_POLICY.md).
+
 IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. Direct native nRSP-ST control and Opus playback have also reached Mac native callbacks without using SDRconnect: live frequency/mode changes and session cleanup passed. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
 
 ## Navigation
@@ -44,7 +46,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 5. Bounded streaming memory, publisher endpoint validation for presets, explicit direct URLs, controlled redirects and timeouts.
 6. Keep audio output devices, Bluetooth pairing and touch UI under OS/host ownership.
 7. No RF transmit path. Satellite reception is research-stage only.
-8. Any curated broadcaster inclusion requires a redistribution/embedding rights review before released bundles.
+8. Curated presets require publisher-documented use in third-party radio players. This evidence is not permission to redistribute, embed, or relay streams; those uses require separate rights review.
 
 ## Near-term work
 
@@ -95,7 +97,7 @@ cargo run -p rust-radio-cli -- listen wcrb --seconds 30
 cargo run -p rust-radio-cli -- stream-listen 'https://example.org/live.mp3' --seconds 30
 ```
 
-Curated transport resolves bounded M3U and PLS playlists using publisher-approved URLs. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. Legacy HTTP entries inside SomaFM playlists are requested over HTTPS after the same host/port/path checks; there is no plaintext fallback. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
+Curated transport resolves bounded M3U and PLS playlists using publisher-directed URLs. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
 
 Check a station without opening an audio device:
 

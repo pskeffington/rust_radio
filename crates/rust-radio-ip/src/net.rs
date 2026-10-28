@@ -198,6 +198,18 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
     if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
         return Err("Stream URL must not contain credentials or a fragment".into());
     }
+    if url.host_str().is_some_and(|host| {
+        host.eq_ignore_ascii_case("somafm.com")
+            || host
+                .to_ascii_lowercase()
+                .strip_suffix(".somafm.com")
+                .is_some()
+    }) {
+        return Err(
+            "SomaFM does not authorize new third-party radio clients without prior written permission"
+                .into(),
+        );
+    }
     match url.scheme() {
         "https" if url.host().is_some() => {
             let literal_ip = url.host_str().and_then(|host| {
@@ -627,6 +639,7 @@ mod tests {
         for url in [
             "https://example.com/live?token=abc",
             "https://8.8.8.8/live",
+            "https://somafm.com.evil.test/live",
             "http://127.0.0.1:8080/live",
             "http://192.168.1.5:8000/live",
         ] {
@@ -634,6 +647,8 @@ mod tests {
         }
         for url in [
             "http://example.com/live",
+            "https://somafm.com/m3u/groovesalad.m3u",
+            "https://ice5.somafm.com/groovesalad-128-mp3",
             "http://169.254.169.254/",
             "https://127.0.0.1/live",
             "https://192.168.1.5/live",

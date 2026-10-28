@@ -183,7 +183,7 @@ pub fn internet_available(cancelled: &AtomicBool) -> bool {
         .dns_resolver(SafeResolver::public_only())
         .timeout(Duration::from_secs(3))
         .build()
-        .and_then(|client| client.head("https://somafm.com/").send());
+        .and_then(|client| client.head("https://www.wgbh.org/").send());
     !cancelled.load(Ordering::Acquire)
         && result.is_ok_and(|response| response.status().is_success())
 }
@@ -202,7 +202,8 @@ mod tests {
         let mut client = NativeRadioHttp::for_probe().unwrap();
         client.deadline = Instant::now() - Duration::from_secs(1);
         let endpoint =
-            ApprovedEndpoint::new("groovesalad", "https://somafm.com/groovesalad.pls").unwrap();
+            ApprovedEndpoint::new("radio-paradise", "https://stream.radioparadise.com/mp3-128")
+                .unwrap();
         assert!(matches!(
             client.get(&endpoint),
             Err(StreamError::Io(error)) if error.kind() == io::ErrorKind::TimedOut
@@ -219,7 +220,8 @@ mod tests {
         let client = NativeRadioHttp::for_cancellable_probe(Arc::clone(&cancelled)).unwrap();
         cancelled.store(true, Ordering::Release);
         let endpoint =
-            ApprovedEndpoint::new("groovesalad", "https://somafm.com/groovesalad.pls").unwrap();
+            ApprovedEndpoint::new("radio-paradise", "https://stream.radioparadise.com/mp3-128")
+                .unwrap();
         assert!(
             matches!(client.get(&endpoint), Err(StreamError::Io(error)) if probe_was_cancelled(&error))
         );

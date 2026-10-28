@@ -690,6 +690,14 @@ mod tests {
             mirror["policy"]["redistribution"].as_str(),
             Some("not_authorized")
         );
+        assert_eq!(
+            mirror["policy"]["third_party_player_evidence"].as_str(),
+            Some("publisher documents listener playback in third-party players")
+        );
+        assert_eq!(
+            mirror["policy"]["rights_reviewed_at"].as_str(),
+            Some("2026-10-28")
+        );
         let stations = mirror["stations"]
             .as_array()
             .expect("catalog must contain a station array");
@@ -707,6 +715,14 @@ mod tests {
             assert_eq!(
                 json["publisher_reference_url"].as_str(),
                 Some(station.publisher_reference_url)
+            );
+            assert_eq!(
+                json["third_party_player_support"].as_bool(),
+                Some(station.third_party_player_support)
+            );
+            assert_eq!(
+                json["rights_reviewed_date"].as_str(),
+                Some(station.rights_reviewed_date)
             );
             assert_eq!(
                 json["nominal_kbps"].as_u64(),

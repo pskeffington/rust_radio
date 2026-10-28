@@ -31,10 +31,13 @@ UI tests cover each playback state, stale validation during Playing, absence of
 decoder diagnostics on the listening surface, volume restoration and long error
 messages at 480×320. The station popup rows use up to 340 pixels of available
 width. A measured 14-point monospace label A/B/C with 20 pixels total horizontal
-button padding found full category labels fit 24/25 stations, names alone 25/25,
-and compact category labels 25/25 at 295 pixels; all fit at 340 pixels. Shortening
-only `CLASSICAL` to `CLASS` preserves the category cue and saves 32 pixels for
-WCRB. Native
+button padding originally found full category labels fit 24/25 stations, names
+alone 25/25, and compact category labels 25/25 at 295 pixels; all fit at 340
+pixels. After the 2026-10-28 rights review reduced the directory to five
+publisher-supported stations, the same regression reports A 4/5, B 5/5 and C
+5/5 at 295 pixels; all fit at 340 pixels. Shortening only `CLASSICAL` to
+`CLASS` preserves the category cue and saves 32 pixels for WCRB. These are layout
+fit measurements, not listener preference evidence. Native
 muted acceptance checks
 Receiving audio now against actual playback, including switching/failure
 responsiveness. Physical touch and Pi rendering still need acceptance.

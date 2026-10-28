@@ -3,6 +3,43 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Publisher rights review and safe catalog correction (2026-10-28 21:49 UTC)
+
+- Rechecked the catalog after finding SomaFM's current Terms of Service reject
+  new third-party radio clients and require written permission for embedding
+  or restreaming. Removed the 23 SomaFM presets and the SomaFM-only legacy HTTP
+  playlist rewrite. Direct SomaFM URLs are explicitly denied by custom input
+  validation, preventing accidental use as a user-provided endpoint.
+- Retained five endpoints whose publishers document third-party radio player
+  playback: Skylab Radio, WCRB Classical, GBH 89.7 News Radio, KEXP 90.3 FM and
+  Radio Paradise Main Mix. This evidence is limited to end-user playback; the
+  catalog continues to state redistribution and relay are not authorized.
+- Updated the Rust directory and JSON mirror with third-party-player guidance
+  flags and review dates, plus policy, transport, GUI and literature docs. A
+  regression rejects publishers lacking this evidence and confirms mirror
+  parity. The longer-term target of approximately 25 diverse stations remains
+  open; NPR News still needs a named authorized broadcaster stream.
+- Focused audio validation fixtures passed (8/8). The layout A/B/C test passed:
+  at 295 px A full category fit 4/5, B names-only and C compact category fit
+  5/5; all three fit 5/5 at 340 px. C saves 32 px over A. These are fit
+  measurements, not listener preference evidence.
+- All six required gates passed: format, workspace tests, strict Clippy,
+  all-feature tests, all-feature strict Clippy and all-feature check. Workspace
+  tests include loopback stream tests; sandbox loopback denial was followed by
+  a successful run with local-socket permission. One manual native-output test
+  and one physical Soapy output test remain intentionally ignored.
+- Fresh bounded silent validation at 2026-10-28 21:48 UTC decoded 5/5 entries,
+  one attempt each, at `decoded_audio`: Skylab MP3 48 kHz, WCRB AAC 48 kHz,
+  GBH News AAC 32 kHz, KEXP AAC 44.1 kHz and Radio Paradise MP3. This is
+  point-in-time codec evidence only.
+- Current branch is `codex/catalog-publisher-permissions`, based on merged
+  source commit `5568fb3`. PR #4 remains open with runner-startup failures and
+  is docs-only; PR #2 is also open with its earlier catalog proposal. This
+  change is being prepared independently and has not been pushed yet.
+- Highest priority: research and validate additional authorized station
+  sources without restoring feeds whose terms disallow third-party clients;
+  then revisit required physical output, Pi and receiver acceptance.
+
 ## Cross-source callback status reconciliation (2026-10-28)
 
 - Implementation commit `df6a73d` shares the native callback-consumed sample
