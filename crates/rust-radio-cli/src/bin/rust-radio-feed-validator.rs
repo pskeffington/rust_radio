@@ -177,6 +177,8 @@ fn current_health(station: &Value, now_unix: u64) -> &'static str {
     if let Some(last) = decoded_at(&station["validation"]) {
         return if now_unix >= last && now_unix - last <= FEED_FRESHNESS_TTL.as_secs() {
             "fresh"
+        } else if now_unix >= last && now_unix - last <= LAST_GOOD_GRACE.as_secs() {
+            "degraded"
         } else {
             "stale"
         };
@@ -703,7 +705,7 @@ mod tests {
         assert_eq!(current_health(&entry, at), "fresh");
         assert_eq!(
             current_health(&entry, at + FEED_FRESHNESS_TTL.as_secs() + 1),
-            "stale"
+            "degraded"
         );
         entry["validation"] = validation_value(Err("timeout".into()), now);
         entry["consecutive_failed_sweeps"] = json!(1);
