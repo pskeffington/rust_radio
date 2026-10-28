@@ -19,6 +19,7 @@ IP radio and nRSP-ST PCM have reached native output callbacks in standalone and 
 - [Progress notes and verification evidence](docs/PROGRESS.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
 - [Native GUI and embedding](docs/GUI_INTEGRATION.md)
+- [Curated 25-station feed health and auto-validator](docs/CURATED_FEED_POLICY.md)
 - [Standalone acceptance](docs/STANDALONE_ACCEPTANCE.md)
 - [Existing Rust-Boy radio engineering roadmap](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_NATIVE_ROADMAP.md)
 - [Existing Rust-Boy SDR contract](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_SDR.md)
@@ -34,6 +35,19 @@ cargo clippy --workspace --all-targets -- -D warnings
 For control-only testing, use `cargo test -p rust-radio-core`; it requires no network receiver, sound card, USB SDR or native audio libraries. Workspace builds include CPAL and eframe and need platform development libraries (on Linux, `libasound2-dev` and `pkg-config`). The local verification record is linked from the embedding documentation; remote CI and physical hardware acceptance are separate checks.
 
 Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so Git-aware source searches and indexes skip generated files.
+
+## Validate curated radio feeds (headless Rust)
+
+The catalog contains **25 curated streams**, including **GBH 89.7 — NPR News (Boston)**. The separate native monitor checks each stream by decoding real audio, never by socket reachability alone, and publishes a time-bounded health report that can be consumed by Rust-Boy.
+
+```sh
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --once
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --daemon
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --status
+cargo run --locked -p rust-radio-cli --bin rust-radio-feed-validator -- --eligible
+```
+
+The periodic monitor runs only when explicitly launched and never opens audio outputs. It stores an atomic JSON health snapshot at `target/radio-feed-health.json`; choose `--output PATH` for persistent state. A station is `fresh` only after decoded audio passes within six hours. The GUI currently performs its own selected-station checks; consuming the validator's fresh-ID allowlist for a strict filtered catalog is a separate host integration step. See the [feed health policy](docs/CURATED_FEED_POLICY.md).
 
 ## Required integration invariants
 
