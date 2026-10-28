@@ -11,6 +11,7 @@ default = ["ip-radio"]
 ip-radio = ["dep:rust-radio-audio", "dep:rust-radio-ip"]
 sdr = ["rust-radio-core/sdr", "dep:rust-radio-sdr"]
 soapy-sdr = ["sdr", "rust-radio-sdr/soapy", "rust-radio-audio?/soapy", "rust-radio-gui?/soapy-sdr"]
+nrsp-native = ["sdr", "rust-radio-sdr/nrsp-native", "rust-radio-audio?/nrsp-native", "rust-radio-gui?/nrsp-native"]
 sdrconnect = ["sdr", "rust-radio-sdr/sdrconnect", "rust-radio-audio?/sdrconnect", "rust-radio-gui?/sdrconnect"]
 gui = ["ip-radio", "dep:rust-radio-gui"]
 

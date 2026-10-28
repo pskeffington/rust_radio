@@ -1,5 +1,69 @@
 # SDRplay nRSP-ST access
 
+## Direct native control and audio
+
+The optional `nrsp-native` feature connects directly to the receiver on TCP
+9001. It performs the native session handshake, creates its own virtual receiver,
+sets physical center frequency and receiver demodulation/bandwidth, starts
+reception, decodes 48 kHz stereo Opus and feeds the shared native audio output.
+SDRconnect and a browser are not part of this playback path. The module does
+not install software or change firmware on the appliance.
+
+```sh
+cargo run --locked -p rust-radio-cli --features nrsp-native -- \
+  nrsp-native-status PRIVATE_IP:9001
+cargo run --locked -p rust-radio-cli --features nrsp-native -- \
+  nrsp-listen PRIVATE_IP:9001 99100000 wfm --seconds 30 --volume 25
+cargo run --locked -p rust-radio-gui --features nrsp-native --bin rust-radio-gui
+```
+
+In the GUI, select **nRSP-ST / Direct**, open SETTINGS, enter the receiver
+`IP:9001`, frequency in Hz, mode and bandwidth, then press PLAY. During playback,
+edit frequency/mode/bandwidth and press APPLY TUNING. The main source line shows
+the observed center frequency. The address stays locked during playback. STOP
+cancels playback, stops this connection's virtual receiver and closes its socket.
+Physical center frequency is shared with other clients; an explicit tune affects
+the appliance. Antenna, RF gain, bias-T and hardware sample rate are preserved.
+
+Interactive CLI sessions accept `status`, `volume N`,
+`tune FREQ_HZ MODE [BANDWIDTH_HZ]` and `stop`. Supported modes are `am`, `usb`,
+`lsb`, `nfm`, `wfm`, `cw`, and `sam`; only WFM and NFM have current live mode
+checks. Default bandwidths are 10 kHz AM/SAM, 3 kHz USB/LSB, 12 kHz NFM, 200 kHz
+WFM and 500 Hz CW. The library permits explicit bandwidths from 100 to 250,000 Hz
+and frequencies from 1 kHz to 2 GHz; the receiver and selected antenna still
+determine actual reception.
+
+The embedding API is `NativeRadioEngine::start_nrsp_native(peer, frequency,
+mode, bandwidth, volume, output)`, followed by `tune_nrsp_native(...)`,
+`nrsp_native_status()` and `nrsp_native_audio_stats()`. The last reports decoded
+frames and pre-output signal peak; Playing still requires native callback
+consumption. Hosts retain the same one-engine ownership and asynchronous Stop
+contract. The lower-level `receiver::nrsp_native::Client` exposes status,
+configuration, tuning, borrowed Opus packets and explicit stop without audio
+dependencies.
+
+This initial implementation targets the observed native browser protocol 0.
+It validates Hello identity, envelope lengths, message types, padding, negotiated
+session state and audio permission. The current firmware does not echo tuning
+commands to their sending connection: changed frequency is confirmed through
+bounded read-only Hello sessions, with cancellation and a three-second deadline.
+Negotiated values remain private to the connection and are never logged or saved.
+Inputs accept explicit private/loopback IPv4 peers; use a private network or VPN.
+Password-protected native sessions are detected and rejected before any control
+command; native login and raw I/Q are not implemented. Protocol failures require
+explicit retry.
+
+On 2026-10-28, the real receiver completed direct Rust handshake, WFM setup at
+99.1 MHz and zero-volume Mac native callback playback. Within one session, live
+tuning to 99.2 MHz NFM and back to 99.1 MHz WFM succeeded with independent
+frequency confirmation. That run decoded 72,960 stereo frames with nonzero
+signal. STOP closed the owned receiver session. This is live control, decode and
+native callback evidence; a new audible listening check and physical Pi client
+runtime remain open. Device addresses and runtime keys were not saved in the repo.
+
+Implementation details and interoperability evidence are in
+[the native protocol notes](NRSP_NATIVE_PROTOCOL.md).
+
 ## Direct device status
 
 The `sdr` feature can check the receiver's own network services without
@@ -16,7 +80,7 @@ The library API is `rust_radio::receiver::nrsp::Host`. An open service indicates
 reachability only; it does not prove identity, tuning, I/Q, or audio. Fides
 Supra's proven native display path uses a passive browser-session tap and does
 not document a native audio or receiver-control client. Direct native nRSP-ST
-audio and tuning are therefore still unimplemented.
+audio and tuning are now provided separately by the `nrsp-native` feature above.
 
 On 2026-10-27, the operator-identified NETRADIO host returned HTTP 200 on port
 9001 and accepted TCP 50000 when checked directly by this CLI. No radio command

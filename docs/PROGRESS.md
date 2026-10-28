@@ -1,9 +1,33 @@
 # Radio development progress
 
-Updated 2026-10-27. Active priorities and ownership are in the
+Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Current module pass: internet and LAN streams
+## Current module pass: direct native nRSP-ST
+
+- Established a direct Rust receiver session on the device's port 9001 without
+  SDRconnect or a browser. Implemented native handshake/session framing, explicit
+  virtual receiver creation/start/stop, shared physical tuning, mode/bandwidth
+  configuration, Opus decode and native callback playback.
+- Added `nrsp-native` features for the headless client, native engine, CLI and
+  compact GUI. Live tuning uses one bounded request slot on the existing worker;
+  the endpoint remains locked while active. Native login requirements are
+  detected before controls; authenticated login remains unimplemented.
+- Real device: direct status identified protocol 0 and model 5; WFM at 99.1 MHz
+  reached the Mac audio callback at zero volume. A single session then tuned to
+  99.2 MHz NFM and back to 99.1 MHz WFM, independently confirmed both frequencies,
+  decoded 72,960 stereo frames with nonzero signal, and stopped cleanly. The
+  device was restored to the original tuning. No samples, addresses or session
+  keys were committed. Current checks establish live control and native audio;
+  fresh speaker listening and the physical Pi client are separate acceptance.
+- All-feature workspace tests passed **163 tests** (one manual output test
+  ignored), with strict Clippy, formatting and build checks. The default feature
+  suite and headless native receiver AArch64 Linux compile check also passed.
+  Native GUI offline tests cover invalid input, source navigation and the
+  480×320 settings bounds. A CI job now covers this optional native feature.
+- Native protocol implementation notes: [wire contract](NRSP_NATIVE_PROTOCOL.md).
+
+## Previous module pass: internet and LAN streams
 
 - Added WCRB Classical as a publisher-documented preset and explicit direct
   HTTPS/private IPv4 HTTP stream entry in the standalone GUI, CLI and embedding

@@ -27,6 +27,10 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 mod ip_pcm;
+#[cfg(feature = "nrsp-native")]
+mod nrsp_native;
+#[cfg(feature = "nrsp-native")]
+pub use nrsp_native::AudioStats as NativeNrspAudioStats;
 #[cfg(feature = "sdrconnect")]
 mod sdrconnect;
 #[cfg(feature = "soapy")]
@@ -35,6 +39,11 @@ mod soapy;
 enum PlaybackSource {
     Internet(String),
     Direct(String),
+    #[cfg(feature = "nrsp-native")]
+    NrspNative(
+        rust_radio_sdr::nrsp_native::Endpoint,
+        rust_radio_sdr::nrsp_native::Config,
+    ),
     #[cfg(feature = "sdrconnect")]
     SdrConnect(rust_radio_sdr::sdrconnect::Endpoint),
     #[cfg(feature = "soapy")]
@@ -107,6 +116,8 @@ pub struct NativeRadioEngine {
     volume: Arc<AtomicU8>,
     output_failed: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
+    #[cfg(feature = "nrsp-native")]
+    native_control: Option<Arc<nrsp_native::Control>>,
     #[cfg(feature = "sdrconnect")]
     receiver: Arc<Mutex<Option<rust_radio_sdr::sdrconnect::Status>>>,
 }
@@ -132,6 +143,27 @@ impl NativeRadioEngine {
         radio_net::validate_direct_url(url)?;
         Self::start(
             PlaybackSource::Direct(url.to_owned()),
+            volume_percent,
+            output_id,
+        )
+    }
+
+    /// Connect, tune and receive directly from the nRSP-ST's native service.
+    #[cfg(feature = "nrsp-native")]
+    pub fn start_nrsp_native(
+        endpoint: &str,
+        frequency_hz: u64,
+        mode: &str,
+        bandwidth_hz: u32,
+        volume_percent: u8,
+        output_id: &str,
+    ) -> Result<Self, String> {
+        use rust_radio_sdr::nrsp_native::{Config, Endpoint, Mode};
+        let endpoint = Endpoint::parse(endpoint).map_err(|e| e.to_string())?;
+        let mode = Mode::parse(mode).map_err(|e| e.to_string())?;
+        let config = Config::new(frequency_hz, mode, bandwidth_hz).map_err(|e| e.to_string())?;
+        Self::start(
+            PlaybackSource::NrspNative(endpoint, config),
             volume_percent,
             output_id,
         )
@@ -208,6 +240,8 @@ impl NativeRadioEngine {
                 station_id: station_id.clone(),
             },
             PlaybackSource::Direct(_) => RadioCommand::PlayStream,
+            #[cfg(feature = "nrsp-native")]
+            PlaybackSource::NrspNative(..) => RadioCommand::PlaySdr,
             #[cfg(feature = "sdrconnect")]
             PlaybackSource::SdrConnect(_) => RadioCommand::PlaySdr,
             #[cfg(feature = "soapy")]
@@ -226,6 +260,14 @@ impl NativeRadioEngine {
         let receiver = Arc::new(Mutex::new(None));
         #[cfg(feature = "sdrconnect")]
         let worker_receiver = Arc::clone(&receiver);
+        #[cfg(feature = "nrsp-native")]
+        let native_control = if matches!(&source, PlaybackSource::NrspNative(..)) {
+            Some(Arc::new(nrsp_native::Control::default()))
+        } else {
+            None
+        };
+        #[cfg(feature = "nrsp-native")]
+        let worker_native = native_control.clone();
         let selected_output = output_id.to_owned();
         let worker = thread::Builder::new()
             .name("rust-radio-playback".into())
@@ -248,6 +290,16 @@ impl NativeRadioEngine {
                         &worker_cancelled,
                         worker_volume,
                         &selected_output,
+                    ),
+                    #[cfg(feature = "nrsp-native")]
+                    PlaybackSource::NrspNative(endpoint, config) => nrsp_native::play(
+                        (endpoint, config),
+                        generation,
+                        &worker_controller,
+                        &worker_cancelled,
+                        worker_volume,
+                        &selected_output,
+                        worker_native.as_ref().expect("native controls present"),
                     ),
                     #[cfg(feature = "sdrconnect")]
                     PlaybackSource::SdrConnect(endpoint) => recover_attempts(
@@ -300,9 +352,51 @@ impl NativeRadioEngine {
             volume,
             output_failed,
             worker: Some(worker),
+            #[cfg(feature = "nrsp-native")]
+            native_control,
             #[cfg(feature = "sdrconnect")]
             receiver,
         })
+    }
+
+    /// Queue an explicit tune on the current native session. The bounded slot
+    /// keeps only the latest request; observed status updates after device response.
+    #[cfg(feature = "nrsp-native")]
+    pub fn tune_nrsp_native(
+        &self,
+        frequency_hz: u64,
+        mode: &str,
+        bandwidth_hz: u32,
+    ) -> Result<(), String> {
+        use rust_radio_sdr::nrsp_native::{Config, Mode};
+        let mode = Mode::parse(mode).map_err(|e| e.to_string())?;
+        let config = Config::new(frequency_hz, mode, bandwidth_hz).map_err(|e| e.to_string())?;
+        if self.cancelled.load(Ordering::Acquire) || self.status().state != PlaybackState::Playing {
+            return Err("Start the native receiver before tuning".into());
+        }
+        let control = self
+            .native_control
+            .as_ref()
+            .ok_or("The active source is not a direct nRSP-ST")?;
+        *control
+            .pending
+            .lock()
+            .expect("native controls mutex poisoned") = Some(config);
+        Ok(())
+    }
+    #[cfg(feature = "nrsp-native")]
+    pub fn nrsp_native_status(&self) -> Option<rust_radio_sdr::nrsp_native::Status> {
+        self.native_control
+            .as_ref()?
+            .observed
+            .lock()
+            .expect("native status mutex poisoned")
+            .clone()
+    }
+
+    #[cfg(feature = "nrsp-native")]
+    pub fn nrsp_native_audio_stats(&self) -> Option<NativeNrspAudioStats> {
+        Some(self.native_control.as_ref()?.stats())
     }
 
     /// An audio-device failure is never treated as transient network loss.
@@ -862,6 +956,8 @@ mod tests {
             cancelled: Arc::new(AtomicBool::new(false)),
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
             #[cfg(feature = "sdrconnect")]
             receiver: Arc::new(Mutex::new(None)),
             worker: Some(thread::spawn(move || {
@@ -930,6 +1026,8 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             worker: Some(worker),
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
             #[cfg(feature = "sdrconnect")]
             receiver: Arc::new(Mutex::new(None)),
         };

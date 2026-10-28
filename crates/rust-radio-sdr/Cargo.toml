@@ -9,6 +9,7 @@ description = "Bounded receive-only SDR capture and optional SoapySDR adapter"
 [features]
 default = []
 soapy = ["dep:soapysdr", "dep:num-complex"]
+nrsp-native = ["dep:tungstenite"]
 sdrconnect = ["dep:tungstenite", "dep:serde", "dep:serde_json"]
 
 [dependencies]

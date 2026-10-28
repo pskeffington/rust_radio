@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use std::{env, process};
 
 mod nrsp;
+mod nrsp_native;
 mod sdr;
 mod sdrconnect;
 
@@ -33,6 +34,7 @@ fn usage() {
     eprintln!("Interactive listen commands: status | volume N | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
+    eprintln!("Direct nRSP-ST control/audio: nrsp-native-status IP:9001 | nrsp-listen IP:9001 FREQ_HZ MODE [--seconds N] [--volume N] [--output ID] (enable nrsp-native)");
     eprintln!("Direct nRSP-ST reachability: nrsp-status PRIVATE_IPV4 (enable sdr)");
     eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
     eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
@@ -158,7 +160,7 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
     // A separate stdin reader lets the main thread monitor duration and playback failures.
     let (tx, rx) = mpsc::channel::<String>();
     if seconds.is_none() {
-        println!("Commands: status | volume N | stop");
+        println!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | stop");
         thread::spawn(move || {
             for line in io::stdin().lock().lines() {
                 match line {
@@ -200,6 +202,39 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                 break Ok(());
             } else if command == "status" {
                 println!("RADIO {:?} / {:?}", snapshot.state, snapshot.last_error);
+                #[cfg(feature = "nrsp-native")]
+                if let Some(status) = engine.nrsp_native_status() {
+                    println!("NATIVE STATUS {status:?}");
+                    println!("NATIVE AUDIO {:?}", engine.nrsp_native_audio_stats());
+                }
+            } else if let Some(value) = command.strip_prefix("tune ") {
+                #[cfg(feature = "nrsp-native")]
+                {
+                    let result = (|| {
+                        let values: Vec<_> = value.split_whitespace().collect();
+                        if !(2..=3).contains(&values.len()) {
+                            return Err("Use tune FREQ_HZ MODE [BANDWIDTH_HZ]".to_owned());
+                        }
+                        let frequency = values[0].parse().map_err(|_| "Invalid frequency")?;
+                        let mode = rust_radio::receiver::nrsp_native::Mode::parse(values[1])
+                            .map_err(|e| e.to_string())?;
+                        let bandwidth = if values.len() == 3 {
+                            values[2].parse().map_err(|_| "Invalid bandwidth")?
+                        } else {
+                            mode.default_bandwidth()
+                        };
+                        engine.tune_nrsp_native(frequency, values[1], bandwidth)
+                    })();
+                    match result {
+                        Ok(()) => println!("NATIVE TUNING REQUESTED"),
+                        Err(error) => eprintln!("{error}"),
+                    }
+                }
+                #[cfg(not(feature = "nrsp-native"))]
+                {
+                    let _ = value;
+                    eprintln!("Enable nrsp-native for tuning");
+                }
             } else if let Some(value) = command.strip_prefix("volume ") {
                 match value.parse::<u8>() {
                     Ok(value) if value <= 100 => {
@@ -209,7 +244,7 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                     _ => eprintln!("volume must be 0..100"),
                 }
             } else {
-                eprintln!("Commands: status | volume N | stop");
+                eprintln!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | stop");
             }
         }
         thread::sleep(Duration::from_millis(50));
@@ -247,6 +282,7 @@ fn run(args: &[String]) -> Result<(), String> {
         Some("sdr-capture") => sdr::capture(args),
         Some("sdr-listen") => sdr::listen(args),
         Some("nrsp-status") => nrsp::status(args),
+        Some("nrsp-native-status" | "nrsp-listen") => nrsp_native::run(args),
         Some("sdrconnect-status" | "sdrconnect-capture") => sdrconnect::run(args),
         _ => {
             usage();

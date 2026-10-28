@@ -18,3 +18,7 @@ pub mod sdrconnect;
 
 /// Direct, read-only reachability checks for the nRSP-ST network services.
 pub mod nrsp;
+
+/// Direct nRSP-ST session control and compressed audio, without SDRconnect.
+#[cfg(feature = "nrsp-native")]
+pub mod nrsp_native;

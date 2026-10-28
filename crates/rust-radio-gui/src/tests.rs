@@ -259,7 +259,8 @@ fn station_indexes_preserve_catalog_order_and_wrap_in_both_directions() {
     let count = stations.len()
         + usize::from(cfg!(feature = "sdrconnect"))
         + usize::from(cfg!(feature = "soapy-sdr"))
-        + 1;
+        + 1
+        + usize::from(cfg!(feature = "nrsp-native"));
     for index in 0..count {
         assert_eq!(panel.source_index(), index);
         if index < stations.len() {
@@ -281,7 +282,8 @@ fn large_station_steps_remain_in_bounds_without_overflow() {
     let count = curated_stations().len()
         + usize::from(cfg!(feature = "sdrconnect"))
         + usize::from(cfg!(feature = "soapy-sdr"))
-        + 1;
+        + 1
+        + usize::from(cfg!(feature = "nrsp-native"));
     for direction in [isize::MIN, isize::MAX, -100, -1, 0, 1, 100] {
         panel.select_source(count - 1);
         let expected = ((count as i128 - 1) + direction as i128).rem_euclid(count as i128) as usize;
@@ -393,4 +395,47 @@ fn direct_selection_and_validation_are_offline() {
     assert!(!panel.is_active());
     panel.select_source(0);
     assert!(!panel.direct_selected);
+}
+
+#[cfg(feature = "nrsp-native")]
+#[test]
+fn native_receiver_configuration_is_offline_and_fits_the_viewport() {
+    let mut panel = RadioPanel::new();
+    let index = curated_stations().len()
+        + usize::from(cfg!(feature = "sdrconnect"))
+        + usize::from(cfg!(feature = "soapy-sdr"))
+        + 1;
+    panel.select_source(index);
+    assert!(panel.is_native_selected());
+    assert!(panel.is_receiver_selected());
+    panel.native_endpoint = "8.8.8.8:9001".into();
+    panel.play();
+    assert!(!panel.is_active());
+    panel.native_endpoint = "127.0.0.1:9001".into();
+    panel.native_frequency = "invalid".into();
+    panel.play();
+    assert!(!panel.is_active());
+    panel.apply_native_tuning();
+    assert!(!panel.is_active());
+    render_panel(&mut panel);
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    let mut bounds = None;
+    for _ in 0..2 {
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ctx| {
+                bounds = panel.show_settings(ctx);
+            },
+        );
+    }
+    assert!(
+        screen.contains_rect(bounds.unwrap()),
+        "Native settings must fit the micro viewport"
+    );
+    panel.select_source(0);
+    assert!(!panel.is_native_selected());
 }

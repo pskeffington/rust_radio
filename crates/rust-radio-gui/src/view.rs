@@ -68,7 +68,9 @@ impl RadioPanel {
                     egui::ComboBox::from_id_salt("rust_radio_station")
                         .width(260.0)
                         .truncate()
-                        .selected_text(if self.direct_selected {
+                        .selected_text(if self.is_native_selected() {
+                            "nRSP-ST / Direct"
+                        } else if self.direct_selected {
                             "Direct IP stream"
                         } else if self.is_usb_selected() {
                             "USB SDR / mono FM"
@@ -99,6 +101,18 @@ impl RadioPanel {
                                     curated_stations().len()
                                         + usize::from(cfg!(feature = "sdrconnect"))
                                         + usize::from(cfg!(feature = "soapy-sdr")),
+                                );
+                            }
+                            #[cfg(feature = "nrsp-native")]
+                            if ui
+                                .selectable_label(self.is_native_selected(), "nRSP-ST / Direct")
+                                .clicked()
+                            {
+                                self.select_source(
+                                    curated_stations().len()
+                                        + usize::from(cfg!(feature = "sdrconnect"))
+                                        + usize::from(cfg!(feature = "soapy-sdr"))
+                                        + 1,
                                 );
                             }
                             #[cfg(feature = "sdrconnect")]

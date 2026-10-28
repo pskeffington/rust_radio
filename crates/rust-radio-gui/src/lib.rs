@@ -20,6 +20,16 @@ pub struct RadioPanel {
     station_index: usize,
     direct_selected: bool,
     direct_url: String,
+    #[cfg(feature = "nrsp-native")]
+    native_selected: bool,
+    #[cfg(feature = "nrsp-native")]
+    native_endpoint: String,
+    #[cfg(feature = "nrsp-native")]
+    native_frequency: String,
+    #[cfg(feature = "nrsp-native")]
+    native_mode: String,
+    #[cfg(feature = "nrsp-native")]
+    native_bandwidth: String,
     #[cfg(feature = "sdrconnect")]
     sdr_selected: bool,
     #[cfg(feature = "sdrconnect")]
@@ -48,6 +58,16 @@ impl Default for RadioPanel {
             station_index: 0,
             direct_selected: false,
             direct_url: String::new(),
+            #[cfg(feature = "nrsp-native")]
+            native_selected: false,
+            #[cfg(feature = "nrsp-native")]
+            native_endpoint: String::new(),
+            #[cfg(feature = "nrsp-native")]
+            native_frequency: "99100000".into(),
+            #[cfg(feature = "nrsp-native")]
+            native_mode: "wfm".into(),
+            #[cfg(feature = "nrsp-native")]
+            native_bandwidth: "200000".into(),
             #[cfg(feature = "sdrconnect")]
             sdr_selected: false,
             #[cfg(feature = "sdrconnect")]
@@ -158,6 +178,25 @@ impl RadioPanel {
     }
 
     fn start_selected(&self) -> Result<NativeRadioEngine, String> {
+        #[cfg(feature = "nrsp-native")]
+        if self.native_selected {
+            let frequency = self
+                .native_frequency
+                .parse()
+                .map_err(|_| "Enter a frequency in Hz")?;
+            let bandwidth = self
+                .native_bandwidth
+                .parse()
+                .map_err(|_| "Enter a bandwidth in Hz")?;
+            return NativeRadioEngine::start_nrsp_native(
+                &self.native_endpoint,
+                frequency,
+                &self.native_mode,
+                bandwidth,
+                self.volume,
+                &self.output,
+            );
+        }
         if self.direct_selected {
             return NativeRadioEngine::start_stream(&self.direct_url, self.volume, &self.output);
         }
@@ -184,6 +223,29 @@ impl RadioPanel {
             );
         }
         NativeRadioEngine::start_internet(self.selected_station().id, self.volume, &self.output)
+    }
+
+    #[cfg(feature = "nrsp-native")]
+    fn apply_native_tuning(&mut self) {
+        let result = (|| {
+            let frequency = self
+                .native_frequency
+                .parse::<u64>()
+                .map_err(|_| "Enter a frequency in Hz")?;
+            let bandwidth = self
+                .native_bandwidth
+                .parse::<u32>()
+                .map_err(|_| "Enter a bandwidth in Hz")?;
+            let engine = self
+                .engine
+                .as_ref()
+                .ok_or("Start the native receiver first")?;
+            engine.tune_nrsp_native(frequency, &self.native_mode, bandwidth)
+        })();
+        self.note = match result {
+            Ok(()) => "TUNING REQUESTED".into(),
+            Err(error) => error,
+        };
     }
 
     fn start_validation(&mut self) {
@@ -246,7 +308,8 @@ impl RadioPanel {
         let count = curated_stations().len()
             + usize::from(cfg!(feature = "sdrconnect"))
             + usize::from(cfg!(feature = "soapy-sdr"))
-            + 1;
+            + 1
+            + usize::from(cfg!(feature = "nrsp-native"));
         if count == 0 {
             return;
         }
@@ -256,7 +319,12 @@ impl RadioPanel {
     }
 
     fn source_index(&self) -> usize {
-        if self.direct_selected {
+        if self.is_native_selected() {
+            curated_stations().len()
+                + usize::from(cfg!(feature = "sdrconnect"))
+                + usize::from(cfg!(feature = "soapy-sdr"))
+                + 1
+        } else if self.direct_selected {
             curated_stations().len()
                 + usize::from(cfg!(feature = "sdrconnect"))
                 + usize::from(cfg!(feature = "soapy-sdr"))
@@ -270,6 +338,14 @@ impl RadioPanel {
     }
 
     fn select_source(&mut self, index: usize) {
+        #[cfg(feature = "nrsp-native")]
+        {
+            self.native_selected = index
+                == curated_stations().len()
+                    + usize::from(cfg!(feature = "sdrconnect"))
+                    + usize::from(cfg!(feature = "soapy-sdr"))
+                    + 1;
+        }
         self.direct_selected = index
             == curated_stations().len()
                 + usize::from(cfg!(feature = "sdrconnect"))
@@ -300,8 +376,19 @@ impl RadioPanel {
         }
     }
 
+    fn is_native_selected(&self) -> bool {
+        #[cfg(feature = "nrsp-native")]
+        {
+            self.native_selected
+        }
+        #[cfg(not(feature = "nrsp-native"))]
+        {
+            false
+        }
+    }
+
     fn is_receiver_selected(&self) -> bool {
-        self.is_sdr_selected() || self.is_usb_selected()
+        self.is_native_selected() || self.is_sdr_selected() || self.is_usb_selected()
     }
 
     fn is_sdr_selected(&self) -> bool {
@@ -316,6 +403,24 @@ impl RadioPanel {
     }
 
     fn source_detail(&self) -> String {
+        #[cfg(feature = "nrsp-native")]
+        if self.native_selected {
+            if let Some(status) = self
+                .engine
+                .as_ref()
+                .and_then(NativeRadioEngine::nrsp_native_status)
+            {
+                return format!(
+                    "NATIVE nRSP-ST / {} Hz / OPUS 48 kHz",
+                    status.center_frequency_hz
+                );
+            }
+            return format!(
+                "NATIVE nRSP-ST / {} Hz / {}",
+                self.native_frequency,
+                self.native_mode.to_uppercase()
+            );
+        }
         if self.direct_selected {
             return "DIRECT STREAM / SET URL IN SETTINGS".into();
         }

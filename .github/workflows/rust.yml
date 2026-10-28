@@ -39,6 +39,22 @@ jobs:
         run: cargo check --locked -p rust-radio --no-default-features --features sdrconnect
       - name: Cross-check headless receiver module for Raspberry Pi ARM64
         run: cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu
+  native-nrsp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native audio and Opus build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config cmake
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: aarch64-unknown-linux-gnu
+      - name: Test native receiver, audio and GUI without hardware
+        run: cargo test --workspace --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native
+      - name: Lint native receiver, audio and GUI
+        run: cargo clippy --workspace --all-targets --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native -- -D warnings
+      - name: Cross-check headless direct receiver for Raspberry Pi ARM64
+        run: cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu
   optional-sdr:
     runs-on: ubuntu-latest
     steps:

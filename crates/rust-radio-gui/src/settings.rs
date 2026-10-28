@@ -57,6 +57,76 @@ impl RadioPanel {
                 }
             });
             ui.separator();
+            #[cfg(feature = "nrsp-native")]
+            if self.native_selected {
+                let enabled = !self.stopping;
+                ui.add_enabled_ui(enabled, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("RECEIVER");
+                        ui.add_enabled(
+                            self.engine.is_none(),
+                            egui::TextEdit::singleline(&mut self.native_endpoint)
+                                .hint_text("IP:9001")
+                                .desired_width(230.0)
+                                .char_limit(40),
+                        );
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("FREQ Hz");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.native_frequency)
+                                .desired_width(230.0)
+                                .char_limit(10),
+                        );
+                    });
+                    ui.horizontal(|ui| {
+                        egui::ComboBox::from_id_salt("rust_radio_native_mode")
+                            .width(70.0)
+                            .selected_text(self.native_mode.to_uppercase())
+                            .show_ui(ui, |ui| {
+                                for (mode, bandwidth) in [
+                                    ("wfm", "200000"),
+                                    ("nfm", "12000"),
+                                    ("am", "10000"),
+                                    ("usb", "3000"),
+                                    ("lsb", "3000"),
+                                    ("cw", "500"),
+                                    ("sam", "10000"),
+                                ] {
+                                    if ui
+                                        .selectable_label(
+                                            self.native_mode == mode,
+                                            mode.to_uppercase(),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.native_mode = mode.into();
+                                        self.native_bandwidth = bandwidth.into();
+                                    }
+                                }
+                            });
+                        ui.label("BW Hz");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.native_bandwidth)
+                                .desired_width(120.0)
+                                .char_limit(6),
+                        );
+                    });
+                });
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            self.engine.is_some() && !self.stopping,
+                            egui::Button::new("APPLY TUNING"),
+                        )
+                        .clicked()
+                    {
+                        self.apply_native_tuning();
+                    }
+                    ui.label("STOP ends this session.");
+                });
+                return;
+            }
             if self.direct_selected {
                 ui.label("Direct MP3 / AAC stream URL");
                 ui.add_enabled(

@@ -1,18 +1,18 @@
 # rust_radio
 
-Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. Optional SoapySDR supports raw I/Q and a mono-FM audio path; direct nRSP-ST service checks are also available. USB FM awaits physical hardware acceptance, and direct nRSP-ST audio remains development work.
+Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. Optional SoapySDR supports raw I/Q and a mono-FM audio path; direct nRSP-ST service checks are also available. Direct nRSP-ST control and Opus audio are available through `nrsp-native`; USB FM awaits physical hardware acceptance.
 
-## Status (2026-10-27)
+## Status (2026-10-28)
 
 The standalone module provides bounded internet and private-LAN streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
 
-IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
+IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. Direct native nRSP-ST control and Opus playback have also reached Mac native callbacks without using SDRconnect: live frequency/mode changes and session cleanup passed. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
 
 ## Navigation
 
 - [Standalone module and embedding API](docs/EMBEDDING.md)
 - [Optional SDR receive adapter and hardware gates](docs/SDR_RECEIVE.md)
-- [SDRplay nRSP-ST network receiver via SDRconnect](docs/NRSP_ST.md)
+- [SDRplay nRSP-ST native and SDRconnect access](docs/NRSP_ST.md)
 - [Direct nRSP-ST service status](docs/NRSP_ST.md#direct-device-status)
 - [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
 - [Roadmap and component ownership](docs/PORTING_PLAN.md)
@@ -54,11 +54,15 @@ Follow the [roadmap](docs/PORTING_PLAN.md) for platform and receiver acceptance.
 
 ```sh
 cargo run -p rust-radio-gui --bin rust-radio-gui
+# Direct nRSP-ST controls and audio:
+cargo run -p rust-radio-gui --features nrsp-native --bin rust-radio-gui
 # Optional nRSP-ST source through SDRconnect:
 cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
 # Optional USB SDR mono-FM source through SoapySDR:
 cargo run -p rust-radio-gui --features soapy-sdr --bin rust-radio-gui
 ```
+
+With `nrsp-native`, select **nRSP-ST / Direct** and enter the receiver address (`IP:9001`), frequency, mode and bandwidth in SETTINGS. PLAY starts the session; APPLY TUNING changes the active receiver; STOP releases it. See [direct receiver setup and verification](docs/NRSP_ST.md#direct-native-control-and-audio).
 
 The compact panel uses a green phosphor, monospaced retro skin. With `sdrconnect` enabled, select **nRSP-ST / SDRconnect**, enter the local API address in SETTINGS, and select the receiver in SDRconnect. Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous playback worker releases its resources. For IP stations, SETTINGS offers output selection and CHECK STATION, which decodes silently on a background worker. Station badges distinguish unverified, decoded, unavailable, unsupported and invalid streams. Stop, Cancel Check or browsing another source cancels a check; PLAY and another check remain locked until its worker finishes. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.
 

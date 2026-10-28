@@ -97,3 +97,18 @@ cargo check --locked -p rust-radio --no-default-features --features sdrconnect \
 
 This checks compilation only. See the [roadmap](PORTING_PLAN.md) and
 [progress notes](PROGRESS.md) for remaining physical acceptance.
+
+## Direct nRSP-ST feature
+
+Enable `nrsp-native` to use the receiver directly over its own port 9001. The
+headless `receiver::nrsp_native::Client` has no audio or vendor SDK dependency.
+With default IP/audio features, `NativeRadioEngine::start_nrsp_native(peer,
+frequency_hz, mode, bandwidth_hz, volume, output)` starts native Opus playback.
+`tune_nrsp_native` queues the latest validated live tuning request in a bounded
+slot; `nrsp_native_status` returns observed receiver state and
+`nrsp_native_audio_stats` reports decoded frames and signal peak. Neither read
+performs I/O. Keep one engine and continue calling `try_finish` after Stop.
+
+Enable `gui` as well for the optional direct receiver controls in `RadioPanel`.
+The host owns address/preferences; runtime session state and keys are not saved.
+See [receiver setup and limits](NRSP_ST.md#direct-native-control-and-audio).
