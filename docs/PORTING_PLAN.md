@@ -52,7 +52,7 @@ provenance remains in the extraction notes; dated evidence is in
    SDRconnect. Fides Supra's proven direct work currently covers reachability
    and display frames, not audio or tuning. Resolve the Full IQ firmware
    prerequisite before accepting raw I/Q. Keep USB/Soapy acceptance separate.
-5. Defer satellite adapters and additional DSP until the playback and platform
+6. Defer satellite adapters and additional DSP until the playback and platform
    gates above are stable. Publisher distribution review remains required before
    public station bundles.
 
