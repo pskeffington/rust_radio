@@ -128,6 +128,14 @@ impl NativeAudioOutput {
         let (producer, consumer) = ring.split();
         let failed = Arc::new(AtomicBool::new(false));
         let stream = match sample_format {
+            SampleFormat::I8 => build_stream::<i8>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
             SampleFormat::F32 => build_stream::<f32>(
                 &device,
                 &config,
@@ -144,7 +152,63 @@ impl NativeAudioOutput {
                 Arc::clone(&played_samples),
                 Arc::clone(&failed),
             )?,
+            SampleFormat::I24 => build_stream::<cpal::I24>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::I32 => build_stream::<i32>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::I64 => build_stream::<i64>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::U8 => build_stream::<u8>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
             SampleFormat::U16 => build_stream::<u16>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::U32 => build_stream::<u32>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::U64 => build_stream::<u64>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::F64 => build_stream::<f64>(
                 &device,
                 &config,
                 consumer,
@@ -294,6 +358,49 @@ fn render_samples<T>(
 #[cfg(test)]
 mod output_identity_tests {
     use super::*;
+    use cpal::Sample;
+
+    fn assert_rendered_samples_convert<T>()
+    where
+        T: SizedSample + FromSample<f32>,
+        f32: FromSample<T>,
+    {
+        let expected = [-0.5f32, 0.0, 0.75];
+        let ring = HeapRb::<f32>::new(expected.len());
+        let (mut producer, mut consumer) = ring.split();
+        for sample in expected {
+            producer.try_push(sample).unwrap();
+        }
+        let volume = AtomicU8::new(100);
+        let played = AtomicU64::new(0);
+        let mut output = vec![T::from_sample(0.0); expected.len()];
+
+        render_samples(&mut output, &mut consumer, &volume, &played);
+
+        let converted: Vec<f32> = output.into_iter().map(f32::from_sample).collect();
+        for (actual, expected) in converted.into_iter().zip(expected) {
+            assert!(
+                (actual - expected).abs() <= 0.02,
+                "sample conversion error: {actual} vs {expected}"
+            );
+        }
+        assert_eq!(played.load(Ordering::Relaxed), expected.len() as u64);
+    }
+
+    #[test]
+    fn callback_converts_every_cpal_integer_and_float_output_format() {
+        assert_rendered_samples_convert::<i8>();
+        assert_rendered_samples_convert::<i16>();
+        assert_rendered_samples_convert::<cpal::I24>();
+        assert_rendered_samples_convert::<i32>();
+        assert_rendered_samples_convert::<i64>();
+        assert_rendered_samples_convert::<u8>();
+        assert_rendered_samples_convert::<u16>();
+        assert_rendered_samples_convert::<u32>();
+        assert_rendered_samples_convert::<u64>();
+        assert_rendered_samples_convert::<f32>();
+        assert_rendered_samples_convert::<f64>();
+    }
 
     #[test]
     fn callback_applies_gain_and_silences_underrun_without_counting_silence() {

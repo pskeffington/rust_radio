@@ -3,6 +3,25 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Native output sample-format coverage (2026-10-28 22:52 UTC)
+
+- Native CPAL output now dispatches to render callbacks for all eleven sample
+  formats exposed by CPAL 0.16, including 24-bit integer PCM and 64-bit
+  integer/float formats. Previously unhandled device defaults failed as
+  unsupported even when the backend could convert them.
+- A focused conversion regression covers each supported type and confirms
+  callback consumption accounting. The default and all-feature workspace
+  suites, both strict Clippy configurations, formatting, all-feature check and
+  diff validation passed. One manual physical audio test remains ignored.
+- Repeated the 25-station station-label A/B/C fit test: at 295 px, full genre
+  labels fit 24/25 and names-only/compact labels fit 25/25; all fit at 340 px.
+  This is layout evidence only, not listener preference.
+- Windows GNU workspace test binaries are being cross-compiled for default,
+  SDRconnect and native nRSP feature combinations; compiled test programs are
+  not executed. Physical device acceptance remains open.
+- Next: continue physical output-loss recovery and Pi/receiver acceptance,
+  publisher-rights review and remote Windows MSVC CI when Actions starts jobs.
+
 ## Interactive CLI input error handling (2026-10-28 22:48 UTC)
 
 - Follow-up review found the bounded line reader classified every
