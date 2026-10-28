@@ -35,13 +35,12 @@ struct Options {
 
 fn help() {
     println!(
-        "rust-radio-feed-validator [--once|--daemon|--status|--eligible] \\
-    [--output PATH] [--interval-minutes 15..240]\n\n\\
-    --once: scan 25 curated stations, write JSON, exit nonzero if any fail\n\\
-    --daemon: scan immediately and repeat every 4 hours (configurable)\n\\
-    --status: summarize recorded health, recomputing the 6-hour TTL\n\\
-    --eligible: print JSON array of IDs with still-fresh decoded-audio evidence\n\\
-    Default output: target/radio-feed-health.json"
+        "Usage: rust-radio-feed-validator [--once|--daemon|--status|--eligible] [--output PATH] [--interval-minutes 15..240]\\n\\
+--once: scan curated stations; return nonzero if any fail\\n\\
+--daemon: scan immediately and repeat every four hours\\n\\
+--status: summarize health, applying the six-hour TTL\\n\\
+--eligible: output JSON IDs with fresh decoded-audio evidence\\n\\
+Default output: target/radio-feed-health.json"
     );
 }
 
@@ -361,7 +360,7 @@ fn show_report(path: &Path, eligible_only: bool) -> Result<bool, String> {
             station["genre"].as_str().unwrap_or("?"),
         );
     }
-    Ok(fresh == entries.len() && report["complete"] == true)
+    Ok(fresh == entries.len() && report["complete"].as_bool() == Some(true))
 }
 
 fn run(options: Options) -> Result<bool, String> {
@@ -505,7 +504,7 @@ mod tests {
         .unwrap();
         assert_eq!(fresh, 1);
         let report = read_snapshot(&path).unwrap();
-        assert_eq!(report["complete"], true);
+        assert_eq!(report["complete"].as_bool(), Some(true));
         assert_eq!(report["checked"], 25);
         assert_eq!(report["fresh"], 1);
         assert_eq!(report["failed"], 24);
