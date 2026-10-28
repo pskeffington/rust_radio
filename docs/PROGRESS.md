@@ -1685,7 +1685,8 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   each. Rerunning with authorized network access decoded all 25 stations in 25
   attempts at 2026-10-28 23:45:04 UTC, with no retries or failures. This is
   point-in-time codec evidence only.
-- Implementation commit `23ee373` contains the retry fix. PR #5 was open and
-  mergeable at prior checkpoint `367cccc`; no Actions run/status was visible
-  there. This checkpoint still needs a pushed-head CI observation. Native
-  MSVC and physical hardware acceptance gates remain open.
+- Implementation commit `23ee373` contains the retry fix. PR #5 remains open
+  and mergeable. Actions run `40789529683` (run 282) for checkpoint `dd3def2`
+  ended `startup_failure` before creating any jobs; combined statuses were
+  empty. This repeats the runner-startup blocker and provides no code-level CI
+  signal. Native MSVC and physical hardware acceptance gates remain open.
