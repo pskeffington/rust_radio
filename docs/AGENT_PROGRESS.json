@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:05:55Z",
+  "updated_at_utc": "2026-10-28T23:06:25Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "002c86f; callback tests confirm volume updates between buffers for every active CPAL 0.16 PCM format.",
@@ -7,6 +7,7 @@
   "completed_this_run": [
     "Added a generic native output callback regression for volume changes between buffers at 100%, 50% and 0% across all eleven active CPAL PCM formats, including sample accounting.",
     "Repeated station-label A/B/C fit measurement after the callback test change: 24/25 full category and 25/25 names-only/compact at 295px; all variants fit at 340px.",
+    "Observed latest PR run 259 for source head 002c86f: startup_failure before job creation; combined statuses empty.",
     "Extended native callback coverage to verify 100%, 50% and 0% gain at full-scale and intermediate PCM levels for every active CPAL sample format, including consumed-sample accounting.",
     "Repeated the station-label A/B/C fit comparison after the audio regression change: A 24/25 and B/C 25/25 at 295px; all fit at 340px; layout-fit evidence only.",
     "Observed PR Actions run 256 for source commit 452f444; it failed before job creation with startup_failure and no combined statuses.",
@@ -138,7 +139,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "passed after live volume transition test: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked; git diff --check. Loopback fixtures needed local socket permission; physical audio test remains ignored.",
-    "latest_code_head_ci": "PR #5 source head 002c86fc835992f31ad170c18c91ab0af5ff6ef0 has no workflow run/status observed yet. Latest observed run 256 (40784386286) on prior source head 452f444 failed startup before job creation; combined statuses empty.",
+    "latest_code_head_ci": "PR #5 source head 002c86fc835992f31ad170c18c91ab0af5ff6ef0 Actions run 40784862854 (run 259) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified. Evidence checkpoint 06e0ffd has no run/status observed.",
     "live_catalog_revalidation": "2026-10-28T22:58:15Z: bounded validate-all decoded 25/25 stations in 25 attempts; no retry/recovery or failure; point-in-time codec evidence only.",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
     "layout_ab_recheck": "repeated 2026-10-28 23:04 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; layout fit only, not listener preference.",
@@ -199,11 +200,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40784386286,
-    "latest_pr_head": "452f444eb1c196cec615d2ee2c53f2429bd40b66",
+    "latest_pr_run": 40784862854,
+    "latest_pr_head": "002c86fc835992f31ad170c18c91ab0af5ff6ef0",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Run 256 on source head 452f444 failed before jobs were created; combined statuses empty. New source head 002c86f has no run/status observed. Native MSVC checks remain unverified."
+    "details": "Run 259 on source head 002c86f failed before jobs were created; combined statuses empty. Evidence checkpoint 06e0ffd has no run/status observed. Native MSVC checks remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",

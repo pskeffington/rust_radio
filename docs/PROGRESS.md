@@ -15,9 +15,9 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Repeated the station-label A/B/C comparison: at 295 px, full categories fit
   24/25 and names-only/compact labels fit 25/25; all fit at 340 px. Layout
   evidence only, not listener preference.
-- Source commit `002c86f` is pushed to open, mergeable PR #5. Latest observed
-  Actions run 256 on the preceding source head failed before job creation; the
-  new source head has no run/status observed yet.
+- Source commit `002c86f` is pushed to open, mergeable PR #5. Actions run 259
+  for that source failed at startup before creating jobs, with no statuses.
+  The final evidence checkpoint commit does not have an observed run yet.
 - Next: continue synthetic playback/output-recovery testing. Physical
   Bluetooth/USB, Pi, receiver, publisher-rights and healthy Windows CI gates
   remain open.
