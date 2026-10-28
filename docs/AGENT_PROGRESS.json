@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T18:41:33Z",
+  "updated_at_utc": "2026-10-28T18:46:37Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "9acbcb1",
+  "implementation_commit": "b5e47c4",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -11,7 +11,8 @@
     "Replaced the retired Left Coast 70s stream URL with SomaFM's publisher-listed MP3 M3U endpoint.",
     "Final live sweep decoded 25 of 25 catalog stations.",
     "Added one delayed retry for transient unavailable reports; permanent rejections remain single-attempt.",
-    "Added opt-in atomic 64 KiB feed-health history with freshness and consecutive failure state."
+    "Added opt-in atomic 64 KiB feed-health history with freshness and consecutive failure state.",
+    "Added host API to import saved feed evidence into the GUI with live-result precedence and no playback gating."
   ],
   "validation": {
     "fmt": "passed",
@@ -22,6 +23,7 @@
     "all_features_check": "passed",
     "live_catalog_decode": "25/25 decoded in 25 attempts; point-in-time only",
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
+    "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
     "workflow_yaml": "parsed"
   },
   "a_b_test": {
@@ -42,5 +44,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Observe CI after the feed-health history change, then decide how a host should consume persisted evidence without trusting stale or forged results."
+  "next_priority": "Observe CI after the host import change, then exercise loaded history in the Rust-Boy host while keeping live playback and validation authoritative."
 }
