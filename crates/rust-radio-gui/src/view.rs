@@ -1,10 +1,7 @@
-use super::{RadioPanel, PANEL_WIDTH};
+use super::{theme, RadioPanel, PANEL_HEIGHT, PANEL_WIDTH};
 use eframe::egui;
 use rust_radio_audio::compat_controller::PlaybackState;
 use rust_radio_core::directory::curated_stations;
-
-const GREEN: egui::Color32 = egui::Color32::from_rgb(151, 240, 139);
-const DARK: egui::Color32 = egui::Color32::from_rgb(9, 22, 14);
 
 impl RadioPanel {
     /// Pure touch-oriented presentation except when the user explicitly clicks Play,
@@ -12,12 +9,14 @@ impl RadioPanel {
     pub fn show(&mut self, ui: &mut egui::Ui) {
         self.poll_shutdown();
         let frame = egui::Frame::new()
-            .fill(DARK)
-            .stroke(egui::Stroke::new(1.0_f32, GREEN))
+            .fill(theme::SCREEN)
+            .stroke(egui::Stroke::new(1.0_f32, theme::GREEN))
             .inner_margin(egui::Margin::same(9));
         frame.show(ui, |ui| {
             ui.set_max_width((ui.available_width() - 2.0).min(PANEL_WIDTH - 20.0));
-            ui.visuals_mut().override_text_color = Some(GREEN);
+            ui.set_min_height((ui.available_height() - 2.0).min(PANEL_HEIGHT - 20.0));
+            theme::apply(ui);
+            theme::scanlines(ui);
             ui.spacing_mut().item_spacing = egui::vec2(7.0, 7.0);
             ui.spacing_mut().button_padding = egui::vec2(10.0, 8.0);
 
@@ -44,7 +43,11 @@ impl RadioPanel {
             }
 
             ui.horizontal(|ui| {
-                ui.strong("RADIO  /  IP");
+                ui.strong(if self.is_sdr_selected() {
+                    "RADIO  /  SDR"
+                } else {
+                    "RADIO  /  IP"
+                });
                 ui.add_space(12.0);
                 ui.label(if self.stopping {
                     "STOPPING".into()
@@ -65,7 +68,11 @@ impl RadioPanel {
                     egui::ComboBox::from_id_salt("rust_radio_station")
                         .width(260.0)
                         .truncate()
-                        .selected_text(self.selected_station().name)
+                        .selected_text(if self.is_sdr_selected() {
+                            "nRSP-ST / SDRconnect"
+                        } else {
+                            self.selected_station().name
+                        })
                         .show_ui(ui, |ui| {
                             for (index, station) in curated_stations().iter().enumerate() {
                                 let label = format!(
@@ -73,7 +80,19 @@ impl RadioPanel {
                                     station.name,
                                     self.validation_label(station.id)
                                 );
-                                ui.selectable_value(&mut self.station_index, index, label);
+                                if ui
+                                    .selectable_label(self.source_index() == index, label)
+                                    .clicked()
+                                {
+                                    self.select_source(index);
+                                }
+                            }
+                            #[cfg(feature = "sdrconnect")]
+                            if ui
+                                .selectable_label(self.is_sdr_selected(), "nRSP-ST / SDRconnect")
+                                .clicked()
+                            {
+                                self.select_source(curated_stations().len());
                             }
                         });
                     if ui.add_sized([45.0, 43.0], egui::Button::new("▶")).clicked() {
@@ -82,18 +101,7 @@ impl RadioPanel {
                 });
             });
             self.cancel_stale_validation();
-            {
-                let station = self.selected_station();
-                ui.add(
-                    egui::Label::new(format!(
-                        "{} / {} / {}",
-                        self.validation_label(station.id),
-                        station.category,
-                        station.genre
-                    ))
-                    .truncate(),
-                );
-            }
+            ui.add(egui::Label::new(self.source_detail()).truncate());
             ui.separator();
             ui.horizontal(|ui| {
                 if ui

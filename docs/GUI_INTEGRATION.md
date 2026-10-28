@@ -9,7 +9,28 @@ Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `set
 ```sh
 cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
-The panel does not start playback at launch. Station browse is offline. Tap PLAY to open approved native IP radio. STOP requests cancellation without joining on the UI thread. Queued PCM is muted immediately. STOPPING remains visible until worker cleanup finishes; PLAY and output changes remain locked during playback cleanup. Drag volume while playing. SETTINGS opens output selection and silent station validation; stop playback before changing outputs or checking a station.
+The panel uses a green phosphor, monospaced skin with subtle scanlines. It does
+not start playback at launch, and source browsing is offline. Tap PLAY to open an
+approved native IP station. STOP requests cancellation without joining on the UI
+thread. Queued PCM is muted immediately. STOPPING remains visible until worker
+cleanup finishes; PLAY and output changes remain locked during playback cleanup.
+Drag volume while playing. SETTINGS opens output selection and silent station
+validation; stop playback before changing outputs or checking a station.
+
+For the nRSP-ST source, enable the optional feature:
+
+```sh
+cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
+```
+
+Select **nRSP-ST / SDRconnect** in the source selector, then set SDRconnect's
+private-LAN or loopback API `IP:port` in SETTINGS. The default is
+`127.0.0.1:5454`; the address is held in panel memory and is not saved. Refresh
+and select the receiver in SDRconnect first. Explicit PLAY uses the shared
+native engine, including its selected-receiver startup and timeout behavior;
+STOP unsubscribes and leaves shared reception running. IP station validation is
+unavailable for the SDR source. Switching sources while a check is running
+cancels that check before another session can begin.
 
 ## Embed in an egui host
 Add the package (pinned to an approved commit for repeatability):
@@ -21,16 +42,25 @@ In a struct owned by the host GUI, create `radio: rust_radio_gui::RadioPanel::ne
 Pip-Boy's HTML/JavaScript HUD already embeds the headless `rust-radio` library
 through thin adapters and a pinned Git dependency. It owns its presentation,
 preferences and optional nRSP-ST selector. The standalone egui panel uses the
-same native IP engine and remains an optional interface for egui hosts; its
-current station controls are IP-only. See [host integration](EMBEDDING.md).
+same native engine and remains an optional interface for egui hosts. Enable both
+facade features `gui` and `sdrconnect` to include the SDR source in the panel.
+The panel applies its skin locally rather than changing the host's global egui
+theme. See [host integration](EMBEDDING.md).
 
 ## Acceptance and constraints
 - 480 × 320 is a logical-pixel target; high-DPI and physical touch screenshots require verification.
-- No intentional scroll in default view. SETTINGS opens a centered fixed-size 380 × 230 logical-pixel overlay. Offline egui layout tests cover the 480 × 320 bounds, including long diagnostics; physical macOS/Pi rendering still requires verification.
+- No intentional scroll in default view. SETTINGS opens a centered fixed-size 380 × 230 logical-pixel overlay. Offline egui layout tests cover the 480 × 320 bounds, including long diagnostics; Pi rendering still requires verification.
 - No direct station URL input. Only curated stations.
 - Output selection is disabled while the worker still owns receiver resources, including failure cleanup. Completed failed sessions release automatically; failure details remain visible and PLAY requests a fresh session.
 - Keep firmware/Pi builds optional: eframe's graphics/window stack and target platform must be validated separately; the audio engine is independent.
-- Native GPU rendering and physical mouse/touch acceptance require a Mac/Pi test after commit.
+- Mac rendering and mouse controls were inspected; physical touch and Pi GPU acceptance remain open.
+
+On 2026-10-27, the SDR-enabled panel and themed settings were visually inspected
+at the Mac's 480×320 logical window size. A local synthetic SDRconnect receiver
+reached Playing through the native output callback at zero volume, and STOP
+completed cleanup. The real nRSP-ST reported started but its separate 500 ms
+audio capture returned zero PCM pairs, so a fresh live SDR GUI audio check remains
+open. This inspection does not establish physical touch or Pi acceptance.
 
 ## Next operator Mac acceptance
 

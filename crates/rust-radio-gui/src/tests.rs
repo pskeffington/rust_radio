@@ -216,6 +216,33 @@ fn panel_constructs_without_starting_radio() {
     assert!(!panel.is_active());
     assert_eq!(panel.selected_station().id, "skylab");
 }
+
+#[test]
+fn panel_skin_does_not_change_the_host_theme() {
+    let mut panel = RadioPanel::new();
+    panel.settings_open = true;
+    let context = egui::Context::default();
+    let original = context.style().visuals.clone();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    let _ = context.run(
+        egui::RawInput {
+            screen_rect: Some(screen),
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                panel.show(ui);
+            });
+        },
+    );
+    let after = &context.style().visuals;
+    assert_eq!(after.override_text_color, original.override_text_color);
+    assert_eq!(after.window_fill, original.window_fill);
+    assert_eq!(
+        after.widgets.inactive.bg_fill,
+        original.widgets.inactive.bg_fill
+    );
+}
 #[test]
 fn changing_station_is_offline() {
     let mut panel = RadioPanel::new();
@@ -233,10 +260,25 @@ fn station_indexes_preserve_catalog_order_and_wrap_in_both_directions() {
         assert_eq!(panel.selected_station(), station);
         panel.step_station(1);
     }
+    #[cfg(feature = "sdrconnect")]
+    {
+        assert!(panel.is_sdr_selected());
+        panel.step_station(1);
+    }
     assert_eq!(panel.station_index, 0);
     panel.step_station(-1);
+    #[cfg(feature = "sdrconnect")]
+    {
+        assert!(panel.is_sdr_selected());
+        panel.step_station(-1);
+    }
     assert_eq!(panel.station_index, stations.len() - 1);
     panel.step_station(1);
+    #[cfg(feature = "sdrconnect")]
+    {
+        assert!(panel.is_sdr_selected());
+        panel.step_station(1);
+    }
     assert_eq!(panel.station_index, 0);
     assert!(!panel.is_active());
 }
@@ -244,13 +286,67 @@ fn station_indexes_preserve_catalog_order_and_wrap_in_both_directions() {
 #[test]
 fn large_station_steps_remain_in_bounds_without_overflow() {
     let mut panel = RadioPanel::new();
-    let count = curated_stations().len();
+    let count = curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"));
     for direction in [isize::MIN, isize::MAX, -100, -1, 0, 1, 100] {
-        panel.station_index = count - 1;
+        panel.select_source(count - 1);
         let expected = ((count as i128 - 1) + direction as i128).rem_euclid(count as i128) as usize;
         panel.step_station(direction);
-        assert_eq!(panel.station_index, expected);
-        assert_eq!(panel.selected_station(), &curated_stations()[expected]);
+        assert_eq!(panel.source_index(), expected);
+        if expected < curated_stations().len() {
+            assert_eq!(panel.selected_station(), &curated_stations()[expected]);
+        }
     }
     assert!(!panel.is_active());
+}
+
+#[cfg(feature = "sdrconnect")]
+#[test]
+fn sdr_selection_is_offline_and_invalid_endpoint_fails_before_start() {
+    let mut panel = RadioPanel::new();
+    panel.select_source(curated_stations().len());
+    assert!(panel.is_sdr_selected());
+    assert_eq!(panel.sdr_endpoint, "127.0.0.1:5454");
+    assert!(!panel.is_active());
+    panel.start_validation();
+    assert!(panel.validation.is_none());
+    panel.last_session = Some(RadioSession {
+        state: PlaybackState::Failed,
+        last_error: Some("Earlier receiver failure".into()),
+        ..Default::default()
+    });
+    panel.sdr_endpoint = "8.8.8.8:5454".into();
+    panel.play();
+    assert!(!panel.is_active());
+    assert!(panel.last_session.is_none());
+    assert!(panel.note.contains("private-LAN or loopback"));
+    render_panel(&mut panel);
+    assert!(panel.note.contains("private-LAN or loopback"));
+    let context = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    let mut bounds = None;
+    for _ in 0..2 {
+        let _ = context.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ctx| {
+                bounds = panel.show_settings(ctx);
+            },
+        );
+    }
+    assert!(screen.contains_rect(bounds.unwrap()));
+}
+
+#[cfg(feature = "sdrconnect")]
+#[test]
+fn selecting_sdr_cancels_an_in_flight_station_check() {
+    let mut panel = RadioPanel::new();
+    let release = hold_check(&mut panel);
+    panel.select_source(curated_stations().len());
+    assert!(panel.validation.as_ref().unwrap().cancellation_requested());
+    release.send(()).unwrap();
+    finish_panel(&mut panel);
+    assert!(panel.validations.is_empty());
+    assert!(panel.is_sdr_selected());
 }

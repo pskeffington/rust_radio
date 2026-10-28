@@ -26,6 +26,11 @@ nRSP-ST through `rust_radio::receiver::sdrconnect`. It is independent of
 `soapy-sdr` and the GUI, and requires Rust 1.85 or newer. See
 [nRSP-ST setup and current limits](NRSP_ST.md).
 
+Enable `gui` together with `sdrconnect` to include the nRSP-ST source and local
+API address field in the optional `RadioPanel`. Its phosphor skin is scoped to
+the panel and settings window, leaving the host's global egui style intact.
+Selecting a source or editing its address does not start a connection.
+
 ```rust
 use rust_radio::NativeRadioEngine;
 

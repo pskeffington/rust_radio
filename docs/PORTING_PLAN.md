@@ -28,7 +28,7 @@ provenance remains in the extraction notes; dated evidence is in
 | Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host | Release/tag decision after CI and platform gates |
 | IP playback | Native MP3/AAC, bounded M3U/PLS and ICY, cancellation, three retries, station validation and native callback checks | Live DNS/TLS cancellation and extended interruption tests; HLS remains unsupported |
 | Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
-| Compact GUI | Optional 480×320 egui panel, background station validation and offline layout/lifecycle coverage | Physical Mac/Pi rendering and touch; standalone panel currently supports IP stations |
+| Compact GUI | Optional 480×320 egui panel with phosphor skin, IP stations, feature-gated nRSP-ST source, background station validation and offline layout/lifecycle coverage | Physical touch and Pi rendering; fresh real-receiver GUI audio |
 | nRSP-ST | SDRconnect status, passive capture, native PCM, explicit selected-device activation, startup failure handling; real Mac PCM and speaker evidence | Real stopped-device activation failure/recovery and raw I/Q; Full IQ is firmware-gated |
 | USB SDR | Optional SoapySDR discovery, capabilities and bounded RawIq capture | Supported receiver/driver, physical unplug/replug and RF capture; DSP audio remains unimplemented |
 | Raspberry Pi | Headless SDRconnect AArch64 Linux compile check, also configured in CI | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |

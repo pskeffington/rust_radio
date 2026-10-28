@@ -5,6 +5,20 @@ Updated 2026-10-27. Active priorities and ownership are in the
 
 ## Current module pass
 
+- Added a locally scoped, classic phosphor-green retro skin to the 480×320
+  standalone panel and settings. The optional `sdrconnect` feature adds an
+  nRSP-ST source and in-memory API address field using the shared native engine.
+  Source selection and address editing remain offline until explicit PLAY.
+- On macOS, visually inspected the IP/SDR views and settings, then used a local
+  synthetic receiver to reach Playing and Stop through the GUI at zero volume.
+  The real nRSP-ST reported started but a 500 ms audio capture returned zero
+  pairs; a fresh real-receiver GUI audio check is still open.
+- Local all-feature formatting, check, strict Clippy, **136 workspace tests** and
+  build passed. The IP-only panel's 11 tests, facade `gui,sdrconnect` check and
+  headless AArch64 SDRconnect compile check also passed.
+
+## Previous module pass: IP prebuffer
+
 - Corrected IP playback when one decoded packet is larger than the paused
   native output ring. The worker now starts output while delivering the packet,
   once prebuffered, rather than waiting until the entire packet is queued.
@@ -70,9 +84,9 @@ are recorded separately from real-receiver evidence.
 - **Receiver:** real stopped-device activation/recovery still needs field
   acceptance. IQ Lite returned zero raw I/Q pairs; Full IQ startup showed an
   SDRconnect firmware update prerequisite. Firmware was not changed.
-- **Outputs/UI:** physical Bluetooth/USB loss and recovery, Windows output and
-  standalone egui GPU/touch acceptance remain open. The standalone panel's
-  station controls currently support IP radio; Pip-Boy owns its SDR selector.
+- **Outputs/UI:** physical Bluetooth/USB loss and recovery, Windows output,
+  standalone egui touch and Pi rendering remain open. The SDR-enabled standalone
+  panel and Pip-Boy each expose their own UI over the shared engine.
 - **USB SDR:** the adapter compiles/links, but no supported device or driver was
   discovered on this Mac. RawIq ingress is implemented; local RF DSP audio is not.
 - **CI:** the inspected [Rust Radio run at `3d77d11`](https://github.com/pskeffington/rust_radio/actions/runs/40624628207)

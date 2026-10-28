@@ -9,6 +9,7 @@ use rust_radio_core::validation::{StationValidation, ValidationStatus};
 use std::collections::BTreeMap;
 
 mod settings;
+mod theme;
 mod view;
 
 pub const PANEL_WIDTH: f32 = 480.0;
@@ -17,6 +18,10 @@ pub const PANEL_HEIGHT: f32 = 320.0;
 /// Owns one radio session. Embed with `panel.show(ui)` inside an existing HUD.
 pub struct RadioPanel {
     station_index: usize,
+    #[cfg(feature = "sdrconnect")]
+    sdr_selected: bool,
+    #[cfg(feature = "sdrconnect")]
+    sdr_endpoint: String,
     volume: u8,
     output: String,
     outputs: Vec<OutputDeviceInfo>,
@@ -33,6 +38,10 @@ impl Default for RadioPanel {
     fn default() -> Self {
         Self {
             station_index: 0,
+            #[cfg(feature = "sdrconnect")]
+            sdr_selected: false,
+            #[cfg(feature = "sdrconnect")]
+            sdr_endpoint: "127.0.0.1:5454".into(),
             volume: 60,
             output: "system".into(),
             outputs: Vec::new(),
@@ -119,22 +128,33 @@ impl RadioPanel {
         if self.is_active() {
             return;
         }
-        match NativeRadioEngine::start_internet(
+        #[cfg(feature = "sdrconnect")]
+        let result = if self.sdr_selected {
+            NativeRadioEngine::start_sdrconnect(&self.sdr_endpoint, self.volume, &self.output)
+        } else {
+            NativeRadioEngine::start_internet(self.selected_station().id, self.volume, &self.output)
+        };
+        #[cfg(not(feature = "sdrconnect"))]
+        let result = NativeRadioEngine::start_internet(
             self.selected_station().id,
             self.volume,
             &self.output,
-        ) {
+        );
+        match result {
             Ok(engine) => {
                 self.engine = Some(engine);
                 self.last_session = None;
                 self.note = "CONNECTING / NATIVE AUDIO".into();
             }
-            Err(error) => self.note = error,
+            Err(error) => {
+                self.last_session = None;
+                self.note = error;
+            }
         }
     }
 
     fn start_validation(&mut self) {
-        if self.is_active() {
+        if self.is_active() || self.is_sdr_selected() {
             return;
         }
         match StationValidationTask::start(self.selected_station().id) {
@@ -148,7 +168,7 @@ impl RadioPanel {
 
     fn cancel_stale_validation(&mut self) {
         if let Some(task) = &self.validation {
-            if task.station_id() != self.selected_station().id {
+            if self.is_sdr_selected() || task.station_id() != self.selected_station().id {
                 task.request_cancel();
             }
         }
@@ -187,13 +207,57 @@ impl RadioPanel {
     }
 
     fn step_station(&mut self, direction: isize) {
-        let count = curated_stations().len();
+        let count = curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"));
         if count == 0 {
             return;
         }
         let offset = direction.rem_euclid(count as isize) as usize;
-        self.station_index = (self.station_index + offset) % count;
+        let next = (self.source_index() + offset) % count;
+        self.select_source(next);
+    }
+
+    fn source_index(&self) -> usize {
+        if self.is_sdr_selected() {
+            curated_stations().len()
+        } else {
+            self.station_index
+        }
+    }
+
+    fn select_source(&mut self, index: usize) {
+        #[cfg(feature = "sdrconnect")]
+        {
+            self.sdr_selected = index == curated_stations().len();
+        }
+        if index < curated_stations().len() {
+            self.station_index = index;
+        }
         self.cancel_stale_validation();
+    }
+
+    fn is_sdr_selected(&self) -> bool {
+        #[cfg(feature = "sdrconnect")]
+        {
+            self.sdr_selected
+        }
+        #[cfg(not(feature = "sdrconnect"))]
+        {
+            false
+        }
+    }
+
+    fn source_detail(&self) -> String {
+        #[cfg(feature = "sdrconnect")]
+        if self.sdr_selected {
+            return format!("SDRCONNECT / {}", self.sdr_endpoint);
+        }
+        let station = self.selected_station();
+        format!(
+            "{} / {} / {}",
+            self.validation_label(station.id),
+            station.category,
+            station.genre
+        )
     }
 
     fn selected_station(&self) -> &'static InternetStation {

@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 rust-version = "1.85"
 
+[features]
+default = []
+sdrconnect = ["rust-radio-audio/sdrconnect"]
+
 [dependencies]
 rust-radio-core = { path = "../rust-radio-core" }
 rust-radio-audio = { path = "../rust-radio-audio" }

@@ -53,9 +53,11 @@ Follow the [roadmap](docs/PORTING_PLAN.md) for platform and receiver acceptance.
 
 ```sh
 cargo run -p rust-radio-gui --bin rust-radio-gui
+# Optional nRSP-ST source through SDRconnect:
+cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
 ```
 
-Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous playback worker releases its resources. SETTINGS contains output selection and CHECK STATION, which decodes silently on a background worker. Station badges distinguish unverified, decoded, unavailable, unsupported and invalid streams. Stop, Cancel Check or browsing another station cancels a check; PLAY and another check remain locked until its worker finishes. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.
+The compact panel uses a green phosphor, monospaced retro skin. With `sdrconnect` enabled, select **nRSP-ST / SDRconnect**, enter the local API address in SETTINGS, and select the receiver in SDRconnect. Playback starts only after PLAY. STOP requests cancellation and mutes queued audio immediately; the panel remains responsive while showing STOPPING. New playback and output changes stay locked until the previous playback worker releases its resources. For IP stations, SETTINGS offers output selection and CHECK STATION, which decodes silently on a background worker. Station badges distinguish unverified, decoded, unavailable, unsupported and invalid streams. Stop, Cancel Check or browsing another source cancels a check; PLAY and another check remain locked until its worker finishes. Closing/dropping the panel still performs synchronous final cleanup; embedded hosts can call `stop()` and poll `poll_shutdown()` before dismounting to avoid waiting during teardown.
 
 The native transport resolves bounded M3U and PLS playlists using publisher-approved URLs. Legacy HTTP entries inside SomaFM playlists are requested over HTTPS after the same host/port/path checks; there is no plaintext fallback. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
 
