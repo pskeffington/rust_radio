@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:33:33Z",
+  "updated_at_utc": "2026-10-28T22:37:02Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "pending commit for Windows MSVC strict Clippy coverage",
+  "implementation_commit": "pending commit for Windows MSVC test execution coverage",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -98,7 +98,8 @@
     "corrected catalog validation documentation: configured workflow is six-hour/manual, and is not active until merge; corrected roadmap numbering",
     "fresh bounded validate-all sweep at 2026-10-28T22:25:38Z decoded all 25 stations in 25 total attempts; GUI label A/B/C regression rerun",
     "added Windows MSVC CI job for default workspace, SDRconnect, and direct nRSP-native feature configurations; locally cross-checked all three with x86_64-pc-windows-gnu",
-    "added three strict Clippy steps to the Windows MSVC job after equivalent Windows GNU checks passed for default, SDRconnect and direct nRSP-native configurations"
+    "added three strict Clippy steps to the Windows MSVC job after equivalent Windows GNU checks passed for default, SDRconnect and direct nRSP-native configurations",
+    "compiled Windows GNU test binaries without executing them for default, SDRconnect and direct nRSP-native workspace configurations; configured native MSVC Actions test suites for all three"
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -115,7 +116,7 @@
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
     "repeatable_layout_ab": "passed: at 295px A full category 18/19, B names-only 19/19, C compact category 19/19; at 340px all 19/19; saves 128px; layout fit only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
-    "workflow_yaml": "passed Ruby YAML parse; jobs.windows has three check and three strict Clippy commands matching locally passed Windows GNU feature configurations",
+    "workflow_yaml": "passed Ruby YAML parse; Windows job contains three Cargo checks, three strict Clippy runs, and three workspace test suites",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
@@ -163,7 +164,7 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed with Cargo.lock for cargo check and cargo clippy --workspace --all-targets -- -D warnings in default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native configurations; target x86_64-pc-windows-gnu; compile/lint evidence only"
+    "windows_gnu_cross_check": "passed Cargo check, strict Clippy, and cargo test --no-run with Cargo.lock for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native workspace configurations on x86_64-pc-windows-gnu; test binaries compile only and were not run"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -192,5 +193,5 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Verify the Windows MSVC check and Clippy steps on a live Actions runner; complete physical output/Pi/receiver acceptance and maintain distribution-rights review."
+  "next_priority": "Run the Windows MSVC test suites when GitHub Actions starts; local GNU test binaries only establish compilation. Continue physical platform acceptance when hardware is available."
 }
