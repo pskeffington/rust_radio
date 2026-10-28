@@ -160,6 +160,22 @@ fn probe_failure(error: DecodeError, output_failure: Option<String>) -> Playback
     }
 }
 
+fn probe_if_active<T>(
+    cancelled: &AtomicBool,
+    probe: impl FnOnce() -> Result<T, DecodeError>,
+    output_failure: impl FnOnce() -> Option<String>,
+) -> Result<Option<T>, PlaybackFailure> {
+    if cancelled.load(Ordering::Acquire) {
+        return Ok(None);
+    }
+    match probe() {
+        Ok(_) if cancelled.load(Ordering::Acquire) => Ok(None),
+        Ok(probed) => Ok(Some(probed)),
+        Err(_) if cancelled.load(Ordering::Acquire) => Ok(None),
+        Err(error) => Err(probe_failure(error, output_failure())),
+    }
+}
+
 /// No direct audio output or network access occurs until the caller issues
 /// an explicit internet or SDRconnect Play command. A process-wide lease admits
 /// only one playback worker, including across multiple engine instances.
@@ -828,6 +844,9 @@ fn decode_and_play(
     direct: bool,
     context: &PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
+    if context.cancelled.load(Ordering::Acquire) {
+        return Ok(());
+    }
     // Establish an audio device before opening a remote broadcaster.
     let played_samples = begin_output_attempt(context.output_progress);
     let mut output = NativeAudioOutput::open_with_progress(
@@ -872,14 +891,21 @@ fn decode_and_play(
             Default::default(),
         )
     };
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            media,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .map_err(|error| probe_failure(error, output.failure_detail()))?;
+    let Some(probed) = probe_if_active(
+        context.cancelled,
+        || {
+            symphonia::default::get_probe().format(
+                &hint,
+                media,
+                &FormatOptions::default(),
+                &MetadataOptions::default(),
+            )
+        },
+        || output.failure_detail(),
+    )?
+    else {
+        return Ok(());
+    };
     let mut format = probed.format;
     let track = format
         .tracks()
@@ -1293,6 +1319,48 @@ mod tests {
             .message(),
             "Native audio output stream error: device disappeared"
         );
+    }
+
+    #[test]
+    fn cancellation_before_format_probe_skips_the_probe_work() {
+        let cancelled = AtomicBool::new(true);
+        let probe_started = AtomicBool::new(false);
+        let result = probe_if_active(
+            &cancelled,
+            || {
+                probe_started.store(true, Ordering::Release);
+                Err::<(), _>(DecodeError::Unsupported("probe should not run"))
+            },
+            || None,
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(!probe_started.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn stop_during_format_probe_suppresses_transient_io_failure() {
+        let cancelled = AtomicBool::new(false);
+        let output_failure_read = AtomicBool::new(false);
+        let result = probe_if_active(
+            &cancelled,
+            || {
+                cancelled.store(true, Ordering::Release);
+                Err::<(), _>(DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::ConnectionAborted,
+                    "Radio stopped",
+                )))
+            },
+            || {
+                output_failure_read.store(true, Ordering::Release);
+                None
+            },
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(!output_failure_read.load(Ordering::Acquire));
     }
 
     #[cfg(feature = "nrsp-native")]
