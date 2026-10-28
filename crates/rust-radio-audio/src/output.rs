@@ -234,17 +234,7 @@ where
         .build_output_stream(
             config,
             move |data: &mut [T], _| {
-                let gain = volume.load(Ordering::Relaxed) as f32 / 100.0;
-                let mut consumed = 0u64;
-                for sample in data.iter_mut() {
-                    if let Some(value) = consumer.try_pop() {
-                        *sample = T::from_sample((value * gain).clamp(-1.0, 1.0));
-                        consumed += 1;
-                    } else {
-                        *sample = T::from_sample(0.0);
-                    }
-                }
-                played.fetch_add(consumed, Ordering::Relaxed);
+                render_samples(data, &mut consumer, &volume, &played);
             },
             move |_error| {
                 error_flag.store(true, Ordering::Release);
@@ -254,9 +244,48 @@ where
         .map_err(|e| format!("Cannot configure native audio stream: {e}"))
 }
 
+/// Transfer queued PCM without blocking or allocating in CPAL's callback.
+fn render_samples<T>(
+    data: &mut [T],
+    consumer: &mut HeapCons<f32>,
+    volume: &AtomicU8,
+    played: &AtomicU64,
+) where
+    T: SizedSample + FromSample<f32>,
+{
+    let gain = volume.load(Ordering::Relaxed) as f32 / 100.0;
+    let mut consumed = 0u64;
+    for sample in data {
+        if let Some(value) = consumer.try_pop() {
+            *sample = T::from_sample((value * gain).clamp(-1.0, 1.0));
+            consumed += 1;
+        } else {
+            *sample = T::from_sample(0.0);
+        }
+    }
+    played.fetch_add(consumed, Ordering::Relaxed);
+}
+
 #[cfg(test)]
 mod output_identity_tests {
     use super::*;
+
+    #[test]
+    fn callback_applies_gain_and_silences_underrun_without_counting_silence() {
+        let ring = HeapRb::<f32>::new(4);
+        let (mut producer, mut consumer) = ring.split();
+        producer.try_push(1.5).unwrap();
+        producer.try_push(-0.5).unwrap();
+        let volume = AtomicU8::new(50);
+        let played = AtomicU64::new(0);
+        let mut output = [1.0f32; 4];
+
+        render_samples(&mut output, &mut consumer, &volume, &played);
+
+        assert_eq!(output, [0.75, -0.25, 0.0, 0.0]);
+        assert_eq!(played.load(Ordering::Relaxed), 2);
+        assert_eq!(consumer.occupied_len(), 0);
+    }
 
     #[test]
     fn name_bound_ids_reject_reordered_or_replaced_outputs() {

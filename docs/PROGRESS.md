@@ -3,6 +3,21 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: native output callback coverage
+
+- Extracted the callback's bounded sample transfer into a private helper used
+  directly by CPAL. Added a synthetic ring-buffer regression for gain, silence
+  on underrun, and counting only consumed PCM. The callback remains lock-free,
+  allocation-free and non-blocking; this is not physical output acceptance.
+- Passed formatting, default workspace tests, default strict Clippy,
+  all-feature workspace tests, all-feature strict Clippy and all-feature check.
+  The workspace HTTP fixture tests bind loopback; their first sandboxed runs
+  were denied by the environment and passed when rerun with local-network
+  permission. The focused callback test also passed independently.
+- No runtime defect or physical hardware result was found. Next: retain these
+  deterministic checks and complete Bluetooth/USB output-loss and recovery
+  acceptance on an actual device.
+
 ## Current module pass: output failure reporting
 
 - Extracted worker-result handling so output-loss classification, host-visible
