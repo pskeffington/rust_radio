@@ -16,9 +16,12 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Repeated the 25-station station-label A/B/C fit test: at 295 px, full genre
   labels fit 24/25 and names-only/compact labels fit 25/25; all fit at 340 px.
   This is layout evidence only, not listener preference.
-- Windows GNU workspace test binaries are being cross-compiled for default,
-  SDRconnect and native nRSP feature combinations; compiled test programs are
-  not executed. Physical device acceptance remains open.
+- Windows GNU workspace test binaries cross-compiled for default, SDRconnect
+  and native nRSP feature combinations; compiled test programs were not
+  executed. Physical device acceptance remains open.
+- PR #5 is open and mergeable at `dae41ee`. Actions run 251 for this commit
+  failed before job creation (`startup_failure`) and combined statuses are
+  empty, so remote CI and native MSVC validation remain unverified.
 - Next: continue physical output-loss recovery and Pi/receiver acceptance,
   publisher-rights review and remote Windows MSVC CI when Actions starts jobs.
 
