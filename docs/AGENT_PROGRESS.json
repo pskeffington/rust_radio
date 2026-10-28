@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T23:46:03Z",
+  "updated_at_utc": "2026-10-28T23:51:20Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "23ee373f656a4308f06c31b0f2cf800b614c0b38; HTTP 425 Too Early is now classified as a transient network response and retried.",
+  "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Preserved the SafeResolver non-public-address marker through reqwest so unsafe DNS answers are terminal instead of consuming bounded retries; ordinary resolver timeouts remain transient.",
@@ -141,7 +141,9 @@
     "Repeated GUI label A/B/C: 295px A 24/25, B/C 25/25; at 340px all 25/25; C saves 192px, A overflows wcrb; layout fit only.",
     "Initial sandboxed validate-all could not reach streams; authorized bounded rerun at 2026-10-28T23:45:04Z decoded all 25 stations in 25 attempts with no retries/failures; point-in-time codec evidence only.",
     "Observed PR Actions run 282 (40789529683) for dd3def2: startup_failure before job creation; jobs and combined statuses are empty, so this provides no code-level CI signal.",
-    "Latest observed PR run 283 (40789606164) for checkpoint 3ef4b64 also ended startup_failure before job creation; no jobs or combined statuses, so remote CI remains unavailable."
+    "Latest observed PR run 283 (40789606164) for checkpoint 3ef4b64 also ended startup_failure before job creation; no jobs or combined statuses, so remote CI remains unavailable.",
+    "Narrowed temporary HTTP status classification to 408/425/429/500/502/503/504; 501/505/506/507/508/510/511 and ordinary permanent responses no longer consume the network retry budget. Focused classification regression passed.",
+    "All six locked workspace gates passed on f92f0fc; repeated GUI A/B/C fit result and 25/25 live decoded sweep at 2026-10-28T23:51:08Z recorded in docs/PROGRESS.md."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -234,14 +236,14 @@
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data",
-    "last_repeated_at_utc": "2026-10-28T23:40:50Z"
+    "last_repeated_at_utc": "2026-10-28T23:50:58Z"
   },
   "ci": {
-    "latest_pr_run": 40789606164,
-    "latest_pr_head": "3ef4b64f0f97ccec089ef6094c7c387153d5c3bd",
+    "latest_pr_run": 40789664685,
+    "latest_pr_head": "36ef13cdd0d33acb3d586d9d6ed12090a06e3428",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 is open and mergeable at 3ef4b64. Run 283 (40789606164) ended startup_failure before job creation; run jobs and combined statuses are empty. This is not a code test failure. Native Windows MSVC CI and physical hardware acceptance remain unverified."
+    "details": "PR #5 was open and mergeable at 36ef13c before current increment. Run 284 (40789664685) ended startup_failure before job creation; jobs and combined statuses are empty. New implementation commit f92f0fc and documentation checkpoint are validated locally and pending push. Native Windows MSVC CI and physical hardware acceptance remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -252,8 +254,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Observe CI for the pushed HTTP 425 fix and checkpoint; continue source-aware playback recovery, then complete physical Bluetooth/USB, Raspberry Pi and receiver acceptance, publisher rights review, and native Windows MSVC CI.",
-  "current_pr_state": "PR #5 open and mergeable at 3ef4b64; latest observed Actions run 283 failed before job creation with startup_failure and no combined statuses.",
-  "live_catalog_revalidation": "2026-10-28T23:45:04Z: bounded validate-all decoded 25/25 stations in 25 attempts, no retries/failures. Point-in-time codec evidence only. Earlier sandboxed run was blocked before stream validation.",
-  "six_required_gates_latest": "passed on implementation commit 23ee373: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked"
+  "next_priority": "Observe CI after pushing the narrowed HTTP status policy, then continue source-aware playback recovery; complete physical Bluetooth/USB, Raspberry Pi, receiver, publisher rights, national NPR source/rights and native Windows MSVC gates.",
+  "current_pr_state": "PR #5 open and mergeable at pre-change head 36ef13c; implementation f92f0fc and documentation checkpoint pending push.",
+  "live_catalog_revalidation": "2026-10-28T23:51:08Z: bounded validate-all decoded 25/25 stations in 25 attempts with no retries or failures; point-in-time codec evidence only.",
+  "six_required_gates_latest": "passed on implementation commit f92f0fc: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked"
 }

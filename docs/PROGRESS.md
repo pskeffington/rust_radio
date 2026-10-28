@@ -1692,3 +1692,24 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   signal. Run 283 (`40789606164`) for checkpoint `3ef4b64` also ended
   `startup_failure` before jobs; no combined statuses were reported. Native
   MSVC and physical hardware acceptance gates remain open.
+
+
+## Permanent server response retry classification (2026-10-28 23:51 UTC)
+
+- Tightened `TransportError::http_status`: retry only 408, 425, 429, 500,
+  502, 503 and 504. Other HTTP statuses now fail permanently, including
+  unsupported/configuration server responses such as 501, 505, 506, 507, 508,
+  510 and 511. This avoids spending the bounded retry window on server errors
+  unlikely to recover without operator or publisher action.
+- Focused status classification regression passed, including transient retry
+  decisions and permanent 5xx rejection; all six locked workspace gates passed.
+- GUI label A/B/C repeated: at 295 px A full-category fits 24/25, B names-only
+  and C compact-category fit 25/25; all variants fit at 340 px. C saves 192 px
+  and A overflows `wcrb`. Layout fit only, not listener preference.
+- Bounded live silent validation at 2026-10-28 23:51:08 UTC decoded all 25 feeds
+  in 25 attempts without retries or failures. This is point-in-time codec
+  evidence only.
+- PR #5 was open and mergeable at pre-change head `36ef13c`; run 284 failed
+  before jobs (`startup_failure`, zero jobs, empty statuses). Code commit
+  `f92f0fc` is validated and this documentation checkpoint is pending push.
+  Physical hardware and native Windows MSVC acceptance remain open.
