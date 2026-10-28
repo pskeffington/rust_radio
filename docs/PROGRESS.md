@@ -14,6 +14,9 @@ Updated 2026-10-28. Active priorities and ownership are in the
   strict Clippy, all-feature tests (197 passed, two ignored), all-feature strict
   Clippy and all-feature workspace check. Apple Silicon GUI checks passed for
   default, `nrsp-native` and `sdrconnect`.
+- The current test-only refinement `6432501` reran the worker-reaping regression
+  in default and all-feature builds; both passed, as did all-feature strict
+  Clippy and formatting. The full workspace suites above passed on `75d7ea6`.
 - Next output gate is device-loss/reconnect acceptance on physical Bluetooth or
   USB audio, including selecting a replacement output and explicit retry.
 
