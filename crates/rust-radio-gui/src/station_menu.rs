@@ -2,6 +2,10 @@ use super::{theme, RadioPanel, Segment};
 use eframe::egui;
 use rust_radio_core::directory::curated_stations;
 
+const STATION_MENU_MAX_ROW_WIDTH: f32 = 340.0;
+#[cfg(test)]
+const PREVIOUS_STATION_MENU_ROW_WIDTH: f32 = 295.0;
+
 impl RadioPanel {
     pub(super) fn station_selector(&mut self, ui: &mut egui::Ui) {
         let running = self.engine.is_some();
@@ -171,7 +175,7 @@ impl RadioPanel {
             )
             .show_ui(ui, |ui| {
                 theme::apply(ui);
-                let row_width = ui.available_width().min(340.0);
+                let row_width = ui.available_width().min(STATION_MENU_MAX_ROW_WIDTH);
                 ui.set_width(row_width);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                 for (index, name) in names.iter().enumerate() {
@@ -264,11 +268,14 @@ mod label_ab_test {
     fn name_plus_category_rows_fit_without_truncation() {
         let context = egui::Context::default();
         let mut results = None;
+        let mut button_horizontal_padding = 0.0;
         let _ = context.run(Default::default(), |ctx| {
+            button_horizontal_padding = ctx.style().spacing.button_padding.x * 2.0;
+            let current_row_text_width =
+                PREVIOUS_STATION_MENU_ROW_WIDTH - button_horizontal_padding;
+            let widened_row_text_width = STATION_MENU_MAX_ROW_WIDTH - button_horizontal_padding;
             results = Some(ctx.fonts(|fonts| {
                 let font = egui::FontId::monospace(14.0);
-                let current_row_text_width = 275.0;
-                let widened_row_text_width = 320.0;
                 let mut category_current_fit = 0;
                 let mut category_widened_fit = 0;
                 let mut name_current_fit = 0;
@@ -301,7 +308,11 @@ mod label_ab_test {
             results.unwrap();
         let station_count = curated_stations().len();
         eprintln!(
-            "Station label A/B (monospace 14): A at 295px {category_current_fit}/{station_count}, B at 295px {name_current_fit}/{station_count}, A at 340px {category_widened_fit}/{station_count}; B saves {saved_width:.0}px total text width"
+            "Station label A/B (monospace 14, {:.0}px button padding): A at {:.0}px {category_current_fit}/{station_count}, B at {:.0}px {name_current_fit}/{station_count}, A at {:.0}px {category_widened_fit}/{station_count}; B saves {saved_width:.0}px total text width",
+            button_horizontal_padding,
+            PREVIOUS_STATION_MENU_ROW_WIDTH,
+            PREVIOUS_STATION_MENU_ROW_WIDTH,
+            STATION_MENU_MAX_ROW_WIDTH,
         );
         assert!(category_current_fit < name_current_fit);
         assert_eq!(name_current_fit, station_count);

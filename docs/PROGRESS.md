@@ -5,11 +5,12 @@ Updated 2026-10-28. Active priorities and ownership are in the
 
 ## Current module pass: station-list label A/B
 
-- Re-ran the label comparison with the actual 14-point monospace button font.
-  At the existing 295-pixel row width (275 pixels after button padding),
+- Re-ran the label comparison with the actual 14-point monospace button font
+  and egui's actual 8-pixel total horizontal button padding. At the existing
+  295-pixel row width (287 pixels for text),
   `station · category` labels fit 24/25 stations and names alone fit 25/25;
   names alone save 1,776 aggregate text pixels. Widening rows to 340 pixels
-  (320 pixels for text) lets all 25 category labels fit. Kept the category cue
+  (332 pixels for text) lets all 25 category labels fit. Kept the category cue
   and widened the popup rather than dropping useful scan context.
 - Added a font-metric regression test for both label variants and both widths.
   This is an offline layout A/B, not a listener cohort study; no audience
