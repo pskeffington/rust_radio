@@ -13,28 +13,17 @@ use std::sync::Arc;
 type ResolverError = Box<dyn std::error::Error + Send + Sync>;
 
 #[derive(Debug)]
-pub(crate) struct SafeResolver {
-    allow_private: bool,
-}
+pub(crate) struct SafeResolver;
 
 impl SafeResolver {
     pub(crate) fn public_only() -> Arc<Self> {
-        Arc::new(Self {
-            allow_private: false,
-        })
-    }
-
-    pub(crate) fn explicit_private_source() -> Arc<Self> {
-        Arc::new(Self {
-            allow_private: true,
-        })
+        Arc::new(Self)
     }
 }
 
 impl Resolve for SafeResolver {
     fn resolve(&self, name: Name) -> Resolving {
         let host = name.as_str().to_owned();
-        let allow_private = self.allow_private;
         Box::pin(async move {
             let addresses: Vec<SocketAddr> = tokio::net::lookup_host((host.as_str(), 0))
                 .await
@@ -48,7 +37,7 @@ impl Resolve for SafeResolver {
             }
             if addresses
                 .iter()
-                .any(|address| !is_allowed_address(address.ip(), allow_private))
+                .any(|address| !is_public_unicast(address.ip()))
             {
                 return Err(Box::new(io::Error::new(
                     io::ErrorKind::PermissionDenied,
@@ -64,17 +53,6 @@ pub(crate) fn is_public_unicast(address: IpAddr) -> bool {
     match address {
         IpAddr::V4(ip) => is_public_ipv4(ip),
         IpAddr::V6(ip) => is_public_ipv6(ip),
-    }
-}
-
-pub(crate) fn is_allowed_address(address: IpAddr, allow_private: bool) -> bool {
-    is_public_unicast(address) || (allow_private && is_private_unicast(address))
-}
-
-fn is_private_unicast(address: IpAddr) -> bool {
-    match address {
-        IpAddr::V4(ip) => ip.is_private() || ip.is_loopback(),
-        IpAddr::V6(ip) => ip.is_loopback() || ip.segments()[0] & 0xfe00 == 0xfc00,
     }
 }
 
@@ -158,14 +136,6 @@ mod tests {
             let address = IpAddr::from_str(address).unwrap();
             assert!(!is_public_unicast(address), "{address}");
         }
-        assert!(is_allowed_address("192.168.1.5".parse().unwrap(), true));
-        assert!(is_allowed_address("::1".parse().unwrap(), true));
-        assert!(!is_allowed_address("169.254.1.2".parse().unwrap(), true));
-        assert!(!is_allowed_address("224.0.0.1".parse().unwrap(), true));
-        assert!(!is_allowed_address(
-            "255.255.255.255".parse().unwrap(),
-            true
-        ));
         for address in [
             "8.8.8.8",
             "1.1.1.1",
@@ -178,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    fn public_resolver_rejects_localhost_and_private_mode_allows_explicit_lan_hosts() {
+    fn public_resolver_rejects_localhost_even_for_an_explicit_private_stream() {
         let name = Name::from_str("localhost").unwrap();
         let resolver = SafeResolver::public_only();
         let runtime = tokio::runtime::Builder::new_current_thread()
@@ -187,9 +157,5 @@ mod tests {
             .unwrap();
         let result = runtime.block_on(resolver.resolve(name));
         assert!(result.is_err());
-
-        let name = Name::from_str("localhost").unwrap();
-        let resolver = SafeResolver::explicit_private_source();
-        assert!(runtime.block_on(resolver.resolve(name)).is_ok());
     }
 }
