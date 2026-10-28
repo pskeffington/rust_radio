@@ -23,6 +23,8 @@ mod presentation;
 mod settings;
 mod station_menu;
 mod theme;
+mod validation_history;
+use validation_history::SavedFeedValidation;
 mod view;
 
 pub const PANEL_WIDTH: f32 = 480.0;
@@ -90,6 +92,7 @@ pub struct RadioPanel {
     last_session: Option<RadioSession>,
     validation: Option<StationValidationTask>,
     validations: BTreeMap<&'static str, StationValidation>,
+    saved_validations: BTreeMap<&'static str, SavedFeedValidation>,
 }
 
 impl Default for RadioPanel {
@@ -155,6 +158,7 @@ impl Default for RadioPanel {
             last_session: None,
             validation: None,
             validations: BTreeMap::new(),
+            saved_validations: BTreeMap::new(),
         }
     }
 }
@@ -162,6 +166,17 @@ impl Default for RadioPanel {
 impl RadioPanel {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Load a bounded, host-persisted silent-check snapshot without file or
+    /// network I/O. The host should read its file off the UI thread. Saved
+    /// checks are labeled separately, expire after the shared feed TTL, and
+    /// never gate playback; live checks and active playback take precedence.
+    pub fn load_validation_history(&mut self, json: &str) -> Result<usize, String> {
+        let history = validation_history::parse_history(json)?;
+        let count = history.len();
+        self.saved_validations = history;
+        Ok(count)
     }
 
     /// Begin cancellation without blocking the host UI. Keep rendering the panel
@@ -504,7 +519,11 @@ impl RadioPanel {
                 ValidationStatus::Unsupported => "UNSUPPORTED",
                 _ => "UNVERIFIED",
             },
-            None => "UNVERIFIED",
+            None => self
+                .saved_validations
+                .get(id)
+                .map(|validation| validation_history::label(*validation, SystemTime::now()))
+                .unwrap_or("UNVERIFIED"),
         }
     }
 

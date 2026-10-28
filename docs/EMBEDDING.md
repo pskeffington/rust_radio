@@ -157,6 +157,14 @@ mutes/cancels the old engine, then polls cleanup before creating the latest
 engine. Retain and render/poll the panel during this transition. Stop also clears
 queued playback and validation. Cross-input/output changes still require Stop.
 
+Hosts may read their optional `validate-all --history PATH` state file off the
+UI thread and pass its contents to `RadioPanel::load_validation_history(json)`.
+The panel validates the bounded schema and station IDs, recomputes the six-hour
+freshness window, and labels imported evidence `SAVED / …`. It performs no file
+or network IO, never autoplays, and never gates Play. A live station check takes
+precedence over saved history; the active listening surface continues to report
+current playback rather than historical check state.
+
 Use `take_ip_stations_update() -> Option<String>` to obtain the versioned JSON
 when saved stations or selection change, and persist it off the render thread.
 Call `report_ip_stations_saved(result)` for write failures. Import validates the

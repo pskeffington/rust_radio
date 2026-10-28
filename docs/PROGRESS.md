@@ -68,6 +68,20 @@ Updated 2026-10-28. Active priorities and ownership are in the
   last decoded timestamp is retained and failure count increments, then checks
   malformed history remains untouched. Full CLI tests pass.
 
+## Current module pass: host import of saved feed evidence
+
+- Added `RadioPanel::load_validation_history(json)` so the host can read its
+  saved state off the UI thread and pass the bounded JSON text to the panel.
+  Import validates schema, catalog IDs, statuses, attempts, failure counts and
+  timestamp consistency before replacing the in-memory snapshot.
+- Imported results render as `SAVED / ...`; freshness is recomputed against the
+  shared six-hour TTL instead of trusting the file's cached health value. A
+  current silent check takes precedence, and active playback remains the
+  listening surface's source of truth. Import performs no file/network I/O and
+  never starts or gates playback.
+- GUI tests verify saved success expiry, malformed/future evidence rejection,
+  live-result precedence and no autoplay. Full default/all-feature gates pass.
+
 ## Current module pass: catalog mirror parity
 
 - The metadata implementation exposed a stale `catalog/curated-stations.json`

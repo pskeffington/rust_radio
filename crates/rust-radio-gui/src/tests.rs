@@ -2,6 +2,7 @@ use super::*;
 use eframe::egui;
 use rust_radio_audio::compat_controller::PlaybackState;
 use rust_radio_core::stream::{ApprovedEndpoint, HttpResponse, RadioHttp, StreamError};
+use rust_radio_core::validation::{StationValidation, ValidationStage, ValidationStatus};
 use std::io::Cursor;
 use std::sync::{mpsc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
@@ -101,6 +102,75 @@ fn pending_check_keeps_rendering_and_blocks_duplicate_checks_and_playback() {
     finish_panel(&mut panel);
     assert!(panel.validations.is_empty());
     assert_eq!(panel.validation_label("skylab"), "UNVERIFIED");
+}
+
+#[test]
+fn saved_validation_history_is_bounded_freshness_checked_and_not_live_state() {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let history = serde_json::json!({
+        "schema_version": 1,
+        "updated_at_unix": now,
+        "stations": {
+            "skylab": {
+                "last_checked_at_unix": now,
+                "last_status": "decoded",
+                "last_stage": "decoded_audio",
+                "attempts": 1,
+                "last_decoded_at_unix": now,
+                "consecutive_failures": 0,
+                "health": "fresh"
+            }
+        }
+    })
+    .to_string();
+    let mut panel = RadioPanel::new();
+    assert_eq!(panel.load_validation_history(&history).unwrap(), 1);
+    assert_eq!(panel.validation_label("skylab"), "SAVED / FRESH");
+    assert!(panel.validations.is_empty());
+    assert!(panel.engine.is_none());
+
+    let invalid = r#"{"schema_version":1,"stations":{"unknown":{"last_checked_at_unix":1}}}"#;
+    assert!(panel.load_validation_history(invalid).is_err());
+    assert_eq!(panel.validation_label("skylab"), "SAVED / FRESH");
+
+    let mut live = StationValidation::unverified("skylab");
+    live.status = ValidationStatus::Decoded;
+    live.stage = ValidationStage::DecodedAudio;
+    live.decoded_frames = 1;
+    live.checked_at = Some(SystemTime::now());
+    panel.validations.insert("skylab", live);
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
+}
+
+#[test]
+fn saved_validation_history_expires_after_the_shared_feed_ttl() {
+    let old = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        .saturating_sub(rust_radio_core::validation::FEED_FRESHNESS_TTL.as_secs() + 1);
+    let history = serde_json::json!({
+        "schema_version": 1,
+        "updated_at_unix": old,
+        "stations": {
+            "skylab": {
+                "last_checked_at_unix": old,
+                "last_status": "decoded",
+                "last_stage": "decoded_audio",
+                "attempts": 1,
+                "last_decoded_at_unix": old,
+                "consecutive_failures": 0,
+                "health": "fresh"
+            }
+        }
+    })
+    .to_string();
+    let mut panel = RadioPanel::new();
+    panel.load_validation_history(&history).unwrap();
+    assert_eq!(panel.validation_label("skylab"), "SAVED / STALE");
 }
 
 #[test]
