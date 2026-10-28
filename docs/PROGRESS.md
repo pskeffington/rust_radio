@@ -1145,3 +1145,17 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   runtime behavior.
 - PR #3 remains open and mergeable at `3b57855`. No workflow runs or combined
   status checks are visible for this head; remote CI remains unverified.
+
+## Live validation summary and layout A/B recheck (2026-10-28)
+
+- Ran a fresh bounded `validate-all --json` at 2026-10-28 21:25 UTC: all 25
+  stations decoded in 25 attempts. The new summary script consumed that actual
+  CLI report and produced 25/25 decoded, `decoded_audio`, one attempt each,
+  without outputting endpoints or server error details. This is point-in-time
+  codec evidence only.
+- Repeated the GUI label A/B/C test on current source: at 295 px, full category
+  fit 24/25; names-only and compact category fit 25/25. At 340 px all three fit
+  25/25; compact `CLASS` saves 32 px. This is layout fit, not listener
+  preference.
+- PR #3 was open and mergeable at `c9dc197`; no workflow run or status was
+  visible. No new catalog, GUI or hardware regression was found.

@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:24:11Z",
+  "updated_at_utc": "2026-10-28T21:25:45Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -52,7 +52,8 @@
     "Extended catalog mirror regression to enforce six-hour freshness, decoded-audio validation, initial unverified state, publisher-directed endpoints, and redistribution-not-authorized policy.",
     "Aligned scheduled catalog validation with its six-hour freshness TTL; the bounded live sweep decoded all 25 stations and the GUI label A/B/C regression passed.",
     "Added a credential-safe per-station GitHub Actions summary for scheduled catalog validation, with sanitized Markdown labels and synthetic regression tests.",
-    "Cross-checked the headless AArch64 Linux matrix for core-only, SDRconnect and direct nRSP-native feature configurations."
+    "Cross-checked the headless AArch64 Linux matrix for core-only, SDRconnect and direct nRSP-native feature configurations.",
+    "Validated the credential-safe report summary against a fresh real 25-station CLI report; all station decodes were summarized and the GUI label A/B/C test repeated."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -75,7 +76,7 @@
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
     "latest_code_head_ci": "Current PR head fab6f63 has no workflow run or status checks visible; previous Actions run 40770761885 on 2bd4bfd failed at startup before jobs were created; remote CI remains unverified",
-    "live_catalog_revalidation": "2026-10-28T21:18:27Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; point-in-time codec evidence only",
+    "live_catalog_revalidation": "2026-10-28T21:25Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; summary script consumed the real report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
     "arm64_headless_check": "on current head 3b57855, cargo check passed for core-only, sdrconnect and nrsp-native with --no-default-features on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
@@ -106,7 +107,7 @@
     "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
     "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata",
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
-    "catalog_validation_summary": "passed 3 Python tests for decoded/unavailable/unverified statuses, endpoint/error omission, Markdown label sanitization and malformed report rejection; workflow YAML parsed and now runs these tests before the live sweep",
+    "catalog_validation_summary": "passed 3 Python tests for decoded/unavailable/unverified statuses, endpoint/error omission, Markdown label sanitization and malformed report rejection; actual 25-station CLI report formatted successfully; workflow YAML parsed and runs these tests before the live sweep",
     "current_pr_state": "PR #3 open and mergeable at fab6f63; local git merge-tree origin/main HEAD reports no conflicts"
   },
   "a_b_test": {
