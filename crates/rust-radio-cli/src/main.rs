@@ -43,11 +43,24 @@ fn usage() {
 }
 
 const VALIDATION_WORKERS: usize = 4;
+const VALIDATION_RECOVERY_DELAY: Duration = Duration::from_secs(1);
 type CatalogValidationResult = Result<StationValidation, String>;
-type CatalogValidationResults = Vec<(String, CatalogValidationResult)>;
+struct CatalogValidationRecord {
+    station_id: String,
+    attempts: u8,
+    result: CatalogValidationResult,
+}
+type CatalogValidationResults = Vec<CatalogValidationRecord>;
 
 fn collect_catalog_validations(
     check: fn(&str) -> Result<StationValidation, String>,
+) -> Result<CatalogValidationResults, String> {
+    collect_catalog_validations_with_delay(check, VALIDATION_RECOVERY_DELAY)
+}
+
+fn collect_catalog_validations_with_delay(
+    check: fn(&str) -> Result<StationValidation, String>,
+    recovery_delay: Duration,
 ) -> Result<CatalogValidationResults, String> {
     let ids: Vec<_> = curated_stations()
         .iter()
@@ -70,7 +83,20 @@ fn collect_catalog_validations(
                 .spawn(move || loop {
                     let next = queue.lock().expect("validation queue poisoned").pop_front();
                     let Some((index, id)) = next else { break };
-                    if tx.send((index, id.clone(), check(&id))).is_err() {
+                    let mut result = check(&id);
+                    let mut attempts = 1;
+                    if matches!(result, Ok(ref report) if report.status == ValidationStatus::Unavailable)
+                    {
+                        thread::sleep(recovery_delay);
+                        attempts = 2;
+                        result = check(&id);
+                    }
+                    let record = CatalogValidationRecord {
+                        station_id: id,
+                        attempts,
+                        result,
+                    };
+                    if tx.send((index, record)).is_err() {
                         break;
                     }
                 })
@@ -87,11 +113,8 @@ fn collect_catalog_validations(
     if results.len() != ids.len() {
         return Err("Catalog validation ended before every station was checked".into());
     }
-    results.sort_by_key(|(index, _, _)| *index);
-    Ok(results
-        .into_iter()
-        .map(|(_, id, result)| (id, result))
-        .collect())
+    results.sort_by_key(|(index, _)| *index);
+    Ok(results.into_iter().map(|(_, record)| record).collect())
 }
 
 fn batch_validation_json(results: CatalogValidationResults) -> Result<String, String> {
@@ -99,9 +122,11 @@ fn batch_validation_json(results: CatalogValidationResults) -> Result<String, St
         .duration_since(UNIX_EPOCH)
         .map_err(|_| "System clock predates Unix epoch".to_owned())?
         .as_secs();
-    let stations: Vec<_> = results.into_iter().map(|(id, result)| match result {
+    let stations: Vec<_> = results.into_iter().map(|record| match record.result {
         Ok(report) => serde_json::json!({
-            "station_id": id,
+            "station_id": record.station_id,
+            "attempts": record.attempts,
+            "recovered": record.attempts > 1 && report.is_decoded(),
             "status": validation_status_name(report.status),
             "stage": validation_stage_name(report.stage),
             "checked_at_unix": report.checked_at.and_then(|time| time.duration_since(UNIX_EPOCH).ok()).map(|time| time.as_secs()),
@@ -112,7 +137,7 @@ fn batch_validation_json(results: CatalogValidationResults) -> Result<String, St
             "decoded_frames": report.decoded_frames,
             "decoded": report.is_decoded(),
         }),
-        Err(_) => serde_json::json!({"station_id": id, "status": "check_error", "decoded": false}),
+        Err(_) => serde_json::json!({"station_id": record.station_id, "attempts": record.attempts, "status": "check_error", "decoded": false}),
     }).collect();
     serde_json::to_string_pretty(&serde_json::json!({
         "schema_version": 1,
@@ -487,6 +512,7 @@ mod tests {
 
     static ACTIVE_CHECKS: AtomicUsize = AtomicUsize::new(0);
     static MAX_ACTIVE_CHECKS: AtomicUsize = AtomicUsize::new(0);
+    static RECOVERY_CHECKS: AtomicUsize = AtomicUsize::new(0);
 
     fn synthetic_check(station_id: &str) -> Result<StationValidation, String> {
         let active = ACTIVE_CHECKS.fetch_add(1, Ordering::SeqCst) + 1;
@@ -494,6 +520,28 @@ mod tests {
         thread::sleep(Duration::from_millis(5));
         ACTIVE_CHECKS.fetch_sub(1, Ordering::SeqCst);
         Ok(StationValidation::unverified(station_id))
+    }
+
+    fn recovery_check(station_id: &str) -> Result<StationValidation, String> {
+        let mut report = StationValidation::unverified(station_id);
+        report.checked_at = Some(SystemTime::now());
+        if station_id == "skylab" {
+            if RECOVERY_CHECKS.fetch_add(1, Ordering::SeqCst) == 0 {
+                report.status = ValidationStatus::Unavailable;
+                report.stage = ValidationStage::EndpointReached;
+                report.detail = "temporary network failure".into();
+            } else {
+                report.status = ValidationStatus::Decoded;
+                report.stage = ValidationStage::DecodedAudio;
+                report.decoded_frames = 1152;
+                report.codec = Some("mp3".into());
+            }
+        } else if station_id == "wcrb" {
+            report.status = ValidationStatus::InvalidStream;
+            report.stage = ValidationStage::EndpointReached;
+            report.detail = "HTTP 404".into();
+        }
+        Ok(report)
     }
 
     fn options(raw: &[&str]) -> Vec<String> {
@@ -557,12 +605,16 @@ mod tests {
     fn catalog_validation_is_bounded_ordered_and_machine_readable() {
         ACTIVE_CHECKS.store(0, Ordering::SeqCst);
         MAX_ACTIVE_CHECKS.store(0, Ordering::SeqCst);
-        let results = collect_catalog_validations(synthetic_check).unwrap();
+        let results =
+            collect_catalog_validations_with_delay(synthetic_check, Duration::ZERO).unwrap();
         let expected: Vec<_> = curated_stations()
             .iter()
             .map(|station| station.id)
             .collect();
-        let actual: Vec<_> = results.iter().map(|(id, _)| id.as_str()).collect();
+        let actual: Vec<_> = results
+            .iter()
+            .map(|record| record.station_id.as_str())
+            .collect();
         assert_eq!(actual, expected);
         assert!(MAX_ACTIVE_CHECKS.load(Ordering::SeqCst) > 1);
         assert!(MAX_ACTIVE_CHECKS.load(Ordering::SeqCst) <= VALIDATION_WORKERS);
@@ -576,6 +628,31 @@ mod tests {
         assert_eq!(stations[0]["status"].as_str(), Some("unverified"));
         assert_eq!(stations[0]["decoded"].as_bool(), Some(false));
         assert!(stations[0].get("resolved_url").is_none());
+        assert_eq!(stations[0]["attempts"].as_u64(), Some(1));
+    }
+
+    #[test]
+    fn catalog_validation_retries_only_transient_failures_once() {
+        RECOVERY_CHECKS.store(0, Ordering::SeqCst);
+        let results =
+            collect_catalog_validations_with_delay(recovery_check, Duration::ZERO).unwrap();
+        assert_eq!(RECOVERY_CHECKS.load(Ordering::SeqCst), 2);
+        let json: serde_json::Value =
+            serde_json::from_str(&batch_validation_json(results).unwrap()).unwrap();
+        let stations = json["results"].as_array().unwrap();
+        let recovered = stations
+            .iter()
+            .find(|station| station["station_id"] == "skylab")
+            .unwrap();
+        assert_eq!(recovered["attempts"].as_u64(), Some(2));
+        assert_eq!(recovered["recovered"].as_bool(), Some(true));
+        assert_eq!(recovered["status"].as_str(), Some("decoded"));
+        let rejected = stations
+            .iter()
+            .find(|station| station["station_id"] == "wcrb")
+            .unwrap();
+        assert_eq!(rejected["attempts"].as_u64(), Some(1));
+        assert_eq!(rejected["status"].as_str(), Some("invalid_stream"));
     }
 
     #[test]

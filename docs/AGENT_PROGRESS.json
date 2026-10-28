@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T18:33:05Z",
+  "updated_at_utc": "2026-10-28T18:36:33Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "f11618e",
@@ -9,7 +9,8 @@
     "Added a daily and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
     "Classified transient HTTP statuses separately from permanent endpoint rejection.",
     "Replaced the retired Left Coast 70s stream URL with SomaFM's publisher-listed MP3 M3U endpoint.",
-    "Final live sweep decoded 25 of 25 catalog stations."
+    "Final live sweep decoded 25 of 25 catalog stations.",
+    "Added one delayed retry for transient unavailable reports; permanent rejections remain single-attempt."
   ],
   "validation": {
     "fmt": "passed",
@@ -18,7 +19,7 @@
     "all_features_tests": "passed",
     "all_features_clippy_strict": "passed",
     "all_features_check": "passed",
-    "live_catalog_decode": "25/25 decoded; point-in-time only",
+    "live_catalog_decode": "25/25 decoded in 25 attempts; point-in-time only",
     "workflow_yaml": "parsed"
   },
   "a_b_test": {
@@ -30,7 +31,7 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_prior_head_run": 40745025999,
+    "latest_observed_prior_head_run": 40746359995,
     "conclusion": "startup_failure before jobs; empty combined status"
   },
   "remaining_gates": [
@@ -39,5 +40,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Observe CI for f11618e, then add persistent feed-health evidence and outage recovery/backoff without auto-removing stations."
+  "next_priority": "Observe CI after this retry increment, then design persistent feed-health evidence and longer outage recovery/backoff without auto-removing stations."
 }

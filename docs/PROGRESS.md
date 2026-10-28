@@ -33,6 +33,26 @@ Updated 2026-10-28. Active priorities and ownership are in the
   1,776 aggregate text pixels. This is a compact-layout measurement, not a
   listener preference test.
 
+## Current module pass: transient feed recovery
+
+- The first scheduled sweep had no retry window, so added one retry after a
+  one-second recovery delay for `Unavailable` results only. Permanent endpoint
+  rejection, unsupported formats, and cancellation are not retried. The sweep
+  remains bounded at four workers and at most two 18-second probes per station.
+- The JSON result now includes attempt count and whether the retry recovered.
+  Synthetic coverage proves a transient outage followed by decoded audio is
+  marked recovered, while a simulated 404 is attempted once and remains a
+  visible failure. Focused tests pass.
+- This improves short-outage tolerance without persisting health or admitting
+  stale results; persistent evidence/backoff remains the next implementation
+  step.
+- Final format, default/all-feature workspace tests, strict default/all-feature
+  Clippy and all-feature check pass after the retry change. A bounded live sweep
+  decoded 25/25 feeds in 25 attempts, so no retry was needed during that sample.
+- GitHub Actions run `40746359995` on the previous head failed at startup before
+  jobs; no current-head validation is available yet. Physical hardware and
+  persistence gates remain open.
+
 ## Current module pass: catalog mirror parity
 
 - The metadata implementation exposed a stale `catalog/curated-stations.json`
