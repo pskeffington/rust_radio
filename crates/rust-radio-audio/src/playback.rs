@@ -1541,13 +1541,13 @@ mod tests {
     }
 
     #[test]
-    fn output_loss_clears_stale_callback_progress_without_retrying() {
+    fn network_retry_detaches_old_output_before_terminal_output_loss() {
         let (controller, generation) = recovery_controller();
         let cancelled = AtomicBool::new(false);
         let progress = Arc::new(Mutex::new(None));
-        let old_callback_progress = begin_output_attempt(&progress);
-        old_callback_progress.store(1_024, Ordering::Release);
+        let mut callback_counters = Vec::new();
         let mut attempts = 0;
+        let mut waits = Vec::new();
 
         let error = recover_output_attempts(
             generation,
@@ -1556,16 +1556,41 @@ mod tests {
             &progress,
             || {
                 attempts += 1;
-                Err(PlaybackFailure::Output("Bluetooth output lost".into()))
+                if attempts == 1 {
+                    let old_callback_progress = begin_output_attempt(&progress);
+                    old_callback_progress.store(1_024, Ordering::Release);
+                    callback_counters.push(old_callback_progress);
+                    Err(PlaybackFailure::Network("stream disconnected".into()))
+                } else {
+                    assert!(
+                        progress.lock().unwrap().is_none(),
+                        "the prior output callback must be detached before reconnect"
+                    );
+                    let new_callback_progress = begin_output_attempt(&progress);
+                    new_callback_progress.store(2_048, Ordering::Release);
+                    callback_counters.push(new_callback_progress);
+                    Err(PlaybackFailure::Output("Bluetooth output lost".into()))
+                }
             },
-            |_| panic!("output loss must not wait for a network retry"),
+            |delay| {
+                assert!(
+                    progress.lock().unwrap().is_none(),
+                    "the old output callback must be detached before the retry wait"
+                );
+                waits.push(delay);
+                true
+            },
         )
         .unwrap_err();
 
         assert_eq!(error.class(), FailureClass::OutputUnavailable);
-        assert_eq!(attempts, 1);
+        assert_eq!(attempts, 2);
+        assert_eq!(waits, [Duration::from_secs(1)]);
         assert!(progress.lock().unwrap().is_none());
-        assert_eq!(old_callback_progress.load(Ordering::Acquire), 1_024);
+        assert_eq!(callback_counters.len(), 2);
+        assert_eq!(callback_counters[0].load(Ordering::Acquire), 1_024);
+        assert_eq!(callback_counters[1].load(Ordering::Acquire), 2_048);
+        assert!(!Arc::ptr_eq(&callback_counters[0], &callback_counters[1]));
     }
 
     #[test]
