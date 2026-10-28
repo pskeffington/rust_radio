@@ -6,11 +6,23 @@
 //! than doing a second, potentially rebound lookup.
 
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
+use std::fmt;
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 
 type ResolverError = Box<dyn std::error::Error + Send + Sync>;
+
+#[derive(Debug)]
+pub(crate) struct NonPublicAddressResolution;
+
+impl fmt::Display for NonPublicAddressResolution {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("radio host resolved to a non-public address")
+    }
+}
+
+impl std::error::Error for NonPublicAddressResolution {}
 
 #[derive(Debug)]
 pub(crate) struct SafeResolver;
@@ -39,10 +51,7 @@ impl Resolve for SafeResolver {
                 .iter()
                 .any(|address| !is_public_unicast(address.ip()))
             {
-                return Err(Box::new(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "radio host resolved to a non-public address",
-                )) as ResolverError);
+                return Err(Box::new(NonPublicAddressResolution) as ResolverError);
             }
             Ok(Box::new(addresses.into_iter()) as Addrs)
         })

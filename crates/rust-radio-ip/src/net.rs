@@ -2,7 +2,7 @@
 //! Network I/O runs outside the Symphonia worker and CPAL callback.
 
 use crate::error::TransportError;
-use crate::safe_dns::{is_public_unicast, SafeResolver};
+use crate::safe_dns::{is_public_unicast, NonPublicAddressResolution, SafeResolver};
 use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
@@ -393,11 +393,7 @@ async fn pump_input(
         )
         .await
         .map_err(|_| TransportError::Network("Radio connect/header timeout".to_owned()))?
-        .map_err(|_| {
-            TransportError::Network(
-                "Radio stream connection failed (check address and network)".into(),
-            )
-        })?;
+        .map_err(classify_connection_error)?;
         let status = response.status();
         if status.is_redirection() {
             let location = response
@@ -482,6 +478,26 @@ async fn pump_input(
         return pump_audio(response, content_type, cancelled, startup, audio).await;
     }
     Err("Radio exceeded redirect/playlist hop limit".into())
+}
+
+fn caused_by_non_public_resolution(mut error: &(dyn std::error::Error + 'static)) -> bool {
+    loop {
+        if error.downcast_ref::<NonPublicAddressResolution>().is_some() {
+            return true;
+        }
+        match error.source() {
+            Some(source) => error = source,
+            None => return false,
+        }
+    }
+}
+
+fn classify_connection_error(error: reqwest::Error) -> TransportError {
+    if caused_by_non_public_resolution(&error) {
+        TransportError::Permanent("Radio host resolved to a non-public address".into())
+    } else {
+        TransportError::Network("Radio stream connection failed (check address and network)".into())
+    }
 }
 
 // Each indirection is checked again. Public inputs cannot downgrade to HTTP;
@@ -575,6 +591,53 @@ async fn pump_audio(
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    struct FailingResolver {
+        non_public: bool,
+    }
+
+    impl reqwest::dns::Resolve for FailingResolver {
+        fn resolve(&self, _name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+            let error: Box<dyn std::error::Error + Send + Sync> = if self.non_public {
+                Box::new(NonPublicAddressResolution)
+            } else {
+                Box::new(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "synthetic temporary DNS timeout",
+                ))
+            };
+            Box::pin(async move { Err(error) })
+        }
+    }
+
+    #[test]
+    fn non_public_dns_rejection_is_permanent_but_resolver_timeout_is_transient() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let request_error = |non_public| {
+            let client = reqwest::Client::builder()
+                .dns_resolver(Arc::new(FailingResolver { non_public }))
+                .build()
+                .unwrap();
+            runtime
+                .block_on(client.get("https://radio.example/audio").send())
+                .unwrap_err()
+        };
+
+        assert!(matches!(
+            classify_connection_error(request_error(true)),
+            TransportError::Permanent(message)
+                if message == "Radio host resolved to a non-public address"
+        ));
+        assert!(matches!(
+            classify_connection_error(request_error(false)),
+            TransportError::Network(message)
+                if message == "Radio stream connection failed (check address and network)"
+        ));
+    }
 
     #[test]
     fn startup_budget_rejects_even_buffered_bytes_until_pcm_is_decoded() {
