@@ -1,6 +1,6 @@
 {
-  "updated_at_utc": "2026-10-28T22:37:52Z",
-  "status": "in_progress",
+  "updated_at_utc": "2026-10-28T22:42:00Z",
+  "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "2936b844d894ea9deb3e40241c58ffe88a86af88; Windows GNU test binaries compiled; A/B rerun passed",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
@@ -100,7 +100,8 @@
     "added Windows MSVC CI job for default workspace, SDRconnect, and direct nRSP-native feature configurations; locally cross-checked all three with x86_64-pc-windows-gnu",
     "added three strict Clippy steps to the Windows MSVC job after equivalent Windows GNU checks passed for default, SDRconnect and direct nRSP-native configurations",
     "compiled Windows GNU test binaries without executing them for default, SDRconnect and direct nRSP-native workspace configurations; configured native MSVC Actions test suites for all three",
-    "re-ran station label A/B/C comparison at 22:37 UTC against all 25 catalog entries; same measured fit and compact-width result"
+    "re-ran station label A/B/C comparison at 22:37 UTC against all 25 catalog entries; same measured fit and compact-width result",
+    "Bounded interactive CLI stdin commands to 4096 bytes and eight queued commands; oversized lines are drained and later commands remain usable."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -121,11 +122,11 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "passed: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features",
-    "latest_code_head_ci": "PR #5 head 820e048 Actions run 40779950490 (run 241) startup_failure before job creation; combined status empty; the newly added Windows workflow job awaits healthy runner execution",
+    "latest_full_gate_run": "passed on current source: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked. Loopback tests required temporary elevated socket permission; existing manual native audio tests remain ignored.",
+    "latest_code_head_ci": "PR #5 head 94aa9c2837ebe0d5d09df0649a3487736b3bb48a Actions run 40781482032 (run 245) startup_failure before job creation; checks/statuses empty; Windows MSVC job unverified",
     "live_catalog_revalidation": "2026-10-28T22:25:38Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no failures; point-in-time decoder evidence only",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
-    "layout_ab_recheck": "rerun 2026-10-28 22:37 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; `wcrb` is only A overflow; layout fit only",
+    "layout_ab_recheck": "passed at 2026-10-28 22:40 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; fit-only measurement, no listener preference data",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -165,7 +166,8 @@
     "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
     "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
     "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed Cargo check, strict Clippy, and cargo test --no-run with Cargo.lock for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native workspace configurations on x86_64-pc-windows-gnu; binaries compiled and listed, not executed"
+    "windows_gnu_cross_check": "passed Cargo check, strict Clippy, and cargo test --no-run with Cargo.lock for default, rust-radio-cli/sdrconnect, and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native workspace configurations on x86_64-pc-windows-gnu; binaries compiled and listed, not executed",
+    "interactive_cli_input_bound": "passed focused regression: rejects a 4097-byte line, accepts a 4096-byte line, handles CRLF and reads subsequent commands"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -194,5 +196,5 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Verify native Windows MSVC test, compile and Clippy jobs when Actions runner starts; then continue physical output/Pi/receiver acceptance and publisher distribution rights."
+  "next_priority": "Exercise physical output loss/recovery, Pi display/audio/touch and receiver/USB acceptance; complete distribution-rights review; rerun native Windows MSVC workflow after GitHub runner startup recovers."
 }

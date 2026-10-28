@@ -45,6 +45,8 @@ fn usage() {
 
 const VALIDATION_WORKERS: usize = 4;
 const VALIDATION_RECOVERY_DELAY: Duration = Duration::from_secs(1);
+const INTERACTIVE_COMMAND_MAX_BYTES: usize = 4096;
+const INTERACTIVE_COMMAND_QUEUE: usize = 8;
 type CatalogValidationResult = Result<StationValidation, String>;
 struct CatalogValidationRecord {
     station_id: String,
@@ -292,16 +294,22 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
 
 fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), String> {
     // A separate stdin reader lets the main thread monitor duration and playback failures.
-    let (tx, rx) = mpsc::channel::<String>();
+    let (tx, rx) = mpsc::sync_channel::<String>(INTERACTIVE_COMMAND_QUEUE);
     if seconds.is_none() {
         println!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
         thread::spawn(move || {
-            for line in io::stdin().lock().lines() {
-                match line {
-                    Ok(command) => {
+            let stdin = io::stdin();
+            let mut input = stdin.lock();
+            loop {
+                match read_interactive_command(&mut input, INTERACTIVE_COMMAND_MAX_BYTES) {
+                    Ok(Some(command)) => {
                         if tx.send(command).is_err() {
                             break;
                         }
+                    }
+                    Ok(None) => break,
+                    Err(error) if error.kind() == io::ErrorKind::InvalidData => {
+                        eprintln!("Interactive command ignored: line exceeds {INTERACTIVE_COMMAND_MAX_BYTES} bytes");
                     }
                     Err(_) => break,
                 }
@@ -424,6 +432,68 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
     engine.stop();
     println!("RUST RADIO / STOPPED");
     result
+}
+
+/// Read one bounded command without allowing a long line or a fast producer to
+/// grow the interactive CLI's memory use without limit. Oversized lines are
+/// drained through their newline so the next command can still be processed.
+fn read_interactive_command<R: BufRead>(
+    reader: &mut R,
+    max_bytes: usize,
+) -> io::Result<Option<String>> {
+    let mut command = Vec::with_capacity(max_bytes.min(256));
+    let mut saw_input = false;
+    let mut oversized = false;
+    loop {
+        let (consumed, newline, eof) = {
+            let available = reader.fill_buf()?;
+            if available.is_empty() {
+                (0, false, true)
+            } else {
+                saw_input = true;
+                let newline = available.contains(&b'\n');
+                let consumed = available
+                    .iter()
+                    .position(|byte| *byte == b'\n')
+                    .map_or(available.len(), |index| index + 1);
+                let content_len = consumed - usize::from(newline);
+                if !oversized {
+                    if command.len().saturating_add(content_len) <= max_bytes {
+                        command.extend_from_slice(&available[..content_len]);
+                    } else {
+                        oversized = true;
+                    }
+                }
+                (consumed, newline, false)
+            }
+        };
+        if eof {
+            if !saw_input {
+                return Ok(None);
+            }
+            if oversized {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "interactive command is too long",
+                ));
+            }
+            break;
+        }
+        reader.consume(consumed);
+        if newline {
+            if oversized {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "interactive command is too long",
+                ));
+            }
+            break;
+        }
+    }
+    if command.last() == Some(&b'\r') {
+        command.pop();
+    }
+    Ok(Some(String::from_utf8_lossy(&command).into_owned()))
 }
 
 fn run(args: &[String]) -> Result<(), String> {
@@ -558,6 +628,24 @@ mod tests {
 
     fn options(raw: &[&str]) -> Vec<String> {
         raw.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn interactive_input_bounds_lines_and_recovers_after_oversized_input() {
+        let input = format!("{}\n{}\nok\r\n", "x".repeat(4097), "y".repeat(4096));
+        let mut reader = io::Cursor::new(input.into_bytes());
+
+        let error = read_interactive_command(&mut reader, 4096).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        assert_eq!(
+            read_interactive_command(&mut reader, 4096).unwrap(),
+            Some("y".repeat(4096))
+        );
+        assert_eq!(
+            read_interactive_command(&mut reader, 4096).unwrap(),
+            Some("ok".into())
+        );
+        assert_eq!(read_interactive_command(&mut reader, 4096).unwrap(), None);
     }
 
     #[test]

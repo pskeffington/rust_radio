@@ -3,6 +3,27 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Bounded interactive CLI input (2026-10-28 22:42 UTC)
+
+- Interactive `listen` previously used `stdin.lines()` and an unbounded channel;
+  a huge line or rapid piped command stream could grow memory without limit.
+- Each command is now limited to 4 KiB and the reader-to-monitor queue holds at
+  most eight commands. An overlong line is drained and reported, and later
+  commands remain usable.
+- Focused regression passed for oversized-line rejection, exact-limit command
+  acceptance, CRLF handling and recovery to a following command. Full default
+  and all-feature workspace tests passed, along with format, both strict
+  Clippy gates and all-feature check. Loopback fixtures needed temporary
+  elevated socket permission; one existing native audio test remains ignored.
+- Station-label fit A/B/C repeated on all 25 entries: 24/25 full-category
+  labels vs 25/25 names-only and compact labels at 295 px; all fit at 340 px.
+  This measures fit only, not listener preference.
+- The local branch is cleanly based on `main` and 21 commits ahead. PR #5 is
+  open and mergeable; latest Actions run 245 ended in `startup_failure` before
+  any job started, leaving remote CI and native MSVC execution unverified.
+- Next: complete physical output, Pi, receiver and USB acceptance; review
+  distribution rights; rerun native Windows CI when Actions starts jobs.
+
 ## Windows test-binary and station-label recheck (2026-10-28 22:37 UTC)
 
 - Local Windows GNU `cargo test --workspace --locked --no-run` passed for default, SDRconnect and direct nRSP-native workspace feature configurations. All workspace, GUI, CLI, receiver and integration-test executables linked successfully, but they were not run. The native Windows MSVC job now runs those three suites.
