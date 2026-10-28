@@ -382,14 +382,13 @@ impl NativeRadioEngine {
                     #[cfg(feature = "nrsp-native")]
                     PlaybackSource::NrspNative(endpoint, _, _) => {
                         let control = worker_native.as_ref().expect("native controls present");
-                        let mut reconnecting = false;
-                        recover_attempts(
+                        recover_nrsp_attempts(
                             generation,
                             &worker_controller,
                             &worker_cancelled,
-                            || {
-                                let (config, fm) = control.desired_settings();
-                                let result = nrsp_native::play(
+                            control,
+                            |config, fm, reconnecting| {
+                                nrsp_native::play(
                                     (endpoint, config, fm),
                                     PlaybackContext {
                                         generation,
@@ -401,15 +400,9 @@ impl NativeRadioEngine {
                                     },
                                     control,
                                     reconnecting,
-                                );
-                                if let Err(error) = &result {
-                                    if matches!(error, PlaybackFailure::Network(_)) {
-                                        reconnecting = true;
-                                    }
-                                    clear_output_attempt(&worker_output_progress);
-                                }
-                                result
+                                )
                             },
+                            || clear_output_attempt(&worker_output_progress),
                             |delay| interruptible_wait(&worker_cancelled, delay),
                         )
                     }
@@ -763,6 +756,40 @@ fn recover_attempts(
             RecoveryAction::SelectOutput | RecoveryAction::Fail => return Err(error),
         }
     }
+}
+
+#[cfg(feature = "nrsp-native")]
+fn recover_nrsp_attempts(
+    generation: u64,
+    controller: &Arc<Mutex<RadioController>>,
+    cancelled: &AtomicBool,
+    control: &nrsp_native::Control,
+    mut attempt: impl FnMut(
+        rust_radio_sdr::nrsp_native::Config,
+        Option<NativeFmSettings>,
+        bool,
+    ) -> Result<(), PlaybackFailure>,
+    mut clear_output: impl FnMut(),
+    wait: impl FnMut(Duration) -> bool,
+) -> Result<(), PlaybackFailure> {
+    let mut reconnecting = false;
+    recover_attempts(
+        generation,
+        controller,
+        cancelled,
+        || {
+            let (config, fm) = control.desired_settings();
+            let result = attempt(config, fm, reconnecting);
+            if let Err(error) = &result {
+                if matches!(error, PlaybackFailure::Network(_)) {
+                    reconnecting = true;
+                }
+                clear_output();
+            }
+            result
+        },
+        wait,
+    )
 }
 
 fn interruptible_wait(cancelled: &AtomicBool, delay: Duration) -> bool {
@@ -1195,6 +1222,54 @@ mod tests {
             .class(),
             FailureClass::OutputUnavailable
         );
+    }
+
+    #[cfg(feature = "nrsp-native")]
+    #[test]
+    fn nrsp_reconnect_fixture_retries_with_latest_tuning_and_fm_settings() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let initial =
+            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
+                .unwrap();
+        let control = nrsp_native::Control::new(initial, None);
+        let requested =
+            rust_radio_sdr::nrsp_native::Config::new(99_200_000, NativeNrspMode::Wfm, 180_000)
+                .unwrap();
+        let fm = NativeFmSettings::default();
+        let mut calls = Vec::new();
+        let mut waits = Vec::new();
+        let mut output_attempts_cleared = 0;
+        let mut attempt_count = 0;
+
+        let result = recover_nrsp_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            &control,
+            |config, settings, reconnecting| {
+                calls.push((config, settings, reconnecting));
+                attempt_count += 1;
+                if attempt_count == 1 {
+                    control.set_desired_config(requested);
+                    control.set_desired_fm(fm);
+                    Err(PlaybackFailure::Network("receiver stream timed out".into()))
+                } else {
+                    Ok(())
+                }
+            },
+            || output_attempts_cleared += 1,
+            |delay| {
+                waits.push(delay);
+                true
+            },
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(attempt_count, 2);
+        assert_eq!(output_attempts_cleared, 1);
+        assert_eq!(waits, [Duration::from_secs(1)]);
+        assert_eq!(calls, [(initial, None, false), (requested, Some(fm), true)]);
     }
 
     fn completed_test_engine(panics: bool) -> NativeRadioEngine {
