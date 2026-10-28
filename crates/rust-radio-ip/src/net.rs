@@ -6,8 +6,9 @@ use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::stream::{
-    icy_interval, parse_playlist, playlist_format, ApprovedEndpoint, IcyAudioReader,
-    PlaylistFormat, StreamError, MAX_PLAYLIST_BYTES, MAX_REQUEST_HOPS,
+    icy_interval, parse_m3u_with, parse_playlist, parse_pls_with, playlist_format,
+    ApprovedEndpoint, IcyAudioReader, PlaylistFormat, StreamError, MAX_PLAYLIST_BYTES,
+    MAX_REQUEST_HOPS,
 };
 use std::future::Future;
 use std::io::{self, Read};
@@ -41,6 +42,7 @@ pub struct ChunkReader {
     cancelled: Arc<AtomicBool>,
     stopped: Arc<AtomicBool>,
     error: Arc<Mutex<Option<String>>>,
+    startup: StartupDeadline,
 }
 
 impl Read for ChunkReader {
@@ -49,6 +51,14 @@ impl Read for ChunkReader {
             return Ok(0);
         }
         loop {
+            if !self.startup.complete.load(Ordering::Acquire)
+                && Instant::now() >= self.startup.until
+            {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "No decoded audio within 35 seconds",
+                ));
+            }
             if self.cancelled.load(Ordering::Acquire) || self.stopped.load(Ordering::Acquire) {
                 // read_exact retries Interrupted, which can spin forever while
                 // parsing an ICY metadata block after Stop.
@@ -93,9 +103,22 @@ impl Drop for ChunkReader {
     }
 }
 
+/// Shared startup budget. The decoder completes it only after valid PCM exists.
+#[derive(Clone)]
+pub struct StartupDeadline {
+    until: Instant,
+    complete: Arc<AtomicBool>,
+}
+impl StartupDeadline {
+    pub fn decoded(&self) {
+        self.complete.store(true, Ordering::Release);
+    }
+}
+
 pub struct RadioInput {
     pub reader: IcyAudioReader<ChunkReader>,
     pub content_type: Option<String>,
+    pub startup: StartupDeadline,
 }
 
 /// Dropping the guard cancels this connection before joining its worker, even
@@ -187,7 +210,7 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
     }
 }
 
-/// Start an explicitly entered direct audio stream. URLs are not persisted.
+/// Start an explicitly entered audio stream or bounded M3U/PLS playlist.
 pub fn open_direct_classified(
     url: &str,
     cancelled: Arc<AtomicBool>,
@@ -234,13 +257,7 @@ fn open_input(
                 })
                 .and_then(|runtime| {
                     runtime.block_on(until_cancelled(
-                        async {
-                            if direct {
-                                pump_direct(&id, &worker_cancel, &startup_tx, &audio_tx).await
-                            } else {
-                                pump_station(&id, &worker_cancel, &startup_tx, &audio_tx).await
-                            }
-                        },
+                        pump_input(&id, direct, &worker_cancel, &startup_tx, &audio_tx),
                         &worker_cancel,
                         &worker_stopped,
                     ))
@@ -261,6 +278,10 @@ fn open_input(
     };
 
     let start = Instant::now();
+    let startup = StartupDeadline {
+        until: start + STARTUP_DEADLINE,
+        complete: Arc::new(AtomicBool::new(false)),
+    };
     let headers = loop {
         if cancelled.load(Ordering::Acquire) {
             return Err(TransportError::Cancelled);
@@ -275,9 +296,11 @@ fn open_input(
             Ok(Err(reason)) => return Err(reason),
             Err(RecvTimeoutError::Timeout) => continue,
             Err(RecvTimeoutError::Disconnected) => {
-                return Err(TransportError::Network(
-                    "Radio receiver stopped before HTTP response".into(),
-                ));
+                return Err(if cancelled.load(Ordering::Acquire) {
+                    TransportError::Cancelled
+                } else {
+                    TransportError::Network("Radio receiver stopped before HTTP response".into())
+                });
             }
         }
     };
@@ -288,33 +311,41 @@ fn open_input(
         cancelled,
         stopped,
         error,
+        startup: startup.clone(),
     };
     Ok((
         RadioInput {
             reader: IcyAudioReader::new(reader, headers.icy_interval),
             content_type: headers.content_type,
+            startup,
         },
         guard,
     ))
 }
 
-async fn pump_station(
+async fn pump_input(
     station_id: &str,
+    direct: bool,
     cancelled: &AtomicBool,
     startup: &SyncSender<Result<StreamHeaders, TransportError>>,
     audio: &SyncSender<Vec<u8>>,
 ) -> Result<(), TransportError> {
-    let broadcaster = station_by_id(station_id).ok_or("Unknown station")?;
-    let mut next = ApprovedEndpoint::new(station_id, broadcaster.playlist_url)
-        .map_err(|e| format!("Stream URL rejected: {e}"))?;
+    let initial = if direct {
+        station_id
+    } else {
+        station_by_id(station_id)
+            .ok_or("Unknown station")?
+            .playlist_url
+    };
+    let mut next = reqwest::Url::parse(initial).map_err(|_| "Invalid stream URL")?;
+    check_hop(initial, &next, direct, station_id)?;
     let client = reqwest::Client::builder()
-        .https_only(true)
         .redirect(Policy::none())
         .no_proxy()
         .connect_timeout(Duration::from_secs(5))
-        .user_agent("Rust-Boy-RADIO/0.1 (native audio)")
+        .user_agent("Rust-Radio/0.1 (native audio)")
         .build()
-        .map_err(|e| format!("Cannot initialize native TLS client: {e}"))?;
+        .map_err(|_| "Cannot initialize radio HTTP client")?;
     let mut playlist_seen = false;
 
     for _ in 0..MAX_REQUEST_HOPS {
@@ -323,11 +354,15 @@ async fn pump_station(
         }
         let mut response = timeout(
             CONNECT_DEADLINE,
-            client.get(next.url()).header("Icy-MetaData", "1").send(),
+            client.get(next.clone()).header("Icy-MetaData", "1").send(),
         )
         .await
         .map_err(|_| TransportError::Network("Radio connect/header timeout".to_owned()))?
-        .map_err(|e| TransportError::Network(format!("Radio HTTPS connection failed: {e}")))?;
+        .map_err(|_| {
+            TransportError::Network(
+                "Radio stream connection failed (check address and network)".into(),
+            )
+        })?;
         let status = response.status();
         if status.is_redirection() {
             let location = response
@@ -336,8 +371,9 @@ async fn pump_station(
                 .ok_or("Radio redirected without a Location header")?
                 .to_str()
                 .map_err(|_| "Radio redirect had an invalid Location header")?;
-            next = ApprovedEndpoint::new(station_id, location)
-                .map_err(|e| format!("Radio redirect rejected: {e}"))?;
+            let resolved = next.join(location).map_err(|_| "Invalid redirect URL")?;
+            check_hop(initial, &resolved, direct, station_id)?;
+            next = resolved;
             continue;
         }
         if !status.is_success() {
@@ -357,7 +393,7 @@ async fn pump_station(
             .unwrap_or("")
             .trim()
             .to_ascii_lowercase();
-        if let Some(format) = playlist_format(next.url(), content_type.as_deref()) {
+        if let Some(format) = playlist_format(next.as_str(), content_type.as_deref()) {
             if format == PlaylistFormat::Hls {
                 return Err(TransportError::Permanent(
                     StreamError::UnsupportedHls.to_string(),
@@ -372,20 +408,35 @@ async fn pump_station(
                 let part = timeout(READ_DEADLINE, response.chunk())
                     .await
                     .map_err(|_| TransportError::Network("Radio playlist read timed out".into()))?
-                    .map_err(|e| {
-                        TransportError::Network(format!("Radio playlist read failed: {e}"))
-                    })?;
+                    .map_err(|_| TransportError::Network("Radio playlist read failed".into()))?;
                 let Some(bytes) = part else { break };
                 if document.len().saturating_add(bytes.len()) > MAX_PLAYLIST_BYTES {
                     return Err("Radio playlist exceeds 16 KiB".into());
                 }
                 document.extend_from_slice(&bytes);
             }
-            next = parse_playlist(station_id, &document, format)
-                .map_err(|e| format!("Radio playlist rejected: {e}"))?
-                .into_iter()
-                .next()
-                .ok_or("Radio playlist contains no stream endpoints")?;
+            next = if direct {
+                let resolve = |entry: &str| {
+                    let url = next.join(entry).map_err(|_| StreamError::InvalidPlaylist)?;
+                    check_hop(initial, &url, true, station_id)
+                        .map_err(|_| StreamError::UnsafeEndpoint)?;
+                    Ok(url)
+                };
+                let entries = match format {
+                    PlaylistFormat::M3u => parse_m3u_with(&document, resolve),
+                    PlaylistFormat::Pls => parse_pls_with(&document, resolve),
+                    PlaylistFormat::Hls => unreachable!(),
+                }
+                .map_err(|e| format!("Radio playlist rejected: {e}"))?;
+                entries.into_iter().next().ok_or("Empty radio playlist")?
+            } else {
+                let endpoint = parse_playlist(station_id, &document, format)
+                    .map_err(|e| format!("Radio playlist rejected: {e}"))?
+                    .into_iter()
+                    .next()
+                    .ok_or("Empty radio playlist")?;
+                reqwest::Url::parse(endpoint.url()).map_err(|_| "Invalid playlist URL")?
+            };
             continue;
         }
         if !mime.starts_with("audio/") && mime != "application/octet-stream" {
@@ -398,52 +449,24 @@ async fn pump_station(
     Err("Radio exceeded redirect/playlist hop limit".into())
 }
 
-async fn pump_direct(
-    url: &str,
-    cancelled: &AtomicBool,
-    startup: &SyncSender<Result<StreamHeaders, TransportError>>,
-    audio: &SyncSender<Vec<u8>>,
-) -> Result<(), TransportError> {
-    let client = reqwest::Client::builder()
-        .redirect(Policy::none())
-        .no_proxy()
-        .connect_timeout(Duration::from_secs(5))
-        .build()
-        .map_err(|_| "Cannot initialize radio HTTP client")?;
-    let response = timeout(
-        CONNECT_DEADLINE,
-        client.get(url).header("Icy-MetaData", "1").send(),
-    )
-    .await
-    .map_err(|_| TransportError::Network("Radio connect/header timeout".into()))?
-    .map_err(|_| TransportError::Network("Radio stream connection failed".into()))?;
-    if response.status().is_redirection() {
-        return Err("Direct stream redirects are not supported".into());
+// Each indirection is checked again. Public inputs cannot downgrade to HTTP;
+// explicitly entered LAN HTTP inputs may redirect to another private IPv4 URL.
+fn check_hop(
+    initial: &str,
+    next: &reqwest::Url,
+    direct: bool,
+    station: &str,
+) -> Result<(), String> {
+    if direct {
+        validate_direct_url(next.as_str())?;
+        if initial.starts_with("https:") && next.scheme() != "https" {
+            return Err("Radio redirect cannot downgrade HTTPS to HTTP".into());
+        }
+    } else {
+        ApprovedEndpoint::new(station, next.as_str())
+            .map_err(|_| "Radio redirect is outside the broadcaster's approved endpoints")?;
     }
-    if !response.status().is_success() {
-        return Err(TransportError::http_status(response.status()));
-    }
-    let content_type = response
-        .headers()
-        .get(CONTENT_TYPE)
-        .map(|v| v.to_str().map(str::to_owned))
-        .transpose()
-        .map_err(|_| "Invalid radio content-type header")?;
-    if playlist_format(url, content_type.as_deref()).is_some() {
-        return Err("Enter a direct audio stream URL, not a playlist".into());
-    }
-    let mime = content_type
-        .as_deref()
-        .unwrap_or("")
-        .split(';')
-        .next()
-        .unwrap_or("")
-        .trim()
-        .to_ascii_lowercase();
-    if !mime.starts_with("audio/") && mime != "application/octet-stream" {
-        return Err("Server did not return an audio stream".into());
-    }
-    pump_audio(response, content_type, cancelled, startup, audio).await
+    Ok(())
 }
 
 async fn pump_audio(
@@ -493,6 +516,44 @@ mod tests {
     use std::io::Cursor;
 
     #[test]
+    fn startup_budget_rejects_even_buffered_bytes_until_pcm_is_decoded() {
+        let mut reader = test_reader(vec![1, 2, 3]);
+        reader.startup.until = Instant::now();
+        assert_eq!(
+            reader.read(&mut [0; 1]).unwrap_err().kind(),
+            io::ErrorKind::TimedOut
+        );
+        reader.startup.decoded();
+        let mut byte = [0];
+        assert_eq!(reader.read(&mut byte).unwrap(), 1);
+        assert_eq!(byte, [1]);
+    }
+
+    #[test]
+    fn redirect_policy_rechecks_credentials_and_blocks_https_downgrades() {
+        for url in [
+            "http://127.0.0.1/audio",
+            "https://user:secret@example.com/audio",
+            "file:///tmp/radio",
+        ] {
+            assert!(check_hop(
+                "https://example.com/start",
+                &reqwest::Url::parse(url).unwrap(),
+                true,
+                ""
+            )
+            .is_err());
+        }
+        assert!(check_hop(
+            "http://192.168.1.12/listen",
+            &reqwest::Url::parse("http://192.168.1.13/audio").unwrap(),
+            true,
+            ""
+        )
+        .is_ok());
+    }
+
+    #[test]
     fn direct_urls_require_explicit_safe_schemes_and_no_credentials() {
         for url in [
             "https://example.com/live?token=abc",
@@ -510,39 +571,6 @@ mod tests {
             "not a url",
         ] {
             assert!(validate_direct_url(url).is_err());
-        }
-    }
-
-    #[test]
-    fn direct_loopback_stream_delivers_audio_and_refuses_redirects() {
-        use std::io::{Read, Write};
-        use std::net::TcpListener;
-        for redirect in [false, true] {
-            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-            let address = listener.local_addr().unwrap();
-            let server = thread::spawn(move || {
-                let (mut socket, _) = listener.accept().unwrap();
-                let mut request = [0; 1024];
-                assert!(socket.read(&mut request).unwrap() > 0);
-                if redirect {
-                    socket.write_all(b"HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:9/\r\nContent-Length: 0\r\n\r\n").unwrap();
-                } else {
-                    socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nicy-metaint: 0\r\nContent-Length: 4\r\n\r\nTEST").unwrap();
-                }
-            });
-            let result = open_direct_classified(
-                &format!("http://{address}/audio"),
-                Arc::new(AtomicBool::new(false)),
-            );
-            if redirect {
-                assert!(matches!(result, Err(TransportError::Permanent(_))));
-            } else {
-                let (mut input, _guard) = result.unwrap();
-                let mut bytes = [0; 4];
-                input.reader.read_exact(&mut bytes).unwrap();
-                assert_eq!(&bytes, b"TEST");
-            }
-            server.join().unwrap();
         }
     }
 
@@ -727,6 +755,10 @@ mod tests {
             cancelled: Arc::new(AtomicBool::new(false)),
             stopped: Arc::new(AtomicBool::new(false)),
             error: Arc::new(Mutex::new(None)),
+            startup: StartupDeadline {
+                until: Instant::now() + STARTUP_DEADLINE,
+                complete: Arc::new(AtomicBool::new(false)),
+            },
         }
     }
 

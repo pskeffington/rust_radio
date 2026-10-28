@@ -16,7 +16,10 @@ mod native_settings;
 use inputs::Segment;
 use rust_radio_audio::discovery::{InputReport, InputScan};
 use std::time::Instant;
+mod ip_settings;
+mod ip_stations;
 mod settings;
+mod station_menu;
 mod theme;
 mod view;
 
@@ -34,6 +37,14 @@ pub struct RadioPanel {
     station_index: usize,
     direct_selected: bool,
     direct_url: String,
+    ip_stations: Vec<ip_stations::SavedStation>,
+    saved_station_index: Option<usize>,
+    ip_station_name: String,
+    ip_stations_dirty: bool,
+    restart_pending: bool,
+    selection_check_pending: Option<Instant>,
+    validation_selection: Option<String>,
+    direct_validation: Option<StationValidation>,
     #[cfg(feature = "nrsp-native")]
     native_selected: bool,
     #[cfg(feature = "nrsp-native")]
@@ -90,6 +101,14 @@ impl Default for RadioPanel {
             station_index: 0,
             direct_selected: false,
             direct_url: String::new(),
+            ip_stations: Vec::new(),
+            saved_station_index: None,
+            ip_station_name: String::new(),
+            ip_stations_dirty: false,
+            restart_pending: false,
+            selection_check_pending: None,
+            validation_selection: None,
+            direct_validation: None,
             #[cfg(feature = "nrsp-native")]
             native_selected: false,
             #[cfg(feature = "nrsp-native")]
@@ -144,6 +163,8 @@ impl RadioPanel {
     /// Begin cancellation without blocking the host UI. Keep rendering the panel
     /// (or call `poll_shutdown`) until `is_active` becomes false before dismounting.
     pub fn stop(&mut self) {
+        self.restart_pending = false;
+        self.selection_check_pending = None;
         if let Some(scan) = &self.input_scan {
             scan.cancel();
             self.last_scan = Some(Instant::now());
@@ -186,9 +207,26 @@ impl RadioPanel {
         if let Some(task) = self.validation.as_mut() {
             if let Some(result) = task.try_finish() {
                 self.validation = None;
+                self.validation_selection = None;
+                if let Ok(report) = &result {
+                    if !matches!(
+                        report.status,
+                        ValidationStatus::Decoded | ValidationStatus::Cancelled
+                    ) {
+                        self.last_session = Some(RadioSession {
+                            state: rust_radio_audio::compat_controller::PlaybackState::Failed,
+                            last_error: Some(report.detail.clone()),
+                            ..Default::default()
+                        });
+                    }
+                }
                 match result {
                     Ok(report) if report.status == ValidationStatus::Cancelled => {
                         self.note = "STATION CHECK CANCELLED".into();
+                    }
+                    Ok(report) if report.station_id == "custom" => {
+                        self.note = report.detail.clone();
+                        self.direct_validation = Some(report);
                     }
                     Ok(report) => match station_by_id(&report.station_id) {
                         Some(station) => {
@@ -202,15 +240,43 @@ impl RadioPanel {
                 }
             }
         }
+        if self.engine.is_none() && self.validation.is_none() && self.input_scan.is_none() {
+            if self.restart_pending {
+                self.restart_pending = false;
+                self.stopping = false;
+                self.play();
+            } else if self
+                .selection_check_pending
+                .is_some_and(|at| Instant::now() >= at)
+            {
+                self.selection_check_pending = None;
+                self.check_ip_selection();
+            }
+        }
         !self.is_active()
     }
 
     pub fn is_active(&self) -> bool {
-        self.engine.is_some() || self.validation.is_some() || self.input_scan.is_some()
+        self.engine.is_some()
+            || self.validation.is_some()
+            || self.input_scan.is_some()
+            || self.restart_pending
     }
 
     fn play(&mut self) {
-        if self.is_active() {
+        self.selection_check_pending = None;
+        if self.engine.is_some() || self.restart_pending {
+            return;
+        }
+        if self.validation.is_some() || self.input_scan.is_some() {
+            if let Some(task) = &self.validation {
+                task.request_cancel();
+            }
+            if let Some(scan) = &self.input_scan {
+                scan.cancel();
+            }
+            self.restart_pending = true;
+            self.note = "CONNECTING / RELEASING PREVIOUS CHECK".into();
             return;
         }
         match self.start_selected() {
@@ -220,7 +286,11 @@ impl RadioPanel {
                 self.note = "CONNECTING / NATIVE AUDIO".into();
             }
             Err(error) => {
-                self.last_session = None;
+                self.last_session = Some(RadioSession {
+                    state: rust_radio_audio::compat_controller::PlaybackState::Failed,
+                    last_error: Some(error.clone()),
+                    ..Default::default()
+                });
                 self.note = error;
             }
         }
@@ -232,10 +302,7 @@ impl RadioPanel {
         }
         #[cfg(feature = "nrsp-native")]
         if self.native_selected {
-            let frequency = self
-                .native_frequency
-                .parse()
-                .map_err(|_| "Enter a frequency in Hz")?;
+            let frequency = fm_presets::frequency_hz(&self.native_frequency)?;
             let bandwidth = self
                 .native_bandwidth
                 .parse()
@@ -320,6 +387,63 @@ impl RadioPanel {
         };
     }
 
+    fn ip_target(&self) -> &str {
+        if self.direct_selected {
+            &self.direct_url
+        } else {
+            self.selected_station().id
+        }
+    }
+
+    fn check_ip_selection(&mut self) {
+        if self.segment != Segment::Ip || self.engine.is_some() || self.validation.is_some() {
+            return;
+        }
+        let target = self.ip_target().to_owned();
+        match StationValidationTask::start_input(&target, self.direct_selected) {
+            Ok(task) => {
+                self.validation_selection = Some(target);
+                self.validation = Some(task);
+                self.note = "CONNECTING / CHECKING SELECTED STREAM SILENTLY".into();
+            }
+            Err(error) => {
+                self.last_session = Some(RadioSession {
+                    state: rust_radio_audio::compat_controller::PlaybackState::Failed,
+                    last_error: Some(error.clone()),
+                    ..Default::default()
+                });
+                self.note = error;
+            }
+        }
+    }
+
+    fn ip_selection_changed(&mut self) {
+        self.last_session = None;
+        self.direct_validation = None;
+        self.restart_ip_if_active();
+        if !self.restart_pending {
+            self.selection_check_pending =
+                Some(Instant::now() + std::time::Duration::from_millis(250));
+            self.note = "SELECTED / WAITING TO CHECK STREAM".into();
+        }
+    }
+
+    fn restart_ip_if_active(&mut self) {
+        if self.segment != Segment::Ip {
+            return;
+        }
+        if let Some(engine) = &self.engine {
+            engine.request_stop();
+            self.restart_pending = true;
+            self.stopping = true;
+            self.note = "CONNECTING / SWITCHING STATION".into();
+        }
+        if let Some(task) = &self.validation {
+            task.request_cancel();
+        }
+    }
+
+    #[cfg(test)]
     fn start_validation(&mut self) {
         if self.is_active()
             || self.segment != Segment::Ip
@@ -330,6 +454,7 @@ impl RadioPanel {
         }
         match StationValidationTask::start(self.selected_station().id) {
             Ok(task) => {
+                self.validation_selection = Some(self.selected_station().id.into());
                 self.validation = Some(task);
                 self.note = "CHECKING STATION / NO AUDIO OUTPUT".into();
             }
@@ -339,10 +464,13 @@ impl RadioPanel {
 
     fn cancel_stale_validation(&mut self) {
         if let Some(task) = &self.validation {
+            let target = self
+                .validation_selection
+                .as_deref()
+                .unwrap_or_else(|| task.station_id());
             if self.segment != Segment::Ip
                 || self.is_receiver_selected()
-                || self.direct_selected
-                || task.station_id() != self.selected_station().id
+                || target != self.ip_target()
             {
                 task.request_cancel();
             }
@@ -416,6 +544,7 @@ impl RadioPanel {
     }
 
     fn select_source(&mut self, index: usize) {
+        let previous = self.source_index();
         self.source_user_selected = true;
         #[cfg(feature = "nrsp-native")]
         {
@@ -449,6 +578,9 @@ impl RadioPanel {
             Segment::Ip
         };
         self.cancel_stale_validation();
+        if self.segment == Segment::Ip && previous != index {
+            self.restart_ip_if_active();
+        }
     }
 
     fn is_usb_selected(&self) -> bool {
@@ -533,7 +665,11 @@ impl RadioPanel {
             );
         }
         if self.direct_selected {
-            return "DIRECT STREAM / SET URL IN SETTINGS".into();
+            return self
+                .direct_validation
+                .as_ref()
+                .map(|report| report.detail.clone())
+                .unwrap_or_else(|| "CUSTOM STREAM / PUBLIC HTTPS OR PRIVATE LAN".into());
         }
         #[cfg(feature = "soapy-sdr")]
         if self.usb_selected {
@@ -559,3 +695,6 @@ impl RadioPanel {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod live_ip_tests;

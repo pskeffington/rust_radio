@@ -673,6 +673,7 @@ fn decode_and_play(
     }
     signal(controller, generation, PlaybackEvent::Connected);
 
+    let startup = stream.startup.clone();
     let mut hint = Hint::new();
     let mime = stream.content_type.as_deref().unwrap_or_default();
     if mime.contains("aac") {
@@ -755,6 +756,10 @@ fn decode_and_play(
                 )));
             }
         };
+        if decoded.frames() == 0 {
+            continue;
+        }
+        startup.decoded();
         let spec = *decoded.spec();
         let source_channels = spec.channels.count();
         if previous_format != Some((spec.rate, source_channels)) {

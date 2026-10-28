@@ -3,7 +3,39 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Current module pass: advanced FM broadcast tuning
+## Current module pass: IP streaming GUI and station lifecycle
+
+- Kept routine controls visible with locally scoped phosphor popup/menu/button
+  styling, current-selection marker, long-name tooltips, scrolling and keyboard
+  navigation. Failures wrap with a visible marker and RETRY. IP connection/output
+  settings and named Save/Remove controls live behind IP Radio.
+- Selection while stopped silently validates the actual endpoint after a short
+  debounce; Play cancels that check and queues audio. Active station switching
+  mutes/cancels the previous worker and waits for release before starting only
+  the latest selection. Stop cancels queued work; discovery respects explicit
+  source choices even when internet/receiver availability is unverified.
+- Custom public HTTPS and private/loopback IPv4 HTTP now resolve checked relative
+  redirects and M3U/PLS, sharing bounded parsers with curated streams. HLS,
+  unsafe/nested/oversized playlists and hop loops produce useful failures.
+  Fixed cancellation-versus-disconnected-channel error classification. A shared
+  35-second first-decode budget also bounds continuous invalid startup input.
+- Added bounded, atomic IP station import/export and standalone background
+  persistence, without changing embedded host storage ownership. Up to 24 named
+  streams and last saved/curated selection survive restart. Explicit Save stores
+  URLs including query parameters; unsaved edits remain in memory.
+- Native muted GUI acceptance passed MP3/AAC, redirect/PLS, rapid switches,
+  stalled headers, invalid/unsupported streams, Retry, refused connections and
+  clean Stop. Render calls stayed below 250 ms. WCRB and Skylab both reached
+  native Playing live. macOS main/menu/editor layouts were visually inspected.
+- External LAN broadcaster, audible quality, physical touch and Raspberry Pi
+  rendering remain unverified. HLS and alternate-playlist-entry failover remain
+  unsupported. Final gates passed: **189 all-feature tests**, **140 default
+  tests**, the separate muted native GUI acceptance, formatting, strict Clippy
+  in both configurations, all-feature workspace build and the headless native
+  AArch64 compile check. The normal all-feature suite leaves two hardware/manual
+  tests ignored; one was executed explicitly for this pass.
+
+## Previous module pass: advanced FM broadcast tuning
 
 - Added Tune / FM Audio / Presets / Device tabs behind nSDR, with exact unit-aware
   frequency entry and live 1/10/50/100/200 kHz steps. The main nSDR arrows also

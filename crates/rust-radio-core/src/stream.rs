@@ -162,6 +162,14 @@ fn playlist_endpoint(station_id: &str, url: &str) -> Result<ApprovedEndpoint, St
 
 /// Parse official M3U/extended-M3U playlists. Fail closed on unapproved lines.
 pub fn parse_m3u(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>, StreamError> {
+    parse_m3u_with(body, |url| playlist_endpoint(station_id, url))
+}
+
+/// Parse bounded M3U entries with transport-owned URL resolution.
+pub fn parse_m3u_with<T>(
+    body: &[u8],
+    mut resolve: impl FnMut(&str) -> Result<T, StreamError>,
+) -> Result<Vec<T>, StreamError> {
     if body.len() > MAX_PLAYLIST_BYTES {
         return Err(StreamError::OversizedPlaylist);
     }
@@ -176,7 +184,7 @@ pub fn parse_m3u(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
-        result.push(playlist_endpoint(station_id, trimmed)?);
+        result.push(resolve(trimmed)?);
         if result.len() > MAX_PLAYLIST_ENTRIES {
             return Err(StreamError::TooManyEntries);
         }
@@ -190,6 +198,14 @@ pub fn parse_m3u(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
 /// Parse bounded PLS v2 playlists. Every FileN URL must be publisher-approved;
 /// titles and lengths are inert metadata. Entries are returned in numeric order.
 pub fn parse_pls(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>, StreamError> {
+    parse_pls_with(body, |url| playlist_endpoint(station_id, url))
+}
+
+/// Parse bounded PLS entries with transport-owned URL resolution.
+pub fn parse_pls_with<T>(
+    body: &[u8],
+    mut resolve: impl FnMut(&str) -> Result<T, StreamError>,
+) -> Result<Vec<T>, StreamError> {
     if body.len() > MAX_PLAYLIST_BYTES {
         return Err(StreamError::OversizedPlaylist);
     }
@@ -199,8 +215,7 @@ pub fn parse_pls(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
     let mut declared_entries = None;
     let mut version_seen = false;
     // FileN is already a bounded numeric index; no tree nodes are needed.
-    let mut entries: [Option<ApprovedEndpoint>; MAX_PLAYLIST_ENTRIES] =
-        std::array::from_fn(|_| None);
+    let mut entries: [Option<T>; MAX_PLAYLIST_ENTRIES] = std::array::from_fn(|_| None);
     let mut entry_count = 0;
     for line in text.lines() {
         let line = line.trim();
@@ -247,7 +262,7 @@ pub fn parse_pls(station_id: &str, body: &[u8]) -> Result<Vec<ApprovedEndpoint>,
                     if index > MAX_PLAYLIST_ENTRIES {
                         return Err(StreamError::TooManyEntries);
                     }
-                    let endpoint = playlist_endpoint(station_id, value)?;
+                    let endpoint = resolve(value)?;
                     if entries[index - 1].replace(endpoint).is_some() {
                         return Err(StreamError::InvalidPlaylist);
                     }
@@ -283,7 +298,11 @@ pub fn playlist_format(url: &str, content_type: Option<&str>) -> Option<Playlist
         .unwrap_or("")
         .trim()
         .to_ascii_lowercase();
-    let url = url.to_ascii_lowercase();
+    let url = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(url)
+        .to_ascii_lowercase();
     if url.ends_with(".m3u8") || mime == "application/vnd.apple.mpegurl" {
         Some(PlaylistFormat::Hls)
     } else if matches!(

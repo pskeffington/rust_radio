@@ -64,8 +64,11 @@ available without loading audio dependencies. Host storage continues to use stat
 `NativeRadioEngine::start_stream(url, volume, output)` for a direct MP3/AAC
 URL; it is retained only for that engine session. Direct input accepts HTTPS
 or private/loopback literal IPv4 HTTP, rejects credentials and fragments, and
-does not follow redirects or playlists. Hosts should protect query tokens and
-ask for an explicit Play action before connecting.
+supports bounded redirects and M3U/PLS (including relative entries), with URL
+validation on every hop and no HTTPS downgrade. HLS remains unsupported.
+Hosts should protect query tokens and ask for an explicit Play action before
+starting audio. `StationValidationTask::start_input(target, direct)` checks the
+same transport silently without opening audio output.
 
 Compatibility imports in `rust-radio-audio::compat_controller` refer to the
 same core controller types. `rust-radio-core::SessionState` is the same playback
@@ -137,3 +140,25 @@ from the render/audio thread. Construction and preference import remain offline;
 recall prepares tuning when stopped and queues it only for active playback.
 The standalone binary provides its own bounded atomic file writer. Preset JSON
 is versioned, at most 16 KiB / 16 entries, and contains tuning/audio choices only.
+
+
+### IP station storage and selection
+
+`RadioPanel::new()` and `load_ip_stations(json)` perform no network or file IO
+and never autoplay. Operator station changes queue a debounced silent endpoint
+check; Play supersedes it. During active IP playback, selection immediately
+mutes/cancels the old engine, then polls cleanup before creating the latest
+engine. Retain and render/poll the panel during this transition. Stop also clears
+queued playback and validation. Cross-input/output changes still require Stop.
+
+Use `take_ip_stations_update() -> Option<String>` to obtain the versioned JSON
+when saved stations or selection change, and persist it off the render thread.
+Call `report_ip_stations_saved(result)` for write failures. Import validates the
+whole bank before replacing it (24 entries, 64 KiB, bounded names and URLs);
+imports during playback/checks are rejected. Unsaved URL edits remain in memory.
+The standalone host uses an atomic background writer at
+`rust_radio/ip-stations.json` in the platform configuration directory (macOS:
+`~/Library/Application Support`); `RUST_RADIO_STATIONS_PATH` overrides the path.
+Explicit Save persists query parameters too. No station credentials in URL
+userinfo are accepted. Embedded Pip-Boy hosts keep storage/window ownership and
+can instead use the headless engine with their own station picker.

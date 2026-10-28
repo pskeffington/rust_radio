@@ -3,6 +3,7 @@ use eframe::egui::{self, Color32, CornerRadius, FontId, Stroke, TextStyle};
 
 pub(super) const GREEN: Color32 = Color32::from_rgb(155, 255, 133);
 pub(super) const SCREEN: Color32 = Color32::from_rgb(5, 19, 9);
+pub(super) const ERROR: Color32 = Color32::from_rgb(218, 255, 160);
 const SURFACE: Color32 = Color32::from_rgb(12, 37, 17);
 const HOVER: Color32 = Color32::from_rgb(29, 66, 30);
 const BORDER: Color32 = Color32::from_rgb(76, 155, 76);
@@ -20,6 +21,12 @@ pub(super) fn apply(ui: &mut egui::Ui) {
     let visuals = &mut style.visuals;
     visuals.override_text_color = Some(GREEN);
     visuals.extreme_bg_color = SCREEN;
+    visuals.window_fill = SCREEN;
+    visuals.panel_fill = SCREEN;
+    visuals.window_stroke = Stroke::new(1.0_f32, BORDER);
+    visuals.window_corner_radius = CornerRadius::same(1);
+    visuals.error_fg_color = ERROR;
+    visuals.warn_fg_color = ERROR;
     visuals.faint_bg_color = SURFACE;
     visuals.selection.bg_fill = HOVER;
     visuals.selection.stroke = Stroke::new(1.0_f32, GREEN);

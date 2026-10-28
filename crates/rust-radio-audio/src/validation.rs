@@ -55,9 +55,51 @@ pub struct StationValidationTask {
 
 impl StationValidationTask {
     pub fn start(station_id: &str) -> Result<Self, String> {
+        require_station(station_id)?;
         let id = station_id.to_owned();
         Self::spawn(station_id, move |cancelled| {
             validate_station_cancellable(&id, cancelled)
+        })
+    }
+
+    /// Check the actual playback transport without opening an audio output.
+    /// Custom URLs are omitted from reports; cancellation polls pending IO.
+    pub fn start_input(target: &str, direct: bool) -> Result<Self, String> {
+        if direct {
+            rust_radio_ip::net::validate_direct_url(target)?;
+        } else {
+            require_station(target)?;
+        }
+        let id = if direct { "custom" } else { target };
+        let target = target.to_owned();
+        Self::spawn(id, move |cancelled| {
+            let input = if direct {
+                rust_radio_ip::net::open_direct_classified(&target, cancelled)
+            } else {
+                rust_radio_ip::net::open_station_classified(&target, cancelled)
+            };
+            let mut report = StationValidation::unverified(if direct { "custom" } else { &target });
+            match input {
+                Ok((stream, _guard)) => {
+                    report.stage = ValidationStage::StreamResponse;
+                    report.content_type = stream.content_type;
+                    Ok(decode_response(report, stream.reader))
+                }
+                Err(error) => {
+                    let status = match &error {
+                        rust_radio_ip::error::TransportError::Network(_) => {
+                            ValidationStatus::Unavailable
+                        }
+                        rust_radio_ip::error::TransportError::Permanent(_) => {
+                            ValidationStatus::InvalidStream
+                        }
+                        rust_radio_ip::error::TransportError::Cancelled => {
+                            ValidationStatus::Cancelled
+                        }
+                    };
+                    Ok(finish(report, status, error.to_string()))
+                }
+            }
         })
     }
 
@@ -70,6 +112,7 @@ impl StationValidationTask {
     where
         C::Body: Send + 'static,
     {
+        require_station(station_id)?;
         let id = station_id.to_owned();
         Self::spawn(station_id, move |_| validate_with(&client, &id))
     }
@@ -78,7 +121,6 @@ impl StationValidationTask {
         station_id: &str,
         check: impl FnOnce(Arc<AtomicBool>) -> Result<StationValidation, String> + Send + 'static,
     ) -> Result<Self, String> {
-        require_station(station_id)?;
         let cancelled = Arc::new(AtomicBool::new(false));
         let worker_cancelled = Arc::clone(&cancelled);
         let worker = thread::Builder::new()

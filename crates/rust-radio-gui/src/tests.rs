@@ -348,7 +348,10 @@ fn sdr_selection_is_offline_and_invalid_endpoint_fails_before_start() {
     panel.sdr_endpoint = "8.8.8.8:5454".into();
     panel.play();
     assert!(!panel.is_active());
-    assert!(panel.last_session.is_none());
+    assert_eq!(
+        panel.last_session.as_ref().unwrap().state,
+        PlaybackState::Failed
+    );
     assert!(panel.note.contains("private-LAN or loopback"));
     render_panel(&mut panel);
     assert!(panel.note.contains("private-LAN or loopback"));
@@ -629,4 +632,171 @@ fn fm_steps_reject_band_edges_without_changing_the_dial() {
         assert_eq!(panel.native_frequency, frequency);
         assert!(!panel.is_active());
     }
+}
+
+#[test]
+fn public_and_lan_saved_stations_roundtrip_without_autoplay_or_partial_import() {
+    let mut panel = RadioPanel::new();
+    for (name, url) in [
+        (
+            "Public station with a long but readable name",
+            "https://example.com/live?channel=classical",
+        ),
+        ("LAN music", "http://192.168.1.12:8000/live.m3u"),
+    ] {
+        panel.direct_selected = true;
+        panel.ip_station_name = name.into();
+        panel.direct_url = url.into();
+        panel.save_ip_station().unwrap();
+    }
+    let json = panel.take_ip_stations_update().unwrap();
+    assert!(panel.take_ip_stations_update().is_none());
+    let mut loaded = RadioPanel::new();
+    loaded.load_ip_stations(&json).unwrap();
+    assert_eq!(loaded.ip_station_name(), "LAN music");
+    assert_eq!(loaded.direct_url, "http://192.168.1.12:8000/live.m3u");
+    assert!(!loaded.is_active());
+    assert!(loaded.selection_check_pending.is_none());
+    assert!(loaded.take_ip_stations_update().is_none());
+    for invalid in [
+        json.replace("\"version\": 1", "\"version\": 99"),
+        json.replace("http://192.168.1.12:8000/live.m3u", "file:///tmp/radio"),
+        "x".repeat(65537),
+    ] {
+        assert!(loaded.load_ip_stations(&invalid).is_err());
+        assert_eq!(loaded.ip_stations.len(), 2);
+        assert_eq!(loaded.ip_station_name(), "LAN music");
+    }
+    loaded.select_ip_station(0);
+    assert!(loaded.take_ip_stations_update().unwrap().contains("skylab"));
+    assert_eq!(loaded.direct_url, "http://192.168.1.12:8000/live.m3u");
+}
+
+#[test]
+fn rapid_selection_checks_cancel_the_old_target_and_stop_clears_queued_work() {
+    let mut panel = RadioPanel::new();
+    let release = hold_check(&mut panel);
+    for index in [1, 2, 0, 3, 1] {
+        panel.select_ip_station(index);
+        panel.ip_selection_changed();
+        assert!(panel.validation.as_ref().unwrap().cancellation_requested());
+        assert!(panel.selection_check_pending.is_some());
+        assert!(!panel.restart_pending);
+        render_panel(&mut panel);
+    }
+    panel.play(); // Play cancels the check and queues a single latest playback.
+    assert!(panel.restart_pending);
+    assert!(panel.engine.is_none());
+    panel.stop(); // Stop must prevent the deferred start, too.
+    assert!(!panel.restart_pending);
+    assert!(panel.selection_check_pending.is_none());
+    release.send(()).unwrap();
+    finish_panel(&mut panel);
+    assert!(panel.engine.is_none());
+    assert!(panel.validations.is_empty());
+}
+
+#[test]
+fn full_ip_station_bank_and_custom_setup_fit_the_small_viewport() {
+    let mut panel = RadioPanel::new();
+    for i in 0..24 {
+        panel.direct_selected = true;
+        panel.direct_url = format!("http://192.168.1.12:8000/audio/{i}?channel=classical");
+        panel.ip_station_name = format!("Station {i:02} {}", "A".repeat(80));
+        panel.save_ip_station().unwrap();
+    }
+    panel.ip_station_name = "One too many".into();
+    assert!(panel.save_ip_station().is_err());
+    render_panel(&mut panel);
+    let context = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    let mut bounds = None;
+    for _ in 0..3 {
+        let _ = context.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ctx| {
+                bounds = panel.show_settings(ctx);
+            },
+        );
+    }
+    assert!(screen.contains_rect(bounds.unwrap()), "{bounds:?}");
+    assert!(!panel.is_active());
+}
+
+#[test]
+fn ip_menu_keyboard_navigation_keeps_selection_until_enter_and_scrolls_long_names() {
+    let context = egui::Context::default();
+    let mut panel = RadioPanel::new();
+    for index in 0..24 {
+        panel.direct_selected = true;
+        panel.direct_url = format!("https://example.com/{index}");
+        panel.ip_station_name = format!("{index} {}", "Long name ".repeat(8));
+        panel.save_ip_station().unwrap();
+    }
+    panel.select_ip_station(0);
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(480.0, 320.0));
+    let mut menu_id = egui::Id::NULL;
+    let mut frame = |panel: &mut RadioPanel, key: Option<egui::Key>, open: bool| {
+        let events = key
+            .map(|key| {
+                vec![egui::Event::Key {
+                    key,
+                    physical_key: Some(key),
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }]
+            })
+            .unwrap_or_default();
+        let _ = context.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                events,
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    theme::apply(ui);
+                    ui.set_max_width(280.0);
+                    menu_id = ui.make_persistent_id("rust_radio_station");
+                    if open {
+                        ui.memory_mut(|memory| memory.open_popup(menu_id.with("popup")));
+                    }
+                    panel.ip_station_menu(ui);
+                });
+            },
+        );
+    };
+    frame(&mut panel, None, true);
+    frame(&mut panel, Some(egui::Key::End), false);
+    assert_eq!(panel.ip_station_index(), 0);
+    frame(&mut panel, Some(egui::Key::ArrowUp), false);
+    assert_eq!(panel.ip_station_index(), 0);
+    frame(&mut panel, Some(egui::Key::Enter), false);
+    assert_eq!(panel.saved_station_index, Some(23));
+    assert!(!egui::ComboBox::is_open(&context, menu_id));
+    assert!(panel.selection_check_pending.is_some());
+    panel.stop();
+    assert!(!panel.is_active());
+}
+
+#[test]
+fn switching_input_types_preserves_the_last_saved_ip_station_without_connecting() {
+    let mut panel = RadioPanel::new();
+    panel.direct_selected = true;
+    panel.ip_station_name = "My LAN station".into();
+    panel.direct_url = "http://192.168.1.12:8000/live".into();
+    panel.save_ip_station().unwrap();
+    panel.select_segment(Segment::Network, false);
+    panel.select_segment(Segment::Ip, false);
+    assert!(panel.direct_selected);
+    assert_eq!(panel.ip_station_name(), "My LAN station");
+    assert_eq!(panel.direct_url, "http://192.168.1.12:8000/live");
+    assert!(!panel.is_active());
+    panel.apply_inputs(InputReport::default());
+    assert_eq!(panel.segment, Segment::Ip);
+    assert_eq!(panel.ip_station_name(), "My LAN station");
 }

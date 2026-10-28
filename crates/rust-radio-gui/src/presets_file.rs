@@ -3,35 +3,59 @@ use rust_radio_gui::RadioPanel;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::thread::JoinHandle;
-const MAX_BYTES: u64 = 16 * 1024;
+const MAX_BYTES: u64 = 64 * 1024;
+
+#[derive(Clone, Copy)]
+enum Kind {
+    Ip,
+    #[cfg(feature = "nrsp-native")]
+    Fm,
+}
 
 pub(super) struct PresetFile {
     path: Option<PathBuf>,
+    kind: Kind,
     pending: Option<String>,
     worker: Option<JoinHandle<Result<(), String>>>,
 }
 impl PresetFile {
+    #[cfg(feature = "nrsp-native")]
     pub fn load(panel: &mut RadioPanel) -> Self {
-        let path = path();
+        Self::load_kind(panel, Kind::Fm)
+    }
+    pub fn load_ip(panel: &mut RadioPanel) -> Self {
+        Self::load_kind(panel, Kind::Ip)
+    }
+    fn load_kind(panel: &mut RadioPanel, kind: Kind) -> Self {
+        let path = path(kind);
         if let Some(path) = &path {
             match read(path) {
                 Ok(Some(json)) => {
-                    if let Err(error) = panel.load_fm_presets(&json) {
-                        panel.report_fm_presets_saved(Err(error));
-                    }
+                    let result = match kind {
+                        Kind::Ip => panel.load_ip_stations(&json),
+                        #[cfg(feature = "nrsp-native")]
+                        Kind::Fm => panel.load_fm_presets(&json),
+                    };
+                    report(panel, kind, result);
                 }
                 Ok(None) => {}
-                Err(error) => panel.report_fm_presets_saved(Err(error)),
+                Err(error) => report(panel, kind, Err(error)),
             }
         }
         Self {
             path,
+            kind,
             pending: None,
             worker: None,
         }
     }
     pub fn poll(&mut self, panel: &mut RadioPanel) {
-        if let Some(json) = panel.take_fm_presets_update() {
+        let update = match self.kind {
+            Kind::Ip => panel.take_ip_stations_update(),
+            #[cfg(feature = "nrsp-native")]
+            Kind::Fm => panel.take_fm_presets_update(),
+        };
+        if let Some(json) = update {
             self.pending = Some(json);
         }
         if self
@@ -45,7 +69,7 @@ impl PresetFile {
                 .expect("finished writer")
                 .join()
                 .unwrap_or_else(|_| Err("Preset writer failed".into()));
-            panel.report_fm_presets_saved(result);
+            report(panel, self.kind, result);
         }
         if self.worker.is_none() {
             if let Some(json) = self.pending.take() {
@@ -55,12 +79,14 @@ impl PresetFile {
                         .spawn(move || write(&path, &json))
                     {
                         Ok(worker) => self.worker = Some(worker),
-                        Err(error) => panel.report_fm_presets_saved(Err(error.to_string())),
+                        Err(error) => report(panel, self.kind, Err(error.to_string())),
                     }
                 } else {
-                    panel.report_fm_presets_saved(Err(
-                        "No local configuration directory; presets remain in memory".into(),
-                    ));
+                    report(
+                        panel,
+                        self.kind,
+                        Err("No local configuration directory; stations remain in memory".into()),
+                    );
                 }
             }
         }
@@ -76,8 +102,20 @@ impl Drop for PresetFile {
         }
     }
 }
-fn path() -> Option<PathBuf> {
-    if let Some(path) = std::env::var_os("RUST_RADIO_PRESETS_PATH") {
+fn report(panel: &mut RadioPanel, kind: Kind, result: Result<(), String>) {
+    match kind {
+        Kind::Ip => panel.report_ip_stations_saved(result),
+        #[cfg(feature = "nrsp-native")]
+        Kind::Fm => panel.report_fm_presets_saved(result),
+    }
+}
+fn path(kind: Kind) -> Option<PathBuf> {
+    let (variable, file) = match kind {
+        Kind::Ip => ("RUST_RADIO_STATIONS_PATH", "ip-stations.json"),
+        #[cfg(feature = "nrsp-native")]
+        Kind::Fm => ("RUST_RADIO_PRESETS_PATH", "fm-presets.json"),
+    };
+    if let Some(path) = std::env::var_os(variable) {
         return Some(path.into());
     }
     #[cfg(target_os = "macos")]
@@ -88,28 +126,28 @@ fn path() -> Option<PathBuf> {
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
-    Some(base.join("rust_radio/fm-presets.json"))
+    Some(base.join("rust_radio").join(file))
 }
 fn read(path: &Path) -> Result<Option<String>, String> {
     let file = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(format!("Cannot load FM presets: {error}")),
+        Err(error) => return Err(format!("Cannot load stations: {error}")),
     };
     let mut bytes = Vec::new();
     file.take(MAX_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(|e| e.to_string())?;
     if bytes.len() as u64 > MAX_BYTES {
-        return Err("FM preset file exceeds 16 KiB".into());
+        return Err("Station file exceeds 64 KiB".into());
     }
     String::from_utf8(bytes)
         .map(Some)
-        .map_err(|_| "FM preset file is not UTF-8".into())
+        .map_err(|_| "Station file is not UTF-8".into())
 }
 fn write(path: &Path, json: &str) -> Result<(), String> {
     if json.len() as u64 > MAX_BYTES {
-        return Err("FM presets exceed 16 KiB".into());
+        return Err("Station file exceeds 64 KiB".into());
     }
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -136,7 +174,7 @@ fn write(path: &Path, json: &str) -> Result<(), String> {
     if result.is_err() {
         let _ = std::fs::remove_file(&temp);
     }
-    result.map_err(|e: std::io::Error| format!("Cannot save FM presets: {e}"))
+    result.map_err(|e: std::io::Error| format!("Cannot save stations: {e}"))
 }
 #[cfg(test)]
 mod tests {

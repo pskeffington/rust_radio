@@ -8,15 +8,16 @@ rust-version = "1.85"
 [features]
 default = []
 receivers = ["nrsp-native", "soapy-sdr"]
-nrsp-native = ["rust-radio-audio/nrsp-native", "dep:serde", "dep:serde_json"]
+nrsp-native = ["rust-radio-audio/nrsp-native"]
 sdrconnect = ["rust-radio-audio/sdrconnect"]
 soapy-sdr = ["rust-radio-core/sdr", "rust-radio-audio/soapy"]
 
 [dependencies]
-serde = { version = "1", features = ["derive"], optional = true }
-serde_json = { version = "1", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
 rust-radio-core = { path = "../rust-radio-core" }
 rust-radio-audio = { path = "../rust-radio-audio" }
+rust-radio-ip = { path = "../rust-radio-ip" }
 eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
 
 [lib]

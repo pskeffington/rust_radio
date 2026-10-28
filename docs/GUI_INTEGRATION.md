@@ -10,13 +10,13 @@ Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `set
 cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
 The panel uses a green phosphor, monospaced skin with subtle scanlines. It does
-not start playback at launch, and source browsing is offline. Tap PLAY to open an
-approved native IP station. STOP requests cancellation without joining on the UI
+not start playback at launch. Selecting an IP station queues a debounced silent
+check of its actual HTTP audio endpoint. Tap PLAY to start native playback. STOP requests cancellation without joining on the UI
 thread. Queued PCM is muted immediately. STOPPING remains visible until worker
 cleanup finishes; PLAY and output changes remain locked during playback cleanup.
 Drag volume while playing. The top input buttons open their setup panels; IP
-Radio includes silent station validation. Stop before changing outputs or
-checking a station.
+Radio includes URL/station storage, silent checks and output selection. Stop
+before changing outputs. Station selection stays enabled during IP playback.
 
 For direct nRSP-ST control and audio, use `--features nrsp-native`, click
 **nSDR**, select a discovered receiver or enter `IP:9001`, and configure frequency,
@@ -62,7 +62,7 @@ theme. See [host integration](EMBEDDING.md).
 ## Acceptance and constraints
 - 480 × 320 is a logical-pixel target; high-DPI and physical touch screenshots require verification.
 - No intentional scroll in default view. Each input button opens a centered setup overlay sized for the 480 × 320 viewport. Offline egui layout tests cover the 480 × 320 bounds, including long diagnostics; Pi rendering still requires verification.
-- No direct station URL input. Only curated stations.
+- Curated stations plus up to 24 saved named public HTTPS or private IPv4 HTTP streams; custom URL/name entry is behind IP Radio. M3U/PLS and checked redirects are supported; HLS is reported as unsupported.
 - Output selection is disabled while the worker still owns receiver resources, including failure cleanup. Completed failed sessions release automatically; failure details remain visible and PLAY requests a fresh session.
 - Keep firmware/Pi builds optional: eframe's graphics/window stack and target platform must be validated separately; the audio engine is independent.
 - Mac rendering and mouse controls were inspected; physical touch and Pi GPU acceptance remain open.
@@ -95,7 +95,7 @@ On macOS, stop during connect, buffering, live playback and reconnection. Confir
 
 ## Completed and failed workers
 
-`poll_shutdown()` also reaps workers that finish without an explicit Stop. The panel retains the final failure snapshot after releasing the engine, so FAILED and its error remain visible while station/output selection and PLAY become available. STOP clears a retained failure. No retry is started by polling or changing an output. Long status/error text is truncated to one line to preserve the micro-panel height; hovering reveals the full message.
+`poll_shutdown()` also reaps workers that finish without an explicit Stop. The panel retains the final failure snapshot after releasing the engine, so FAILED and its error remain visible while station/output selection and PLAY become available. STOP clears a retained failure. RETRY explicitly restarts a failed target. Switching an active IP station queues only the latest replacement after cleanup; changing outputs never starts a session. Status/error text wraps in a bounded scrolling area, with a visible failure marker and consistent phosphor colors.
 
 `NativeRadioEngine::try_finish()` converts a panic or an otherwise unexplained worker exit into a failed snapshot. It preserves existing device/stream errors and never overwrites an explicit Stop with a cleanup failure. Hosts using the engine directly should poll this method to observe terminal worker exits.
 
@@ -103,9 +103,34 @@ Offline regression coverage now includes unexpected normal exit, worker panic, r
 
 ## Background station validation
 
-IP Radio → CHECK STATION starts one `StationValidationTask`, using the same bounded MP3/AAC validation path as the CLI. Per-station labels show UNVERIFIED, CHECKING, CANCELLING, DECODED, UNAVAILABLE, UNSUPPORTED or INVALID STREAM. Settings retains the last report's detail, check age, codec, rate and channel count. DECODED proves a point-in-time PCM decode, not audible output or future availability. Reports remain in memory for this panel's lifetime.
+Station selection while stopped schedules one silent check after 250 ms. It
+uses `StationValidationTask::start_input` and the actual GET/redirect/playlist/
+decode path used for playback. There is no ICMP gate, internet-availability gate,
+or audio output enumeration. Public and private URLs use the same validation.
+The shared parser caps M3U/PLS at 16 KiB/16 entries, rejects nested playlists and
+HLS, validates every URL and limits resolution to five requests. Headers time out
+at eight seconds, reads at three seconds; first decoded audio has a 35-second
+budget. Silent checks additionally cap audio at 256 KiB/64 packets. Curated
+reports remain cached for the panel's lifetime; custom reports omit URLs.
 
-PLAY and another check are blocked while a check owns resources. Station browsing, CANCEL CHECK and STOP request cancellation; the panel retains and polls the worker until it finishes. Cancellation checks bracket network reads and prevent another request hop. A blocking request/read may need the remaining shared 18-second deadline, so the panel can show CANCELLING while remaining responsive. Cancelled results never overwrite previous evidence, and results for a different station are rejected. Closing Settings does not cancel a check.
+Station changes cancel obsolete checks. Play cancels a check and queues playback
+until its worker releases. Stop clears all pending starts/checks. Active station
+changes mute and cancel the old engine immediately; the GUI polls `try_finish`
+before opening the latest selection, preventing overlapping outputs. Connecting,
+Buffering, Playing, Recovering and Failed reflect the engine; Playing requires
+actual decoded PCM consumption by the native output callback. Silent success
+never reports Playing. Failed responses retain their detail and expose RETRY.
+
+The station menu indicates the current selection, truncates long names with
+full-name tooltips, and scrolls vertically. Tab focuses the selector, Enter opens
+it, arrows and Home/End move the menu cursor, Enter commits, and Escape closes.
+Left/Right on the closed focused selector step stations. The phosphor theme is
+applied locally to controls, popup surfaces, selection and error text.
+
+IP Radio setup offers Save/Remove for named custom URLs. Explicit Save persists
+URLs, including query parameters; unsaved drafts remain in memory. During
+playback, edit the URL and choose APPLY STREAM to reconnect. See
+[storage and host APIs](EMBEDDING.md#ip-station-storage-and-selection).
 
 Offline tests hold a fixture transport behind a channel while rendering, stopping and changing stations, then verify cleanup and cache identity. They also cover worker panic and the 480 × 320 layout. Receiver cancellation returns a terminal I/O error: `Interrupted` would be retried by `read_exact` and could loop forever during ICY metadata. A regression test exercises Stop at that exact boundary.
 
@@ -118,8 +143,7 @@ volume and a short status message. USB setup uses discovered device names.
 
 Standalone startup opts into discovery, with idle refreshes every 30 seconds.
 Scanning never starts RF or opens audio output. The first scan prefers a ready
-network receiver, then USB, then IP. Explicit available source choices are
-preserved, and active playback is never switched by discovery. SCAN INPUTS is
+network receiver, then USB, then IP. Explicit source choices are preserved even when discovery cannot verify them, and active playback is never switched by discovery. SCAN INPUTS is
 available in each setup panel. IP glow reflects a recent HTTPS reachability
 check or current playback; station availability can still vary independently.
 
@@ -149,3 +173,19 @@ choices. Presets recall full FM settings, and the standalone host saves them
 locally on a dedicated file worker. Embedded panel users own import/export.
 No preset read or stopped-state recall starts reception. Tests cover all tabs,
 long preset names, full banks, invalid files and frequency-step boundaries.
+
+
+## IP GUI acceptance (2026-10-28)
+
+Native muted acceptance exercised HTTP MP3 and AAC through relative redirect +
+PLS, active station switches, rapid selection changes, stalled headers, invalid
+HTML/unsupported WAV, explicit Retry, refused connections and clean Stop. GUI
+render calls remained below the 250 ms regression threshold throughout. Local
+transport fixtures independently cover M3U, oversized/unsafe/nested playlists,
+HLS rejection, HTTP 404/503, hop loops, timeout and cancellation. Headless GUI
+tests cover long 24-entry banks, keyboard selection/closing and 480×320 layouts.
+WCRB and Skylab live streams reached Playing through native output at volume 0.
+The main panel, station popup and IP editor were visually inspected on macOS.
+No external LAN broadcaster was supplied; private-stream playback was verified
+with a local HTTP fixture. Physical touch, Pi graphics, audible quality and
+extended network interruption tests remain open.

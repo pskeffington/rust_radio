@@ -83,10 +83,8 @@ impl RadioPanel {
         self.inputs = report;
         if self.engine.is_none()
             && self.validation.is_none()
-            && (!self.source_user_selected
-                || (!self.segment_available(self.segment)
-                    && !self.settings_open
-                    && !self.direct_selected))
+            && !self.restart_pending
+            && !self.source_user_selected
         {
             let selected = if self.inputs.network_available() {
                 Segment::Network
@@ -99,16 +97,22 @@ impl RadioPanel {
             self.select_segment(selected, false);
             self.source_user_selected = user_selected;
         }
-        self.note = format!(
-            "INPUTS / IP {} / nSDR {} / USB {}",
-            if self.inputs.internet {
-                "UP"
-            } else {
-                "OFFLINE"
-            },
-            self.inputs.network.len(),
-            self.inputs.usb.len()
-        );
+        if self.engine.is_none()
+            && self.last_session.is_none()
+            && !self.restart_pending
+            && self.selection_check_pending.is_none()
+        {
+            self.note = format!(
+                "INPUTS / IP {} / nSDR {} / USB {}",
+                if self.inputs.internet {
+                    "UP"
+                } else {
+                    "OFFLINE"
+                },
+                self.inputs.network.len(),
+                self.inputs.usb.len()
+            );
+        }
     }
     pub(super) fn segment_available(&self, segment: Segment) -> bool {
         if self.engine.as_ref().is_some_and(|engine| {
@@ -137,21 +141,11 @@ impl RadioPanel {
             return;
         }
         if self.segment == Segment::Ip {
-            let count = curated_stations().len() + 1;
-            let current = if self.direct_selected {
-                count - 1
-            } else {
-                self.station_index
-            };
+            let count = self.ip_station_count();
+            let current = self.ip_station_index();
             let next = (current + direction.rem_euclid(count as isize) as usize) % count;
-            let source = if next == count - 1 {
-                curated_stations().len()
-                    + usize::from(cfg!(feature = "sdrconnect"))
-                    + usize::from(cfg!(feature = "soapy-sdr"))
-            } else {
-                next
-            };
-            self.select_source(source);
+            self.select_ip_station(next);
+            self.ip_selection_changed();
         }
     }
     pub(super) fn select_segment(&mut self, segment: Segment, setup: bool) {
@@ -161,7 +155,15 @@ impl RadioPanel {
         }
         if self.engine.is_none() && self.segment != segment {
             let index = match segment {
-                Segment::Ip => self.station_index,
+                Segment::Ip => {
+                    if self.saved_station_index.is_some() {
+                        curated_stations().len()
+                            + usize::from(cfg!(feature = "sdrconnect"))
+                            + usize::from(cfg!(feature = "soapy-sdr"))
+                    } else {
+                        self.station_index
+                    }
+                }
                 Segment::Network if cfg!(feature = "nrsp-native") => {
                     curated_stations().len()
                         + usize::from(cfg!(feature = "sdrconnect"))
