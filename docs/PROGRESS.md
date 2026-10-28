@@ -1751,3 +1751,20 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - PR #5 remains open and mergeable at `fdefa21`. Actions run 288
   (`40790726207`) failed before job creation (`startup_failure`), with zero jobs
   and no combined statuses. Remote CI remains unverified.
+
+
+## Catalog and compact-label revalidation (2026-10-28 23:59 UTC)
+
+- Repeated station-label A/B/C on the current tree: at 295 px A full-category
+  fits 24/25, B names-only and C compact-category fit 25/25; at 340 px all
+  variants fit 25/25. C saves 192 px versus A; A clips `wcrb`. This measures
+  rendered fit only, not listener preference.
+- Bounded live `validate-all --json` at 23:59:21 UTC decoded all 25 feeds in
+  25 attempts, with no retries or failures. This is point-in-time codec evidence
+  only, not publisher-rights or long-term availability evidence.
+- PR #5 remains open and mergeable at `fe9fbbd`. Actions run 289
+  (`40790897058`) failed before job creation (`startup_failure`); it had zero
+  jobs and no combined statuses. Remote CI remains unverified.
+- No source-code change was warranted by these checks. Hardware acceptance,
+  publisher-rights verification, Windows MSVC and AArch64 toolchain gates remain
+  open.
