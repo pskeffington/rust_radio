@@ -764,3 +764,21 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   current combined status is empty and no associated PR workflow run was
   visible at query time. Remote CI remains unverified. Next, continue receiver
   and device recovery acceptance, which requires physical hardware.
+
+## IP output-loss retry cleanup fixture (2026-10-28)
+
+- Extracted the IP playback retry wrapper so deterministic failure injection
+  exercises the production cleanup path. A synthetic Bluetooth output failure
+  returns as `OutputUnavailable`, makes one attempt, never invokes the retry
+  wait, and clears the active output-progress handle. The retired callback
+  counter remains detached from the session's current progress slot.
+- The focused regression and all six engineering gates passed: formatting,
+  default/all-feature workspace tests, strict Clippy in both configurations and
+  all-feature check. The compact station-label A/B regression passed again.
+  Loopback fixtures used local socket permission. No physical output device was
+  involved.
+- Code commit `4a8cc57` is pushed. PR #3 is open and mergeable; the current head
+  has no status checks or associated workflow run visible at query time. The
+  preceding head's Actions run failed before jobs were created; remote CI is
+  unverified. Next: verify Bluetooth/USB loss and replacement-device recovery
+  on real hardware while retaining these deterministic lifecycle checks.

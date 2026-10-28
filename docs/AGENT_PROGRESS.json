@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:10:53Z",
+  "updated_at_utc": "2026-10-28T20:14:00Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "fdfd607",
@@ -30,7 +30,8 @@
     "Added bounded recovery for direct nRSP-ST active-stream transport errors and inactivity timeouts while preserving terminal startup/activation failures; retries restore the latest requested tuning and FM settings.",
     "Extracted direct nRSP retry sequencing into recover_nrsp_attempts and added an offline fixture that verifies bounded delay, one retry, output-progress clearing, reconnect mode, and restoration of latest tuning/FM settings.",
     "Added deterministic terminal-reconnect coverage: an initial active-stream timeout gets one retry, but permanent setup/protocol failure on reconnect stops without another wait; explicit receiver disconnect reason remains terminal and is preserved in the error detail.",
-    "Added a loopback nRSP handshake-wait cancellation regression: cancellation during the post-WebSocket Hello wait returns promptly and the peer observes the socket closing."
+    "Added a loopback nRSP handshake-wait cancellation regression: cancellation during the post-WebSocket Hello wait returns promptly and the peer observes the socket closing.",
+    "Extracted the IP playback retry wrapper to test output-loss cleanup through production recovery logic: Bluetooth-style output loss stops after one attempt, skips network backoff and removes the active callback-progress handle."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -51,8 +52,8 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on source c66b883: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
-    "latest_code_head_ci": "Code head c66b883 is pushed; combined status is empty and no PR-triggered workflow run is visible at query time; remote CI remains unverified",
+    "latest_full_gate_run": "all six required gates passed on source 4a8cc57: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
+    "latest_code_head_ci": "Code head 4a8cc57 is pushed; combined status is empty and no PR-triggered workflow run is visible at query time; remote CI remains unverified",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "focused regression rerun passed this execution: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only, not listener preference",
@@ -60,7 +61,7 @@
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
     "public_playback_admission_regression": "passed; curated internet and direct stream public start paths reject while process-wide slot is occupied",
-    "latest_regression_commit": "c66b883; in-flight native nRSP Hello-wait cancellation and socket cleanup fixture",
+    "latest_regression_commit": "4a8cc57; IP output-loss handling and stale callback-progress cleanup fixture",
     "probe_time_output_failure_classification": "passed; CPAL-reported failure during Symphonia format probe maps to OutputUnavailable; ordinary probe I/O remains NetworkTransient",
     "nrsp_active_stream_recovery": "passed; transport and inactivity timeout map to transient recovery, startup/activation and protocol failures remain terminal",
     "nrsp_reconnect_settings": "passed; latest desired frequency/mode/bandwidth and FM settings retained for retry",
@@ -68,7 +69,8 @@
     "nrsp_reconnect_sequence_fixture": "passed; stream timeout produces one 1-second wait then one reconnect attempt with updated frequency/bandwidth/FM state and reconnecting=true; output attempt is cleared",
     "nrsp_terminal_reconnect_fixture": "passed; permanent setup error on retry stops after one reconnect attempt; one backoff only; output progress cleared on both failed attempts",
     "nrsp_disconnect_reason": "passed; Error::Disconnected(reason) stays terminal and preserves numeric reason in host error; reason mappings are undocumented so no retry inference is made",
-    "nrsp_handshake_cancellation": "passed; loopback peer completes WebSocket handshake but withholds Hello; explicit cancellation returns within 500ms and closes the socket"
+    "nrsp_handshake_cancellation": "passed; loopback peer completes WebSocket handshake but withholds Hello; explicit cancellation returns within 500ms and closes the socket",
+    "ip_output_loss_cleanup": "passed; synthetic Bluetooth output failure is attempted once, does not wait for network retry and clears active callback-progress ownership"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -83,8 +85,8 @@
   },
   "ci": {
     "latest_observed_head_run": null,
-    "previous_head_run": 40760518603,
-    "conclusion": "For current PR head c66b883, GitHub returned empty combined status and no associated PR-triggered workflow run at query time. Earlier run 40760518603 failed at startup with zero jobs; remote CI remains unverified."
+    "previous_head_run": 40761050011,
+    "conclusion": "For current PR head 4a8cc57, GitHub returned empty combined status and no associated PR-triggered workflow run at query time. Earlier run 40761050011 failed at startup with zero jobs; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
