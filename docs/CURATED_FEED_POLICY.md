@@ -68,7 +68,7 @@ Top-level fields include `checked`, `complete`, `fresh`, `degraded`, `stale`, `u
 
 ## GUI integration boundary
 
-The standalone GUI still performs its own explicit selected-station checks. The background JSON report and `--eligible` ID set are **not yet wired into the GUI**. This pass prevents validator consumers from treating single failures as automatic station removal, but it does not yet implement a GUI filter. A future GUI integration should show `fresh` and `degraded` distinctly, retain manual override for troubleshooting, and never remove a curated entry on probe failure.
+The standalone GUI still performs its own explicit selected-station checks. It now retains last-good evidence in memory and shows **DEGRADED / RETRY** for a failed check following a recent successful decode instead of implying immediate station removal. The background JSON report and `--eligible` ID set are **not yet wired into the GUI**, and local GUI evidence is not persisted across app restarts. An eventual host integration should import validated local snapshots, keep `fresh` and `degraded` visually distinct, preserve manual override, and never remove a curated entry on probe failure.
 
 ## Verification and operational acceptance
 
