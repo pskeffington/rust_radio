@@ -1666,3 +1666,26 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The subsequent push triggered run `40772645579` on `52be452`; it again ended
   `startup_failure` with zero jobs. The latest head `1642027` has no run visible
   yet. This reproduces the runner-startup problem but still exposes no cause.
+
+
+## Temporary HTTP retry handling and validation (2026-10-28 23:44 UTC)
+
+- `TransportError::http_status` now classifies HTTP 425 Too Early as transient,
+  matching the catalog validation policy; the focused regression verifies 425
+  retries with the existing 408/429/5xx statuses while rejection statuses stay
+  permanent.
+- Focused transport regression passed. All six required locked workspace gates
+  passed on the working tree: format, default tests, strict default Clippy,
+  all-feature tests, strict all-feature Clippy and all-feature check.
+- Repeated station label A/B/C: at 295 px A full category fits 24/25, B names-only
+  and C compact category fit 25/25; at 340 px all fit 25/25. C saves 192 px vs A;
+  only `wcrb` overflows with A. This measures fit, not listener preference.
+- The first bounded live sweep ran inside the restricted network sandbox and
+  returned all 25 stations as `unavailable` at `not_checked`, two attempts
+  each. Rerunning with authorized network access decoded all 25 stations in 25
+  attempts at 2026-10-28 23:45:04 UTC, with no retries or failures. This is
+  point-in-time codec evidence only.
+- Implementation commit `23ee373` contains the retry fix. PR #5 was open and
+  mergeable at prior checkpoint `367cccc`; no Actions run/status was visible
+  there. This checkpoint still needs a pushed-head CI observation. Native
+  MSVC and physical hardware acceptance gates remain open.

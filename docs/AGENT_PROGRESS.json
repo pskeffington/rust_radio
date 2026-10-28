@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T23:41:19Z",
+  "updated_at_utc": "2026-10-28T23:45:20Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "878c4ac1ca6b7cf8fdf37f56e743dc7a4fee76ac; typed non-public DNS resolver rejection now maps to permanent transport failure; ordinary resolver errors remain transient.",
+  "implementation_commit": "23ee373f656a4308f06c31b0f2cf800b614c0b38; HTTP 425 Too Early is now classified as a transient network response and retried.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Preserved the SafeResolver non-public-address marker through reqwest so unsafe DNS answers are terminal instead of consuming bounded retries; ordinary resolver timeouts remain transient.",
@@ -136,7 +136,10 @@
     "Fresh bounded validate-all sweep decoded all 25 catalog streams in 25 attempts at 2026-10-28T22:43Z; station-label A/B/C fit comparison repeated.",
     "Separated oversized interactive CLI command errors from underlying stdin I/O errors; actual InvalidData read failures now terminate the reader worker instead of retrying as overlong lines.",
     "Cross-compiled Windows GNU workspace test binaries with --no-run after the stdin error-path fix for default, SDRconnect and direct nRSP-native feature configurations; executables were not run.",
-    "Preserved and printed the original stdin I/O error when the bounded interactive reader exits; reran focused tests and the full validation matrices."
+    "Preserved and printed the original stdin I/O error when the bounded interactive reader exits; reran focused tests and the full validation matrices.",
+    "Fixed temporary HTTP status classification to retry HTTP 425 Too Early; focused regression and all six locked workspace gates passed.",
+    "Repeated GUI label A/B/C: 295px A 24/25, B/C 25/25; at 340px all 25/25; C saves 192px, A overflows wcrb; layout fit only.",
+    "Initial sandboxed validate-all could not reach streams; authorized bounded rerun at 2026-10-28T23:45:04Z decoded all 25 stations in 25 attempts with no retries/failures; point-in-time codec evidence only."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -233,10 +236,10 @@
   },
   "ci": {
     "latest_pr_run": null,
-    "latest_pr_head": "3926f844343e13d343bcae3e2c17ee66a716c803",
+    "latest_pr_head": "367cccce2cf525972e2cb21572468e0f49b11a0b",
     "latest_pr_conclusion": "no_run_observed",
     "latest_pr_jobs": 0,
-    "details": "PR #5 is open and mergeable at checkpoint 3926f84. No PR-triggered run or combined status was observed for this head at 2026-10-28 23:41 UTC. Native Windows MSVC CI remains unverified; prior Actions startup failures are documented above."
+    "details": "PR #5 was open and mergeable at checkpoint 367cccc before this turn\u2019s commits. No PR-triggered run or combined status was visible at 2026-10-28 23:44 UTC. New checkpoint pending push/CI observation. Native Windows MSVC CI and physical hardware acceptance remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -247,7 +250,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue source-aware playback recovery/cancellation work; separately complete physical Bluetooth/USB output, Raspberry Pi and receiver acceptance, publisher rights review, and native Windows MSVC CI.",
-  "current_pr_state": "PR #5 open and mergeable at checkpoint head 3926f84; no workflow run or combined status observed at 2026-10-28 23:41 UTC.",
-  "live_catalog_revalidation": "2026-10-28T23:40:40Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no retries or failures; point-in-time codec evidence only."
+  "next_priority": "Observe CI for the pushed HTTP 425 fix and checkpoint; continue source-aware playback recovery, then complete physical Bluetooth/USB, Raspberry Pi and receiver acceptance, publisher rights review, and native Windows MSVC CI.",
+  "current_pr_state": "PR #5 open and mergeable at checkpoint 367cccc before this turn\u2019s commits; new implementation/docs checkpoint pending push and fresh CI check.",
+  "live_catalog_revalidation": "2026-10-28T23:45:04Z: bounded validate-all decoded 25/25 stations in 25 attempts, no retries/failures. Point-in-time codec evidence only. Earlier sandboxed run was blocked before stream validation.",
+  "six_required_gates_latest": "passed on implementation commit 23ee373: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked"
 }
