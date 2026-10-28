@@ -668,3 +668,21 @@ showed the prior head, so remote CI is pending/unverified.
 The public-entry-point regression is committed as `082b029` and confirmed on the
 remote PR branch. The PR is open and mergeable. No status or PR-triggered run is
 visible yet for `082b029`; the startup failure above belongs to the prior head.
+
+## Probe-time audio output failure classification (2026-10-28)
+
+- Fixed an output-recovery classification gap in IP playback. If the native
+  audio stream reports failure while Symphonia is probing the network stream's
+  format, the probe can return an I/O error. The worker now checks CPAL's
+  output-failure flag and routes that case to operator output selection rather
+  than spending the transient network retry budget. Probe I/O without device
+  failure remains a network error.
+- Regression coverage verifies both classifications and retains the existing
+  assertion that output failures do not retry. Focused test passed.
+- Passed formatting, default and all-feature workspace tests, strict default
+  and all-feature Clippy, all-feature check, and the station-label A/B test.
+  Loopback fixture tests required local socket permission; physical audio
+  acceptance remains separate.
+- Code commit `bf14d59` is pushed. PR #3 is open and reported mergeable. The
+  connector showed no combined status or PR-triggered run for this head; prior
+  run `40757657155` ended at startup with zero jobs.

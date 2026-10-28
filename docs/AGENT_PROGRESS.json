@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T19:51:38Z",
+  "updated_at_utc": "2026-10-28T19:55:20Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "bd48649",
+  "implementation_commit": "bf14d59",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -25,7 +25,8 @@
     "Added compact station category label chosen by three-variant A/B/C measurement; all 25 curated labels fit at 295px while retaining genre cues.",
     "Strengthened the layout regression to prove non-WCRB category labels remain unchanged; GUI crate tests and strict Clippy passed.",
     "Enforced exactly one process-wide native playback worker across NativeRadioEngine instances with an atomic RAII lease; a second start is rejected before resource opening and release is covered for normal exit and unwinding.",
-    "Strengthened the process-wide playback admission regression to cover both public curated-station and direct-stream start APIs; both reject a second worker before resource opening."
+    "Strengthened the process-wide playback admission regression to cover both public curated-station and direct-stream start APIs; both reject a second worker before resource opening.",
+    "Classified IP format-probe I/O errors as audio-output failure when CPAL has reported device loss; this prevents spending network retry budget on a failed output while preserving network recovery for ordinary probe I/O."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -46,8 +47,8 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on implementation commit a417db6; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "Current head 082b029 has empty combined status and no PR-triggered workflow run visible at query time. Prior head run 40757657155 ended startup_failure with zero jobs.",
+    "latest_full_gate_run": "all six required gates passed on source including bf14d59: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
+    "latest_code_head_ci": "Current head bf14d59 has empty combined status and no PR-triggered workflow run visible. Prior head run 40757657155 ended startup_failure with zero jobs.",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
@@ -55,7 +56,8 @@
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
     "public_playback_admission_regression": "passed; curated internet and direct stream public start paths reject while process-wide slot is occupied",
-    "latest_regression_commit": "082b029; both public playback start APIs reject concurrent admission"
+    "latest_regression_commit": "bf14d59; probe-time output failure classification regression",
+    "probe_time_output_failure_classification": "passed; CPAL-reported failure during Symphonia format probe maps to OutputUnavailable; ordinary probe I/O remains NetworkTransient"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -69,8 +71,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40757657155,
-    "conclusion": "Current code head 082b029 is pushed and PR #3 is open/mergeable; no combined status or PR-triggered run is visible yet. Prior head run 40757657155 ended startup_failure with zero jobs."
+    "latest_observed_head_run": null,
+    "previous_head_run": 40757657155,
+    "conclusion": "For current PR head bf14d59, GitHub returned empty combined status and no associated PR-triggered workflow run at query time. Prior head run 40757657155 ended startup_failure with zero jobs; no remote Rust result is established."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -78,5 +81,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Continue native device-loss/output selection recovery audit; retain physical Bluetooth/USB, Pi, receiver/USB SDR, broadcaster rights and Rust-Boy adoption acceptance gates."
+  "next_priority": "Continue native output failure/recovery audit and retain physical Bluetooth/USB output-loss, Pi runtime, receiver/USB SDR, publisher-rights and Rust-Boy adoption gates."
 }
