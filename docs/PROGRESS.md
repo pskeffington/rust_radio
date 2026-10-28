@@ -3,6 +3,25 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current pushed-head verification (2026-10-28)
+
+- Revalidated exact head `cd239e2`: formatting, default and all-feature workspace
+  tests, strict default and all-feature Clippy, and all-feature check passed.
+  Loopback HTTP fixtures passed when run with local socket permission; the
+  ordinary sandbox denied binds. One hardware audio test remains intentionally
+  ignored.
+- Repeated the bounded, silent live catalog sweep: 25/25 stations reached
+  `decoded_audio` in 25 attempts. This is point-in-time codec evidence only.
+- Repeated the station-name layout comparison: at 295 px category+name fit
+  24/25 versus names-only 25/25; at 340 px both fit 25/25. Names-only saves
+  1,776 aggregate label pixels; this is a fit measure, not a listener study.
+- PR #3 remains open and mergeable. Head `cd239e2` has no combined status;
+  Actions run `40751673743` failed before creating any jobs. The workflow file
+  defines standard GitHub-hosted jobs, so no repository step failure is
+  evidenced and the startup cause remains external/unknown.
+- Rust-Boy's local dependency pin has not adopted the new headless history API.
+  Hardware, host adoption and broadcaster rights gates remain open.
+
 ## Current module pass: strict saved-history validation (2026-10-28)
 
 - Implementation commit: `52b85cc` (shared host-neutral parser).
