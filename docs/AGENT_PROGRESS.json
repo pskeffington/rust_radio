@@ -1,0 +1,43 @@
+{
+  "updated_at_utc": "2026-10-28T18:33:05Z",
+  "status": "in_progress",
+  "branch": "codex/station-label-layout-ab",
+  "head_commit": "f11618e",
+  "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
+  "completed_this_run": [
+    "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
+    "Added a daily and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
+    "Classified transient HTTP statuses separately from permanent endpoint rejection.",
+    "Replaced the retired Left Coast 70s stream URL with SomaFM's publisher-listed MP3 M3U endpoint.",
+    "Final live sweep decoded 25 of 25 catalog stations."
+  ],
+  "validation": {
+    "fmt": "passed",
+    "workspace_tests": "passed",
+    "workspace_clippy_strict": "passed",
+    "all_features_tests": "passed",
+    "all_features_clippy_strict": "passed",
+    "all_features_check": "passed",
+    "live_catalog_decode": "25/25 decoded; point-in-time only",
+    "workflow_yaml": "parsed"
+  },
+  "a_b_test": {
+    "variant_a": "category plus station name",
+    "variant_b": "station name only",
+    "at_295px": "24/25 vs 25/25 labels fit",
+    "at_340px": "25/25 vs 25/25 labels fit",
+    "variant_b_text_width_savings": 1776,
+    "interpretation": "compact-layout measurement, not listener preference"
+  },
+  "ci": {
+    "latest_observed_prior_head_run": 40745025999,
+    "conclusion": "startup_failure before jobs; empty combined status"
+  },
+  "remaining_gates": [
+    "Physical Bluetooth and USB output loss/recovery",
+    "Raspberry Pi native audio, display and touch acceptance",
+    "Receiver hardware recovery and supported USB SDR acceptance",
+    "Publisher distribution permissions before bundling or redistribution"
+  ],
+  "next_priority": "Observe CI for f11618e, then add persistent feed-health evidence and outage recovery/backoff without auto-removing stations."
+}
