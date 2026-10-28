@@ -3,6 +3,25 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Output startup error cleanup racing with Stop (2026-10-28 23:29 UTC)
+
+- Fixed `start_resource_if_active`: output-factory errors now clear callback
+  progress, and a concurrent Stop suppresses that stale startup error. If the
+  session remains active, the original output error is preserved. Added focused
+  regressions for both outcomes.
+- Focused regressions and all six local gates passed: format, default and
+  all-feature workspace tests, strict Clippy in both configurations, and
+  all-feature check. Windows GNU test executables compiled for default,
+  SDRconnect and direct nRSP-native; they were not run.
+- Repeated GUI station-label A/B/C: at 295 px A full category fits 24/25, B
+  names-only and C compact category fit 25/25; all fit at 340 px. C saves
+  192 px vs A; A overflows `wcrb`. This is layout evidence, not preference data.
+- Source commit `03e3025` is pushed to open, mergeable PR #5. No PR workflow run
+  or combined status was observed for this head; native Windows MSVC CI remains
+  unverified.
+- Next: continue playback lifecycle race coverage; physical output/Pi/receiver
+  operation and publisher-rights review remain open acceptance gates.
+
 ## Cancellation-safe native output startup (2026-10-28 23:25 UTC)
 
 - Added `start_resource_if_active` around native output creation. Stop set before

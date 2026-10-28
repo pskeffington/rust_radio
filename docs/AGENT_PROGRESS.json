@@ -1,10 +1,12 @@
 {
-  "updated_at_utc": "2026-10-28T23:25:50Z",
+  "updated_at_utc": "2026-10-28T23:29:09Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "6069543bee1dcf9df007824213032f1b07946061; native output startup now skips pre-canceled work, drops resources started during Stop, and clears callback progress.",
+  "implementation_commit": "03e3025f81b865690c52b8b782fac59faccb46e3; output startup errors clear callback progress; concurrent Stop suppresses the stale error while active sessions preserve it.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Fixed output-start failure cleanup and Stop race; focused regressions and all six local Rust gates passed.",
+    "Repeated GUI station-label A/B/C: A 24/25, B/C 25/25 at 295px; all 25/25 at 340px; C saves 192px and A overflows wcrb. Layout fit only, not listener preference.",
     "Added start_resource_if_active around CPAL output creation and deterministic tests for Stop before/during startup; cancellation during creation drops the synthetic resource and clears callback progress.",
     "Repeated full validation gates, Windows GNU test-binary cross-compiles (three feature sets), and GUI station-label A/B/C; all passed. Focused startup tests re-passed after final simplification.",
     "Made decode_and_play return before opening audio if already canceled; added probe_if_active to skip pre-canceled probes and suppress probe errors that complete after Stop.",
@@ -217,10 +219,10 @@
   },
   "ci": {
     "latest_pr_run": null,
-    "latest_pr_head": "6069543bee1dcf9df007824213032f1b07946061",
+    "latest_pr_head": "03e3025f81b865690c52b8b782fac59faccb46e3",
     "latest_pr_conclusion": "no_run_observed",
     "latest_pr_jobs": 0,
-    "details": "No PR-triggered workflow run or combined status observed for source head 6069543. Raw GitHub PR API reports mergeable=true, mergeable_state=clean; normalized connector briefly returned false. Previous run 264 for 0ede192 failed before jobs (startup_failure). Native MSVC CI remains unverified."
+    "details": "No PR-triggered workflow run or combined status observed for source head 03e3025. GitHub reports PR #5 open and mergeable. Windows GNU test binaries compiled for default, SDRconnect and direct nRSP-native but were not run; native MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -231,6 +233,6 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Exercise native output factory failure concurrent with Stop and ensure callback progress clears on startup errors; continue physical Bluetooth/USB, Raspberry Pi/receiver, publisher-rights and healthy native Windows CI gates.",
-  "current_pr_state": "PR #5 open and mergeable/clean at source head 6069543 per raw GitHub API; no workflow run or combined status observed."
+  "next_priority": "Continue deterministic playback lifecycle race coverage; separately close physical Bluetooth/USB, Raspberry Pi/receiver, publisher-rights and healthy native Windows MSVC CI gates.",
+  "current_pr_state": "PR #5 open and mergeable at source head 03e3025; no workflow run or combined status observed."
 }
