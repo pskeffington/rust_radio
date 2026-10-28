@@ -515,65 +515,89 @@ fn sweep_with(
     Ok(fresh_count(&completed, at))
 }
 
-fn show_report(path: &Path, eligible_only: bool) -> Result<bool, String> {
-    let report = read_snapshot(path)?;
+fn show_report(path: &Path, eligible_mode: Option<bool>) -> Result<bool, String> {
+    let report = read_with_redundancy(path)?.ok_or("No saved feed-health report")?;
     let now = unix_seconds(SystemTime::now()).ok_or("System clock precedes UNIX epoch")?;
-    let entries = report["stations"].as_array().ok_or("Missing stations")?;
-    if eligible_only {
+    let old = report["stations"].as_array().ok_or("Missing stations")?;
+    let entries: Vec<Value> = curated_stations()
+        .iter()
+        .zip(old)
+        .map(|(station, entry)| restore_station(station, Some(entry)))
+        .collect();
+    if let Some(strict) = eligible_mode {
         let ids: Vec<&str> = entries
             .iter()
-            .filter(|s| current_health(&s["validation"], now) == "fresh")
-            .filter_map(|s| s["id"].as_str())
+            .filter(|entry| is_eligible(entry, now, strict))
+            .filter_map(|entry| entry["id"].as_str())
             .collect();
-        println!("{}", serde_json::to_string(&ids).map_err(|e| e.to_string())?);
-        return Ok(ids.len() == entries.len());
+        println!("{}", serde_json::to_string(&ids).map_err(|error| error.to_string())?);
+        return Ok(true);
     }
-    let fresh = fresh_count(&report, now);
+    let fresh = entries
+        .iter()
+        .filter(|entry| current_health(entry, now) == "fresh")
+        .count();
+    let degraded = entries
+        .iter()
+        .filter(|entry| current_health(entry, now) == "degraded")
+        .count();
     println!(
-        "Feed health: {fresh}/{} fresh | last report {} | complete={}",
+        "Feed health: {fresh} fresh / {degraded} degraded / {} total | complete={} | network incident suspected={}",
         entries.len(),
-        report["generated_at_unix"].as_u64().unwrap_or(0),
         report["complete"].as_bool().unwrap_or(false),
+        report["network_incident_suspected"].as_bool().unwrap_or(false),
     );
-    for station in entries {
+    for station in &entries {
         println!(
-            "{}\t{}\t{}\t{}",
+            "{}\t{}\tfailed_sweeps={}\t{}\t{}",
             station["id"].as_str().unwrap_or("?"),
-            current_health(&station["validation"], now),
+            current_health(station, now),
+            station["consecutive_failed_sweeps"].as_u64().unwrap_or(0),
             station["category"].as_str().unwrap_or("?"),
             station["genre"].as_str().unwrap_or("?"),
         );
     }
-    Ok(fresh == entries.len() && report["complete"].as_bool() == Some(true))
+    Ok(true)
 }
 
 fn run(options: Options) -> Result<bool, String> {
     match options.mode {
-        Mode::Status => show_report(&options.output, false),
-        Mode::Eligible => show_report(&options.output, true),
+        Mode::Status => show_report(&options.output, None),
+        Mode::Eligible => show_report(&options.output, Some(false)),
+        Mode::StrictEligible => show_report(&options.output, Some(true)),
         Mode::Once | Mode::Daemon => {
             loop {
                 let cycle = Instant::now();
-                match sweep_with(&options.output, INTER_STATION_PAUSE, validate_station) {
+                match sweep_with(
+                    &options.output,
+                    INTER_STATION_PAUSE,
+                    PROBE_RETRY_DELAY,
+                    validate_station,
+                ) {
                     Ok(fresh) => {
+                        let now = unix_seconds(SystemTime::now()).unwrap_or(0);
+                        let report = read_with_redundancy(&options.output)?
+                            .ok_or("Completed feed report is missing")?;
+                        let eligible = eligible_count(&report, now, false);
                         eprintln!(
-                            "Validated {fresh}/{} stations; report: {}",
+                            "{fresh} fresh, {} eligible (including bounded grace), {} total; report: {}",
+                            eligible.saturating_sub(fresh),
                             curated_stations().len(),
-                            options.output.display()
+                            options.output.display(),
                         );
                         if options.mode == Mode::Once {
-                            return Ok(fresh == curated_stations().len());
+                            return Ok(eligible == curated_stations().len());
                         }
                     }
                     Err(error) => {
                         if options.mode == Mode::Once {
-                            return Err(format!("Cannot write feed report: {error}"));
+                            return Err(format!("Cannot save feed report: {error}"));
                         }
                         eprintln!("Feed report failed: {error}");
                     }
                 }
-                // One serial checker per process, no overlap, no host audio output.
-                // A long scan reduces the sleep rather than spawning another scan.
+                // One serial sweep per process, never overlapping. A slow sweep
+                // reduces sleep instead of creating a second concurrent scan.
                 thread::sleep(options.interval.saturating_sub(cycle.elapsed()));
             }
         }
