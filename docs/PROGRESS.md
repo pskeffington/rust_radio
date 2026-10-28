@@ -39,6 +39,9 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Implemented in `a417db6`; regression
   `station_label_ab_compares_full_compact_and_name_only_variants` measures all
   three alternatives and confirms WCRB is the only A overflow.
+- Test-guard commit `3b8cf74` additionally asserts that every non-WCRB category
+  remains unchanged. The full GUI crate passed (31 passed, one hardware test
+  ignored) and strict GUI Clippy passed.
 - This compares compact layout fit, not listener preference. Hover text keeps
   the station's full genre.
 

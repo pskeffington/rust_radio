@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T19:40:55Z",
+  "updated_at_utc": "2026-10-28T19:42:59Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "a417db6",
@@ -22,7 +22,8 @@
     "Reconciled IP PlaybackStarted snapshots with actual native callback sample consumption, including delayed callbacks and per-retry counters.",
     "Extended callback-consumed status reconciliation to direct nRSP-native, SDRconnect and Soapy playback; clear failed attempt progress before recovery.",
     "Extracted native output full-ring callback watchdog logic and added deterministic no-callback failure and cancellation classification regressions.",
-    "Added compact station category label chosen by three-variant A/B/C measurement; all 25 curated labels fit at 295px while retaining genre cues."
+    "Added compact station category label chosen by three-variant A/B/C measurement; all 25 curated labels fit at 295px while retaining genre cues.",
+    "Strengthened the layout regression to prove non-WCRB category labels remain unchanged; GUI crate tests and strict Clippy passed."
   ],
   "validation": {
     "fmt": "passed",
@@ -44,10 +45,11 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "a417db6; compact CLASSICAL-to-CLASS station category label chosen by three-variant fit comparison",
     "latest_full_gate_run": "all six required gates passed on implementation commit a417db6; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "PR code head a417db6 had empty combined status and no workflow run visible at query time; prior docs head 5897ad8 run 40755981842 failed at startup with zero jobs",
+    "latest_code_head_ci": "PR code head 3b8cf74 had empty combined status and no workflow run visible at query time; prior docs head d65eff5 run 40756513375 failed at startup with zero jobs",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
+    "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy"
   },
   "a_b_test": {
@@ -62,8 +64,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40755981842,
-    "conclusion": "docs head 5897ad8 had empty combined status; Actions run 40755981842 failed at startup and created zero jobs; code head a417db6 passed local gates, with no separate remote check visible"
+    "latest_observed_head_run": 40756513375,
+    "conclusion": "docs head d65eff5 had empty combined status; Actions run 40756513375 failed at startup and created zero jobs; code head 3b8cf74 passed local GUI tests and strict Clippy, with no separate remote check visible"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
