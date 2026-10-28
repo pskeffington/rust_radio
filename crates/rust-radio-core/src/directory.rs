@@ -20,7 +20,7 @@ pub struct InternetStation {
     pub format: &'static str,
 }
 
-/// Curated broadcaster links checked against publisher pages 2026-10-26.
+/// Curated broadcaster links checked against publisher pages 2026-10-28.
 /// Inclusion is not proof a stream is online, licensed for redistribution,
 /// or supported by the local decoder at runtime.
 /// The broadcaster's conditions allow personal listening, not rebroadcasting.
