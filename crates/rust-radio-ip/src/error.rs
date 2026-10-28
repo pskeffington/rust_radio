@@ -26,7 +26,9 @@ impl TransportError {
         if status.is_server_error()
             || matches!(
                 status,
-                reqwest::StatusCode::REQUEST_TIMEOUT | reqwest::StatusCode::TOO_MANY_REQUESTS
+                reqwest::StatusCode::REQUEST_TIMEOUT
+                    | reqwest::StatusCode::TOO_EARLY
+                    | reqwest::StatusCode::TOO_MANY_REQUESTS
             )
         {
             Self::Network(message)
@@ -66,7 +68,7 @@ mod tests {
 
     #[test]
     fn temporary_http_responses_retry_but_rejections_do_not() {
-        for status in [408, 429, 500, 502, 503, 504] {
+        for status in [408, 425, 429, 500, 502, 503, 504] {
             let error = TransportError::http_status(reqwest::StatusCode::from_u16(status).unwrap());
             assert_eq!(error.class(), FailureClass::NetworkTransient);
             assert!(matches!(
