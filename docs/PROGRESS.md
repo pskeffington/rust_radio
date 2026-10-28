@@ -3,6 +3,33 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Post-merge verification (2026-10-28 21:37 UTC)
+
+- PR #3 merged as `5568fb3d6cad9d8f44206fea1f28bebea0fba300`; this checkpoint
+  verifies the actual merged default-branch tree.
+- All six required local gates passed: formatting, default and all-feature
+  workspace tests, strict Clippy in both configurations, and all-feature check.
+  Loopback fixtures initially failed under the restricted sandbox, then passed
+  with local-socket access. No implementation regression was found.
+- Repeated the station-label A/B/C regression: at 295 px, full category A fits
+  24/25 labels, names-only B and compact-category C fit 25/25; all fit at
+  340 px. C preserves the genre cue and saves 32 px on WCRB. This measures fit,
+  not listener preference.
+- A fresh bounded silent sweep at 21:37 UTC decoded all 25 stations in one
+  attempt each. The credential-safe formatter consumed the report; its four
+  tests passed. The workflow YAML parsed, and headless AArch64 Linux checks
+  passed for core-only, SDRconnect and direct nRSP-native feature sets.
+- Manual Actions run `40773152365` on the merged commit ended as
+  `startup_failure`; GitHub reports zero jobs, so there are no job logs to
+  diagnose. The scheduled workflow is installed on `main`, but runner execution
+  remains unverified.
+- The checkpoint PR's Rust Actions run `40773644526` failed the same way before
+  any job was created, confirming this is still a repository runner-startup
+  blocker rather than a source test result.
+- Physical Bluetooth/USB output recovery, Pi audio/display/touch, supported USB
+  SDR, extended receiver recovery and publisher distribution rights remain open.
+  The A/B test does not establish listener preference or accessibility.
+
 ## Cross-source callback status reconciliation (2026-10-28)
 
 - Implementation commit `df6a73d` shares the native callback-consumed sample
