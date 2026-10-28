@@ -3,7 +3,31 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Current module pass: input discovery and header setup
+## Current module pass: advanced FM broadcast tuning
+
+- Added Tune / FM Audio / Presets / Device tabs behind nSDR, with exact unit-aware
+  frequency entry and live 1/10/50/100/200 kHz steps. The main nSDR arrows also
+  tune the current worker; no receiver/output replacement occurs.
+- Added native FM stereo/mono, 50/75 µs or disabled de-emphasis, audio low/high
+  cuts and limiter controls. Stereo permission and filters are validated.
+  Stereo lock is parsed from receiver type-214 reports; requested stereo and
+  two-channel PCM never count as lock evidence.
+- Added 16 bounded named FM presets, including WCRB Boston 99.5 MHz, with full
+  FM audio choices. Standalone persistence uses an atomic background file writer;
+  embedded hosts retain preference ownership. No addresses or keys are stored.
+- Live muted test kept the existing physical frequency unchanged, switched to
+  mono / 50 µs / speech filtering and back to stereo / 75 µs / full-band audio,
+  and remained Playing through at least 71,040 decoded frames. Real PLL reports
+  showed lock and unlock; clean Stop released only the owned session.
+- Fixture tests cover exact native FM properties, routing, filters, preset JSON,
+  file replacement, all four layouts, long names and safe band-edge stepping.
+  All-feature acceptance passed **179 tests** (one manual output test ignored);
+  the default suite passed **129 tests**. Formatting, strict Clippy, receiver
+  GUI/CLI builds and the headless AArch64 compile check passed.
+- Opened the updated standalone app; the preset setup view was visually checked
+  at the compact viewport. Further audible FM quality checks remain operator work.
+
+## Previous module pass: input discovery and header setup
 
 - Replaced the header label with IP Radio | nSDR | USB source buttons. Availability
   drives green glow; selection has its own underline. Each input button opens

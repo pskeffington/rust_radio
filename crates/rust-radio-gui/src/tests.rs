@@ -542,3 +542,91 @@ fn opening_ip_setup_preserves_the_selected_direct_stream() {
     assert_eq!(panel.direct_url, "https://example.org/live.aac");
     assert!(!panel.is_active());
 }
+
+#[cfg(feature = "nrsp-native")]
+#[test]
+fn advanced_fm_tabs_fit_and_presets_do_not_autoplay() {
+    use crate::fm_presets::{frequency_hz, PresetBank};
+    let mut panel = RadioPanel::new();
+    panel.select_segment(Segment::Network, false);
+    panel.native_frequency = "99.1 MHz".into();
+    panel.native_step = 200_000;
+    panel.step_native_frequency(true);
+    assert_eq!(frequency_hz(&panel.native_frequency).unwrap(), 99_300_000);
+    panel.native_preset_name = "Local FM".into();
+    panel.save_native_preset();
+    let json = panel.take_fm_presets_update().unwrap();
+    assert_eq!(PresetBank::parse(&json).unwrap().stations.len(), 2);
+    assert!(panel.take_fm_presets_update().is_none());
+    let before = panel.native_presets.clone();
+    assert!(panel.load_fm_presets("invalid").is_err());
+    assert_eq!(panel.native_presets, before);
+    panel.recall_native_preset(0);
+    assert_eq!(frequency_hz(&panel.native_frequency).unwrap(), 99_500_000);
+    assert_eq!(panel.native_mode, "wfm");
+    assert!(!panel.is_active());
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    for tab in 0..4 {
+        panel.native_tab = tab;
+        let mut bounds = None;
+        for _ in 0..2 {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |ctx| {
+                    bounds = panel.show_settings(ctx);
+                },
+            );
+        }
+        assert!(
+            screen.contains_rect(bounds.unwrap()),
+            "FM tab {tab} exceeds viewport"
+        );
+    }
+    assert!(!panel.is_active());
+}
+
+#[cfg(feature = "nrsp-native")]
+#[test]
+fn long_fm_preset_names_remain_within_small_display() {
+    let mut panel = RadioPanel::new();
+    panel.select_segment(Segment::Network, false);
+    panel.native_tab = 2;
+    for index in 0..15 {
+        panel.native_preset_name = format!("Long preset name number {index:02} for FM");
+        panel.save_native_preset();
+    }
+    assert_eq!(panel.native_presets.stations.len(), 16);
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    let mut bounds = None;
+    for _ in 0..2 {
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ctx| {
+                bounds = panel.show_settings(ctx);
+            },
+        );
+    }
+    assert!(screen.contains_rect(bounds.unwrap()));
+    assert!(!panel.is_active());
+}
+
+#[cfg(feature = "nrsp-native")]
+#[test]
+fn fm_steps_reject_band_edges_without_changing_the_dial() {
+    let mut panel = RadioPanel::new();
+    panel.select_segment(Segment::Network, false);
+    for (frequency, up) in [("108 MHz", true), ("64 MHz", false)] {
+        panel.native_frequency = frequency.into();
+        panel.step_native_frequency(up);
+        assert_eq!(panel.native_frequency, frequency);
+        assert!(!panel.is_active());
+    }
+}

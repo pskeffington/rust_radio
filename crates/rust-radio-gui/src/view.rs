@@ -77,111 +77,131 @@ impl RadioPanel {
             });
             ui.separator();
 
-            ui.add_enabled_ui(!running && !self.stopping, |ui| {
-                ui.horizontal(|ui| {
-                    if ui
-                        .add_enabled(
-                            self.segment == Segment::Ip,
-                            egui::Button::new("◀").min_size(egui::vec2(45.0, 43.0)),
-                        )
-                        .clicked()
-                    {
-                        self.step_segment_source(-1);
-                    }
-                    egui::ComboBox::from_id_salt("rust_radio_station")
-                        .width(260.0)
-                        .truncate()
-                        .selected_text(if !self.segment_supported() {
-                            self.segment.label()
-                        } else if self.is_native_selected() {
-                            "nRSP-ST / Direct"
-                        } else if self.direct_selected {
-                            "Direct IP stream"
-                        } else if self.is_usb_selected() {
-                            "USB SDR / mono FM"
-                        } else if self.is_sdr_selected() {
-                            "nRSP-ST / SDRconnect"
-                        } else {
-                            self.selected_station().name
-                        })
-                        .show_ui(ui, |ui| {
-                            for (index, station) in curated_stations().iter().enumerate().filter({
-                                let is_ip = self.segment == Segment::Ip;
-                                move |_| is_ip
-                            }) {
-                                let label = format!(
-                                    "{} [{}]",
-                                    station.name,
-                                    self.validation_label(station.id)
-                                );
-                                if ui
-                                    .selectable_label(self.source_index() == index, label)
-                                    .clicked()
-                                {
-                                    self.select_source(index);
-                                }
-                            }
-                            if ui
-                                .add_visible(
-                                    self.segment == Segment::Ip,
-                                    egui::Button::new("Direct IP stream")
-                                        .selected(self.direct_selected),
-                                )
-                                .clicked()
-                            {
-                                self.select_source(
-                                    curated_stations().len()
-                                        + usize::from(cfg!(feature = "sdrconnect"))
-                                        + usize::from(cfg!(feature = "soapy-sdr")),
-                                );
-                            }
-                            #[cfg(feature = "nrsp-native")]
-                            if self.segment == Segment::Network
-                                && ui
-                                    .selectable_label(self.is_native_selected(), "nRSP-ST / Direct")
-                                    .clicked()
-                            {
-                                self.select_source(
-                                    curated_stations().len()
-                                        + usize::from(cfg!(feature = "sdrconnect"))
-                                        + usize::from(cfg!(feature = "soapy-sdr"))
-                                        + 1,
-                                );
-                            }
-                            #[cfg(feature = "sdrconnect")]
-                            if self.segment == Segment::Network
-                                && ui
-                                    .selectable_label(
-                                        self.is_sdr_selected(),
-                                        "nRSP-ST / SDRconnect",
-                                    )
-                                    .clicked()
-                            {
-                                self.select_source(curated_stations().len());
-                            }
-                            #[cfg(feature = "soapy-sdr")]
-                            if self.segment == Segment::Usb
-                                && ui
-                                    .selectable_label(self.is_usb_selected(), "USB SDR / mono FM")
-                                    .clicked()
-                            {
-                                self.select_source(
-                                    curated_stations().len()
-                                        + usize::from(cfg!(feature = "sdrconnect")),
-                                );
-                            }
+            #[cfg(feature = "nrsp-native")]
+            let native_display = self
+                .is_native_selected()
+                .then(|| self.native_frequency.clone());
+            #[cfg(not(feature = "nrsp-native"))]
+            let native_display: Option<String> = None;
+            ui.add_enabled_ui(
+                (!running || self.is_native_selected()) && !self.stopping,
+                |ui| {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(
+                                self.segment == Segment::Ip || self.is_native_selected(),
+                                egui::Button::new("◀").min_size(egui::vec2(45.0, 43.0)),
+                            )
+                            .clicked()
+                        {
+                            self.step_segment_source(-1);
+                        }
+                        ui.add_enabled_ui(!running, |ui| {
+                            egui::ComboBox::from_id_salt("rust_radio_station")
+                                .width(260.0)
+                                .truncate()
+                                .selected_text(if !self.segment_supported() {
+                                    self.segment.label()
+                                } else if self.is_native_selected() {
+                                    native_display.as_deref().unwrap_or("nRSP-ST / Direct")
+                                } else if self.direct_selected {
+                                    "Direct IP stream"
+                                } else if self.is_usb_selected() {
+                                    "USB SDR / mono FM"
+                                } else if self.is_sdr_selected() {
+                                    "nRSP-ST / SDRconnect"
+                                } else {
+                                    self.selected_station().name
+                                })
+                                .show_ui(ui, |ui| {
+                                    for (index, station) in
+                                        curated_stations().iter().enumerate().filter({
+                                            let is_ip = self.segment == Segment::Ip;
+                                            move |_| is_ip
+                                        })
+                                    {
+                                        let label = format!(
+                                            "{} [{}]",
+                                            station.name,
+                                            self.validation_label(station.id)
+                                        );
+                                        if ui
+                                            .selectable_label(self.source_index() == index, label)
+                                            .clicked()
+                                        {
+                                            self.select_source(index);
+                                        }
+                                    }
+                                    if ui
+                                        .add_visible(
+                                            self.segment == Segment::Ip
+                                                || self.is_native_selected(),
+                                            egui::Button::new("Direct IP stream")
+                                                .selected(self.direct_selected),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.select_source(
+                                            curated_stations().len()
+                                                + usize::from(cfg!(feature = "sdrconnect"))
+                                                + usize::from(cfg!(feature = "soapy-sdr")),
+                                        );
+                                    }
+                                    #[cfg(feature = "nrsp-native")]
+                                    if self.segment == Segment::Network
+                                        && ui
+                                            .selectable_label(
+                                                self.is_native_selected(),
+                                                "nRSP-ST / Direct",
+                                            )
+                                            .clicked()
+                                    {
+                                        self.select_source(
+                                            curated_stations().len()
+                                                + usize::from(cfg!(feature = "sdrconnect"))
+                                                + usize::from(cfg!(feature = "soapy-sdr"))
+                                                + 1,
+                                        );
+                                    }
+                                    #[cfg(feature = "sdrconnect")]
+                                    if self.segment == Segment::Network
+                                        && ui
+                                            .selectable_label(
+                                                self.is_sdr_selected(),
+                                                "nRSP-ST / SDRconnect",
+                                            )
+                                            .clicked()
+                                    {
+                                        self.select_source(curated_stations().len());
+                                    }
+                                    #[cfg(feature = "soapy-sdr")]
+                                    if self.segment == Segment::Usb
+                                        && ui
+                                            .selectable_label(
+                                                self.is_usb_selected(),
+                                                "USB SDR / mono FM",
+                                            )
+                                            .clicked()
+                                    {
+                                        self.select_source(
+                                            curated_stations().len()
+                                                + usize::from(cfg!(feature = "sdrconnect")),
+                                        );
+                                    }
+                                });
                         });
-                    if ui
-                        .add_enabled(
-                            self.segment == Segment::Ip,
-                            egui::Button::new("▶").min_size(egui::vec2(45.0, 43.0)),
-                        )
-                        .clicked()
-                    {
-                        self.step_segment_source(1);
-                    }
-                });
-            });
+                        if ui
+                            .add_enabled(
+                                self.segment == Segment::Ip,
+                                egui::Button::new("▶").min_size(egui::vec2(45.0, 43.0)),
+                            )
+                            .clicked()
+                        {
+                            self.step_segment_source(1);
+                        }
+                    });
+                },
+            );
             self.cancel_stale_validation();
             ui.add(egui::Label::new(self.source_detail()).truncate());
             ui.separator();

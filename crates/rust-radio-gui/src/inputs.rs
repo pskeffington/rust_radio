@@ -131,6 +131,11 @@ impl RadioPanel {
         }
     }
     pub(super) fn step_segment_source(&mut self, direction: isize) {
+        #[cfg(feature = "nrsp-native")]
+        if self.is_native_selected() {
+            self.step_native_frequency(direction > 0);
+            return;
+        }
         if self.segment == Segment::Ip {
             let count = curated_stations().len() + 1;
             let current = if self.direct_selected {

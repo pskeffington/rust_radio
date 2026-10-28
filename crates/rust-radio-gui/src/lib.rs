@@ -8,7 +8,11 @@ use rust_radio_core::directory::{curated_stations, station_by_id, InternetStatio
 use rust_radio_core::validation::{StationValidation, ValidationStatus};
 use std::collections::BTreeMap;
 
+#[cfg(feature = "nrsp-native")]
+mod fm_presets;
 mod inputs;
+#[cfg(feature = "nrsp-native")]
+mod native_settings;
 use inputs::Segment;
 use rust_radio_audio::discovery::{InputReport, InputScan};
 use std::time::Instant;
@@ -40,6 +44,18 @@ pub struct RadioPanel {
     native_mode: String,
     #[cfg(feature = "nrsp-native")]
     native_bandwidth: String,
+    #[cfg(feature = "nrsp-native")]
+    native_tab: u8,
+    #[cfg(feature = "nrsp-native")]
+    native_step: u64,
+    #[cfg(feature = "nrsp-native")]
+    native_fm: rust_radio_audio::playback::NativeFmSettings,
+    #[cfg(feature = "nrsp-native")]
+    native_presets: fm_presets::PresetBank,
+    #[cfg(feature = "nrsp-native")]
+    native_preset_name: String,
+    #[cfg(feature = "nrsp-native")]
+    native_presets_dirty: bool,
     #[cfg(feature = "sdrconnect")]
     sdr_selected: bool,
     #[cfg(feature = "sdrconnect")]
@@ -79,11 +95,23 @@ impl Default for RadioPanel {
             #[cfg(feature = "nrsp-native")]
             native_endpoint: String::new(),
             #[cfg(feature = "nrsp-native")]
-            native_frequency: "99100000".into(),
+            native_frequency: "99.100000 MHz".into(),
             #[cfg(feature = "nrsp-native")]
             native_mode: "wfm".into(),
             #[cfg(feature = "nrsp-native")]
             native_bandwidth: "200000".into(),
+            #[cfg(feature = "nrsp-native")]
+            native_tab: 0,
+            #[cfg(feature = "nrsp-native")]
+            native_step: 200_000,
+            #[cfg(feature = "nrsp-native")]
+            native_fm: Default::default(),
+            #[cfg(feature = "nrsp-native")]
+            native_presets: Default::default(),
+            #[cfg(feature = "nrsp-native")]
+            native_preset_name: String::new(),
+            #[cfg(feature = "nrsp-native")]
+            native_presets_dirty: false,
             #[cfg(feature = "sdrconnect")]
             sdr_selected: false,
             #[cfg(feature = "sdrconnect")]
@@ -212,6 +240,16 @@ impl RadioPanel {
                 .native_bandwidth
                 .parse()
                 .map_err(|_| "Enter a bandwidth in Hz")?;
+            if self.native_mode == "wfm" {
+                return NativeRadioEngine::start_nrsp_native_fm(
+                    &self.native_endpoint,
+                    frequency,
+                    bandwidth,
+                    self.native_fm,
+                    self.volume,
+                    &self.output,
+                );
+            }
             return NativeRadioEngine::start_nrsp_native(
                 &self.native_endpoint,
                 frequency,
@@ -252,10 +290,7 @@ impl RadioPanel {
     #[cfg(feature = "nrsp-native")]
     fn apply_native_tuning(&mut self) {
         let result = (|| {
-            let frequency = self
-                .native_frequency
-                .parse::<u64>()
-                .map_err(|_| "Enter a frequency in Hz")?;
+            let frequency = fm_presets::frequency_hz(&self.native_frequency)?;
             let bandwidth = self
                 .native_bandwidth
                 .parse::<u32>()
@@ -264,7 +299,20 @@ impl RadioPanel {
                 .engine
                 .as_ref()
                 .ok_or("Start the native receiver first")?;
-            engine.tune_nrsp_native(frequency, &self.native_mode, bandwidth)
+            self.native_fm.validate().map_err(|e| e.to_string())?;
+            if self.native_mode == "wfm"
+                && self.native_fm.stereo
+                && engine
+                    .nrsp_native_status()
+                    .is_some_and(|status| !status.stereo_allowed)
+            {
+                return Err("Receiver does not permit stereo FM; select mono".into());
+            }
+            engine.tune_nrsp_native(frequency, &self.native_mode, bandwidth)?;
+            if self.native_mode == "wfm" {
+                engine.set_nrsp_native_fm(self.native_fm)?;
+            }
+            Ok::<(), String>(())
         })();
         self.note = match result {
             Ok(()) => "TUNING REQUESTED".into(),
@@ -454,13 +502,32 @@ impl RadioPanel {
                 .as_ref()
                 .and_then(NativeRadioEngine::nrsp_native_status)
             {
+                if status.configured_mode != Some(rust_radio_audio::playback::NativeNrspMode::Wfm) {
+                    return format!(
+                        "nRSP-ST / {} / {}",
+                        fm_presets::format_frequency(status.center_frequency_hz),
+                        status
+                            .configured_mode
+                            .map(|mode| format!("{mode:?}").to_uppercase())
+                            .unwrap_or_else(|| "NATIVE".into())
+                    );
+                }
+                let lock = if status.fm_settings.is_some_and(|settings| !settings.stereo) {
+                    "MONO"
+                } else {
+                    match status.stereo_locked {
+                        Some(true) => "STEREO LOCK",
+                        Some(false) => "NO STEREO LOCK",
+                        None => "LOCK UNKNOWN",
+                    }
+                };
                 return format!(
-                    "NATIVE nRSP-ST / {} Hz / OPUS 48 kHz",
-                    status.center_frequency_hz
+                    "nRSP-ST / {} / {lock}",
+                    fm_presets::format_frequency(status.center_frequency_hz)
                 );
             }
             return format!(
-                "NATIVE nRSP-ST / {} Hz / {}",
+                "nRSP-ST / {} / {}",
                 self.native_frequency,
                 self.native_mode.to_uppercase()
             );

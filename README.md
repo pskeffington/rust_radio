@@ -75,7 +75,9 @@ cargo run -p rust-radio-gui --features receivers --bin rust-radio-gui
 
 IP Radio contains curated station selection, silent station checks and direct MP3/AAC stream URLs. Select **WCRB Classical (Boston)** or **Skylab Radio** and press PLAY. A station website may differ from its audio URL; GBH publishes the [WCRB direct stream](https://www.wgbh.org/help/how-to-access-live-radio-streams). Direct input accepts HTTPS and literal private/loopback IPv4 HTTP, rejects credentials and fragments, and does not follow redirects, playlists or HLS. Protect query tokens, including from shell history when using the CLI.
 
-nSDR contains the discovered receiver address, frequency, mode, bandwidth and live APPLY TUNING. USB contains the detected device picker and mono-FM frequency. USB playback requires a compatible driver supporting 240 ksample/s CS16; physical USB acceptance is still open. Builds without an optional receiver feature show its button dim and explain the missing support in setup. The headless and IP-only defaults remain independent of native SDR SDKs.
+nSDR setup is divided into **Tune**, **FM Audio**, **Presets** and **Device**. Tune accepts Hz/kHz/MHz, offers 1/10/50/100/200 kHz steps and RF bandwidth; the main arrows also step the live nSDR. FM Audio offers stereo/mono, 50/75 µs de-emphasis, low/high audio cuts and a limiter. Stereo lock comes from receiver reports; requesting stereo alone does not indicate a lock. Presets include frequency, RF bandwidth and FM audio choices, with WCRB Boston 99.5 MHz included. The standalone app saves favorites locally; embedded hosts retain storage ownership. Device contains receiver/output selection and discovery.
+
+ USB contains the detected device picker and mono-FM frequency. USB playback requires a compatible driver supporting 240 ksample/s CS16; physical USB acceptance is still open. Builds without an optional receiver feature show its button dim and explain the missing support in setup. The headless and IP-only defaults remain independent of native SDR SDKs.
 
 ```sh
 cargo run -p rust-radio-cli --features nrsp-native,soapy-sdr -- inputs

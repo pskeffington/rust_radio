@@ -31,6 +31,10 @@ mod ip_pcm;
 mod nrsp_native;
 #[cfg(feature = "nrsp-native")]
 pub use nrsp_native::AudioStats as NativeNrspAudioStats;
+#[cfg(feature = "nrsp-native")]
+pub use rust_radio_sdr::nrsp_native::{
+    Deemphasis as NativeFmDeemphasis, FmSettings as NativeFmSettings, Mode as NativeNrspMode,
+};
 #[cfg(feature = "sdrconnect")]
 mod sdrconnect;
 #[cfg(feature = "soapy")]
@@ -43,6 +47,7 @@ enum PlaybackSource {
     NrspNative(
         rust_radio_sdr::nrsp_native::Endpoint,
         rust_radio_sdr::nrsp_native::Config,
+        Option<NativeFmSettings>,
     ),
     #[cfg(feature = "sdrconnect")]
     SdrConnect(rust_radio_sdr::sdrconnect::Endpoint),
@@ -163,7 +168,28 @@ impl NativeRadioEngine {
         let mode = Mode::parse(mode).map_err(|e| e.to_string())?;
         let config = Config::new(frequency_hz, mode, bandwidth_hz).map_err(|e| e.to_string())?;
         Self::start(
-            PlaybackSource::NrspNative(endpoint, config),
+            PlaybackSource::NrspNative(endpoint, config, None),
+            volume_percent,
+            output_id,
+        )
+    }
+
+    #[cfg(feature = "nrsp-native")]
+    pub fn start_nrsp_native_fm(
+        endpoint: &str,
+        frequency_hz: u64,
+        bandwidth_hz: u32,
+        settings: NativeFmSettings,
+        volume_percent: u8,
+        output_id: &str,
+    ) -> Result<Self, String> {
+        use rust_radio_sdr::nrsp_native::{Config, Endpoint, Mode};
+        settings.validate().map_err(|e| e.to_string())?;
+        let endpoint = Endpoint::parse(endpoint).map_err(|e| e.to_string())?;
+        let config =
+            Config::new(frequency_hz, Mode::Wfm, bandwidth_hz).map_err(|e| e.to_string())?;
+        Self::start(
+            PlaybackSource::NrspNative(endpoint, config, Some(settings)),
             volume_percent,
             output_id,
         )
@@ -292,8 +318,8 @@ impl NativeRadioEngine {
                         &selected_output,
                     ),
                     #[cfg(feature = "nrsp-native")]
-                    PlaybackSource::NrspNative(endpoint, config) => nrsp_native::play(
-                        (endpoint, config),
+                    PlaybackSource::NrspNative(endpoint, config, fm) => nrsp_native::play(
+                        (endpoint, config, fm),
                         generation,
                         &worker_controller,
                         &worker_cancelled,
@@ -378,12 +404,46 @@ impl NativeRadioEngine {
             .native_control
             .as_ref()
             .ok_or("The active source is not a direct nRSP-ST")?;
-        *control
+        let mut pending = control
             .pending
             .lock()
-            .expect("native controls mutex poisoned") = Some(config);
+            .expect("native controls mutex poisoned");
+        control
+            .desired_mode
+            .store(config.mode as u32, Ordering::Release);
+        *pending = Some(config);
         Ok(())
     }
+    #[cfg(feature = "nrsp-native")]
+    pub fn set_nrsp_native_fm(&self, settings: NativeFmSettings) -> Result<(), String> {
+        settings.validate().map_err(|e| e.to_string())?;
+        if self.cancelled.load(Ordering::Acquire) || self.status().state != PlaybackState::Playing {
+            return Err("Start the native receiver before changing FM settings".into());
+        }
+        let control = self
+            .native_control
+            .as_ref()
+            .ok_or("The active source is not a direct nRSP-ST")?;
+        if control.desired_mode.load(Ordering::Acquire) != NativeNrspMode::Wfm as u32 {
+            return Err("FM audio controls require WFM mode".into());
+        }
+        if settings.stereo
+            && control
+                .observed
+                .lock()
+                .expect("native status mutex poisoned")
+                .as_ref()
+                .is_some_and(|status| !status.stereo_allowed)
+        {
+            return Err("Receiver does not permit stereo FM".into());
+        }
+        *control
+            .pending_fm
+            .lock()
+            .expect("native FM controls mutex poisoned") = Some(settings);
+        Ok(())
+    }
+
     #[cfg(feature = "nrsp-native")]
     pub fn nrsp_native_status(&self) -> Option<rust_radio_sdr::nrsp_native::Status> {
         self.native_control
@@ -1071,6 +1131,36 @@ mod tests {
             PlaybackFailure::Permanent("unknown codec".into()).class(),
             FailureClass::Permanent
         );
+    }
+
+    #[cfg(feature = "nrsp-native")]
+    #[test]
+    fn fm_controls_follow_the_latest_tuning_mode_without_stopping_audio() {
+        let mut engine = completed_test_engine(false);
+        let mut controller = RadioController::default();
+        let generation = controller.apply(RadioCommand::PlaySdr).unwrap();
+        for event in [
+            PlaybackEvent::Connected,
+            PlaybackEvent::Buffered,
+            PlaybackEvent::PlaybackStarted,
+        ] {
+            assert!(controller.event(generation, event));
+        }
+        engine.controller = Arc::new(Mutex::new(controller));
+        engine.native_control = Some(Arc::new(nrsp_native::Control::default()));
+        engine.tune_nrsp_native(99_100_000, "nfm", 12_000).unwrap();
+        assert!(engine
+            .set_nrsp_native_fm(NativeFmSettings::default())
+            .is_err());
+        assert_eq!(engine.status().state, PlaybackState::Playing);
+        engine.tune_nrsp_native(99_100_000, "wfm", 200_000).unwrap();
+        engine
+            .set_nrsp_native_fm(NativeFmSettings::default())
+            .unwrap();
+        engine.request_stop();
+        assert!(engine
+            .set_nrsp_native_fm(NativeFmSettings::default())
+            .is_err());
     }
 
     #[test]

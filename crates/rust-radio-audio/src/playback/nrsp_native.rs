@@ -12,7 +12,9 @@ pub struct AudioStats {
 pub(super) struct Control {
     frames: AtomicU64,
     peak: AtomicU32,
+    pub(super) desired_mode: AtomicU32,
     pub(super) pending: Mutex<Option<Config>>,
+    pub(super) pending_fm: Mutex<Option<NativeFmSettings>>,
     pub(super) observed: Mutex<Option<Status>>,
 }
 
@@ -26,7 +28,7 @@ impl Control {
 }
 
 pub(super) fn play(
-    (endpoint, config): (Endpoint, Config),
+    (endpoint, config, fm): (Endpoint, Config, Option<NativeFmSettings>),
     generation: u64,
     controller: &Arc<Mutex<RadioController>>,
     cancelled: &AtomicBool,
@@ -34,9 +36,15 @@ pub(super) fn play(
     output_id: &str,
     control: &Control,
 ) -> Result<(), PlaybackFailure> {
+    control
+        .desired_mode
+        .store(config.mode as u32, Ordering::Release);
     let mut decoder = opus::Decoder::new(48_000, opus::Channels::Stereo)
         .map_err(|e| format!("Native receiver Opus decoder unavailable: {e}"))?;
     let mut client = Client::connect(endpoint, cancelled).map_err(|e| e.to_string())?;
+    if fm.is_some_and(|settings| settings.stereo) && !client.status().stereo_allowed {
+        return Err("Receiver does not permit stereo FM; select mono".into());
+    }
     let mut output = NativeAudioOutput::open(volume, output_id).map_err(PlaybackFailure::Output)?;
     let mut converter = PcmConverter::new(48_000, output.sample_rate, 2, output.channels)
         .map_err(|e| format!("Unsupported native receiver output: {e:?}"))?;
@@ -44,6 +52,9 @@ pub(super) fn play(
         return Ok(());
     }
     client.start(config, cancelled).map_err(|e| e.to_string())?;
+    if let Some(fm) = fm {
+        client.set_fm(fm, cancelled).map_err(|e| e.to_string())?;
+    }
     *control
         .observed
         .lock()
@@ -63,6 +74,16 @@ pub(super) fn play(
                 .take();
             if let Some(config) = pending {
                 client.tune(config, cancelled)?;
+            }
+            let fm = control
+                .pending_fm
+                .lock()
+                .expect("native FM controls mutex poisoned")
+                .take();
+            if let Some(fm) =
+                fm.filter(|_| client.status().configured_mode == Some(NativeNrspMode::Wfm))
+            {
+                client.set_fm(fm, cancelled)?;
             }
             *control
                 .observed

@@ -21,6 +21,11 @@ impl RadioPanel {
         .collapsible(false)
         .show(ctx, |ui| {
             theme::apply(ui);
+            #[cfg(feature = "nrsp-native")]
+            if self.native_selected {
+                self.show_native_settings(ui);
+                return;
+            }
             ui.label("Stop playback before selecting another output.");
             ui.add_enabled_ui(self.engine.is_none(), |ui| {
                 egui::ComboBox::from_id_salt("rust_radio_output")
@@ -100,93 +105,6 @@ impl RadioPanel {
                     Segment::Network => &self.inputs.network_note,
                     Segment::Usb => &self.inputs.usb_note,
                     Segment::Ip => "",
-                });
-                return;
-            }
-            #[cfg(feature = "nrsp-native")]
-            if self.native_selected {
-                let enabled = !self.stopping;
-                ui.add_enabled_ui(enabled, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label("RECEIVER");
-                        ui.add_enabled(
-                            self.engine.is_none(),
-                            egui::TextEdit::singleline(&mut self.native_endpoint)
-                                .hint_text("IP:9001")
-                                .desired_width(180.0)
-                                .char_limit(40),
-                        );
-                        egui::ComboBox::from_id_salt("rust_radio_native_found")
-                            .width(35.0)
-                            .selected_text("▼")
-                            .show_ui(ui, |ui| {
-                                for device in &self.inputs.network {
-                                    ui.add_enabled_ui(
-                                        device.ready && self.engine.is_none(),
-                                        |ui| {
-                                            ui.selectable_value(
-                                                &mut self.native_endpoint,
-                                                device.id.clone(),
-                                                format!("{} / {}", device.label, device.id),
-                                            );
-                                        },
-                                    );
-                                }
-                            });
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("FREQ Hz");
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.native_frequency)
-                                .desired_width(230.0)
-                                .char_limit(10),
-                        );
-                    });
-                    ui.horizontal(|ui| {
-                        egui::ComboBox::from_id_salt("rust_radio_native_mode")
-                            .width(70.0)
-                            .selected_text(self.native_mode.to_uppercase())
-                            .show_ui(ui, |ui| {
-                                for (mode, bandwidth) in [
-                                    ("wfm", "200000"),
-                                    ("nfm", "12000"),
-                                    ("am", "10000"),
-                                    ("usb", "3000"),
-                                    ("lsb", "3000"),
-                                    ("cw", "500"),
-                                    ("sam", "10000"),
-                                ] {
-                                    if ui
-                                        .selectable_label(
-                                            self.native_mode == mode,
-                                            mode.to_uppercase(),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.native_mode = mode.into();
-                                        self.native_bandwidth = bandwidth.into();
-                                    }
-                                }
-                            });
-                        ui.label("BW Hz");
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.native_bandwidth)
-                                .desired_width(120.0)
-                                .char_limit(6),
-                        );
-                    });
-                });
-                ui.horizontal(|ui| {
-                    if ui
-                        .add_enabled(
-                            self.engine.is_some() && !self.stopping,
-                            egui::Button::new("APPLY TUNING"),
-                        )
-                        .clicked()
-                    {
-                        self.apply_native_tuning();
-                    }
-                    ui.label("STOP ends this session.");
                 });
                 return;
             }

@@ -121,3 +121,19 @@ receiver and supported USB descriptor discovery on background workers. Poll
 controls. No receiver or output starts during discovery. `cancel()` discards
 late results. For the embedded egui panel, use `scan_inputs()` explicitly or
 opt into startup/idle scanning with `enable_input_discovery()`.
+
+## FM tuning and presets
+
+With `nrsp-native`, the native engine also exposes
+`start_nrsp_native_fm(peer, frequency_hz, bandwidth_hz, settings, volume, output)`
+and `set_nrsp_native_fm(settings)`. `NativeFmSettings` contains stereo,
+`NativeFmDeemphasis`, audio filter cutoffs/enables and limiter. Updates are
+validated and queued on the existing worker. `nrsp_native_status()` distinguishes
+last-sent FM choices from the optional receiver-reported `stereo_locked` value.
+
+The panel exposes `load_fm_presets(json)`, `take_fm_presets_update()` and
+`report_fm_presets_saved(result)`. Hosts should persist exported updates away
+from the render/audio thread. Construction and preference import remain offline;
+recall prepares tuning when stopped and queues it only for active playback.
+The standalone binary provides its own bounded atomic file writer. Preset JSON
+is versioned, at most 16 KiB / 16 entries, and contains tuning/audio choices only.

@@ -2602,6 +2602,8 @@ dependencies = [
  "eframe",
  "rust-radio-audio",
  "rust-radio-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

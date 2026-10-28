@@ -64,6 +64,62 @@ runtime remain open. Device addresses and runtime keys were not saved in the rep
 Implementation details and interoperability evidence are in
 [the native protocol notes](NRSP_NATIVE_PROTOCOL.md).
 
+## Advanced FM broadcast controls
+
+Open **nSDR** and use these tabs:
+
+- **Tune**: exact frequency entry (`99.5 MHz`, `99500 kHz` or `99500000`),
+  selectable step sizes, mode, RF bandwidth and live Apply. Main-view arrows
+  also step the active native receiver without replacing its audio worker.
+- **FM Audio**: stereo/forced mono, 50/75 µs or disabled de-emphasis, audio
+  filter enable, low cut (0–1000 Hz), high cut (3000–15000 Hz), and limiter.
+  Defaults are stereo, 75 µs, 30–15000 Hz audio and limiter enabled.
+- **Presets**: recall or save/update up to 16 named FM stations, including their
+  audio settings and RF bandwidth. WCRB Boston at 99.5 MHz is included as a
+  starting preset. It tunes the RF receiver; local antenna reception is required.
+- **Device**: discovered receiver/address, output device and input scanning.
+
+US FM defaults use 75 µs de-emphasis and 200 kHz stepping; 50 µs is available
+for Europe and other regions. See [FM broadcast filtering reference](https://www.mathworks.com/help/comm/ref/fmbroadcastmodulatorbaseband.html).
+Stereo lock is a separate receiver observation: unknown, unlocked or locked.
+Forced mono is labelled independently. Settings show whether they were sent;
+this firmware does not provide an audio-property readback acknowledgement.
+The Opus stream remains two-channel even when mono is selected, so channel count
+is never used to claim stereo lock.
+
+```sh
+cargo run --locked -p rust-radio-cli --features nrsp-native -- \
+  nrsp-listen PRIVATE_IP:9001 99500000 wfm --stereo auto --deemphasis 75 \
+  --low-cut 30 --high-cut 15000 --bandwidth 200000 --volume 25
+# During an interactive native session:
+# fm mono 50 150 8000
+# fm auto 75 30 15000
+```
+
+`NativeRadioEngine::start_nrsp_native_fm` and `set_nrsp_native_fm` accept typed
+`NativeFmSettings` / `NativeFmDeemphasis`. Invalid filters fail before I/O;
+receiver stereo permission is checked before enabling it. FM changes use a
+bounded latest-value slot on the same receiver worker. The lower-level client
+API is `Client::set_fm`. Basic `start_nrsp_native` remains available for callers
+that do not request FM audio settings.
+
+The standalone host saves presets to `fm-presets.json` in the user's
+`rust_radio` configuration directory: macOS Application Support, Windows
+APPDATA, or Linux XDG_CONFIG_HOME / `~/.config`. `RUST_RADIO_PRESETS_PATH` can
+select another file. Writes run off the UI thread and replace the file
+atomically. The versioned JSON is limited to 16 KiB, contains no receiver address
+or session key, and loading it never starts reception. Invalid input leaves the
+in-memory bank intact. Embedded hosts import/export the bank through the panel
+and own persistence themselves.
+
+Live check on 2026-10-28: the existing physical frequency was preserved while
+switching the connection-local receiver to mono / 50 µs / 150–8000 Hz, then
+stereo / 75 µs / 30–15000 Hz. Native playback stayed Playing and decoded at least
+71,040 stereo frames at zero output volume. Real stereo-lock reports included
+both locked and unlocked states; the client does not manufacture a stable lock.
+The owned session stopped cleanly. Audible quality and other regional signals
+need separate listening checks.
+
 ## Direct device status
 
 The `sdr` feature can check the receiver's own network services without

@@ -137,3 +137,15 @@ deadline. It uses up to two local private /24-sized neighborhoods, excluding
 network/broadcast/self; larger networks are capped to the local /24. A manually
 entered private receiver endpoint is also checked. Enter an address manually
 when the receiver is across a routed subnet or VPN beyond those neighborhoods.
+
+## Native FM tuning panels
+
+The direct nSDR setup uses Tune / FM Audio / Presets / Device tabs to stay within
+480 × 320. Tune supports Hz, kHz and MHz with exact integer conversion, step
+selection and live arrows; the main nSDR arrows use the same step. FM Audio
+contains stereo, de-emphasis, filters and limiter plus receiver-reported PLL lock.
+A settings-sent indicator distinguishes queued local edits from the last sent
+choices. Presets recall full FM settings, and the standalone host saves them
+locally on a dedicated file worker. Embedded panel users own import/export.
+No preset read or stopped-state recall starts reception. Tests cover all tabs,
+long preset names, full banks, invalid files and frequency-step boundaries.

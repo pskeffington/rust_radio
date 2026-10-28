@@ -33,7 +33,7 @@ this implementation additionally validates active commands and Opus ingress.
   sample rate; word 8 is antenna; the high byte of word 10 is the hardware model.
   Words 18–21 carry negotiated session key material, word 22 is the new mask,
   and word 23 contains permissions. No runtime key values are committed.
-- Permission bit 0 allows WFM, bit 5 allows audio, and bit 7 requires login.
+- Permission bit 0 allows WFM, bit 1 allows FM stereo, bit 5 allows audio, and bit 7 requires login.
   Required login fails before sending any control command in this initial client.
 - The observed command payloads are big-endian words with zero padding and the
   negotiated masked header. The browser implementation does not encrypt these
@@ -87,3 +87,24 @@ Opus ingress and idempotent Stop/socket closure. Real device checks cover WFM
 native callback output plus live NFM/WFM tuning. Extended link-loss recovery,
 authenticated login, raw I/Q and other modes need additional work. Future
 firmware changes may require a new protocol version implementation.
+
+## FM audio properties
+
+Type 40 carries twelve big-endian words (48 payload bytes). Word 0 is receiver
+ID 1 and word 1 selects the property; only the selected property's value slot
+is populated. The implemented property/slot pairs are filter enable (1/2),
+limiter enable (2/3), stereo enable (5/6), de-emphasis (6/7), WFM low cut (7/8)
+and WFM high cut (8/9). De-emphasis values are **0, 50 and 75**, as declared by
+the browser's shared enum; they are not ordinal indexes 0/1/2. Filter frequencies
+are in Hz. Commands are scoped to this connection's receiver 1.
+
+Type 214 is an eight-byte receiver ID / PLL-locked boolean report. Only receiver
+1 updates the native stereo status, and missing reports stay unknown. Retuning
+or changing stereo selection clears previous lock evidence. Audio settings in
+the status snapshot are the last successfully sent values, not readback from
+the appliance. Raw two-channel Opus PCM does not establish stereo lock.
+
+Fixtures verify every property word/slot, invalid filters, de-emphasis values,
+receiver routing and malformed lock reports. A live muted session passed both
+50/75 µs and mono/stereo changes while native callback playback continued; real
+PLL lock/unlock reports were received and physical center frequency was unchanged.

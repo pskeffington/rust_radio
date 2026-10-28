@@ -11,6 +11,8 @@ use tungstenite::handshake::HandshakeError;
 use tungstenite::protocol::WebSocketConfig;
 use tungstenite::{Message, WebSocket};
 
+mod fm;
+pub use fm::{Deemphasis, FmSettings};
 mod discovery;
 pub use discovery::{discover, DiscoveredReceiver};
 
@@ -26,10 +28,12 @@ const POLL: Duration = Duration::from_millis(5);
 pub enum Error {
     InvalidEndpoint,
     InvalidConfig,
+    InvalidFmSettings,
     Cancelled,
     Timeout,
     AuthenticationRequired,
     AudioUnavailable,
+    StereoUnavailable,
     Protocol(&'static str),
     Disconnected(u32),
     Transport(String),
@@ -40,6 +44,9 @@ impl fmt::Display for Error {
             Self::InvalidEndpoint => {
                 f.write_str("Use a private or loopback IPv4 address and port for the nRSP-ST")
             }
+            Self::InvalidFmSettings => {
+                f.write_str("Use FM low cut 0–1000 Hz and high cut 3000–15000 Hz")
+            }
             Self::InvalidConfig => {
                 f.write_str("Use 1 kHz–2 GHz and a supported demodulator/bandwidth")
             }
@@ -47,6 +54,9 @@ impl fmt::Display for Error {
             Self::Timeout => f.write_str("Direct nRSP-ST response or audio deadline expired"),
             Self::AuthenticationRequired => {
                 f.write_str("Receiver requires authentication; native login is not configured")
+            }
+            Self::StereoUnavailable => {
+                f.write_str("Receiver does not permit stereo FM; select mono")
             }
             Self::AudioUnavailable => f.write_str("Receiver does not permit native audio sessions"),
             Self::Protocol(message) => write!(f, "Direct nRSP-ST protocol: {message}"),
@@ -162,6 +172,12 @@ pub struct Status {
     pub audio_allowed: bool,
     pub wfm_allowed: bool,
     pub antenna: u32,
+    pub stereo_allowed: bool,
+    /// Most recent stereo PLL report for receiver 1; None means not observed.
+    pub stereo_locked: Option<bool>,
+    /// Last successfully sent mode/settings, not device readback.
+    pub configured_mode: Option<Mode>,
+    pub fm_settings: Option<FmSettings>,
 }
 
 struct Session {
@@ -228,6 +244,10 @@ impl Session {
             audio_allowed: options & 32 != 0,
             wfm_allowed: options & 1 != 0,
             antenna: word(payload, 8)?,
+            stereo_allowed: options & 2 != 0,
+            stereo_locked: None,
+            configured_mode: None,
+            fm_settings: None,
         };
         self.mask = word(payload, 22)?;
         for (index, key) in self.key.iter_mut().enumerate() {
@@ -323,6 +343,10 @@ impl Client {
                 audio_allowed: false,
                 wfm_allowed: false,
                 antenna: 0,
+                stereo_allowed: false,
+                stereo_locked: None,
+                configured_mode: None,
+                fm_settings: None,
             },
         };
         let (kind, payload) = client.read(deadline, cancel)?;
@@ -412,6 +436,11 @@ impl Client {
         activate: bool,
         cancel: &AtomicBool,
     ) -> Result<(), Error> {
+        if self.status.configured_mode != Some(config.mode)
+            || self.status.center_frequency_hz != config.frequency_hz
+        {
+            self.status.stereo_locked = None;
+        }
         let deadline = Instant::now() + DEADLINE;
         self.send(
             2,
@@ -430,6 +459,7 @@ impl Client {
             self.send(30, &[1, 1], deadline, cancel)?;
         }
         self.send(59, &[0], deadline, cancel)?;
+        self.status.configured_mode = Some(config.mode);
         if self.status.center_frequency_hz == config.frequency_hz {
             return Ok(());
         }
@@ -439,7 +469,10 @@ impl Client {
             check(deadline, cancel)?;
             let observer = Self::connect_until(self.endpoint, cancel, deadline)?;
             if observer.status.center_frequency_hz == config.frequency_hz {
+                let fm_settings = self.status.fm_settings;
                 self.status = observer.status.clone();
+                self.status.configured_mode = Some(config.mode);
+                self.status.fm_settings = fm_settings;
                 return Ok(());
             }
             drop(observer);
@@ -505,6 +538,7 @@ impl Client {
             let (kind, payload) = self.read(audio_deadline, cancel)?;
             match kind {
                 202 => self.update(&payload)?,
+                214 => self.stereo_status(&payload)?,
                 222 => return Err(Error::Disconnected(word(&payload, 0)?)),
                 211 => {
                     if payload.len() < 5 {
@@ -549,7 +583,7 @@ mod tests {
     const TEST_MASK: u32 = 0x12345678;
     const TEST_KEY: [u32; 4] = [11, 22, 33, 44];
 
-    fn server_frame(kind: u8, payload: &[u8], session: &Session) -> Vec<u8> {
+    pub(super) fn server_frame(kind: u8, payload: &[u8], session: &Session) -> Vec<u8> {
         let padded = payload.len().div_ceil(16) * 16;
         let mut bytes = vec![0; padded + 4];
         let header = ((kind as u32) << 24 | (padded as u32) << 4 | (padded - payload.len()) as u32)
@@ -588,7 +622,7 @@ mod tests {
             (20, TEST_KEY[2]),
             (21, TEST_KEY[3]),
             (22, TEST_MASK),
-            (23, 33 | if auth { 128 } else { 0 }),
+            (23, 35 | if auth { 128 } else { 0 }),
         ] {
             payload[index * 4..index * 4 + 4].copy_from_slice(&value.to_be_bytes());
         }
@@ -618,7 +652,7 @@ mod tests {
         });
         (endpoint, worker)
     }
-    fn command(socket: &mut WebSocket<TcpStream>) -> (u8, Vec<u32>) {
+    pub(super) fn command(socket: &mut WebSocket<TcpStream>) -> (u8, Vec<u32>) {
         let Message::Binary(bytes) = socket.read().unwrap() else {
             panic!("Expected command")
         };

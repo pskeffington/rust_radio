@@ -32,10 +32,11 @@ fn usage() {
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
     );
     eprintln!("Input discovery: inputs (enable nrsp-native and/or soapy-sdr for receiver scans)");
-    eprintln!("Interactive listen commands: status | volume N | stop");
+    eprintln!("Interactive listen commands: status | volume N | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
     eprintln!("Direct nRSP-ST control/audio: nrsp-native-status IP:9001 | nrsp-listen IP:9001 FREQ_HZ MODE [--seconds N] [--volume N] [--output ID] (enable nrsp-native)");
+    eprintln!("FM options: --stereo auto|mono --deemphasis 50|75|off --low-cut Hz --high-cut Hz --bandwidth Hz");
     eprintln!("Direct nRSP-ST reachability: nrsp-status PRIVATE_IPV4 (enable sdr)");
     eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
     eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
@@ -161,7 +162,7 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
     // A separate stdin reader lets the main thread monitor duration and playback failures.
     let (tx, rx) = mpsc::channel::<String>();
     if seconds.is_none() {
-        println!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | stop");
+        println!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
         thread::spawn(move || {
             for line in io::stdin().lock().lines() {
                 match line {
@@ -236,6 +237,44 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                     let _ = value;
                     eprintln!("Enable nrsp-native for tuning");
                 }
+            } else if let Some(value) = command.strip_prefix("fm ") {
+                #[cfg(feature = "nrsp-native")]
+                {
+                    let result = (|| {
+                        use rust_radio::playback::{NativeFmDeemphasis, NativeFmSettings};
+                        let values: Vec<_> = value.split_whitespace().collect();
+                        if values.len() != 4 {
+                            return Err("Use fm auto|mono 50|75|off LOW_HZ HIGH_HZ".to_owned());
+                        }
+                        let stereo = match values[0] {
+                            "auto" => true,
+                            "mono" => false,
+                            _ => return Err("Use auto|mono".into()),
+                        };
+                        let deemphasis = match values[1] {
+                            "50" => NativeFmDeemphasis::Us50,
+                            "75" => NativeFmDeemphasis::Us75,
+                            "off" => NativeFmDeemphasis::Off,
+                            _ => return Err("Use 50|75|off".into()),
+                        };
+                        engine.set_nrsp_native_fm(NativeFmSettings {
+                            stereo,
+                            deemphasis,
+                            low_cut_hz: values[2].parse().map_err(|_| "Invalid low cut")?,
+                            high_cut_hz: values[3].parse().map_err(|_| "Invalid high cut")?,
+                            ..Default::default()
+                        })
+                    })();
+                    match result {
+                        Ok(()) => println!("FM AUDIO REQUESTED"),
+                        Err(error) => eprintln!("{error}"),
+                    }
+                }
+                #[cfg(not(feature = "nrsp-native"))]
+                {
+                    let _ = value;
+                    eprintln!("Enable nrsp-native for FM controls");
+                }
             } else if let Some(value) = command.strip_prefix("volume ") {
                 match value.parse::<u8>() {
                     Ok(value) if value <= 100 => {
@@ -245,7 +284,7 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                     _ => eprintln!("volume must be 0..100"),
                 }
             } else {
-                eprintln!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | stop");
+                eprintln!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
             }
         }
         thread::sleep(Duration::from_millis(50));
