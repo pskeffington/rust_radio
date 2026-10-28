@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:13:53Z",
+  "updated_at_utc": "2026-10-28T21:16:26Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -48,7 +48,8 @@
     "Closed the direct HTTPS literal-IP resolver bypass: reject non-public IP literals before network access, with IPv4/IPv6 regressions; public HTTPS literals and explicit private IPv4 HTTP remain supported.",
     "Restricted explicitly selected private IPv4 HTTP streams to the same private origin and port for redirects and playlist entries; kept every DNS lookup public-only.",
     "Closed the private-LAN redirect/playlist SSRF expansion: only same-origin HTTP at the explicitly selected private IPv4 address and port is allowed; all DNS lookups use public-only filtering.",
-    "Reviewed WBUR as an NPR-affiliated catalog candidate: official pages document a live site/app stream but no stable direct endpoint, and say content is copyrighted with rare licensing approvals. No feed added without endpoint and written product-use permission."
+    "Reviewed WBUR as an NPR-affiliated catalog candidate: official pages document a live site/app stream but no stable direct endpoint, and say content is copyrighted with rare licensing approvals. No feed added without endpoint and written product-use permission.",
+    "Extended catalog mirror regression to enforce six-hour freshness, decoded-audio validation, initial unverified state, publisher-directed endpoints, and redistribution-not-authorized policy."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -63,16 +64,16 @@
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed 2026-10-28: at 295px full category 24/25, names-only and compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout-fit evidence only",
+    "repeatable_layout_ab": "passed 2026-10-28 this run: at 295px A full category 24/25, B names-only 25/25, C compact category 25/25; at 340px all 25/25; compact CLASS saves 32px; layout-fit only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed after private-origin restrictions: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures had socket permission",
+    "latest_full_gate_run": "all six required gates passed on catalog policy test commit fbeb476: fmt, default/all-feature tests, strict default/all-feature Clippy, and all-feature check",
     "latest_code_head_ci": "Implementation source 882e9c0 has empty combined status and no associated PR workflow run visible; previous docs head fe8ae3c Actions run 40763293734 failed at startup before jobs were created",
     "live_catalog_revalidation": "2026-10-28T21:10:22Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; point-in-time codec evidence only",
-    "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
+    "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed this run; compile evidence only",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
@@ -99,7 +100,8 @@
     "https_literal_ip_safety": "passed; direct HTTPS private/loopback/shared/link-local/mapped IPv6 literals rejected; public IPv4 literal accepted",
     "private_redirect_boundary": "passed; same-origin relative path works; loopback redirect and PLS target to another private port are rejected; localhost DNS answer rejected",
     "npr_member_station_candidate": "WBUR official Ways to Listen and content licensing pages reviewed 2026-10-28; official live player/app access is documented but no stable direct endpoint or product-use permission was found; candidate excluded pending rights",
-    "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only"
+    "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
+    "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -123,5 +125,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Obtain a publisher-provided NPR member-stream endpoint and written permission; continue physical audio/output, receiver, Raspberry Pi and USB SDR acceptance when hardware is available."
+  "next_priority": "Obtain a first-party NPR member-stream endpoint and written product-use permission before catalog inclusion; continue physical audio/output, receiver, Pi and USB SDR acceptance when hardware is available."
 }

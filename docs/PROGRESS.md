@@ -1081,3 +1081,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - At review time PR #3 was open and mergeable at head `eabf106`. Actions run
   `40769883867` ended `startup_failure` with zero jobs and no status checks or
   logs; remote CI remains unverified.
+
+## Catalog policy contract regression (2026-10-28)
+
+- Strengthened the machine-readable catalog parity test to assert its policy
+  fields: six-hour freshness, decoded-audio requirement, initial unverified
+  state, publisher-directed endpoints, and no redistribution authorization.
+  This protects the release gates from silent changes in the JSON mirror.
+- Metadata completeness/code-shape assertions already cover each runtime
+  station, and parity checks each JSON record against those values.
+- All six workspace gates passed, including default/all-feature tests and
+  strict Clippy. The station-label A/B repeated at 295 px (24/25 full category;
+  25/25 names-only and compact) and 340 px (25/25 all variants); this measures
+  layout fit only. Headless nRSP ARM64 compilation passed.
+- Code/test commit `fbeb476`; hardware and publisher-rights acceptance remain
+  open. Next: seek a first-party NPR endpoint and permission, and continue
+  physical platform acceptance when hardware is available.
