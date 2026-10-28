@@ -19,11 +19,11 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Repeated station-label A/B/C: at 295 px, A full category 24/25, B names-only
   25/25, C compact category 25/25; at 340 px all variants fit. C saves 192 px;
   A overflows `wcrb`. Layout fit only, not listener preference.
-- Implementation commit `d019cbe` and checkpoint `c2ab3cb` are pushed to open,
-  mergeable PR #5. No workflow run or combined status was observed for the
-  checkpoint at 23:36 UTC; Actions run 274 for the earlier `c3f2798` checkpoint
-  failed before jobs (`startup_failure`). Physical output/Pi/receiver, rights
-  and native Windows MSVC acceptance remain open.
+- Implementation commit `d019cbe` and checkpoint `261a8e0` are pushed to open,
+  mergeable PR #5. Actions run 278 (`40788520012`) for checkpoint `261a8e0`
+  failed before job creation (`startup_failure`); combined statuses are empty.
+  Physical output/Pi/receiver, rights and native Windows MSVC acceptance remain
+  open.
 - Next: continue source-aware recovery or cancellation work; pursue target-device
   output recovery when hardware is available.
 
