@@ -18,6 +18,7 @@ Status: research-backed architectural candidate list, 2026-10-26. **Source prese
 | [Rust-Boy SDR contract](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_SDR.md) | Tuning validation and honest simulated backend | Extract source-neutral receiver interface | Pure tuner tests and RF hardware evidence |
 | [SomaFM direct stream guidance](https://somafm.com/) | Broadcaster-specific use restrictions | Do not assume distribution, game embedding or rebroadcast license | Written product-distribution rights check |
 | [Skylab Radio listen page](https://www.skylabradio.com/listen) | Publisher provenance for known working operator demo | Preserve station reference, dynamically validate endpoint | Live audio + failover test |
+| [NPR CDS audio profile](https://npr.github.io/content-distribution-service/api-reference/profiles/audio.html) and [premium-content guide](https://npr.github.io/content-distribution-service/legal/premium-content/index) | NPR marks live broadcast audio with `isStreamable`; enclosure metadata distinguishes audio types and premium relations | Do not infer a direct station stream or reuse rights from on-demand audio. Filter premium assets unless explicitly authorized. NPR News candidate remains out of catalog pending first-party endpoint and bundling-rights review. | Verify a stable authorized live MP3/AAC endpoint and applicable terms; bounded decode test |
 
 ## Evidence hierarchy
 1. Official API documentation and source code.

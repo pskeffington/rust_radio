@@ -11,12 +11,19 @@ use std::time::Duration;
 pub struct InternetStation {
     pub id: &'static str,
     pub name: &'static str,
+    /// Broadcaster that operates or publishes the station stream.
+    pub broadcaster: &'static str,
     pub genre: &'static str,
+    /// ISO 639-1 language tag for the station's primary programming.
+    pub language: &'static str,
+    /// ISO 3166-1 alpha-2 country code for the broadcaster.
+    pub country: &'static str,
     /// Short, operator-visible catalog grouping; not a broadcast band.
     pub category: &'static str,
     pub playlist_url: &'static str,
     pub publisher_reference_url: &'static str,
     pub nominal_kbps: u16,
+    /// Publisher-declared codec hint; runtime validation records decoded format.
     pub format: &'static str,
 }
 
@@ -28,6 +35,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "skylab",
         name: "Skylab Radio (UK)",
+        broadcaster: "Skylab Radio",
+        language: "en",
+        country: "GB",
         genre: "Chillout / lounge / ambient",
         category: "CHILL",
         playlist_url: "https://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited",
@@ -38,6 +48,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "wcrb",
         name: "WCRB Classical (Boston)",
+        broadcaster: "GBH",
+        language: "en",
+        country: "US",
         genre: "Classical",
         category: "CLASSICAL",
         playlist_url: "https://wgbh-live.streamguys1.com/classical-hi/",
@@ -48,6 +61,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "groovesalad",
         name: "Groove Salad",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Ambient / downtempo",
         category: "CHILL",
         playlist_url: "https://somafm.com/m3u/groovesalad.m3u",
@@ -58,6 +74,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "secretagent",
         name: "Secret Agent",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Spy jazz / lounge / downtempo",
         category: "CHILL",
         playlist_url: "https://somafm.com/m3u/secretagent.m3u",
@@ -68,6 +87,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "lush",
         name: "Lush",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Mellow vocals / electronic",
         category: "CHILL",
         playlist_url: "https://somafm.com/m3u/lush.m3u",
@@ -78,6 +100,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "dronezone",
         name: "Drone Zone",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Atmospheric / ambient",
         category: "AMBIENT",
         playlist_url: "https://somafm.com/m3u/dronezone.m3u",
@@ -88,6 +113,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "deepspaceone",
         name: "Deep Space One",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Space / experimental",
         category: "AMBIENT",
         playlist_url: "https://somafm.com/m3u/deepspaceone.m3u",
@@ -98,6 +126,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "spacestation",
         name: "Space Station Soma",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Space / midtempo electronica",
         category: "AMBIENT",
         playlist_url: "https://somafm.com/m3u/spacestation.m3u",
@@ -108,6 +139,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "beatblender",
         name: "Beat Blender",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Deep house / downtempo",
         category: "ELECTRONIC",
         playlist_url: "https://somafm.com/m3u/beatblender.m3u",
@@ -118,6 +152,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "defcon",
         name: "DEF CON Radio",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Electronic / hacker radio",
         category: "ELECTRONIC",
         playlist_url: "https://somafm.com/m3u/defcon.m3u",
@@ -128,6 +165,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "u80s",
         name: "Underground 80s",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Synthpop / new wave",
         category: "RETRO",
         playlist_url: "https://somafm.com/m3u/u80s.m3u",
@@ -138,6 +178,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "indiepop",
         name: "Indie Pop Rocks!",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Indie pop / alternative",
         category: "INDIE",
         playlist_url: "https://somafm.com/m3u/indiepop.m3u",
@@ -148,6 +191,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "folkfwd",
         name: "Folk Forward",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Indie folk / acoustic",
         category: "FOLK",
         playlist_url: "https://somafm.com/m3u/folkfwd.m3u",
@@ -158,6 +204,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "metal",
         name: "Metal Detector",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Metal / hard rock",
         category: "ROCK",
         playlist_url: "https://somafm.com/m3u/metal.m3u",
@@ -168,6 +217,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "bootliquor",
         name: "Boot Liquor",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Americana / roots / country",
         category: "ROOTS",
         playlist_url: "https://somafm.com/m3u/bootliquor.m3u",
@@ -178,6 +230,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "sonicuniverse",
         name: "Sonic Universe",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Modern jazz / avant-garde",
         category: "JAZZ",
         playlist_url: "https://somafm.com/m3u/sonicuniverse.m3u",
@@ -188,6 +243,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "bossa",
         name: "Bossa Beyond",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Bossa nova / Brazilian",
         category: "WORLD",
         playlist_url: "https://somafm.com/m3u/bossa.m3u",
@@ -198,6 +256,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "reggae",
         name: "Heavyweight Reggae",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Reggae / ska / rocksteady",
         category: "WORLD",
         playlist_url: "https://somafm.com/m3u/reggae.m3u",
@@ -208,6 +269,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "thistle",
         name: "ThistleRadio",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Celtic / traditional",
         category: "WORLD",
         playlist_url: "https://somafm.com/m3u/thistle.m3u",
@@ -218,6 +282,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "fluid",
         name: "Fluid",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Instrumental hip-hop / future soul",
         category: "HIPHOP",
         playlist_url: "https://somafm.com/m3u/fluid.m3u",
@@ -228,6 +295,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "cliqhop",
         name: "cliqhop idm",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "IDM / experimental electronic",
         category: "ELECTRONIC",
         playlist_url: "https://somafm.com/m3u/cliqhop.m3u",
@@ -238,6 +308,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "thetrip",
         name: "The Trip",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Progressive house / trance",
         category: "DANCE",
         playlist_url: "https://somafm.com/m3u/thetrip.m3u",
@@ -248,6 +321,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "poptron",
         name: "PopTron",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Electropop / indie dance",
         category: "POP",
         playlist_url: "https://somafm.com/m3u/poptron.m3u",
@@ -258,6 +334,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "leftcoast70s",
         name: "Left Coast 70s",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "1970s album rock / soft rock",
         category: "RETRO",
         playlist_url: "https://somafm.com/m3u/leftcoast70s.m3u",
@@ -268,6 +347,9 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "illstreet",
         name: "Illinois Street Lounge",
+        broadcaster: "SomaFM",
+        language: "en",
+        country: "US",
         genre: "Exotica / vintage lounge",
         category: "LOUNGE",
         playlist_url: "https://somafm.com/m3u/illstreet.m3u",
@@ -466,6 +548,17 @@ mod tests {
                 "curated station has no safe TCP probe target: {}",
                 station.id
             );
+            assert!(!station.broadcaster.trim().is_empty());
+            assert_eq!(station.language.len(), 2, "language tag: {}", station.id);
+            assert!(station
+                .language
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase()));
+            assert_eq!(station.country.len(), 2, "country code: {}", station.id);
+            assert!(station
+                .country
+                .bytes()
+                .all(|byte| byte.is_ascii_uppercase()));
             assert!([
                 "CHILL",
                 "AMBIENT",

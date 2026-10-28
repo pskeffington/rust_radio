@@ -3,6 +3,25 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: catalog metadata and NPR research
+
+- Added machine-readable broadcaster, ISO 639-1 language, and ISO 3166-1
+  country fields to the 25 curated station records. Existing genre, codec hint,
+  stream endpoint and publisher provenance remain on each record; runtime
+  decoded-audio state remains in `StationValidation`, not a static catalog flag.
+  Regression coverage checks required values and code shapes for every record.
+- Reviewed NPR's first-party Content Distribution Service audio schema and
+  premium-content guide. They distinguish live/on-air audio from other
+  streamable files and identify premium enclosures that need express rights.
+  WBUR documents a live NPR-affiliate stream, but no stable direct audio URL or
+  redistribution terms were verified. NPR News therefore remains a candidate,
+  not an added endpoint, pending first-party stream and permission evidence.
+- Sources: [NPR audio profile](https://npr.github.io/content-distribution-service/api-reference/profiles/audio.html),
+  [NPR premium-content guide](https://npr.github.io/content-distribution-service/legal/premium-content/index),
+  [WBUR ways to listen](https://www.wbur.org/ways-to-listen).
+- Next: validate metadata completeness; resolve a direct authorized NPR News
+  endpoint; then review each publisher's bundling terms before release.
+
 ## Current module pass: catalog probe coverage
 
 - Replaced the duplicate station-ID/host probe table with a target derived
