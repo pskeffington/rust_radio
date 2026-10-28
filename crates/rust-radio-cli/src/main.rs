@@ -11,6 +11,7 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, process};
 
+mod feed_history;
 mod nrsp;
 mod nrsp_native;
 mod sdr;
@@ -27,7 +28,7 @@ struct ListenArgs<'a> {
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
     );
@@ -166,6 +167,11 @@ fn validation_stage_name(stage: ValidationStage) -> &'static str {
         ValidationStage::SupportedCodec => "supported_codec",
         ValidationStage::DecodedAudio => "decoded_audio",
     }
+}
+
+fn valid_validate_all_args(args: &[String]) -> bool {
+    (args.len() == 2 && args[1] == "--json")
+        || (args.len() == 4 && args[1] == "--json" && args[2] == "--history" && !args[3].is_empty())
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -478,9 +484,15 @@ fn run(args: &[String]) -> Result<(), String> {
                 Err("Station did not pass decoded-audio validation".into())
             }
         }
-        Some("validate-all") if args.len() == 2 && args[1] == "--json" => {
+        Some("validate-all") if valid_validate_all_args(args) => {
             let results = collect_catalog_validations(validate_station)?;
-            println!("{}", batch_validation_json(results)?);
+            let report = batch_validation_json(results)?;
+            if args.len() == 4 {
+                let value: serde_json::Value = serde_json::from_str(&report)
+                    .map_err(|error| format!("Unable to parse validation report: {error}"))?;
+                feed_history::update_file(std::path::Path::new(&args[3]), &value)?;
+            }
+            println!("{report}");
             Ok(())
         }
         Some("listen" | "stream-listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
@@ -697,5 +709,18 @@ mod tests {
         ] {
             assert!(run(&options(&args)).is_err());
         }
+        assert!(!valid_validate_all_args(&options(&["validate-all"])));
+        assert!(!valid_validate_all_args(&options(&[
+            "validate-all",
+            "--json",
+            "--history",
+            ""
+        ])));
+        assert!(valid_validate_all_args(&options(&[
+            "validate-all",
+            "--json",
+            "--history",
+            "health.json"
+        ])));
     }
 }

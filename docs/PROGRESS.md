@@ -53,6 +53,21 @@ Updated 2026-10-28. Active priorities and ownership are in the
   jobs; no current-head validation is available yet. Physical hardware and
   persistence gates remain open.
 
+## Current module pass: opt-in feed-health history
+
+- Added `validate-all --json --history PATH`. The bounded 64 KiB versioned
+  state keeps each station's latest status/time, last successful decoded time,
+  freshness, attempts and consecutive failures. Failed checks preserve the
+  last decoded timestamp while making current health visibly failed.
+- History writes use a synced temporary file and atomic rename; malformed,
+  oversized, partial-catalog or unsupported-schema input is rejected before
+  replacing existing state. On Unix, the state file is owner-readable and
+  writable only. The feature is opt-in; it does not change GUI or playback
+  startup and does not gate a station from playback.
+- Unit coverage writes a successful check followed by a failure, verifies the
+  last decoded timestamp is retained and failure count increments, then checks
+  malformed history remains untouched. Full CLI tests pass.
+
 ## Current module pass: catalog mirror parity
 
 - The metadata implementation exposed a stale `catalog/curated-stations.json`
