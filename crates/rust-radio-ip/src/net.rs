@@ -198,13 +198,7 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
     if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
         return Err("Stream URL must not contain credentials or a fragment".into());
     }
-    if url.host_str().is_some_and(|host| {
-        host.eq_ignore_ascii_case("somafm.com")
-            || host
-                .to_ascii_lowercase()
-                .strip_suffix(".somafm.com")
-                .is_some()
-    }) {
+    if url.host_str().is_some_and(is_somafm_host) {
         return Err(
             "SomaFM does not authorize new third-party radio clients without prior written permission"
                 .into(),
@@ -233,6 +227,18 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
         },
         _ => Err("Use an HTTPS stream URL or a private IPv4 HTTP URL".into()),
     }
+}
+
+fn is_somafm_host(host: &str) -> bool {
+    // DNS treats a final dot as the absolute form of the same hostname.
+    // Normalize it before applying the publisher policy so URL spelling
+    // cannot bypass the block for the root domain or one of its subdomains.
+    let host = host.trim_end_matches('.');
+    host.eq_ignore_ascii_case("somafm.com")
+        || host
+            .to_ascii_lowercase()
+            .strip_suffix(".somafm.com")
+            .is_some()
 }
 
 /// Start an explicitly entered audio stream or bounded M3U/PLS playlist.
@@ -648,6 +654,9 @@ mod tests {
         for url in [
             "http://example.com/live",
             "https://somafm.com/m3u/groovesalad.m3u",
+            "https://somafm.com./m3u/groovesalad.m3u",
+            "https://SOMAFM.COM./m3u/groovesalad.m3u",
+            "https://ice5.somafm.com./groovesalad-128-mp3",
             "https://ice5.somafm.com/groovesalad-128-mp3",
             "http://169.254.169.254/",
             "https://127.0.0.1/live",
