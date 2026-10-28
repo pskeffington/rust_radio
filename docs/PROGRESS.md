@@ -1709,7 +1709,18 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Bounded live silent validation at 2026-10-28 23:51:08 UTC decoded all 25 feeds
   in 25 attempts without retries or failures. This is point-in-time codec
   evidence only.
-- PR #5 was open and mergeable at pre-change head `36ef13c`; run 284 failed
-  before jobs (`startup_failure`, zero jobs, empty statuses). Code commit
-  `f92f0fc` is validated and this documentation checkpoint is pending push.
-  Physical hardware and native Windows MSVC acceptance remain open.
+- PR #5 is open and mergeable at code/evidence head `49f5525`. At 23:51 UTC,
+  no workflow run or combined status was visible for that head; the latest
+  observed run 284 for prior head `36ef13c` failed before jobs (`startup_failure`,
+  zero jobs, empty statuses). Physical hardware and native Windows MSVC
+  acceptance remain open.
+
+
+## Published retry-policy checkpoint (2026-10-28 23:51 UTC)
+
+- Pushed implementation `f92f0fc` and documentation/evidence checkpoint
+  `49f5525` to PR #5. The PR is open and mergeable. No run or combined status
+  was visible for `49f5525` at observation time; run 284 for its prior head
+  failed before jobs, so remote CI remains unverified.
+- The bounded live sweep decoded 25/25 entries and the layout A/B/C comparison
+  passed on this source. No physical hardware was exercised.

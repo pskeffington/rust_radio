@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:51:20Z",
+  "updated_at_utc": "2026-10-28T23:51:44Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
@@ -143,7 +143,8 @@
     "Observed PR Actions run 282 (40789529683) for dd3def2: startup_failure before job creation; jobs and combined statuses are empty, so this provides no code-level CI signal.",
     "Latest observed PR run 283 (40789606164) for checkpoint 3ef4b64 also ended startup_failure before job creation; no jobs or combined statuses, so remote CI remains unavailable.",
     "Narrowed temporary HTTP status classification to 408/425/429/500/502/503/504; 501/505/506/507/508/510/511 and ordinary permanent responses no longer consume the network retry budget. Focused classification regression passed.",
-    "All six locked workspace gates passed on f92f0fc; repeated GUI A/B/C fit result and 25/25 live decoded sweep at 2026-10-28T23:51:08Z recorded in docs/PROGRESS.md."
+    "All six locked workspace gates passed on f92f0fc; repeated GUI A/B/C fit result and 25/25 live decoded sweep at 2026-10-28T23:51:08Z recorded in docs/PROGRESS.md.",
+    "Published implementation f92f0fc and evidence checkpoint 49f5525; PR #5 open and mergeable. No workflow run/status was visible for 49f5525 at 23:51 UTC; previous run 284 failed before job creation."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -239,11 +240,11 @@
     "last_repeated_at_utc": "2026-10-28T23:50:58Z"
   },
   "ci": {
-    "latest_pr_run": 40789664685,
-    "latest_pr_head": "36ef13cdd0d33acb3d586d9d6ed12090a06e3428",
-    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_run": null,
+    "latest_pr_head": "49f5525f6a9a056a6aa959076c3399e6441e376b",
+    "latest_pr_conclusion": "no_run_observed",
     "latest_pr_jobs": 0,
-    "details": "PR #5 was open and mergeable at 36ef13c before current increment. Run 284 (40789664685) ended startup_failure before job creation; jobs and combined statuses are empty. New implementation commit f92f0fc and documentation checkpoint are validated locally and pending push. Native Windows MSVC CI and physical hardware acceptance remain unverified."
+    "details": "PR #5 open and mergeable at 49f5525. No PR-triggered run or combined status was visible at 2026-10-28 23:51 UTC. Previous observed run 284 for 36ef13c failed before job creation; native Windows MSVC CI and physical hardware acceptance remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -254,8 +255,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Observe CI after pushing the narrowed HTTP status policy, then continue source-aware playback recovery; complete physical Bluetooth/USB, Raspberry Pi, receiver, publisher rights, national NPR source/rights and native Windows MSVC gates.",
-  "current_pr_state": "PR #5 open and mergeable at pre-change head 36ef13c; implementation f92f0fc and documentation checkpoint pending push.",
+  "next_priority": "Continue source-aware playback recovery and transport reliability; verify newly pushed CI when available, then pursue physical Bluetooth/USB, Raspberry Pi and receiver acceptance, publisher rights, national NPR source/rights and native Windows MSVC gates.",
+  "current_pr_state": "PR #5 open and mergeable at 49f5525; no workflow run or combined status visible at 23:51 UTC.",
   "live_catalog_revalidation": "2026-10-28T23:51:08Z: bounded validate-all decoded 25/25 stations in 25 attempts with no retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "passed on implementation commit f92f0fc: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked"
 }
