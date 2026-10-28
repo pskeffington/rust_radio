@@ -157,24 +157,52 @@ fn unverified() -> Value {
     })
 }
 
-/// Recompute on every read; never trust the health string stored hours earlier.
-fn current_health(validation: &Value, now_unix: u64) -> &'static str {
-    let status = validation["status"].as_str().unwrap_or("Error");
-    if status == "Decoded" {
-        if validation["stage"] != "DecodedAudio"
-            || validation["decoded_frames"].as_u64().unwrap_or(0) == 0
-        {
-            return "failed";
-        }
-        return match validation["checked_at_unix"].as_u64() {
-            Some(at) if now_unix >= at && now_unix - at <= FEED_FRESHNESS_TTL.as_secs() => "fresh",
-            _ => "stale",
+/// Successful decoded audio is the only positive evidence. A socket/HTTP result
+/// cannot create or refresh this timestamp.
+fn decoded_at(validation: &Value) -> Option<u64> {
+    if validation["status"] == "Decoded"
+        && validation["stage"] == "DecodedAudio"
+        && validation["decoded_frames"].as_u64().unwrap_or(0) > 0
+    {
+        validation["checked_at_unix"].as_u64()
+    } else {
+        None
+    }
+}
+
+/// Fresh means the latest probe decoded audio recently; degraded means a prior
+/// success is still within its bounded grace window after transient failures.
+/// Failed probes never refresh the last-good timestamp.
+fn current_health(station: &Value, now_unix: u64) -> &'static str {
+    if let Some(last) = decoded_at(&station["validation"]) {
+        return if now_unix >= last && now_unix - last <= FEED_FRESHNESS_TTL.as_secs() {
+            "fresh"
+        } else {
+            "stale"
         };
     }
-    if status == "Unverified" || status == "Cancelled" {
-        "unverified"
-    } else {
-        "failed"
+    if station["consecutive_failed_sweeps"].as_u64().unwrap_or(0)
+        >= FAILURE_SWEEPS_TO_UNAVAILABLE
+    {
+        return "unavailable";
+    }
+    if let Some(last_good) = decoded_at(&station["last_good"]) {
+        return if now_unix >= last_good
+            && now_unix - last_good <= LAST_GOOD_GRACE.as_secs()
+        {
+            "degraded"
+        } else {
+            "stale"
+        };
+    }
+    "unverified"
+}
+
+fn is_eligible(station: &Value, now_unix: u64, strict: bool) -> bool {
+    match current_health(station, now_unix) {
+        "fresh" => true,
+        "degraded" => !strict,
+        _ => false,
     }
 }
 
@@ -187,38 +215,76 @@ fn empty_station(station: &InternetStation) -> Value {
         "publisher_reference_url": station.publisher_reference_url,
         "health": "unverified",
         "validation": unverified(),
+        "last_good": null,
+        "consecutive_failed_sweeps": 0,
+        "probe_attempts": 0,
     })
 }
 
-fn snapshot(stations: &[Value], checked: usize, complete: bool, started: u64, now: u64) -> Value {
-    let mut counts = [0usize; 4];
+/// Accept the previous snapshot, including schema-v1 reports from the original
+/// validator, without letting stale metadata replace the canonical station.
+fn restore_station(station: &InternetStation, old: Option<&Value>) -> Value {
+    let mut entry = empty_station(station);
+    if let Some(old) = old {
+        if old["validation"].is_object() {
+            entry["validation"] = old["validation"].clone();
+        }
+        if decoded_at(&old["last_good"]).is_some() {
+            entry["last_good"] = old["last_good"].clone();
+        } else if decoded_at(&old["validation"]).is_some() {
+            entry["last_good"] = old["validation"].clone();
+        }
+        entry["consecutive_failed_sweeps"] =
+            json!(old["consecutive_failed_sweeps"]
+                .as_u64()
+                .unwrap_or(0)
+                .min(FAILURE_SWEEPS_TO_UNAVAILABLE));
+        entry["probe_attempts"] = json!(old["probe_attempts"].as_u64().unwrap_or(0).min(2));
+    }
+    entry
+}
+
+fn snapshot(
+    stations: &[Value],
+    checked: usize,
+    complete: bool,
+    started: u64,
+    now: u64,
+    network_incident: bool,
+) -> Value {
+    let mut counts = [0usize; 5];
     let live: Vec<Value> = stations
         .iter()
         .map(|station| {
             let mut station = station.clone();
-            let health = current_health(&station["validation"], now);
+            let health = current_health(&station, now);
             match health {
                 "fresh" => counts[0] += 1,
-                "stale" => counts[1] += 1,
-                "failed" => counts[2] += 1,
-                _ => counts[3] += 1,
+                "degraded" => counts[1] += 1,
+                "stale" => counts[2] += 1,
+                "unavailable" => counts[3] += 1,
+                _ => counts[4] += 1,
             }
             station["health"] = json!(health);
             station
         })
         .collect();
     json!({
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at_unix": now,
         "scan_started_at_unix": started,
         "complete": complete,
         "total": curated_stations().len(),
         "checked": checked,
         "fresh": counts[0],
-        "stale": counts[1],
-        "failed": counts[2],
-        "unverified": counts[3],
+        "degraded": counts[1],
+        "stale": counts[2],
+        "unavailable": counts[3],
+        "unverified": counts[4],
+        "network_incident_suspected": network_incident,
         "freshness_ttl_seconds": FEED_FRESHNESS_TTL.as_secs(),
+        "last_good_grace_seconds": LAST_GOOD_GRACE.as_secs(),
+        "failed_sweeps_to_unavailable": FAILURE_SWEEPS_TO_UNAVAILABLE,
         "stations": live,
     })
 }
