@@ -14,10 +14,11 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - The parity test and all requested gates pass: format, default/all-feature
   workspace tests, both strict Clippy configurations, and all-feature check.
   Loopback HTTP fixtures passed with local-network permission.
-- Current head's GitHub Actions run `40744821542` (run 141) ended
-  `startup_failure` at creation time with zero jobs and no status checks. The
-  workflow YAML parses locally; there is no job/log evidence pointing to a
-  repository fault, so no speculative workflow edit was made.
+- GitHub Actions run `40744821542` (run 141) for the tested catalog-mirror code
+  head ended `startup_failure` at creation time with zero jobs and no status
+  checks. The following documentation-only head also failed before jobs were
+  created. Workflow YAML parses locally; there is no job/log evidence pointing
+  to a repository fault, so no speculative workflow edit was made.
 
 ## Current module pass: catalog metadata and NPR research
 
