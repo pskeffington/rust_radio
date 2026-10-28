@@ -62,6 +62,11 @@ health only; it does not verify audible output, ongoing availability or stream
 redistribution rights.
 
 
+On 2026-10-28 at 23:34:35 UTC, bounded `validate-all --json` decoded all 25
+current catalog feeds in 25 attempts, with no retries. This is point-in-time
+codec evidence only and does not certify audible playback, device behavior, or
+redistribution permission.
+
 ## Reliability pass: manual output and session control
 
 After the prior Mac 30-second Skylab audible pass, the CLI now supports:

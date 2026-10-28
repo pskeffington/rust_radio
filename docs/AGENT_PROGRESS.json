@@ -1,10 +1,13 @@
 {
-  "updated_at_utc": "2026-10-28T23:30:21Z",
+  "updated_at_utc": "2026-10-28T23:34:43Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "03e3025f81b865690c52b8b782fac59faccb46e3; output startup errors clear callback progress; concurrent Stop suppresses the stale error while active sessions preserve it.",
+  "implementation_commit": "d019cbe400ba808ba7f972e70d783024d3ced737; custom stream validation now normalizes terminal DNS dots before blocking SomaFM root/subdomains.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Blocked terminal-dot SomaFM root and subdomain variants in direct custom URLs; focused hostname-policy regression passed.",
+    "All six workspace gates passed after the URL policy fix. Fresh bounded validate-all at 2026-10-28T23:34:35Z decoded 25/25 feeds in 25 attempts, no retries/failures; codec evidence only.",
+    "Repeated GUI label A/B/C at 295px: A 24/25, B/C 25/25; at 340px all 25/25; compact C saves 192px and A overflows wcrb. Layout fit only.",
     "Fixed output-start failure cleanup and Stop race; focused regressions and all six local Rust gates passed.",
     "Repeated GUI station-label A/B/C: A 24/25, B/C 25/25 at 295px; all 25/25 at 340px; C saves 192px and A overflows wcrb. Layout fit only, not listener preference.",
     "Added start_resource_if_active around CPAL output creation and deterministic tests for Stop before/during startup; cancellation during creation drops the synthetic resource and clears callback progress.",
@@ -204,7 +207,10 @@
     "playback_stop_retry_race": "passed focused deterministic test: Stop during transient attempt failure performs no wait/retry and rejects stale ConnectionLost/Error events.",
     "post_header_stream_cancellation": "passed loopback HTTP integration: server returns audio/mpeg headers and stalls before body; cancellation produces ConnectionAborted, releases NetworkGuard worker under 500ms, one request only.",
     "playback_probe_cancellation": "passed tests proving a pre-canceled playback skips format probing and Stop during probe I/O error returns cancellation without reading output failure details or classifying transient network failure.",
-    "output_start_cancellation": "passed tests proving a pre-canceled startup skips resource factory and clears stale progress; cancellation during resource startup drops the acquired resource and clears the callback progress Arc."
+    "output_start_cancellation": "passed tests proving a pre-canceled startup skips resource factory and clears stale progress; cancellation during resource startup drops the acquired resource and clears the callback progress Arc.",
+    "host_policy_regression": "passed: rejects https://somafm.com./, uppercase absolute root form, and dotted subdomain; ordinary lookalike domain remains allowed",
+    "six_required_gates": "passed on implementation commit d019cbe: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked",
+    "manual_hardware_test": "not run; one native audio output test remains ignored and no physical output/receiver was used"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -215,7 +221,8 @@
     "variant_c_text_width_savings_vs_a": 192,
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
-    "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
+    "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data",
+    "last_repeated_at_utc": "2026-10-28T23:34:35Z"
   },
   "ci": {
     "latest_pr_run": 40787809365,
@@ -233,6 +240,7 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue deterministic playback lifecycle race coverage; separately close physical Bluetooth/USB, Raspberry Pi/receiver, publisher-rights and healthy native Windows MSVC CI gates.",
-  "current_pr_state": "PR #5 open and mergeable at checkpoint head c3f2798; Actions run 274 failed before job creation (startup_failure), with no combined statuses."
+  "next_priority": "Continue playback lifecycle/recovery reliability work; separately complete physical Bluetooth/USB output, Raspberry Pi and receiver acceptance, publisher distribution-rights review, and native Windows MSVC CI.",
+  "current_pr_state": "PR #5 open and mergeable at checkpoint head c3f2798; Actions run 274 failed before job creation (startup_failure), with no combined statuses.",
+  "live_catalog_revalidation": "2026-10-28T23:34:35Z: bounded validate-all decoded 25/25 stations in 25 total attempts; no retries or failures; point-in-time codec evidence only."
 }

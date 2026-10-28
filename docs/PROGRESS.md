@@ -3,6 +3,28 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Publisher-domain trailing-dot guard (2026-10-28 23:34 UTC)
+
+- Direct URL validation previously blocked `somafm.com` and its subdomains but
+  accepted absolute DNS spellings such as `somafm.com.`. The policy check now
+  strips terminal dots before matching the publisher domain. Regression cases
+  cover uppercase root and dotted subdomain forms; deceptive lookalike domains
+  remain allowed by the specific domain rule.
+- Focused URL-policy test passed. All six local gates passed: format, default
+  and all-feature workspace tests, strict Clippy for both configurations, and
+  all-feature check. One manual native-output test remains ignored.
+- Bounded `validate-all --json` at 2026-10-28 23:34:35 UTC decoded 25/25
+  catalog entries in 25 total attempts, with no retry or failure. This is
+  point-in-time codec evidence only; no audio device opened.
+- Repeated station-label A/B/C: at 295 px, A full category 24/25, B names-only
+  25/25, C compact category 25/25; at 340 px all variants fit. C saves 192 px;
+  A overflows `wcrb`. Layout fit only, not listener preference.
+- Implementation commit `d019cbe` is validated; PR and CI state will be recorded
+  with the evidence checkpoint. Physical output/Pi/receiver, rights and native
+  Windows MSVC acceptance remain open.
+- Next: continue source-aware recovery or cancellation work; pursue target-device
+  output recovery when hardware is available.
+
 ## Output startup error cleanup racing with Stop (2026-10-28 23:29 UTC)
 
 - Fixed `start_resource_if_active`: output-factory errors now clear callback
