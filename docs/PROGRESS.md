@@ -3,6 +3,28 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Delayed callback playback-state fix (2026-10-28)
+
+- Implementation commit `94f0daa` gives each IP stream attempt its own
+  callback-consumed sample counter. `NativeRadioEngine::status()` transitions
+  Buffering to Playing from that counter, even when the decoder has finished a
+  packet and is waiting for the network. A retry replaces the counter before
+  the next connection; Stop and generation handling remain authoritative.
+- Regression `status_reconciles_delayed_callback_progress_per_attempt` covers
+  delayed callback progress, retry isolation and Stop. It passes.
+- All six required gates pass on this implementation: formatting, default and
+  all-feature workspace tests, strict default and all-feature Clippy, and
+  all-feature check. Loopback tests passed with local socket permission; one
+  physical audio test remains intentionally ignored.
+- The repeatable station-label A/B also passed: 24/25 vs. 25/25 at 295 px,
+  both 25/25 at 340 px, with 1,776 aggregate text-pixel savings for names-only.
+  This is a fit metric, not a listener preference test.
+- This callback counter is software evidence only. Human-audible output and
+  Bluetooth/USB device-loss recovery remain hardware gates.
+- On head `94f0daa`, GitHub Actions run `40753639896` failed during startup
+  before creating jobs; the combined status is empty. No Rust job-step failure
+  is evidenced.
+
 ## Portability and layout recheck (2026-10-28)
 
 - On pushed head `66f9efd`, `cargo check --locked -p rust-radio
