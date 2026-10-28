@@ -1202,3 +1202,6 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   checks and revisit after an eligible Actions run is available.
 - The findings are recorded in commit `52be452`; PR #3 remains open and
   mergeable at that head. No workflow run is visible for the checkpoint commit.
+- The subsequent push triggered run `40772645579` on `52be452`; it again ended
+  `startup_failure` with zero jobs. The latest head `1642027` has no run visible
+  yet. This reproduces the runner-startup problem but still exposes no cause.
