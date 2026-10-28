@@ -148,11 +148,9 @@ impl From<TransportError> for PlaybackFailure {
     }
 }
 
-fn probe_failure(error: DecodeError, output_failed: bool) -> PlaybackFailure {
-    if output_failed {
-        return PlaybackFailure::Output(
-            "Native audio output failed while detecting stream format".into(),
-        );
+fn probe_failure(error: DecodeError, output_failure: Option<String>) -> PlaybackFailure {
+    if let Some(detail) = output_failure {
+        return PlaybackFailure::Output(detail);
     }
     match error {
         DecodeError::IoError(error) => PlaybackFailure::Network(format!(
@@ -881,7 +879,7 @@ fn decode_and_play(
             &FormatOptions::default(),
             &MetadataOptions::default(),
         )
-        .map_err(|error| probe_failure(error, output.has_failed()))?;
+        .map_err(|error| probe_failure(error, output.failure_detail()))?;
     let mut format = probed.format;
     let track = format
         .tracks()
@@ -899,7 +897,9 @@ fn decode_and_play(
     while !context.cancelled.load(Ordering::Acquire) {
         if output.has_failed() {
             return Err(PlaybackFailure::Output(
-                "Native audio output device disconnected or failed".into(),
+                output
+                    .failure_detail()
+                    .unwrap_or_else(|| "Native audio output device disconnected or failed".into()),
             ));
         }
         let packet = match format.next_packet() {
@@ -910,7 +910,9 @@ fn decode_and_play(
                 }
                 if output.has_failed() {
                     return Err(PlaybackFailure::Output(
-                        "Native audio output disconnected during radio stream".into(),
+                        output.failure_detail().unwrap_or_else(|| {
+                            "Native audio output disconnected during radio stream".into()
+                        }),
                     ));
                 }
                 return Err(PlaybackFailure::Network(format!(
@@ -973,7 +975,9 @@ fn decode_and_play(
         if !keep_going {
             if output.has_failed() && !context.cancelled.load(Ordering::Acquire) {
                 return Err(PlaybackFailure::Output(
-                    "Native audio output stopped consuming samples".into(),
+                    output
+                        .failure_detail()
+                        .unwrap_or_else(|| "Native audio output stopped consuming samples".into()),
                 ));
             }
             return Ok(());
@@ -1205,7 +1209,7 @@ mod tests {
         for error in [
             PlaybackFailure::from(TransportError::Permanent("HTTP 403".into())),
             PlaybackFailure::Output("speaker unavailable".into()),
-            probe_failure(DecodeError::Unsupported("unsupported codec"), false),
+            probe_failure(DecodeError::Unsupported("unsupported codec"), None),
         ] {
             let (controller, generation) = recovery_controller();
             let mut error = Some(error);
@@ -1224,7 +1228,7 @@ mod tests {
                     io::ErrorKind::UnexpectedEof,
                     "network disconnected during probe",
                 )),
-                false,
+                None,
             )
             .class(),
             FailureClass::NetworkTransient
@@ -1235,10 +1239,21 @@ mod tests {
                     io::ErrorKind::UnexpectedEof,
                     "probe interrupted after audio device loss",
                 )),
-                true,
+                Some("backend device lost during probe".into()),
             )
             .class(),
             FailureClass::OutputUnavailable
+        );
+        assert_eq!(
+            probe_failure(
+                DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "probe interrupted after audio device loss",
+                )),
+                Some("Native audio output stream error: device disappeared".into()),
+            )
+            .message(),
+            "Native audio output stream error: device disappeared"
         );
     }
 

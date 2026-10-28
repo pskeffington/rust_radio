@@ -6,7 +6,7 @@ use cpal::{FromSample, SampleFormat, SizedSample};
 use ringbuf::{traits::*, HeapCons, HeapProd, HeapRb};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-    Arc,
+    Arc, Mutex,
 };
 use std::thread;
 use std::time::{Duration, Instant};
@@ -98,7 +98,33 @@ pub struct NativeAudioOutput {
     pub sample_rate: u32,
     pub channels: usize,
     played_samples: Arc<AtomicU64>,
-    failed: Arc<AtomicBool>,
+    failed: Arc<OutputFailure>,
+}
+
+#[derive(Default)]
+struct OutputFailure {
+    failed: AtomicBool,
+    detail: Mutex<Option<String>>,
+}
+
+impl OutputFailure {
+    fn record(&self, detail: String) {
+        *self
+            .detail
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(detail);
+        self.failed.store(true, Ordering::Release);
+    }
+
+    fn detail(&self) -> Option<String> {
+        if !self.failed.load(Ordering::Acquire) {
+            return None;
+        }
+        self.detail
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    }
 }
 
 impl NativeAudioOutput {
@@ -126,7 +152,7 @@ impl NativeAudioOutput {
         // Two seconds of interleaved device-rate PCM; bounded to at most ~12 MiB.
         let ring = HeapRb::<f32>::new(sample_rate as usize * channels * 2);
         let (producer, consumer) = ring.split();
-        let failed = Arc::new(AtomicBool::new(false));
+        let failed = Arc::new(OutputFailure::default());
         let stream = match sample_format {
             SampleFormat::I8 => build_stream::<i8>(
                 &device,
@@ -248,7 +274,12 @@ impl NativeAudioOutput {
     }
 
     pub fn has_failed(&self) -> bool {
-        self.failed.load(Ordering::Acquire)
+        self.failed.failed.load(Ordering::Acquire)
+    }
+
+    /// Preserve CPAL's asynchronous device diagnostic when it is available.
+    pub fn failure_detail(&self) -> Option<String> {
+        self.failed.detail()
     }
 
     pub fn start(&self) -> Result<(), String> {
@@ -264,7 +295,7 @@ impl NativeAudioOutput {
             &mut self.producer,
             frame,
             cancelled,
-            &self.failed,
+            &self.failed.failed,
             &self.played_samples,
             Duration::from_secs(5),
         )
@@ -313,20 +344,20 @@ fn build_stream<T>(
     mut consumer: HeapCons<f32>,
     volume: Arc<AtomicU8>,
     played: Arc<AtomicU64>,
-    failed: Arc<AtomicBool>,
+    failed: Arc<OutputFailure>,
 ) -> Result<cpal::Stream, String>
 where
     T: SizedSample + FromSample<f32>,
 {
-    let error_flag = Arc::clone(&failed);
+    let error_state = Arc::clone(&failed);
     device
         .build_output_stream(
             config,
             move |data: &mut [T], _| {
                 render_samples(data, &mut consumer, &volume, &played);
             },
-            move |_error| {
-                error_flag.store(true, Ordering::Release);
+            move |error| {
+                error_state.record(format!("Native audio output stream error: {error:?}"));
             },
             None,
         )
@@ -359,6 +390,21 @@ fn render_samples<T>(
 mod output_identity_tests {
     use super::*;
     use cpal::Sample;
+
+    #[test]
+    fn asynchronous_device_error_retains_backend_diagnostic() {
+        let failure = OutputFailure::default();
+        assert!(!failure.failed.load(Ordering::Acquire));
+        assert_eq!(failure.detail(), None);
+
+        failure.record("device disappeared during stream playback".into());
+
+        assert!(failure.failed.load(Ordering::Acquire));
+        assert_eq!(
+            failure.detail().as_deref(),
+            Some("device disappeared during stream playback")
+        );
+    }
 
     fn assert_rendered_samples_convert<T>(volume_percent: u8)
     where
