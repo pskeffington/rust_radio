@@ -5,6 +5,7 @@ Status: implemented in the standalone module and consumed by Pip-Boy through a p
 ## Worker ownership
 
 - A single coordinator owns current session generation, network receiver, decoder worker, PCM queue and CPAL output.
+- A process-wide atomic session lease admits one playback worker across all `NativeRadioEngine` instances. A second start fails before output or network resources open; the lease releases when the worker exits or unwinds.
 - Starting a station is a deliberate operator command. Directory listing, favorites, startup, navigation and output enumeration are non-playing operations.
 - Receiver worker resolves only `ApprovedEndpoint` values. The HTTP client must disable implicit redirects and proxies, validate TLS, impose connect and inactivity deadlines, and implement cancellation.
 - The decoder produces bounded PCM frames; the CPAL callback consumes those frames without network requests, locks or per-callback allocation.
@@ -12,6 +13,7 @@ Status: implemented in the standalone module and consumed by Pip-Boy through a p
   reached while delivering a decoded packet. A packet larger than the ring can
   therefore drain without falsely timing out on a full, still-paused output.
 - PlaybackStarted may be emitted only after a live sink has actually consumed nonempty PCM. TCP availability is not playback evidence; local mute does not erase callback evidence.
+- `NativeRadioEngine::status()` reconciles the callback's consumed-sample counter before returning a `Playing` snapshot for IP, direct nRSP-native, SDRconnect, and Soapy sources. This covers delayed callbacks while a source awaits another packet/read; each output attempt gets a fresh counter so stale progress cannot advance recovery state.
 - Stop must invalidate generation **and** cancel/join receiver, decoder and output worker resources; generation filtering alone does not release sockets or devices.
 - Output-device changes are operator-driven. Bluetooth pairing remains OS-owned. Explicit failure must be surfaced instead of silently switching output.
 - Recovery uses the existing bounded policy and must not restart a stopped generation.

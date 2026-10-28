@@ -226,9 +226,13 @@ fn transport_failure(station_id: &str, error: StreamError) -> StationValidation 
     let status = match &error {
         StreamError::Io(error) if probe_was_cancelled(error) => ValidationStatus::Cancelled,
         StreamError::TransportUnavailable | StreamError::Io(_) => ValidationStatus::Unavailable,
-        StreamError::HttpStatus(_) => {
+        StreamError::HttpStatus(status) => {
             report.stage = ValidationStage::EndpointReached;
-            ValidationStatus::Unavailable
+            if matches!(status, 408 | 425 | 429 | 500..=599) {
+                ValidationStatus::Unavailable
+            } else {
+                ValidationStatus::InvalidStream
+            }
         }
         StreamError::UnsupportedHls => {
             report.stage = ValidationStage::EndpointReached;

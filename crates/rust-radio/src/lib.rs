@@ -3,7 +3,7 @@
 //! engine is headless; opt into `gui` only when the host uses an egui panel.
 
 pub use rust_radio_core::{
-    controller, directory, pcm, recovery, stream, validation as validation_types,
+    controller, directory, feed_history, pcm, recovery, stream, validation as validation_types,
     RadioController as SessionController, RadioError, ReceiveBackend, SessionState, Snapshot,
     Source,
 };

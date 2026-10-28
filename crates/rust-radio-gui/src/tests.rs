@@ -2,6 +2,7 @@ use super::*;
 use eframe::egui;
 use rust_radio_audio::compat_controller::PlaybackState;
 use rust_radio_core::stream::{ApprovedEndpoint, HttpResponse, RadioHttp, StreamError};
+use rust_radio_core::validation::{StationValidation, ValidationStage, ValidationStatus};
 use std::io::Cursor;
 use std::sync::{mpsc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
@@ -104,6 +105,75 @@ fn pending_check_keeps_rendering_and_blocks_duplicate_checks_and_playback() {
 }
 
 #[test]
+fn saved_validation_history_is_bounded_freshness_checked_and_not_live_state() {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let history = serde_json::json!({
+        "schema_version": 1,
+        "updated_at_unix": now,
+        "stations": {
+            "skylab": {
+                "last_checked_at_unix": now,
+                "last_status": "decoded",
+                "last_stage": "decoded_audio",
+                "attempts": 1,
+                "last_decoded_at_unix": now,
+                "consecutive_failures": 0,
+                "health": "fresh"
+            }
+        }
+    })
+    .to_string();
+    let mut panel = RadioPanel::new();
+    assert_eq!(panel.load_validation_history(&history).unwrap(), 1);
+    assert_eq!(panel.validation_label("skylab"), "SAVED / FRESH");
+    assert!(panel.validations.is_empty());
+    assert!(panel.engine.is_none());
+
+    let invalid = r#"{"schema_version":1,"stations":{"unknown":{"last_checked_at_unix":1}}}"#;
+    assert!(panel.load_validation_history(invalid).is_err());
+    assert_eq!(panel.validation_label("skylab"), "SAVED / FRESH");
+
+    let mut live = StationValidation::unverified("skylab");
+    live.status = ValidationStatus::Decoded;
+    live.stage = ValidationStage::DecodedAudio;
+    live.decoded_frames = 1;
+    live.checked_at = Some(SystemTime::now());
+    panel.validations.insert("skylab", live);
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
+}
+
+#[test]
+fn saved_validation_history_expires_after_the_shared_feed_ttl() {
+    let old = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        .saturating_sub(rust_radio_core::validation::FEED_FRESHNESS_TTL.as_secs() + 1);
+    let history = serde_json::json!({
+        "schema_version": 1,
+        "updated_at_unix": old,
+        "stations": {
+            "skylab": {
+                "last_checked_at_unix": old,
+                "last_status": "decoded",
+                "last_stage": "decoded_audio",
+                "attempts": 1,
+                "last_decoded_at_unix": old,
+                "consecutive_failures": 0,
+                "health": "fresh"
+            }
+        }
+    })
+    .to_string();
+    let mut panel = RadioPanel::new();
+    panel.load_validation_history(&history).unwrap();
+    assert_eq!(panel.validation_label("skylab"), "SAVED / STALE");
+}
+
+#[test]
 fn changing_station_cancels_and_discards_the_previous_check() {
     let mut panel = RadioPanel::new();
     let release = hold_check(&mut panel);
@@ -126,7 +196,7 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     let release = hold_check(&mut panel);
     release.send(()).unwrap();
     finish_panel(&mut panel);
-    assert_eq!(panel.validation_label("skylab"), "DECODED");
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
     assert!(panel.validations["skylab"].is_decoded());
     let evidence = panel.validations["skylab"].clone();
     panel.step_station(1);
@@ -140,7 +210,7 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     release.send(()).unwrap();
     finish_panel(&mut panel);
     assert_eq!(panel.validations["skylab"], evidence);
-    assert_eq!(panel.validation_label("skylab"), "DECODED");
+    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
 }
 
 #[test]
@@ -799,4 +869,170 @@ fn switching_input_types_preserves_the_last_saved_ip_station_without_connecting(
     panel.apply_inputs(InputReport::default());
     assert_eq!(panel.segment, Segment::Ip);
     assert_eq!(panel.ip_station_name(), "My LAN station");
+}
+
+#[test]
+fn listener_status_uses_playback_state_instead_of_cached_verification() {
+    let mut panel = RadioPanel::new();
+    let mut report = StationValidation::unverified("skylab");
+    report.status = ValidationStatus::Unavailable;
+    panel.validations.insert("skylab", report);
+    for (state, label, working, failed) in [
+        (PlaybackState::Stopped, "Ready to listen", false, false),
+        (PlaybackState::Connecting, "Connecting", true, false),
+        (PlaybackState::Buffering, "Buffering", true, false),
+        (PlaybackState::Playing, "Playing", false, false),
+        (PlaybackState::Recovering, "Reconnecting", true, false),
+        (PlaybackState::Failed, "Unable to play", false, true),
+    ] {
+        panel.last_session = Some(RadioSession {
+            state,
+            ..Default::default()
+        });
+        let status = panel.listening_status();
+        assert_eq!(status.label, label);
+        assert_eq!(status.working, working);
+        assert_eq!(status.failed, failed);
+        assert_eq!(panel.source_detail(), "Chillout · lounge · ambient");
+        render_panel(&mut panel);
+    }
+    panel.restart_pending = true;
+    assert_eq!(panel.listening_status().label, "Connecting");
+    panel.stopping = true;
+    let switching = panel.listening_status();
+    assert_eq!(switching.label, "Switching station");
+    assert!(switching.stop_action);
+    panel.restart_pending = false;
+    panel.stopping = false;
+}
+
+#[test]
+fn mute_restores_the_last_listening_volume_without_starting_audio() {
+    let mut panel = RadioPanel::new();
+    panel.change_volume(37);
+    panel.toggle_mute();
+    assert_eq!(panel.volume, 0);
+    render_panel(&mut panel);
+    panel.toggle_mute();
+    assert_eq!(panel.volume, 37);
+    panel.toggle_mute();
+    panel.change_volume(81);
+    panel.toggle_mute();
+    panel.toggle_mute();
+    assert_eq!(panel.volume, 81);
+    assert!(!panel.is_active());
+}
+
+#[test]
+fn playing_surface_has_no_stale_badge_or_decode_diagnostics_and_errors_fit() {
+    use egui::epaint::Shape;
+    fn texts(shape: &Shape, result: &mut String) {
+        match shape {
+            Shape::Text(text) => {
+                result.push_str(&text.galley.job.text);
+                result.push('\n');
+            }
+            Shape::Vec(shapes) => {
+                for shape in shapes {
+                    texts(shape, result);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut panel = RadioPanel::new();
+    panel.note = "PLAYING / DECODED AUDIO REACHED OUTPUT".into();
+    panel.last_session = Some(RadioSession {
+        state: PlaybackState::Playing,
+        ..Default::default()
+    });
+    let context = egui::Context::default();
+    let output = context.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(480.0, 320.0),
+            )),
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| panel.show(ui));
+        },
+    );
+    let mut content = String::new();
+    for shape in output.shapes {
+        texts(&shape.shape, &mut content);
+    }
+    assert!(content.contains("Playing"), "{content}");
+    assert!(!content.contains("UNVERIFIED"), "{content}");
+    assert!(!content.contains("DECODED AUDIO"), "{content}");
+    panel.last_session = Some(RadioSession {
+        state: PlaybackState::Failed,
+        last_error: Some("The station is unavailable. ".repeat(100)),
+        ..Default::default()
+    });
+    render_panel(&mut panel);
+    assert_eq!(panel.listening_status().label, "Unable to play");
+}
+
+#[test]
+fn stream_errors_offer_listener_actions_with_original_diagnostics_retained() {
+    let mut panel = RadioPanel::new();
+    for (error, useful) in [
+        (
+            "Unsupported radio stream format: core (probe): no suitable format reader found",
+            "unsupported audio format",
+        ),
+        (
+            "Server did not return an audio stream: text/html",
+            "check the stream URL",
+        ),
+        (
+            "Radio server responded HTTP 404 Not Found",
+            "no longer available",
+        ),
+        ("Radio connect/header timeout", "Check your connection"),
+        (
+            "Native audio output device disconnected",
+            "select an output",
+        ),
+        ("Unsupported native sample format: I32", "select an output"),
+        (
+            "Unsupported native receiver output: UnsupportedChannels",
+            "select an output",
+        ),
+        (
+            "Cannot configure native audio stream: device unavailable",
+            "select an output",
+        ),
+    ] {
+        panel.last_session = Some(RadioSession {
+            state: PlaybackState::Failed,
+            last_error: Some(error.into()),
+            ..Default::default()
+        });
+        assert!(panel.listener_error_detail().contains(useful));
+        assert_eq!(panel.playback_error().as_deref(), Some(error));
+        render_panel(&mut panel);
+    }
+}
+
+#[test]
+fn setup_preserves_six_hour_feed_freshness_without_blocking_playback() {
+    let mut panel = RadioPanel::new();
+    let mut report = StationValidation::unverified("skylab");
+    report.status = ValidationStatus::Decoded;
+    report.stage = rust_radio_core::validation::ValidationStage::DecodedAudio;
+    report.decoded_frames = 256;
+    report.checked_at = Some(SystemTime::now());
+    panel.validations.insert("skylab", report);
+    assert!(panel.stream_check_summary().contains("passed"));
+    panel.validations.get_mut("skylab").unwrap().checked_at = Some(
+        SystemTime::now()
+            - rust_radio_core::validation::FEED_FRESHNESS_TTL
+            - Duration::from_secs(1),
+    );
+    assert!(panel.stream_check_summary().contains("over 6 hours old"));
+    assert_eq!(panel.validation_label("skylab"), "STALE / RECHECK");
+    assert!(!panel.is_active());
 }

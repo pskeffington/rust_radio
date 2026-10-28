@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "updated_at_unix": 1700000000,
+  "stations": {
+    "skylab": {
+      "last_checked_at_unix": 1700000000,
+      "last_status": "decoded",
+      "last_stage": "decoded_audio",
+      "attempts": 1,
+      "last_decoded_at_unix": 1700000000,
+      "consecutive_failures": 0,
+      "health": "fresh"
+    }
+  }
+}

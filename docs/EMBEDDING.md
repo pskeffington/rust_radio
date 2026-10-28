@@ -56,19 +56,30 @@ fn play_after_user_command(station_id: &str) -> Result<(), String> {
 }
 ```
 
-Hosts retain ownership of their UI, preferences and one engine at a time. The
-standalone egui panel is not required by pip_boy's HTML HUD. Stable station IDs,
+Hosts retain ownership of their UI and preferences. The audio crate enforces one
+process-wide playback worker, even if a host accidentally creates multiple
+engine instances. A new start returns an error until the prior worker exits.
+The standalone egui panel is not required by pip_boy's HTML HUD. Stable station IDs,
 playback states and generation-tagged commands/events are shared through
 `rust_radio::controller`; directory, parser, PCM and recovery APIs are also
 available without loading audio dependencies. Host storage continues to use station IDs. Hosts can also explicitly call
 `NativeRadioEngine::start_stream(url, volume, output)` for a direct MP3/AAC
 URL; it is retained only for that engine session. Direct input accepts HTTPS
-or private/loopback literal IPv4 HTTP, rejects credentials and fragments, and
+or private/loopback literal IPv4 HTTP, rejects non-public HTTPS literal-IP
+targets, credentials and fragments, and
 supports bounded redirects and M3U/PLS (including relative entries), with URL
-validation on every hop and no HTTPS downgrade. HLS remains unsupported.
+validation on every hop and no HTTPS downgrade. Private HTTP redirects remain
+on the selected private origin, and DNS answers remain public-only. HLS remains
+unsupported.
 Hosts should protect query tokens and ask for an explicit Play action before
 starting audio. `StationValidationTask::start_input(target, direct)` checks the
 same transport silently without opening audio output.
+
+`NativeRadioEngine::output_failed()` remains available until the engine is
+dropped, including after its worker finishes. It is true for audio-device
+failures and false for network failures or canceled sessions. Hosts can use it
+to explain output loss and offer device selection followed by explicit Play;
+changing the selected output alone must not start playback.
 
 Compatibility imports in `rust-radio-audio::compat_controller` refer to the
 same core controller types. `rust-radio-core::SessionState` is the same playback
@@ -150,6 +161,24 @@ check; Play supersedes it. During active IP playback, selection immediately
 mutes/cancels the old engine, then polls cleanup before creating the latest
 engine. Retain and render/poll the panel during this transition. Stop also clears
 queued playback and validation. Cross-input/output changes still require Stop.
+
+Hosts may read their optional `validate-all --history PATH` state file off the
+UI thread and pass its contents to `RadioPanel::load_validation_history(json)`.
+The panel validates the bounded schema and station IDs, recomputes the six-hour
+freshness window, and labels imported evidence `SAVED / …`. It performs no file
+or network IO, never autoplays, and never gates Play. A live station check takes
+precedence over saved history; the active listening surface continues to report
+current playback rather than historical check state.
+
+Headless hosts can consume the same versioned snapshot with
+`rust_radio::feed_history::parse_feed_history(json)`; a Rust-Boy adapter can
+adopt this API when it updates its pinned module revision. The parser lives in
+the core crate and does not require the optional egui feature. It enforces the
+64 KiB schema and returns typed per-station status, stage, attempts, last
+decoded time and failure count. Call
+`FeedHistoryRecord::health_at(now)` when displaying the result so freshness is
+recomputed instead of trusting a cached label. The host owns file I/O and any
+presentation; saved evidence is informational and never gates playback.
 
 Use `take_ip_stations_update() -> Option<String>` to obtain the versioned JSON
 when saved stations or selection change, and persist it off the render thread.

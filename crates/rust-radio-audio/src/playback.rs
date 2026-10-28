@@ -13,7 +13,7 @@ use rust_radio_ip::error::TransportError;
 use rust_radio_ip::net as radio_net;
 use std::io;
 use std::sync::{
-    atomic::{AtomicBool, AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
     Arc, Mutex,
 };
 use std::thread::{self, JoinHandle};
@@ -57,6 +57,50 @@ enum PlaybackSource {
         frequency_hz: u64,
         deemphasis: rust_radio_core::sdr::wfm::Deemphasis,
     },
+}
+
+struct ActivePlaybackSlot {
+    active: AtomicBool,
+}
+
+impl ActivePlaybackSlot {
+    const fn new() -> Self {
+        Self {
+            active: AtomicBool::new(false),
+        }
+    }
+
+    fn acquire(&self) -> Result<ActivePlaybackGuard<'_>, String> {
+        self.active
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .map(|_| ActivePlaybackGuard {
+                active: &self.active,
+            })
+            .map_err(|_| "A radio playback session is already active".into())
+    }
+}
+
+struct ActivePlaybackGuard<'a> {
+    active: &'a AtomicBool,
+}
+
+impl Drop for ActivePlaybackGuard<'_> {
+    fn drop(&mut self) {
+        self.active.store(false, Ordering::Release);
+    }
+}
+
+static ACTIVE_PLAYBACK_SLOT: ActivePlaybackSlot = ActivePlaybackSlot::new();
+
+pub(super) type OutputProgress = Arc<Mutex<Option<Arc<AtomicU64>>>>;
+
+pub(super) struct PlaybackContext<'a> {
+    pub(super) generation: u64,
+    pub(super) controller: &'a Arc<Mutex<RadioController>>,
+    pub(super) cancelled: &'a Arc<AtomicBool>,
+    pub(super) volume: Arc<AtomicU8>,
+    pub(super) output_id: &'a str,
+    output_progress: &'a OutputProgress,
 }
 
 #[derive(Debug)]
@@ -104,7 +148,12 @@ impl From<TransportError> for PlaybackFailure {
     }
 }
 
-fn probe_failure(error: DecodeError) -> PlaybackFailure {
+fn probe_failure(error: DecodeError, output_failed: bool) -> PlaybackFailure {
+    if output_failed {
+        return PlaybackFailure::Output(
+            "Native audio output failed while detecting stream format".into(),
+        );
+    }
     match error {
         DecodeError::IoError(error) => PlaybackFailure::Network(format!(
             "Radio stream interrupted during format detection: {error}"
@@ -114,12 +163,14 @@ fn probe_failure(error: DecodeError) -> PlaybackFailure {
 }
 
 /// No direct audio output or network access occurs until the caller issues
-/// an explicit internet or SDRconnect Play command. One engine owns one active worker.
+/// an explicit internet or SDRconnect Play command. A process-wide lease admits
+/// only one playback worker, including across multiple engine instances.
 pub struct NativeRadioEngine {
     controller: Arc<Mutex<RadioController>>,
     cancelled: Arc<AtomicBool>,
     volume: Arc<AtomicU8>,
     output_failed: Arc<AtomicBool>,
+    output_progress: OutputProgress,
     worker: Option<JoinHandle<()>>,
     #[cfg(feature = "nrsp-native")]
     native_control: Option<Arc<nrsp_native::Control>>,
@@ -282,65 +333,98 @@ impl NativeRadioEngine {
         let worker_volume = Arc::clone(&volume);
         let output_failed = Arc::new(AtomicBool::new(false));
         let worker_output_failed = Arc::clone(&output_failed);
+        let output_progress = Arc::new(Mutex::new(None));
+        let worker_output_progress = Arc::clone(&output_progress);
         #[cfg(feature = "sdrconnect")]
         let receiver = Arc::new(Mutex::new(None));
         #[cfg(feature = "sdrconnect")]
         let worker_receiver = Arc::clone(&receiver);
         #[cfg(feature = "nrsp-native")]
-        let native_control = if matches!(&source, PlaybackSource::NrspNative(..)) {
-            Some(Arc::new(nrsp_native::Control::default()))
-        } else {
-            None
+        let native_control = match &source {
+            PlaybackSource::NrspNative(_, config, fm) => {
+                Some(Arc::new(nrsp_native::Control::new(*config, *fm)))
+            }
+            _ => None,
         };
         #[cfg(feature = "nrsp-native")]
         let worker_native = native_control.clone();
         let selected_output = output_id.to_owned();
+        let active_playback = ACTIVE_PLAYBACK_SLOT.acquire()?;
         let worker = thread::Builder::new()
             .name("rust-radio-playback".into())
             .spawn(move || {
+                let _active_playback = active_playback;
                 let result = match source {
                     PlaybackSource::Internet(id) => play_with_recovery(
                         &id,
                         false,
-                        generation,
-                        &worker_controller,
-                        &worker_cancelled,
-                        worker_volume,
-                        &selected_output,
+                        PlaybackContext {
+                            generation,
+                            controller: &worker_controller,
+                            cancelled: &worker_cancelled,
+                            volume: worker_volume,
+                            output_id: &selected_output,
+                            output_progress: &worker_output_progress,
+                        },
                     ),
                     PlaybackSource::Direct(url) => play_with_recovery(
                         &url,
                         true,
-                        generation,
-                        &worker_controller,
-                        &worker_cancelled,
-                        worker_volume,
-                        &selected_output,
+                        PlaybackContext {
+                            generation,
+                            controller: &worker_controller,
+                            cancelled: &worker_cancelled,
+                            volume: worker_volume,
+                            output_id: &selected_output,
+                            output_progress: &worker_output_progress,
+                        },
                     ),
                     #[cfg(feature = "nrsp-native")]
-                    PlaybackSource::NrspNative(endpoint, config, fm) => nrsp_native::play(
-                        (endpoint, config, fm),
-                        generation,
-                        &worker_controller,
-                        &worker_cancelled,
-                        worker_volume,
-                        &selected_output,
-                        worker_native.as_ref().expect("native controls present"),
-                    ),
+                    PlaybackSource::NrspNative(endpoint, _, _) => {
+                        let control = worker_native.as_ref().expect("native controls present");
+                        recover_nrsp_attempts(
+                            generation,
+                            &worker_controller,
+                            &worker_cancelled,
+                            control,
+                            |config, fm, reconnecting| {
+                                nrsp_native::play(
+                                    (endpoint, config, fm),
+                                    PlaybackContext {
+                                        generation,
+                                        controller: &worker_controller,
+                                        cancelled: &worker_cancelled,
+                                        volume: Arc::clone(&worker_volume),
+                                        output_id: &selected_output,
+                                        output_progress: &worker_output_progress,
+                                    },
+                                    control,
+                                    reconnecting,
+                                )
+                            },
+                            || clear_output_attempt(&worker_output_progress),
+                            |delay| interruptible_wait(&worker_cancelled, delay),
+                        )
+                    }
                     #[cfg(feature = "sdrconnect")]
                     PlaybackSource::SdrConnect(endpoint) => recover_attempts(
                         generation,
                         &worker_controller,
                         &worker_cancelled,
                         || {
-                            sdrconnect::play(
-                                endpoint,
+                            let context = PlaybackContext {
                                 generation,
-                                &worker_controller,
-                                &worker_cancelled,
-                                Arc::clone(&worker_volume),
-                                &selected_output,
-                                &worker_receiver,
+                                controller: &worker_controller,
+                                cancelled: &worker_cancelled,
+                                volume: Arc::clone(&worker_volume),
+                                output_id: &selected_output,
+                                output_progress: &worker_output_progress,
+                            };
+                            sdrconnect::play(endpoint, &context, &worker_receiver).map_err(
+                                |error| {
+                                    clear_output_attempt(&worker_output_progress);
+                                    error
+                                },
                             )
                         },
                         |delay| interruptible_wait(&worker_cancelled, delay),
@@ -352,24 +436,23 @@ impl NativeRadioEngine {
                         deemphasis,
                     } => soapy::play(
                         (&id, frequency_hz, deemphasis),
-                        generation,
-                        &worker_controller,
-                        &worker_cancelled,
-                        worker_volume,
-                        &selected_output,
+                        PlaybackContext {
+                            generation,
+                            controller: &worker_controller,
+                            cancelled: &worker_cancelled,
+                            volume: worker_volume,
+                            output_id: &selected_output,
+                            output_progress: &worker_output_progress,
+                        },
                     ),
                 };
-                if let Err(error) = result {
-                    if !worker_cancelled.load(Ordering::Acquire) {
-                        if matches!(error, PlaybackFailure::Output(_)) {
-                            worker_output_failed.store(true, Ordering::Release);
-                        }
-                        worker_controller
-                            .lock()
-                            .expect("radio state mutex poisoned")
-                            .event(generation, PlaybackEvent::Error(error.message()));
-                    }
-                }
+                record_worker_result(
+                    result,
+                    generation,
+                    &worker_controller,
+                    &worker_cancelled,
+                    &worker_output_failed,
+                );
             })
             .map_err(|e| format!("Unable to start radio worker: {e}"))?;
         Ok(Self {
@@ -377,6 +460,7 @@ impl NativeRadioEngine {
             cancelled,
             volume,
             output_failed,
+            output_progress,
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]
             native_control,
@@ -408,6 +492,7 @@ impl NativeRadioEngine {
             .pending
             .lock()
             .expect("native controls mutex poisoned");
+        control.set_desired_config(config);
         control
             .desired_mode
             .store(config.mode as u32, Ordering::Release);
@@ -441,6 +526,7 @@ impl NativeRadioEngine {
             .pending_fm
             .lock()
             .expect("native FM controls mutex poisoned") = Some(settings);
+        control.set_desired_fm(settings);
         Ok(())
     }
 
@@ -459,8 +545,9 @@ impl NativeRadioEngine {
         Some(self.native_control.as_ref()?.stats())
     }
 
-    /// An audio-device failure is never treated as transient network loss.
-    /// The HUD can offer an explicit output selection/retry.
+    /// True after an audio-device failure, including after worker completion.
+    /// It remains false for network errors and canceled sessions so a host can
+    /// offer output selection/retry only when changing devices could help.
     pub fn output_failed(&self) -> bool {
         self.output_failed.load(Ordering::Acquire)
     }
@@ -474,12 +561,25 @@ impl NativeRadioEngine {
                 .is_some_and(|worker| !worker.is_finished())
     }
 
+    /// Return the latest session snapshot, reconciling delayed output-callback
+    /// evidence so Playing does not depend on another network packet arriving.
     pub fn status(&self) -> RadioSession {
-        self.controller
-            .lock()
-            .expect("radio state mutex poisoned")
-            .state()
-            .clone()
+        let mut controller = self.controller.lock().expect("radio state mutex poisoned");
+        let (state, generation) = {
+            let session = controller.state();
+            (session.state, session.generation)
+        };
+        let played = state == PlaybackState::Buffering
+            && self
+                .output_progress
+                .lock()
+                .expect("output progress mutex poisoned")
+                .as_ref()
+                .is_some_and(|samples| samples.load(Ordering::Relaxed) > 0);
+        if played {
+            controller.event(generation, PlaybackEvent::PlaybackStarted);
+        }
+        controller.state().clone()
     }
 
     pub fn set_volume(&self, percent: u8) -> Result<(), String> {
@@ -558,6 +658,28 @@ impl Drop for NativeRadioEngine {
     }
 }
 
+fn record_worker_result(
+    result: Result<(), PlaybackFailure>,
+    generation: u64,
+    controller: &Arc<Mutex<RadioController>>,
+    cancelled: &AtomicBool,
+    output_failed: &AtomicBool,
+) {
+    let Err(error) = result else {
+        return;
+    };
+    if cancelled.load(Ordering::Acquire) {
+        return;
+    }
+    if matches!(&error, PlaybackFailure::Output(_)) {
+        output_failed.store(true, Ordering::Release);
+    }
+    controller
+        .lock()
+        .expect("radio state mutex poisoned")
+        .event(generation, PlaybackEvent::Error(error.message()));
+}
+
 fn signal(controller: &Arc<Mutex<RadioController>>, generation: u64, event: PlaybackEvent) {
     controller
         .lock()
@@ -565,33 +687,53 @@ fn signal(controller: &Arc<Mutex<RadioController>>, generation: u64, event: Play
         .event(generation, event);
 }
 
+pub(super) fn begin_output_attempt(progress: &OutputProgress) -> Arc<AtomicU64> {
+    let played_samples = Arc::new(AtomicU64::new(0));
+    *progress.lock().expect("output progress mutex poisoned") = Some(Arc::clone(&played_samples));
+    played_samples
+}
+
+pub(super) fn clear_output_attempt(progress: &OutputProgress) {
+    *progress.lock().expect("output progress mutex poisoned") = None;
+}
+
 /// Retry typed connection and stream I/O failures. Device loss and invalid
 /// codecs remain terminal; session Stop overrides any scheduled retry.
 fn play_with_recovery(
     station_id: &str,
     direct: bool,
+    context: PlaybackContext<'_>,
+) -> Result<(), PlaybackFailure> {
+    recover_output_attempts(
+        context.generation,
+        context.controller,
+        context.cancelled,
+        context.output_progress,
+        || decode_and_play(station_id, direct, &context),
+        |delay| interruptible_wait(context.cancelled, delay),
+    )
+}
+
+fn recover_output_attempts(
     generation: u64,
     controller: &Arc<Mutex<RadioController>>,
-    cancelled: &Arc<AtomicBool>,
-    volume: Arc<AtomicU8>,
-    output_id: &str,
+    cancelled: &AtomicBool,
+    output_progress: &OutputProgress,
+    mut attempt: impl FnMut() -> Result<(), PlaybackFailure>,
+    wait: impl FnMut(Duration) -> bool,
 ) -> Result<(), PlaybackFailure> {
     recover_attempts(
         generation,
         controller,
         cancelled,
         || {
-            decode_and_play(
-                station_id,
-                direct,
-                generation,
-                controller,
-                cancelled,
-                Arc::clone(&volume),
-                output_id,
-            )
+            let result = attempt();
+            if result.is_err() {
+                clear_output_attempt(output_progress);
+            }
+            result
         },
-        |delay| interruptible_wait(cancelled, delay),
+        wait,
     )
 }
 
@@ -634,6 +776,40 @@ fn recover_attempts(
     }
 }
 
+#[cfg(feature = "nrsp-native")]
+fn recover_nrsp_attempts(
+    generation: u64,
+    controller: &Arc<Mutex<RadioController>>,
+    cancelled: &AtomicBool,
+    control: &nrsp_native::Control,
+    mut attempt: impl FnMut(
+        rust_radio_sdr::nrsp_native::Config,
+        Option<NativeFmSettings>,
+        bool,
+    ) -> Result<(), PlaybackFailure>,
+    mut clear_output: impl FnMut(),
+    wait: impl FnMut(Duration) -> bool,
+) -> Result<(), PlaybackFailure> {
+    let mut reconnecting = false;
+    recover_attempts(
+        generation,
+        controller,
+        cancelled,
+        || {
+            let (config, fm) = control.desired_settings();
+            let result = attempt(config, fm, reconnecting);
+            if let Err(error) = &result {
+                if matches!(error, PlaybackFailure::Network(_)) {
+                    reconnecting = true;
+                }
+                clear_output();
+            }
+            result
+        },
+        wait,
+    )
+}
+
 fn interruptible_wait(cancelled: &AtomicBool, delay: Duration) -> bool {
     let until = Instant::now() + delay;
     while Instant::now() < until {
@@ -652,26 +828,32 @@ fn interruptible_wait(cancelled: &AtomicBool, delay: Duration) -> bool {
 fn decode_and_play(
     station_id: &str,
     direct: bool,
-    generation: u64,
-    controller: &Arc<Mutex<RadioController>>,
-    cancelled: &Arc<AtomicBool>,
-    volume: Arc<AtomicU8>,
-    output_id: &str,
+    context: &PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
     // Establish an audio device before opening a remote broadcaster.
-    let mut output = NativeAudioOutput::open(volume, output_id).map_err(PlaybackFailure::Output)?;
-    if cancelled.load(Ordering::Acquire) {
+    let played_samples = begin_output_attempt(context.output_progress);
+    let mut output = NativeAudioOutput::open_with_progress(
+        Arc::clone(&context.volume),
+        context.output_id,
+        played_samples,
+    )
+    .map_err(PlaybackFailure::Output)?;
+    if context.cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
     let (stream, _network_guard) = if direct {
-        radio_net::open_direct_classified(station_id, Arc::clone(cancelled))?
+        radio_net::open_direct_classified(station_id, Arc::clone(context.cancelled))?
     } else {
-        radio_net::open_station_classified(station_id, Arc::clone(cancelled))?
+        radio_net::open_station_classified(station_id, Arc::clone(context.cancelled))?
     };
-    if cancelled.load(Ordering::Acquire) {
+    if context.cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
-    signal(controller, generation, PlaybackEvent::Connected);
+    signal(
+        context.controller,
+        context.generation,
+        PlaybackEvent::Connected,
+    );
 
     let startup = stream.startup.clone();
     let mut hint = Hint::new();
@@ -699,7 +881,7 @@ fn decode_and_play(
             &FormatOptions::default(),
             &MetadataOptions::default(),
         )
-        .map_err(probe_failure)?;
+        .map_err(|error| probe_failure(error, output.has_failed()))?;
     let mut format = probed.format;
     let track = format
         .tracks()
@@ -714,7 +896,7 @@ fn decode_and_play(
     let mut previous_format: Option<(u32, usize)> = None;
     let mut sink_state = ip_pcm::SinkState::default();
 
-    while !cancelled.load(Ordering::Acquire) {
+    while !context.cancelled.load(Ordering::Acquire) {
         if output.has_failed() {
             return Err(PlaybackFailure::Output(
                 "Native audio output device disconnected or failed".into(),
@@ -723,7 +905,7 @@ fn decode_and_play(
         let packet = match format.next_packet() {
             Ok(packet) => packet,
             Err(DecodeError::IoError(err)) => {
-                if cancelled.load(Ordering::Acquire) {
+                if context.cancelled.load(Ordering::Acquire) {
                     return Ok(());
                 }
                 if output.has_failed() {
@@ -785,11 +967,11 @@ fn decode_and_play(
             converter.as_mut().expect("PCM converter is initialized"),
             samples.samples(),
             &mut output,
-            cancelled,
-            |event| signal(controller, generation, event),
+            context.cancelled,
+            |event| signal(context.controller, context.generation, event),
         )?;
         if !keep_going {
-            if output.has_failed() && !cancelled.load(Ordering::Acquire) {
+            if output.has_failed() && !context.cancelled.load(Ordering::Acquire) {
                 return Err(PlaybackFailure::Output(
                     "Native audio output stopped consuming samples".into(),
                 ));
@@ -893,6 +1075,43 @@ mod tests {
     }
 
     #[test]
+    fn playback_slot_releases_after_drop_and_unwind() {
+        let slot = ActivePlaybackSlot::new();
+        let guard = slot.acquire().unwrap();
+        assert_eq!(
+            slot.acquire().err().as_deref(),
+            Some("A radio playback session is already active")
+        );
+        drop(guard);
+        assert!(slot.acquire().is_ok());
+
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = slot.acquire().unwrap();
+            panic!("simulated playback worker panic");
+        }));
+        assert!(panic.is_err());
+        assert!(slot.acquire().is_ok());
+    }
+
+    #[test]
+    fn public_playback_entry_points_refuse_a_second_worker_before_opening_resources() {
+        let _active = ACTIVE_PLAYBACK_SLOT.acquire().unwrap();
+        for result in [
+            NativeRadioEngine::start_internet("skylab", 60, "system"),
+            NativeRadioEngine::start_stream("https://example.com/live.mp3", 60, "system"),
+        ] {
+            let error = match result {
+                Err(error) => error,
+                Ok(mut engine) => {
+                    engine.stop();
+                    panic!("a second playback worker was admitted")
+                }
+            };
+            assert_eq!(error, "A radio playback session is already active");
+        }
+    }
+
+    #[test]
     fn transient_startup_failures_exhaust_exactly_three_retries() {
         let (controller, generation) = recovery_controller();
         let cancelled = AtomicBool::new(false);
@@ -986,7 +1205,7 @@ mod tests {
         for error in [
             PlaybackFailure::from(TransportError::Permanent("HTTP 403".into())),
             PlaybackFailure::Output("speaker unavailable".into()),
-            probe_failure(DecodeError::Unsupported("unsupported codec")),
+            probe_failure(DecodeError::Unsupported("unsupported codec"), false),
         ] {
             let (controller, generation) = recovery_controller();
             let mut error = Some(error);
@@ -1000,13 +1219,117 @@ mod tests {
             assert!(result.is_err());
         }
         assert_eq!(
-            probe_failure(DecodeError::IoError(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "network disconnected during probe",
-            )))
+            probe_failure(
+                DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "network disconnected during probe",
+                )),
+                false,
+            )
             .class(),
             FailureClass::NetworkTransient
         );
+        assert_eq!(
+            probe_failure(
+                DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "probe interrupted after audio device loss",
+                )),
+                true,
+            )
+            .class(),
+            FailureClass::OutputUnavailable
+        );
+    }
+
+    #[cfg(feature = "nrsp-native")]
+    #[test]
+    fn nrsp_reconnect_fixture_retries_with_latest_tuning_and_fm_settings() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let initial =
+            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
+                .unwrap();
+        let control = nrsp_native::Control::new(initial, None);
+        let requested =
+            rust_radio_sdr::nrsp_native::Config::new(99_200_000, NativeNrspMode::Wfm, 180_000)
+                .unwrap();
+        let fm = NativeFmSettings::default();
+        let mut calls = Vec::new();
+        let mut waits = Vec::new();
+        let mut output_attempts_cleared = 0;
+        let mut attempt_count = 0;
+
+        let result = recover_nrsp_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            &control,
+            |config, settings, reconnecting| {
+                calls.push((config, settings, reconnecting));
+                attempt_count += 1;
+                if attempt_count == 1 {
+                    control.set_desired_config(requested);
+                    control.set_desired_fm(fm);
+                    Err(PlaybackFailure::Network("receiver stream timed out".into()))
+                } else {
+                    Ok(())
+                }
+            },
+            || output_attempts_cleared += 1,
+            |delay| {
+                waits.push(delay);
+                true
+            },
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(attempt_count, 2);
+        assert_eq!(output_attempts_cleared, 1);
+        assert_eq!(waits, [Duration::from_secs(1)]);
+        assert_eq!(calls, [(initial, None, false), (requested, Some(fm), true)]);
+    }
+
+    #[cfg(feature = "nrsp-native")]
+    #[test]
+    fn nrsp_reconnect_fixture_stops_after_terminal_setup_failure() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let initial =
+            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
+                .unwrap();
+        let control = nrsp_native::Control::new(initial, None);
+        let mut reconnect_states = Vec::new();
+        let mut waits = Vec::new();
+        let mut output_attempts_cleared = 0;
+
+        let error = recover_nrsp_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            &control,
+            |_config, _fm, reconnecting| {
+                reconnect_states.push(reconnecting);
+                if reconnecting {
+                    Err(PlaybackFailure::Permanent(
+                        "receiver rejected reconnect setup".into(),
+                    ))
+                } else {
+                    Err(PlaybackFailure::Network("receiver stream timed out".into()))
+                }
+            },
+            || output_attempts_cleared += 1,
+            |delay| {
+                waits.push(delay);
+                true
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error.class(), FailureClass::Permanent);
+        assert_eq!(reconnect_states, [false, true]);
+        assert_eq!(waits, [Duration::from_secs(1)]);
+        assert_eq!(output_attempts_cleared, 2);
     }
 
     fn completed_test_engine(panics: bool) -> NativeRadioEngine {
@@ -1021,6 +1344,7 @@ mod tests {
             cancelled: Arc::new(AtomicBool::new(false)),
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
+            output_progress: Arc::new(Mutex::new(None)),
             #[cfg(feature = "nrsp-native")]
             native_control: None,
             #[cfg(feature = "sdrconnect")]
@@ -1029,6 +1353,83 @@ mod tests {
                 assert!(!panics, "Synthetic playback worker panic");
             })),
         }
+    }
+
+    #[test]
+    fn status_reconciles_delayed_callback_progress_per_attempt() {
+        let mut controller = RadioController::default();
+        let generation = controller
+            .apply(RadioCommand::PlayInternet {
+                station_id: "skylab".into(),
+            })
+            .unwrap();
+        assert!(controller.event(generation, PlaybackEvent::Connected));
+        assert!(controller.event(generation, PlaybackEvent::Buffered));
+        let controller = Arc::new(Mutex::new(controller));
+        let output_progress = Arc::new(Mutex::new(None));
+        let callback_samples = begin_output_attempt(&output_progress);
+        let engine = NativeRadioEngine {
+            controller,
+            cancelled: Arc::new(AtomicBool::new(false)),
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed: Arc::new(AtomicBool::new(false)),
+            output_progress: Arc::clone(&output_progress),
+            worker: None,
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
+        };
+
+        assert_eq!(engine.status().state, PlaybackState::Buffering);
+        callback_samples.store(1, Ordering::Release);
+        assert_eq!(engine.status().state, PlaybackState::Playing);
+
+        assert!(engine
+            .controller
+            .lock()
+            .unwrap()
+            .event(generation, PlaybackEvent::ConnectionLost));
+        clear_output_attempt(&output_progress);
+        assert_eq!(engine.status().state, PlaybackState::Recovering);
+
+        let next_attempt_samples = begin_output_attempt(&output_progress);
+        assert!(engine
+            .controller
+            .lock()
+            .unwrap()
+            .event(generation, PlaybackEvent::Connected));
+        assert_eq!(engine.status().state, PlaybackState::Buffering);
+        next_attempt_samples.store(1, Ordering::Release);
+        assert_eq!(engine.status().state, PlaybackState::Playing);
+
+        engine.request_stop();
+        assert_eq!(engine.status().state, PlaybackState::Stopped);
+    }
+
+    #[test]
+    fn status_reconciles_delayed_callback_progress_for_sdr_playback() {
+        let mut controller = RadioController::default();
+        let generation = controller.apply(RadioCommand::PlaySdr).unwrap();
+        assert!(controller.event(generation, PlaybackEvent::Connected));
+        assert!(controller.event(generation, PlaybackEvent::Buffered));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let engine = NativeRadioEngine {
+            controller: Arc::new(Mutex::new(controller)),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed: Arc::new(AtomicBool::new(false)),
+            output_progress: Arc::new(Mutex::new(Some(Arc::clone(&callback_samples)))),
+            worker: None,
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
+        };
+
+        assert_eq!(engine.status().state, PlaybackState::Buffering);
+        callback_samples.store(1, Ordering::Release);
+        assert_eq!(engine.status().state, PlaybackState::Playing);
     }
 
     fn finish_test_engine(engine: &mut NativeRadioEngine) {
@@ -1090,6 +1491,7 @@ mod tests {
             cancelled: Arc::new(AtomicBool::new(false)),
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
+            output_progress: Arc::new(Mutex::new(None)),
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]
             native_control: None,
@@ -1138,6 +1540,127 @@ mod tests {
         );
     }
 
+    #[test]
+    fn network_retry_detaches_old_output_before_terminal_output_loss() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let mut callback_counters = Vec::new();
+        let mut attempts = 0;
+        let mut waits = Vec::new();
+
+        let error = recover_output_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            &progress,
+            || {
+                attempts += 1;
+                if attempts == 1 {
+                    let old_callback_progress = begin_output_attempt(&progress);
+                    old_callback_progress.store(1_024, Ordering::Release);
+                    callback_counters.push(old_callback_progress);
+                    Err(PlaybackFailure::Network("stream disconnected".into()))
+                } else {
+                    assert!(
+                        progress.lock().unwrap().is_none(),
+                        "the prior output callback must be detached before reconnect"
+                    );
+                    let new_callback_progress = begin_output_attempt(&progress);
+                    new_callback_progress.store(2_048, Ordering::Release);
+                    callback_counters.push(new_callback_progress);
+                    Err(PlaybackFailure::Output("Bluetooth output lost".into()))
+                }
+            },
+            |delay| {
+                assert!(
+                    progress.lock().unwrap().is_none(),
+                    "the old output callback must be detached before the retry wait"
+                );
+                waits.push(delay);
+                true
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error.class(), FailureClass::OutputUnavailable);
+        assert_eq!(attempts, 2);
+        assert_eq!(waits, [Duration::from_secs(1)]);
+        assert!(progress.lock().unwrap().is_none());
+        assert_eq!(callback_counters.len(), 2);
+        assert_eq!(callback_counters[0].load(Ordering::Acquire), 1_024);
+        assert_eq!(callback_counters[1].load(Ordering::Acquire), 2_048);
+        assert!(!Arc::ptr_eq(&callback_counters[0], &callback_counters[1]));
+    }
+
+    #[test]
+    fn worker_reports_output_failures_to_hosts_but_not_network_errors_or_stop() {
+        let (controller, generation) = recovery_controller();
+        let output_failed = Arc::new(AtomicBool::new(false));
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let worker_controller = Arc::clone(&controller);
+        let worker_output_failed = Arc::clone(&output_failed);
+        let worker_cancelled = Arc::clone(&cancelled);
+        let worker = thread::spawn(move || {
+            record_worker_result(
+                Err(PlaybackFailure::Output("Bluetooth output lost".into())),
+                generation,
+                &worker_controller,
+                &worker_cancelled,
+                &worker_output_failed,
+            );
+        });
+        let mut engine = NativeRadioEngine {
+            controller: Arc::clone(&controller),
+            cancelled,
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed,
+            output_progress: Arc::new(Mutex::new(None)),
+            worker: Some(worker),
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
+        };
+        finish_test_engine(&mut engine);
+        assert!(engine.output_failed());
+        let failed_session = controller.lock().unwrap().state().clone();
+        assert_eq!(failed_session.state, PlaybackState::Failed);
+        assert_eq!(
+            failed_session.last_error.as_deref(),
+            Some("Bluetooth output lost")
+        );
+
+        let (controller, generation) = recovery_controller();
+        let output_failed = AtomicBool::new(false);
+        record_worker_result(
+            Err(PlaybackFailure::Network("stream disconnected".into())),
+            generation,
+            &controller,
+            &AtomicBool::new(false),
+            &output_failed,
+        );
+        assert!(!output_failed.load(Ordering::Acquire));
+        assert_eq!(
+            controller.lock().unwrap().state().state,
+            PlaybackState::Failed
+        );
+
+        let (controller, generation) = recovery_controller();
+        let output_failed = AtomicBool::new(false);
+        record_worker_result(
+            Err(PlaybackFailure::Output("Bluetooth output lost".into())),
+            generation,
+            &controller,
+            &AtomicBool::new(true),
+            &output_failed,
+        );
+        assert!(!output_failed.load(Ordering::Acquire));
+        let cancelled_session = controller.lock().unwrap().state().clone();
+        assert_eq!(cancelled_session.state, PlaybackState::Connecting);
+        assert!(cancelled_session.last_error.is_none());
+    }
+
     #[cfg(feature = "nrsp-native")]
     #[test]
     fn fm_controls_follow_the_latest_tuning_mode_without_stopping_audio() {
@@ -1152,7 +1675,10 @@ mod tests {
             assert!(controller.event(generation, event));
         }
         engine.controller = Arc::new(Mutex::new(controller));
-        engine.native_control = Some(Arc::new(nrsp_native::Control::default()));
+        let initial =
+            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
+                .unwrap();
+        engine.native_control = Some(Arc::new(nrsp_native::Control::new(initial, None)));
         engine.tune_nrsp_native(99_100_000, "nfm", 12_000).unwrap();
         assert!(engine
             .set_nrsp_native_fm(NativeFmSettings::default())
@@ -1162,6 +1688,11 @@ mod tests {
         engine
             .set_nrsp_native_fm(NativeFmSettings::default())
             .unwrap();
+        let (desired_config, desired_fm) =
+            engine.native_control.as_ref().unwrap().desired_settings();
+        assert_eq!(desired_config.mode, NativeNrspMode::Wfm);
+        assert_eq!(desired_config.frequency_hz, 99_100_000);
+        assert_eq!(desired_fm, Some(NativeFmSettings::default()));
         engine.request_stop();
         assert!(engine
             .set_nrsp_native_fm(NativeFmSettings::default())

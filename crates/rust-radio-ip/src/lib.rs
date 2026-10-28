@@ -2,3 +2,4 @@
 pub mod error;
 pub mod net;
 pub mod probe;
+mod safe_dns;

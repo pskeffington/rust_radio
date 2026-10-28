@@ -2589,11 +2589,15 @@ name = "rust-radio-cli"
 version = "0.1.0"
 dependencies = [
  "rust-radio",
+ "serde_json",
 ]
 
 [[package]]
 name = "rust-radio-core"
 version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "rust-radio-gui"

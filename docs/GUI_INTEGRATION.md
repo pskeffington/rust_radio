@@ -5,6 +5,40 @@ A standalone desktop GUI using exactly the same Rust `RadioPanel` instance API t
 
 Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `settings.rs` (overlay), and `tests.rs`. Selection uses a direct catalog index while playback, validation and cached reports retain canonical station IDs. Catalog display order, including Skylab first, is preserved.
 
+## Listening interface
+
+The station selector fills the available width between previous/next controls;
+station rows pair each curated station name with its category; `CLASSICAL` is
+shortened to `CLASS` in the row, while the full genre remains on hover. The line below
+the selected station contains genre only. Validation history
+is kept out of this listening surface: a stale or missing silent check cannot
+contradict actual Playing. The single primary button becomes Play, Stop or Retry
+as appropriate. A separate listening label shows Ready to listen, Checking
+station, Connecting, Buffering, Playing, Reconnecting, Stopping or Unable to play.
+Queued station switches remain cancelable with Stop.
+
+The volume slider uses the available width, rather than egui's default short
+slider. Mute/Unmute preserves the last nonzero volume. While playing, the footer
+identifies the audio output; otherwise it gives a short next-action hint. Errors
+wrap/scroll within the remaining viewport height and keep Retry visible. Popup
+and output settings retain the locally scoped green theme, with softer scanlines
+and quieter secondary text. IP Radio setup contains the output selector,
+stream editor, Save/Remove, check action and collapsible Connection details.
+Live audio takes priority over historical silent-check results there too.
+
+Construction, embedding, station storage and the playback engine are unchanged.
+UI tests cover each playback state, stale validation during Playing, absence of
+decoder diagnostics on the listening surface, volume restoration and long error
+messages at 480×320. The station popup rows use up to 340 pixels of available
+width. A measured 14-point monospace label A/B/C with 20 pixels total horizontal
+button padding found full category labels fit 24/25 stations, names alone 25/25,
+and compact category labels 25/25 at 295 pixels; all fit at 340 pixels. Shortening
+only `CLASSICAL` to `CLASS` preserves the category cue and saves 32 pixels for
+WCRB. Native
+muted acceptance checks
+Receiving audio now against actual playback, including switching/failure
+responsiveness. Physical touch and Pi rendering still need acceptance.
+
 ## Launch on Mac
 ```sh
 cargo run -p rust-radio-gui --bin rust-radio-gui
@@ -85,7 +119,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
 
-Check the radio window at 480 × 320: station arrows, play/stop, volume, error text, and input setup panels must be fully tappable without body scrolling. Opening the standalone GUI may perform read-only discovery, but must emit no audio or start a receiver or station stream. CHECK STATION should update its badge and details without audible output. Cancel during connection, browse to another station, and confirm the old result cannot replace its status. PLAY should produce audible Skylab reception, and STOP should terminate it. Device changes require stopping first. These native GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
+Check the radio window at 480 × 320: station arrows, play/stop, volume, error text, and input setup panels must be fully tappable without body scrolling. Opening the standalone GUI may perform read-only discovery, but must emit no audio or start a receiver or station stream. CHECK STREAM should update setup details without audible output. Cancel during connection, browse to another station, and confirm the old result cannot replace its status. PLAY should produce audible Skylab reception, and STOP should terminate it. Device changes require stopping first. These native GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
 
 ## Stop responsiveness regression
 
@@ -95,7 +129,7 @@ On macOS, stop during connect, buffering, live playback and reconnection. Confir
 
 ## Completed and failed workers
 
-`poll_shutdown()` also reaps workers that finish without an explicit Stop. The panel retains the final failure snapshot after releasing the engine, so FAILED and its error remain visible while station/output selection and PLAY become available. STOP clears a retained failure. RETRY explicitly restarts a failed target. Switching an active IP station queues only the latest replacement after cleanup; changing outputs never starts a session. Status/error text wraps in a bounded scrolling area, with a visible failure marker and consistent phosphor colors.
+`poll_shutdown()` also reaps workers that finish without an explicit Stop. The panel retains the final failure snapshot after releasing the engine, so Unable to play and its error remain visible while station/output selection and Retry become available. RETRY explicitly restarts a failed target. Switching an active IP station queues only the latest replacement after cleanup; changing outputs never starts a session. Status/error text wraps in a bounded scrolling area, with a visible failure marker and consistent phosphor colors.
 
 `NativeRadioEngine::try_finish()` converts a panic or an otherwise unexplained worker exit into a failed snapshot. It preserves existing device/stream errors and never overwrites an explicit Stop with a cleanup failure. Hosts using the engine directly should poll this method to observe terminal worker exits.
 

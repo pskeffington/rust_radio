@@ -2,6 +2,7 @@
 //! Network I/O runs outside the Symphonia worker and CPAL callback.
 
 use crate::error::TransportError;
+use crate::safe_dns::{is_public_unicast, SafeResolver};
 use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
@@ -198,7 +199,19 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
         return Err("Stream URL must not contain credentials or a fragment".into());
     }
     match url.scheme() {
-        "https" if url.host().is_some() => Ok(()),
+        "https" if url.host().is_some() => {
+            let literal_ip = url.host_str().and_then(|host| {
+                host.trim_start_matches('[')
+                    .trim_end_matches(']')
+                    .parse::<std::net::IpAddr>()
+                    .ok()
+            });
+            if literal_ip.is_some_and(|address| !is_public_unicast(address)) {
+                Err("HTTPS streams cannot target a non-public IP address".into())
+            } else {
+                Ok(())
+            }
+        }
         "http" => match url
             .host_str()
             .and_then(|host| host.parse::<std::net::Ipv4Addr>().ok())
@@ -342,6 +355,10 @@ async fn pump_input(
     let client = reqwest::Client::builder()
         .redirect(Policy::none())
         .no_proxy()
+        // The private-LAN exception uses a user-entered IPv4 literal, which
+        // bypasses DNS by definition. Every DNS lookup, including redirects
+        // and playlist targets, must still return only public addresses.
+        .dns_resolver(SafeResolver::public_only())
         .connect_timeout(Duration::from_secs(5))
         .user_agent("Rust-Radio/0.1 (native audio)")
         .build()
@@ -450,7 +467,7 @@ async fn pump_input(
 }
 
 // Each indirection is checked again. Public inputs cannot downgrade to HTTP;
-// explicitly entered LAN HTTP inputs may redirect to another private IPv4 URL.
+// the private HTTP exception remains on the exact user-selected origin.
 fn check_hop(
     initial: &str,
     next: &reqwest::Url,
@@ -459,7 +476,33 @@ fn check_hop(
 ) -> Result<(), String> {
     if direct {
         validate_direct_url(next.as_str())?;
-        if initial.starts_with("https:") && next.scheme() != "https" {
+        let initial_url = reqwest::Url::parse(initial).map_err(|_| "Invalid stream URL")?;
+        let explicit_private_ip = if initial_url.scheme() == "http" {
+            initial_url
+                .host_str()
+                .and_then(|host| host.parse::<std::net::Ipv4Addr>().ok())
+                .filter(|ip| ip.is_private() || ip.is_loopback())
+                .map(std::net::IpAddr::V4)
+        } else {
+            None
+        };
+        let target_ip = next.host_str().and_then(|host| {
+            host.trim_start_matches('[')
+                .trim_end_matches(']')
+                .parse::<std::net::IpAddr>()
+                .ok()
+        });
+        if target_ip.is_some_and(|address| !is_public_unicast(address)) {
+            let same_private_http_origin = explicit_private_ip.is_some_and(|address| {
+                Some(address) == target_ip
+                    && next.scheme() == "http"
+                    && next.port_or_known_default() == initial_url.port_or_known_default()
+            });
+            if !same_private_http_origin {
+                return Err("Radio URL cannot target a non-routable address".into());
+            }
+        }
+        if initial_url.scheme() == "https" && next.scheme() != "https" {
             return Err("Radio redirect cannot downgrade HTTPS to HTTP".into());
         }
     } else {
@@ -546,17 +589,44 @@ mod tests {
         }
         assert!(check_hop(
             "http://192.168.1.12/listen",
-            &reqwest::Url::parse("http://192.168.1.13/audio").unwrap(),
+            &reqwest::Url::parse("http://192.168.1.12/audio").unwrap(),
             true,
             ""
         )
         .is_ok());
+        for target in [
+            "http://192.168.1.13/audio",
+            "http://192.168.1.12:8001/audio",
+            "http://169.254.1.2/audio",
+            "https://192.168.1.12/audio",
+        ] {
+            assert!(
+                check_hop(
+                    "http://192.168.1.12:80/listen",
+                    &reqwest::Url::parse(target).unwrap(),
+                    true,
+                    ""
+                )
+                .is_err(),
+                "{target}"
+            );
+        }
+        for address in ["127.0.0.1", "192.168.1.5", "169.254.1.2", "[::1]"] {
+            let target = reqwest::Url::parse(&format!("https://{address}/audio")).unwrap();
+            assert!(
+                check_hop("https://public.example/audio", &target, true, "").is_err(),
+                "{address}"
+            );
+        }
+        let public_ip = reqwest::Url::parse("https://8.8.8.8/audio").unwrap();
+        assert!(check_hop("https://public.example/audio", &public_ip, true, "").is_ok());
     }
 
     #[test]
     fn direct_urls_require_explicit_safe_schemes_and_no_credentials() {
         for url in [
             "https://example.com/live?token=abc",
+            "https://8.8.8.8/live",
             "http://127.0.0.1:8080/live",
             "http://192.168.1.5:8000/live",
         ] {
@@ -565,6 +635,12 @@ mod tests {
         for url in [
             "http://example.com/live",
             "http://169.254.169.254/",
+            "https://127.0.0.1/live",
+            "https://192.168.1.5/live",
+            "https://[::1]/live",
+            "https://[::ffff:127.0.0.1]/live",
+            "https://100.64.0.1/live",
+            "https://[fe80::1]/live",
             "https://user:pass@example.com/",
             "https://example.com/#fragment",
             "file:///tmp/audio",

@@ -103,6 +103,14 @@ pub struct NativeAudioOutput {
 
 impl NativeAudioOutput {
     pub fn open(volume: Arc<AtomicU8>, output_id: &str) -> Result<Self, String> {
+        Self::open_with_progress(volume, output_id, Arc::new(AtomicU64::new(0)))
+    }
+
+    pub(crate) fn open_with_progress(
+        volume: Arc<AtomicU8>,
+        output_id: &str,
+        played_samples: Arc<AtomicU64>,
+    ) -> Result<Self, String> {
         let host = cpal::default_host();
         let device = resolve_output(&host, output_id)?;
         let supported = device
@@ -118,7 +126,6 @@ impl NativeAudioOutput {
         // Two seconds of interleaved device-rate PCM; bounded to at most ~12 MiB.
         let ring = HeapRb::<f32>::new(sample_rate as usize * channels * 2);
         let (producer, consumer) = ring.split();
-        let played_samples = Arc::new(AtomicU64::new(0));
         let failed = Arc::new(AtomicBool::new(false));
         let stream = match sample_format {
             SampleFormat::F32 => build_stream::<f32>(
@@ -189,33 +196,51 @@ impl NativeAudioOutput {
     /// Writes a complete interleaved frame. If the PCM ring is full, the
     /// decoder worker yields; the audio callback never blocks.
     pub fn push_frame(&mut self, frame: &[f32], cancelled: &AtomicBool) -> bool {
-        let mut last_progress = Instant::now();
-        let mut last_consumed = self.played_samples();
-        for &sample in frame {
-            loop {
-                if cancelled.load(Ordering::Acquire) || self.has_failed() {
-                    return false;
-                }
-                if self.producer.try_push(sample).is_ok() {
-                    break;
-                }
-                let consumed = self.played_samples();
-                if consumed != last_consumed {
-                    last_progress = Instant::now();
-                    last_consumed = consumed;
-                }
-                // A disconnected audio device can stop calling CPAL without
-                // sending an error. Do not block the decoder worker forever
-                // on a full ring or pretend audio is still playing.
-                if last_progress.elapsed() >= Duration::from_secs(5) {
-                    self.failed.store(true, Ordering::Release);
-                    return false;
-                }
-                thread::sleep(Duration::from_millis(3));
-            }
-        }
-        true
+        push_frame_with_callback_watchdog(
+            &mut self.producer,
+            frame,
+            cancelled,
+            &self.failed,
+            &self.played_samples,
+            Duration::from_secs(5),
+        )
     }
+}
+
+fn push_frame_with_callback_watchdog(
+    producer: &mut HeapProd<f32>,
+    frame: &[f32],
+    cancelled: &AtomicBool,
+    failed: &AtomicBool,
+    played_samples: &AtomicU64,
+    stalled_after: Duration,
+) -> bool {
+    let mut last_progress = Instant::now();
+    let mut last_consumed = played_samples.load(Ordering::Relaxed);
+    for &sample in frame {
+        loop {
+            if cancelled.load(Ordering::Acquire) || failed.load(Ordering::Acquire) {
+                return false;
+            }
+            if producer.try_push(sample).is_ok() {
+                break;
+            }
+            let consumed = played_samples.load(Ordering::Relaxed);
+            if consumed != last_consumed {
+                last_progress = Instant::now();
+                last_consumed = consumed;
+            }
+            // A disconnected audio device can stop calling CPAL without
+            // sending an error. Do not block the decoder worker forever
+            // on a full ring or pretend audio is still playing.
+            if last_progress.elapsed() >= stalled_after {
+                failed.store(true, Ordering::Release);
+                return false;
+            }
+            thread::sleep(Duration::from_millis(3));
+        }
+    }
+    true
 }
 
 fn build_stream<T>(
@@ -234,17 +259,7 @@ where
         .build_output_stream(
             config,
             move |data: &mut [T], _| {
-                let gain = volume.load(Ordering::Relaxed) as f32 / 100.0;
-                let mut consumed = 0u64;
-                for sample in data.iter_mut() {
-                    if let Some(value) = consumer.try_pop() {
-                        *sample = T::from_sample((value * gain).clamp(-1.0, 1.0));
-                        consumed += 1;
-                    } else {
-                        *sample = T::from_sample(0.0);
-                    }
-                }
-                played.fetch_add(consumed, Ordering::Relaxed);
+                render_samples(data, &mut consumer, &volume, &played);
             },
             move |_error| {
                 error_flag.store(true, Ordering::Release);
@@ -254,9 +269,94 @@ where
         .map_err(|e| format!("Cannot configure native audio stream: {e}"))
 }
 
+/// Transfer queued PCM without blocking or allocating in CPAL's callback.
+fn render_samples<T>(
+    data: &mut [T],
+    consumer: &mut HeapCons<f32>,
+    volume: &AtomicU8,
+    played: &AtomicU64,
+) where
+    T: SizedSample + FromSample<f32>,
+{
+    let gain = volume.load(Ordering::Relaxed) as f32 / 100.0;
+    let mut consumed = 0u64;
+    for sample in data {
+        if let Some(value) = consumer.try_pop() {
+            *sample = T::from_sample((value * gain).clamp(-1.0, 1.0));
+            consumed += 1;
+        } else {
+            *sample = T::from_sample(0.0);
+        }
+    }
+    played.fetch_add(consumed, Ordering::Relaxed);
+}
+
 #[cfg(test)]
 mod output_identity_tests {
     use super::*;
+
+    #[test]
+    fn callback_applies_gain_and_silences_underrun_without_counting_silence() {
+        let ring = HeapRb::<f32>::new(4);
+        let (mut producer, mut consumer) = ring.split();
+        producer.try_push(1.5).unwrap();
+        producer.try_push(-0.5).unwrap();
+        let volume = AtomicU8::new(50);
+        let played = AtomicU64::new(0);
+        let mut output = [1.0f32; 4];
+
+        render_samples(&mut output, &mut consumer, &volume, &played);
+
+        assert_eq!(output, [0.75, -0.25, 0.0, 0.0]);
+        assert_eq!(played.load(Ordering::Relaxed), 2);
+        assert_eq!(consumer.occupied_len(), 0);
+    }
+
+    #[test]
+    fn stopped_callback_fails_bounded_when_pcm_ring_is_full() {
+        let ring = HeapRb::<f32>::new(1);
+        let (mut producer, _consumer) = ring.split();
+        producer.try_push(0.25).unwrap();
+        let cancelled = AtomicBool::new(false);
+        let failed = AtomicBool::new(false);
+        let played = AtomicU64::new(0);
+        let started = Instant::now();
+
+        let accepted = push_frame_with_callback_watchdog(
+            &mut producer,
+            &[0.5],
+            &cancelled,
+            &failed,
+            &played,
+            Duration::from_millis(12),
+        );
+
+        assert!(!accepted);
+        assert!(failed.load(Ordering::Acquire));
+        assert!(started.elapsed() < Duration::from_millis(250));
+    }
+
+    #[test]
+    fn cancellation_does_not_reclassify_a_full_ring_as_device_failure() {
+        let ring = HeapRb::<f32>::new(1);
+        let (mut producer, _consumer) = ring.split();
+        producer.try_push(0.25).unwrap();
+        let cancelled = AtomicBool::new(true);
+        let failed = AtomicBool::new(false);
+        let played = AtomicU64::new(0);
+
+        let accepted = push_frame_with_callback_watchdog(
+            &mut producer,
+            &[0.5],
+            &cancelled,
+            &failed,
+            &played,
+            Duration::from_millis(12),
+        );
+
+        assert!(!accepted);
+        assert!(!failed.load(Ordering::Acquire));
+    }
 
     #[test]
     fn name_bound_ids_reject_reordered_or_replaced_outputs() {

@@ -11,3 +11,6 @@ default = []
 ip-radio = []
 sdr = []
 satellite = []
+
+[dependencies]
+serde_json = "1"

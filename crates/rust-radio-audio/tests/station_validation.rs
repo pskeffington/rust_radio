@@ -134,6 +134,18 @@ fn unsupported_format_is_distinct_from_an_unavailable_station() {
     assert_eq!(report.status, ValidationStatus::Unavailable);
     assert_eq!(report.stage, ValidationStage::EndpointReached);
     assert_eq!(unavailable.requests.borrow().len(), 1);
+
+    let mut missing = Fixture::audio("audio/mpeg", MP3);
+    missing.status = 404;
+    let report = validate_with(&missing, "groovesalad").unwrap();
+    assert_eq!(report.status, ValidationStatus::InvalidStream);
+    assert_eq!(report.stage, ValidationStage::EndpointReached);
+    assert!(report.detail.contains("404"));
+
+    let mut rate_limited = Fixture::audio("audio/mpeg", MP3);
+    rate_limited.status = 429;
+    let report = validate_with(&rate_limited, "groovesalad").unwrap();
+    assert_eq!(report.status, ValidationStatus::Unavailable);
 }
 
 #[test]

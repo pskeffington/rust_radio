@@ -174,10 +174,22 @@ pub struct Client {
 }
 impl Client {
     pub fn connect(endpoint: Endpoint, cancel: &AtomicBool) -> Result<Self, Error> {
-        let deadline = Instant::now() + OPERATION_TIMEOUT;
+        Self::connect_until(endpoint, cancel, Instant::now() + OPERATION_TIMEOUT)
+    }
+    fn connect_until(
+        endpoint: Endpoint,
+        cancel: &AtomicBool,
+        deadline: Instant,
+    ) -> Result<Self, Error> {
         check(deadline, cancel)?;
-        let stream =
-            TcpStream::connect_timeout(&endpoint.0, OPERATION_TIMEOUT).map_err(transport)?;
+        let timeout = deadline.saturating_duration_since(Instant::now());
+        let stream = TcpStream::connect_timeout(&endpoint.0, timeout).map_err(|error| {
+            if error.kind() == io::ErrorKind::TimedOut {
+                Error::Timeout
+            } else {
+                transport(error)
+            }
+        })?;
         stream.set_nonblocking(true).map_err(transport)?;
         let config = WebSocketConfig::default()
             .read_buffer_size(16 * 1024)

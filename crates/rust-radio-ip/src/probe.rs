@@ -5,6 +5,7 @@
 //! Continuous playback requires an independently cancellable worker and a
 //! per-read inactivity timeout; it must not reuse the probe's total deadline.
 
+use crate::safe_dns::SafeResolver;
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
@@ -90,6 +91,7 @@ impl NativeRadioHttp {
             .https_only(true)
             .redirect(Policy::none())
             .no_proxy()
+            .dns_resolver(SafeResolver::public_only())
             .connect_timeout(Duration::from_secs(5))
             // Total deadline is appropriate ONLY for short stream probing.
             .timeout(PROBE_DEADLINE)
@@ -178,6 +180,7 @@ pub fn internet_available(cancelled: &AtomicBool) -> bool {
         .https_only(true)
         .redirect(Policy::none())
         .no_proxy()
+        .dns_resolver(SafeResolver::public_only())
         .timeout(Duration::from_secs(3))
         .build()
         .and_then(|client| client.head("https://somafm.com/").send());

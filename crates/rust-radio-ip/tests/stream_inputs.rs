@@ -66,6 +66,11 @@ impl Server {
                         "Location: /station.m3u?token=secret\r\n",
                         "".into(),
                     ),
+                    "/redirect-private-port" => (
+                        "302 Found",
+                        "Location: http://127.0.0.1:1/audio\r\n",
+                        "".into(),
+                    ),
                     "/station.m3u" => (
                         "200 OK",
                         "Content-Type: audio/x-mpegurl\r\n",
@@ -104,6 +109,11 @@ impl Server {
                         "Content-Type: audio/x-scpls\r\n",
                         "[playlist]\nFile1=/audio\nFile2=file:///tmp/audio\nNumberOfEntries=2"
                             .into(),
+                    ),
+                    "/unsafe-private.pls" => (
+                        "200 OK",
+                        "Content-Type: audio/x-scpls\r\n",
+                        "[playlist]\nFile1=http://127.0.0.1:1/audio\nNumberOfEntries=1".into(),
                     ),
                     "/oversized.m3u" => (
                         "200 OK",
@@ -174,6 +184,8 @@ fn http_errors_bad_content_playlists_and_hop_loops_are_bounded() {
         ("/hls.m3u", "HLS"),
         ("/nested.m3u", "Nested"),
         ("/unsafe.pls", "UnsafeEndpoint"),
+        ("/unsafe-private.pls", "UnsafeEndpoint"),
+        ("/redirect-private-port", "non-routable address"),
         ("/oversized.m3u", "16 KiB"),
         ("/loop", "hop limit"),
     ] {

@@ -6,8 +6,8 @@ use rust_radio_audio::playback::NativeRadioEngine;
 use rust_radio_audio::validation::StationValidationTask;
 use rust_radio_core::directory::{curated_stations, station_by_id, InternetStation};
 use rust_radio_core::validation::{FeedHealth, StationValidation, ValidationStatus};
-use std::time::SystemTime;
 use std::collections::BTreeMap;
+use std::time::SystemTime;
 
 #[cfg(feature = "nrsp-native")]
 mod fm_presets;
@@ -19,9 +19,12 @@ use rust_radio_audio::discovery::{InputReport, InputScan};
 use std::time::Instant;
 mod ip_settings;
 mod ip_stations;
+mod presentation;
 mod settings;
 mod station_menu;
 mod theme;
+mod validation_history;
+use validation_history::SavedFeedValidation;
 mod view;
 
 pub const PANEL_WIDTH: f32 = 480.0;
@@ -79,6 +82,7 @@ pub struct RadioPanel {
     #[cfg(feature = "soapy-sdr")]
     usb_frequency: String,
     volume: u8,
+    unmuted_volume: u8,
     output: String,
     outputs: Vec<OutputDeviceInfo>,
     engine: Option<NativeRadioEngine>,
@@ -88,6 +92,7 @@ pub struct RadioPanel {
     last_session: Option<RadioSession>,
     validation: Option<StationValidationTask>,
     validations: BTreeMap<&'static str, StationValidation>,
+    saved_validations: BTreeMap<&'static str, SavedFeedValidation>,
 }
 
 impl Default for RadioPanel {
@@ -143,6 +148,7 @@ impl Default for RadioPanel {
             #[cfg(feature = "soapy-sdr")]
             usb_frequency: "99100000".into(),
             volume: 60,
+            unmuted_volume: 60,
             output: "system".into(),
             outputs: Vec::new(),
             engine: None,
@@ -152,6 +158,7 @@ impl Default for RadioPanel {
             last_session: None,
             validation: None,
             validations: BTreeMap::new(),
+            saved_validations: BTreeMap::new(),
         }
     }
 }
@@ -159,6 +166,17 @@ impl Default for RadioPanel {
 impl RadioPanel {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Load a bounded, host-persisted silent-check snapshot without file or
+    /// network I/O. The host should read its file off the UI thread. Saved
+    /// checks are labeled separately, expire after the shared feed TTL, and
+    /// never gate playback; live checks and active playback take precedence.
+    pub fn load_validation_history(&mut self, json: &str) -> Result<usize, String> {
+        let history = validation_history::parse_history(json)?;
+        let count = history.len();
+        self.saved_validations = history;
+        Ok(count)
     }
 
     /// Begin cancellation without blocking the host UI. Keep rendering the panel
@@ -489,15 +507,23 @@ impl RadioPanel {
             }
         }
         match self.validations.get(id) {
-            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Fresh => "FRESH / DECODED",
-            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Stale => "STALE / RECHECK",
+            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Fresh => {
+                "FRESH / DECODED"
+            }
+            Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Stale => {
+                "STALE / RECHECK"
+            }
             Some(report) => match report.status {
                 ValidationStatus::Unavailable => "UNAVAILABLE",
                 ValidationStatus::InvalidStream => "INVALID STREAM",
                 ValidationStatus::Unsupported => "UNSUPPORTED",
                 _ => "UNVERIFIED",
             },
-            None => "UNVERIFIED",
+            None => self
+                .saved_validations
+                .get(id)
+                .map(|validation| validation_history::label(*validation, SystemTime::now()))
+                .unwrap_or("UNVERIFIED"),
         }
     }
 
@@ -667,11 +693,7 @@ impl RadioPanel {
             );
         }
         if self.direct_selected {
-            return self
-                .direct_validation
-                .as_ref()
-                .map(|report| report.detail.clone())
-                .unwrap_or_else(|| "CUSTOM STREAM / PUBLIC HTTPS OR PRIVATE LAN".into());
+            return "Custom radio stream".into();
         }
         #[cfg(feature = "soapy-sdr")]
         if self.usb_selected {
@@ -681,13 +703,7 @@ impl RadioPanel {
         if self.sdr_selected {
             return format!("SDRCONNECT / {}", self.sdr_endpoint);
         }
-        let station = self.selected_station();
-        format!(
-            "{} / {} / {}",
-            self.validation_label(station.id),
-            station.category,
-            station.genre
-        )
+        self.selected_station().genre.replace(" / ", " · ")
     }
 
     fn selected_station(&self) -> &'static InternetStation {

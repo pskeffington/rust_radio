@@ -219,6 +219,8 @@ pub mod recovery;
 pub mod controller;
 /// Curated broadcaster catalog and source selection, extracted from Rust-Boy.
 pub mod directory;
+/// Bounded, host-neutral parser for persisted curated station health.
+pub mod feed_history;
 /// Hardware-independent receive-only tuner contract and explicit simulation.
 #[cfg(feature = "sdr")]
 pub mod sdr;

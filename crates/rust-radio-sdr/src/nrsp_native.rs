@@ -689,6 +689,122 @@ mod tests {
             Err(Error::Cancelled)
         ));
     }
+
+    #[test]
+    fn handshake_wait_cancels_promptly_and_closes_the_socket() {
+        use std::sync::{mpsc, Arc};
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = Endpoint(listener.local_addr().unwrap());
+        let (handshake_tx, handshake_rx) = mpsc::channel();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let mut socket = tungstenite::accept(stream).unwrap();
+            handshake_tx.send(()).unwrap();
+            loop {
+                match socket.read() {
+                    Ok(Message::Close(_)) | Err(_) => break,
+                    Ok(_) => {}
+                }
+            }
+        });
+
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let cancel_after_handshake = Arc::clone(&cancelled);
+        let canceller = thread::spawn(move || {
+            handshake_rx
+                .recv_timeout(Duration::from_secs(2))
+                .expect("client completed the WebSocket handshake");
+            thread::sleep(Duration::from_millis(25));
+            cancel_after_handshake.store(true, Ordering::Release);
+        });
+
+        let started = Instant::now();
+        assert!(matches!(
+            Client::connect(endpoint, &cancelled),
+            Err(Error::Cancelled)
+        ));
+        assert!(
+            started.elapsed() < Duration::from_millis(500),
+            "handshake cancellation exceeded the responsiveness bound"
+        );
+
+        canceller.join().unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn connect_requires_initial_hello_and_bounds_the_hello_wait() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = Endpoint(listener.local_addr().unwrap());
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut socket = tungstenite::accept(stream).unwrap();
+            socket
+                .send(Message::Binary(
+                    server_frame(202, &[0; 172], &Session::initial()).into(),
+                ))
+                .unwrap();
+        });
+
+        assert!(matches!(
+            Client::connect_until(
+                endpoint,
+                &AtomicBool::new(false),
+                Instant::now() + Duration::from_secs(1),
+            ),
+            Err(Error::Protocol("Expected initial Hello"))
+        ));
+        server.join().unwrap();
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = Endpoint(listener.local_addr().unwrap());
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let _socket = tungstenite::accept(stream).unwrap();
+            // Keep the WebSocket open without sending the required first Hello.
+            thread::sleep(Duration::from_millis(150));
+        });
+
+        let started = Instant::now();
+        assert!(matches!(
+            Client::connect_until(
+                endpoint,
+                &AtomicBool::new(false),
+                started + Duration::from_millis(50),
+            ),
+            Err(Error::Timeout)
+        ));
+        assert!(started.elapsed() < Duration::from_millis(500));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn websocket_upgrade_obeys_connection_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = Endpoint(listener.local_addr().unwrap());
+        let server = thread::spawn(move || {
+            let (_stream, _) = listener.accept().unwrap();
+            // Accept TCP but never answer the HTTP WebSocket upgrade.
+            thread::sleep(Duration::from_millis(150));
+        });
+
+        let started = Instant::now();
+        assert!(matches!(
+            Client::connect_until(
+                endpoint,
+                &AtomicBool::new(false),
+                started + Duration::from_millis(50),
+            ),
+            Err(Error::Timeout)
+        ));
+        assert!(started.elapsed() < Duration::from_millis(500));
+        server.join().unwrap();
+    }
+
     #[test]
     fn handshake_recovers_session_and_rejects_malformed_envelopes() {
         let mut session = Session::initial();
