@@ -256,9 +256,20 @@ fn station_menu_label(
     show_category: bool,
 ) -> String {
     if show_category {
-        format!("{} · {}", station.name, station.category)
+        format!(
+            "{} · {}",
+            station.name,
+            compact_station_category(station.category)
+        )
     } else {
         station.name.to_owned()
+    }
+}
+
+fn compact_station_category(category: &str) -> &str {
+    match category {
+        "CLASSICAL" => "CLASS",
+        other => other,
     }
 }
 
@@ -267,7 +278,7 @@ mod label_ab_test {
     use super::*;
 
     #[test]
-    fn name_plus_category_rows_fit_without_truncation() {
+    fn station_label_ab_compares_full_compact_and_name_only_variants() {
         let context = egui::Context::default();
         let mut results = None;
         let button_horizontal_padding = STATION_MENU_BUTTON_HORIZONTAL_PADDING * 2.0;
@@ -277,56 +288,79 @@ mod label_ab_test {
             let widened_row_text_width = STATION_MENU_MAX_ROW_WIDTH - button_horizontal_padding;
             results = Some(ctx.fonts(|fonts| {
                 let font = egui::FontId::monospace(14.0);
-                let mut category_current_fit = 0;
-                let mut category_widened_fit = 0;
+                let mut full_category_current_fit = 0;
+                let mut full_category_widened_fit = 0;
+                let mut compact_category_current_fit = 0;
+                let mut compact_category_widened_fit = 0;
                 let mut name_current_fit = 0;
                 let mut name_widened_fit = 0;
-                let mut saved_width = 0.0;
+                let mut compact_width_saved = 0.0;
+                let mut current_overflows = Vec::new();
                 for station in curated_stations() {
-                    let category = format!("> {}", station_menu_label(station, true));
+                    let full_category = format!("> {} · {}", station.name, station.category);
+                    let compact_category = format!("> {}", station_menu_label(station, true));
                     let name = format!("> {}", station_menu_label(station, false));
-                    let category_width = fonts
-                        .layout_no_wrap(category, font.clone(), egui::Color32::WHITE)
+                    let full_width = fonts
+                        .layout_no_wrap(full_category, font.clone(), egui::Color32::WHITE)
+                        .size()
+                        .x;
+                    let compact_width = fonts
+                        .layout_no_wrap(compact_category, font.clone(), egui::Color32::WHITE)
                         .size()
                         .x;
                     let name_width = fonts
                         .layout_no_wrap(name, font.clone(), egui::Color32::WHITE)
                         .size()
                         .x;
-                    category_current_fit += usize::from(category_width <= current_row_text_width);
-                    category_widened_fit += usize::from(category_width <= widened_row_text_width);
+                    full_category_current_fit += usize::from(full_width <= current_row_text_width);
+                    if full_width > current_row_text_width {
+                        current_overflows.push(station.id);
+                    }
+                    full_category_widened_fit += usize::from(full_width <= widened_row_text_width);
+                    compact_category_current_fit +=
+                        usize::from(compact_width <= current_row_text_width);
+                    compact_category_widened_fit +=
+                        usize::from(compact_width <= widened_row_text_width);
                     name_current_fit += usize::from(name_width <= current_row_text_width);
                     name_widened_fit += usize::from(name_width <= widened_row_text_width);
-                    saved_width += category_width - name_width;
+                    compact_width_saved += full_width - compact_width;
                 }
                 (
-                    category_current_fit,
-                    category_widened_fit,
+                    full_category_current_fit,
+                    full_category_widened_fit,
+                    compact_category_current_fit,
+                    compact_category_widened_fit,
                     name_current_fit,
                     name_widened_fit,
-                    saved_width,
+                    compact_width_saved,
+                    current_overflows,
                 )
             }));
         });
         let (
-            category_current_fit,
-            category_widened_fit,
+            full_category_current_fit,
+            full_category_widened_fit,
+            compact_category_current_fit,
+            compact_category_widened_fit,
             name_current_fit,
             name_widened_fit,
-            saved_width,
+            compact_width_saved,
+            current_overflows,
         ) = results.unwrap();
         let station_count = curated_stations().len();
         eprintln!(
-            "Station label A/B (monospace 14, {:.0}px button padding): A at {:.0}px {category_current_fit}/{station_count}, B at {:.0}px {name_current_fit}/{station_count}; A at {:.0}px {category_widened_fit}/{station_count}, B {name_widened_fit}/{station_count}; B saves {saved_width:.0}px total text width",
+            "Station label A/B/C (monospace 14, {:.0}px button padding): A full category at {:.0}px {full_category_current_fit}/{station_count}; B names-only {name_current_fit}/{station_count}; C compact category {compact_category_current_fit}/{station_count}; at {:.0}px A/B/C {full_category_widened_fit}/{station_count}/{compact_category_widened_fit}/{station_count}/{name_widened_fit}/{station_count}; C saves {compact_width_saved:.0}px vs A; A overflows {current_overflows:?}",
             button_horizontal_padding,
-            PREVIOUS_STATION_MENU_ROW_WIDTH,
             PREVIOUS_STATION_MENU_ROW_WIDTH,
             STATION_MENU_MAX_ROW_WIDTH,
         );
-        assert!(category_current_fit < name_current_fit);
+        assert_eq!(full_category_current_fit + 1, station_count);
+        assert_eq!(current_overflows, vec!["wcrb"]);
         assert_eq!(name_current_fit, station_count);
-        assert_eq!(category_widened_fit, station_count);
+        assert_eq!(compact_category_current_fit, station_count);
+        assert_eq!(full_category_widened_fit, station_count);
+        assert_eq!(compact_category_widened_fit, station_count);
         assert_eq!(name_widened_fit, station_count);
-        assert!(saved_width > 0.0);
+        assert!(compact_width_saved > 0.0);
     }
 }
