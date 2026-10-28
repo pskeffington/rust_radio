@@ -721,3 +721,30 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   visible combined status or PR-triggered workflow run, so remote CI is
   unverified. The fixture validates retry policy and state restoration, not a
   physical receiver's RF/network recovery.
+
+## nRSP terminal-reconnect and disconnect-reason coverage (2026-10-28)
+
+- Extended the deterministic retry fixture with a second-attempt permanent setup
+  failure. It asserts only one reconnect is attempted after the initial stream
+  loss, the 1-second delay occurs once, and output progress is cleared for both
+  failed attempts.
+- The nRSP classification test now asserts a receiver `Disconnected(reason)`
+  remains terminal and preserves its numeric reason in the host error. The local
+  contract has no mapping that explains reason codes, so no automatic retry
+  semantics are inferred from them.
+- Both focused regressions pass. Formatting, default/all-feature workspace tests,
+  strict Clippy in both configurations, all-feature check and station-label A/B
+  pass. Loopback fixtures used local socket permission.
+- These checks validate policy and diagnostics only; actual receiver reason
+  codes and reconnection behavior still need physical nRSP-ST acceptance.
+- The test increment is committed as `fdfd607` and pushed to
+  `codex/station-label-layout-ab`. The focused station-label A/B regression was
+  rerun on this source and passed (1 test): at 295 px, full category fits 24/25
+  rows, names-only and compact-category fit 25/25; at 340 px, all fit 25/25.
+  Compact `CLASS` still saves 32 text pixels on WCRB. This is layout evidence,
+  not listener preference evidence.
+- PR #3 remains open and mergeable. Its current head has no combined status
+  checks; Actions run `40760314846` ended in `startup_failure` before creating
+  any jobs. Remote CI is unverified, not a code-test failure. Next, inspect the
+  checked-in receiver wire contract for any safe handshake-stage fixture, then
+  continue physical receiver/output/Pi acceptance.

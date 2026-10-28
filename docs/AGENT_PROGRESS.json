@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T20:02:33Z",
+  "updated_at_utc": "2026-10-28T20:14:00Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "724db2a",
+  "implementation_commit": "fdfd607",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -28,7 +28,8 @@
     "Strengthened the process-wide playback admission regression to cover both public curated-station and direct-stream start APIs; both reject a second worker before resource opening.",
     "Classified IP format-probe I/O errors as audio-output failure when CPAL has reported device loss; this prevents spending network retry budget on a failed output while preserving network recovery for ordinary probe I/O.",
     "Added bounded recovery for direct nRSP-ST active-stream transport errors and inactivity timeouts while preserving terminal startup/activation failures; retries restore the latest requested tuning and FM settings.",
-    "Extracted direct nRSP retry sequencing into recover_nrsp_attempts and added an offline fixture that verifies bounded delay, one retry, output-progress clearing, reconnect mode, and restoration of latest tuning/FM settings."
+    "Extracted direct nRSP retry sequencing into recover_nrsp_attempts and added an offline fixture that verifies bounded delay, one retry, output-progress clearing, reconnect mode, and restoration of latest tuning/FM settings.",
+    "Added deterministic terminal-reconnect coverage: an initial active-stream timeout gets one retry, but permanent setup/protocol failure on reconnect stops without another wait; explicit receiver disconnect reason remains terminal and is preserved in the error detail."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -49,11 +50,11 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on source including 724db2a: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
-    "latest_code_head_ci": "Current head 724db2a has empty combined status and no PR-triggered run visible; remote CI unverified",
+    "latest_full_gate_run": "all six required gates passed on source through current edge-case tests: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
+    "latest_code_head_ci": "Code head fdfd607 is pushed; combined status is empty and Actions run 40760314846 ended startup_failure with zero jobs, so remote CI remains unverified",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
-    "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
+    "layout_ab_recheck": "focused regression rerun passed this execution: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only, not listener preference",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -63,7 +64,9 @@
     "nrsp_active_stream_recovery": "passed; transport and inactivity timeout map to transient recovery, startup/activation and protocol failures remain terminal",
     "nrsp_reconnect_settings": "passed; latest desired frequency/mode/bandwidth and FM settings retained for retry",
     "nrsp_output_setup_classification": "native receiver PCM conversion/output configuration errors classify as OutputUnavailable",
-    "nrsp_reconnect_sequence_fixture": "passed; stream timeout produces one 1-second wait then one reconnect attempt with updated frequency/bandwidth/FM state and reconnecting=true; output attempt is cleared"
+    "nrsp_reconnect_sequence_fixture": "passed; stream timeout produces one 1-second wait then one reconnect attempt with updated frequency/bandwidth/FM state and reconnecting=true; output attempt is cleared",
+    "nrsp_terminal_reconnect_fixture": "passed; permanent setup error on retry stops after one reconnect attempt; one backoff only; output progress cleared on both failed attempts",
+    "nrsp_disconnect_reason": "passed; Error::Disconnected(reason) stays terminal and preserves numeric reason in host error; reason mappings are undocumented so no retry inference is made"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -87,5 +90,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Continue deterministic testing of nRSP reconnection around setup failures and receiver disconnect reasons, then physical receiver/output/Pi acceptance; preserve broadcaster-rights and Rust-Boy adoption gates."
+  "next_priority": "Review the pushed reconnect fixture against the receiver wire contract and add deterministic handshake-stage coverage if the checked-in protocol supports it; then perform physical receiver/output/Pi acceptance."
 }
