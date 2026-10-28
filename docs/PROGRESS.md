@@ -1724,3 +1724,13 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   failed before jobs, so remote CI remains unverified.
 - The bounded live sweep decoded 25/25 entries and the layout A/B/C comparison
   passed on this source. No physical hardware was exercised.
+
+
+## Muted native integration and portability check (2026-10-28 23:55 UTC)
+
+- Ran ignored GUI integration test `native_ip_playback_switching_failure_retry_and_responsiveness` on the actual host audio backend at volume 0. It opened CPAL output, reached Playing on fixture MP3/AAC streams through redirect/playlist paths, then passed rapid switching, stalled headers, invalid/unsupported streams, explicit retry, refused endpoint, responsive rendering and clean Stop. This proves muted callback/lifecycle integration only; no audible listening or device-loss recovery acceptance.
+- Repeated station label A/B/C: at 295 px A full-category 24/25, B names-only and C compact-category 25/25; at 340 px all 25/25; C saves 192 px and A overflows `wcrb`. Fit only, not listener preference.
+- Windows GNU test binaries compiled and strict Clippy passed for default, SDRconnect and direct nRSP-native/GUI feature sets. Tests were compiled, not executed on Windows.
+- Linux ARM64 headless check did not complete: `ring` could not find `aarch64-linux-gnu-gcc`. The Rust target is installed, but the cross C compiler is absent; this is an environment limitation, not a Rust diagnostic.
+- PR #5 is open and mergeable at `139c00c`. Actions run 286 (`40790287485`) for that head ended `startup_failure` before job creation; jobs and combined statuses are empty. No production code changed during this acceptance-only run.
+- Remaining: audible output, Bluetooth/USB loss recovery, Raspberry Pi audio/display/touch and receiver acceptance; publisher rights, national NPR source/rights, native Windows MSVC CI.

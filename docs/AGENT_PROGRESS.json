@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:51:44Z",
+  "updated_at_utc": "2026-10-28T23:55:25Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
@@ -144,7 +144,10 @@
     "Latest observed PR run 283 (40789606164) for checkpoint 3ef4b64 also ended startup_failure before job creation; no jobs or combined statuses, so remote CI remains unavailable.",
     "Narrowed temporary HTTP status classification to 408/425/429/500/502/503/504; 501/505/506/507/508/510/511 and ordinary permanent responses no longer consume the network retry budget. Focused classification regression passed.",
     "All six locked workspace gates passed on f92f0fc; repeated GUI A/B/C fit result and 25/25 live decoded sweep at 2026-10-28T23:51:08Z recorded in docs/PROGRESS.md.",
-    "Published implementation f92f0fc and evidence checkpoint 49f5525; PR #5 open and mergeable. No workflow run/status was visible for 49f5525 at 23:51 UTC; previous run 284 failed before job creation."
+    "Published implementation f92f0fc and evidence checkpoint 49f5525; PR #5 open and mergeable. No workflow run/status was visible for 49f5525 at 23:51 UTC; previous run 284 failed before job creation.",
+    "Ran ignored muted native GUI integration test on host CPAL with loopback fixture: callback reached Playing and rapid switching, redirect/playlist, stalled headers, invalid/unsupported streams, retry, refused endpoint, responsive rendering and Stop passed. No audible acceptance inferred.",
+    "Windows GNU test binaries and strict Clippy passed for default, SDRconnect and direct nRSP-native/GUI features. Linux ARM64 check blocked because aarch64-linux-gnu-gcc is not installed; the failure is in ring build script tool discovery.",
+    "Repeated station label A/B/C: 295px A 24/25, B/C 25/25; 340px all 25/25; compact saves 192px, A overflows wcrb; fit only."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -240,11 +243,11 @@
     "last_repeated_at_utc": "2026-10-28T23:50:58Z"
   },
   "ci": {
-    "latest_pr_run": null,
-    "latest_pr_head": "49f5525f6a9a056a6aa959076c3399e6441e376b",
-    "latest_pr_conclusion": "no_run_observed",
+    "latest_pr_run": 40790287485,
+    "latest_pr_head": "139c00cab1f7c0168d5c2b99344bdd358f14424b",
+    "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at 49f5525. No PR-triggered run or combined status was visible at 2026-10-28 23:51 UTC. Previous observed run 284 for 36ef13c failed before job creation; native Windows MSVC CI and physical hardware acceptance remain unverified."
+    "details": "PR #5 open and mergeable at 139c00c. Actions run 286 (40790287485) failed before job creation with startup_failure; jobs and combined statuses are empty. This is not a code test result. Native Windows MSVC CI and hardware acceptance remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -255,8 +258,11 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue source-aware playback recovery and transport reliability; verify newly pushed CI when available, then pursue physical Bluetooth/USB, Raspberry Pi and receiver acceptance, publisher rights, national NPR source/rights and native Windows MSVC gates.",
-  "current_pr_state": "PR #5 open and mergeable at 49f5525; no workflow run or combined status visible at 23:51 UTC.",
+  "next_priority": "Continue source-aware playback recovery and lifecycle reliability; arrange audible/device-loss, Pi and receiver acceptance on supported hardware; restore Linux ARM64 cross-check with an available AArch64 C toolchain and pursue native Windows MSVC CI.",
+  "current_pr_state": "PR #5 open and mergeable at 139c00c; run 286 failed before job creation (startup_failure, zero jobs, empty statuses).",
   "live_catalog_revalidation": "2026-10-28T23:51:08Z: bounded validate-all decoded 25/25 stations in 25 attempts with no retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on implementation commit f92f0fc: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked"
+  "six_required_gates_latest": "passed on implementation commit f92f0fc: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked",
+  "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
+  "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
+  "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed."
 }
