@@ -3,7 +3,7 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Native output sample-format coverage (2026-10-28 22:52 UTC)
+## Native output sample-format coverage (2026-10-28 22:55 UTC)
 
 - Native CPAL output now dispatches to render callbacks for all eleven sample
   formats exposed by CPAL 0.16, including 24-bit integer PCM and 64-bit
@@ -25,6 +25,11 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - PR #5 is open and mergeable at `dae41ee`. Actions run 251 for this commit
   failed before job creation (`startup_failure`) and combined statuses are
   empty, so remote CI and native MSVC validation remain unverified.
+- Expanded the callback conversion fixture to check full-scale -1.0 and 1.0,
+  zero and intermediate values; repeated the full default/all-feature gates,
+  Windows GNU test-binary cross-compiles and station-label A/B/C. PR #5 remains
+  open and mergeable at `26e2066`; Actions run 253 also failed at startup with
+  no combined statuses.
 - Next: continue physical output-loss recovery and Pi/receiver acceptance,
   publisher-rights review and remote Windows MSVC CI when Actions starts jobs.
 

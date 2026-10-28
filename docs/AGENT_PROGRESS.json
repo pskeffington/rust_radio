@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T22:55:37Z",
+  "updated_at_utc": "2026-10-28T22:55:53Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "Native CPAL output now supports all eleven CPAL 0.16 sample formats; conversion regression and workspace gates passed, with platform/hardware acceptance still open.",
@@ -8,6 +8,7 @@
     "Expanded the native callback conversion regression to cover full-scale negative/positive samples, zero and intermediate levels for every active CPAL 0.16 PCM format; confirmed CPAL excludes U24 from SampleFormat.",
     "Extended native CPAL output dispatch to all eleven CPAL 0.16 integer and floating sample formats and added callback conversion coverage for every format.",
     "Repeated station-label A/B/C fit measurement on all 25 entries: 24/25 full category and 25/25 names-only/compact at 295px; all fit at 340px; layout evidence only.",
+    "Repeated default/all-feature gates, all three Windows GNU test-binary cross-compiles and station-label A/B/C after extending sample conversion coverage to full scale.",
     "Committed and pushed dae41ee to PR #5; the pull request remains open and GitHub reports it mergeable.",
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
     "Added a six-hourly and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
@@ -131,7 +132,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "passed after full-scale conversion fixture change: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked; git diff --check. Loopback fixtures required local socket permission; one manual native audio test remains ignored.",
-    "latest_code_head_ci": "PR #5 source head dae41eebf9ef0beb699382a14c540528ba1abff5 Actions run 40783252800 (run 251) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified.",
+    "latest_code_head_ci": "PR #5 source head 26e206697b002b1301c8edc648f2bace990be158 Actions run 40783655402 (run 253) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified.",
     "live_catalog_revalidation": "2026-10-28T22:43Z: bounded validate-all decoded 25/25 stations in 25 total attempts; point-in-time codec evidence only",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
     "layout_ab_recheck": "repeated 2026-10-28 22:55 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; fit only, not preference.",
@@ -191,11 +192,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40783252800,
-    "latest_pr_head": "dae41eebf9ef0beb699382a14c540528ba1abff5",
+    "latest_pr_run": 40783655402,
+    "latest_pr_head": "26e206697b002b1301c8edc648f2bace990be158",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Run 251 for dae41ee failed before jobs were created; combined statuses empty. Native MSVC checks remain unverified."
+    "details": "Run 253 for 26e2066 failed before jobs were created; combined statuses empty. Native MSVC checks remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
