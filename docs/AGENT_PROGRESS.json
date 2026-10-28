@@ -1,9 +1,9 @@
 {
-  "updated_at_utc": "2026-10-28T21:32:32Z",
+  "updated_at_utc": "2026-10-28T21:37:42Z",
   "status": "in_progress",
-  "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "bce23e1",
-  "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
+  "branch": "codex/station-validation-workflow-recovery",
+  "implementation_commit": "5568fb3d6cad9d8f44206fea1f28bebea0fba300",
+  "pull_request": "https://github.com/pskeffington/rust_radio/pull/3 (merged)",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
     "Added a six-hourly and manually dispatchable GitHub Actions sweep retaining reports for 30 days.",
@@ -56,31 +56,38 @@
     "Validated the credential-safe report summary against a fresh real 25-station CLI report; all station decodes were summarized and the GUI label A/B/C test repeated.",
     "Closed the summary formatter's missing check_error outcome and permissive-stage gap by matching all CLI status/stage enums and requiring schema version 1.",
     "Revalidated strict summary formatting against a fresh live CLI report at 21:28 UTC and repeated the station-label A/B/C regression.",
-    "Inspected repository Actions policy and workflow history; confirmed the catalog schedule is not active until the PR workflow reaches default branch main, while current required PR runs fail before job creation."
+    "Inspected repository Actions policy and workflow history; confirmed the catalog schedule is not active until the PR workflow reaches default branch main, while current required PR runs fail before job creation.",
+    "Merged PR #3 at 5568fb3d6cad9d8f44206fea1f28bebea0fba300 and verified the merged default-branch source.",
+    "Passed all six required local gates; loopback fixtures required explicit local-socket access after sandbox denial.",
+    "Repeated station label A/B/C fit test: 295px A 24/25, B/C 25/25; at 340px all 25/25; compact category retains genre and saves 32px, fit only.",
+    "Fresh bounded validate-all sweep decoded all 25 stations in one attempt each at 2026-10-28T21:37Z.",
+    "Strict credential-safe summary consumed the live report and its four unit tests passed; station-validation workflow YAML parsed.",
+    "Headless aarch64-unknown-linux-gnu checks passed for core-only, SDRconnect and nrsp-native feature configurations.",
+    "Manually dispatched station validation on main; run 40773152365 failed at startup with zero jobs and no logs."
   ],
   "validation": {
-    "fmt": "passed on current source",
-    "workspace_tests": "passed on current source; loopback fixtures allowed",
-    "workspace_clippy_strict": "passed on current source",
-    "all_features_tests": "passed on current source; loopback fixtures allowed; physical audio acceptance tests remain gated/ignored",
-    "all_features_clippy_strict": "passed on current source",
-    "all_features_check": "passed on current source",
-    "live_catalog_decode": "25/25 decoded in 25 attempts; point-in-time only",
+    "fmt": "passed on merged commit 5568fb3",
+    "workspace_tests": "passed on merged commit 5568fb3; loopback fixtures required local-socket permission",
+    "workspace_clippy_strict": "passed on merged commit 5568fb3",
+    "all_features_tests": "passed on merged commit 5568fb3; loopback fixtures required local-socket permission; hardware-only test remains ignored",
+    "all_features_clippy_strict": "passed on merged commit 5568fb3",
+    "all_features_check": "passed on merged commit 5568fb3",
+    "live_catalog_decode": "25/25 decoded in 25 attempts at 2026-10-28T21:37Z; point-in-time codec evidence only",
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
     "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed 2026-10-28 this run: at 295px A full category 24/25, B names-only 25/25, C compact category 25/25; at 340px all 25/25; compact CLASS saves 32px; layout-fit only",
+    "repeatable_layout_ab": "passed on merged commit: at 295px A full category 24/25, B names-only 25/25, C compact category 25/25; all 25/25 at 340px; C saves 32px; layout fit only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "passed Ruby YAML parser on current station-validation.yml; cron cadence 17 */6 * * * matches the six-hour catalog freshness TTL",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
-    "latest_code_head_ci": "Current PR head 1642027 has no workflow run or status checks visible yet; latest Actions run 40772645579 on 52be452 failed at startup with zero jobs; remote CI remains unverified",
+    "latest_full_gate_run": "all six required gates passed on merged default-branch commit 5568fb3d6cad9d8f44206fea1f28bebea0fba300",
+    "latest_code_head_ci": "manual catalog workflow run 40773152365 on main ended startup_failure with zero jobs; no logs exist; remote CI remains unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
-    "arm64_headless_check": "on current head 3b57855, cargo check passed for core-only, sdrconnect and nrsp-native with --no-default-features on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
+    "arm64_headless_check": "cargo check passed for core-only, sdrconnect and nrsp-native on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
@@ -110,10 +117,10 @@
     "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
     "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata",
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
-    "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
+    "catalog_validation_summary": "four Python tests passed; YAML parsed; actual bounded 25-station report formatted without endpoints or server diagnostics",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
     "current_pr_state": "PR #3 remains open at 1642027; local history has no conflict on preceding docs-only checkpoint 52be452; current GitHub mergeability is being recomputed after push",
-    "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met"
+    "scheduled_validation_activation": "workflow is on main and manual dispatch works, but run 40773152365 failed before job creation; cron execution is not yet verified"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -124,18 +131,22 @@
     "variant_c_text_width_savings_vs_a": 32,
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
-    "interpretation": "compact-layout measurement, not listener preference"
+    "interpretation": "Repeated layout-fit measurement on merged commit; not listener preference evidence"
   },
   "ci": {
-    "latest_observed_head_run": 40772645579,
-    "observed_head": "52be452",
-    "conclusion": "Actions run 40772645579 for head 52be452 ended startup_failure with zero jobs; GitHub Actions job listing is empty. Previous run 40772372085 also failed before job creation. Repository Actions are enabled; selected actions allow GitHub-owned and verified actions. No actionable code/allowlist cause found. Current PR head 1642027 has no run yet; remote CI remains unverified."
+    "latest_observed_head_run": 40773152365,
+    "observed_head": "5568fb3d6cad9d8f44206fea1f28bebea0fba300",
+    "event": "workflow_dispatch",
+    "conclusion": "startup_failure",
+    "jobs": 0,
+    "details": "GitHub Actions created no jobs or logs; repository/workflow code has no actionable diagnostic from this run."
   },
   "remaining_gates": [
+    "GitHub Actions runner startup and scheduled catalog execution",
     "Physical Bluetooth and USB output loss/recovery",
     "Raspberry Pi native audio, display and touch acceptance",
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Continue local reliability validation while remote Actions startup failures remain unexplained; the catalog cron cannot activate until merge to main. Complete physical audio/output, receiver, Pi and USB SDR acceptance when hardware is available."
+  "next_priority": "Obtain actionable GitHub Actions runner startup diagnostics while continuing local checks; then verify the scheduled catalog run. Complete physical audio/output, receiver, Pi and USB SDR acceptance when hardware is available."
 }
