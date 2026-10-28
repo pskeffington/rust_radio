@@ -873,3 +873,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   the preceding documentation head's Actions run `40763293734` failed before
   creating jobs. Remote CI remains unverified. Physical nRSP reconnect and
   output-device recovery acceptance remain open.
+
+## Headless nRSP Linux ARM64 portability check (2026-10-28)
+
+- On the current implementation source, `cargo check --locked -p rust-radio
+  --no-default-features --features nrsp-native --target
+  aarch64-unknown-linux-gnu` passed. This verifies the headless direct nRSP
+  module compiles for the Pi's Linux ARM64 target; it does not establish native
+  audio, device interoperability, or physical Pi runtime behavior.
+- Re-ran the station-label A/B regression: at 295 px full category fits
+  24/25 rows while names-only and compact category fit 25/25; at 340 px all
+  three variants fit 25/25. This remains layout-fit evidence, not a listener
+  preference test.
+- PR #3 is open and mergeable. No workflow run or combined check is visible
+  for the current PR head; remote CI remains unverified after repeated startup
+  failures with no jobs. Next: resolve the first-party station rights gate or
+  perform receiver/output/Pi acceptance when the relevant hardware is available.
