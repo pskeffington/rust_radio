@@ -1689,4 +1689,6 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   and mergeable. Actions run `40789529683` (run 282) for checkpoint `dd3def2`
   ended `startup_failure` before creating any jobs; combined statuses were
   empty. This repeats the runner-startup blocker and provides no code-level CI
-  signal. Native MSVC and physical hardware acceptance gates remain open.
+  signal. Run 283 (`40789606164`) for checkpoint `3ef4b64` also ended
+  `startup_failure` before jobs; no combined statuses were reported. Native
+  MSVC and physical hardware acceptance gates remain open.

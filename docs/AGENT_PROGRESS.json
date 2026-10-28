@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:45:40Z",
+  "updated_at_utc": "2026-10-28T23:46:03Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "23ee373f656a4308f06c31b0f2cf800b614c0b38; HTTP 425 Too Early is now classified as a transient network response and retried.",
@@ -140,7 +140,8 @@
     "Fixed temporary HTTP status classification to retry HTTP 425 Too Early; focused regression and all six locked workspace gates passed.",
     "Repeated GUI label A/B/C: 295px A 24/25, B/C 25/25; at 340px all 25/25; C saves 192px, A overflows wcrb; layout fit only.",
     "Initial sandboxed validate-all could not reach streams; authorized bounded rerun at 2026-10-28T23:45:04Z decoded all 25 stations in 25 attempts with no retries/failures; point-in-time codec evidence only.",
-    "Observed PR Actions run 282 (40789529683) for dd3def2: startup_failure before job creation; jobs and combined statuses are empty, so this provides no code-level CI signal."
+    "Observed PR Actions run 282 (40789529683) for dd3def2: startup_failure before job creation; jobs and combined statuses are empty, so this provides no code-level CI signal.",
+    "Latest observed PR run 283 (40789606164) for checkpoint 3ef4b64 also ended startup_failure before job creation; no jobs or combined statuses, so remote CI remains unavailable."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -236,11 +237,11 @@
     "last_repeated_at_utc": "2026-10-28T23:40:50Z"
   },
   "ci": {
-    "latest_pr_run": 40789529683,
-    "latest_pr_head": "dd3def254fb2dd7b5171b498a15b37eeaf8f46ae",
+    "latest_pr_run": 40789606164,
+    "latest_pr_head": "3ef4b64f0f97ccec089ef6094c7c387153d5c3bd",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at dd3def2. Actions run 282 (40789529683) failed before job creation with startup_failure; run jobs and combined statuses are empty. This does not indicate a code test failure. New docs checkpoint will need its own CI observation. Native MSVC CI and physical hardware acceptance remain unverified."
+    "details": "PR #5 is open and mergeable at 3ef4b64. Run 283 (40789606164) ended startup_failure before job creation; run jobs and combined statuses are empty. This is not a code test failure. Native Windows MSVC CI and physical hardware acceptance remain unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -252,7 +253,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Observe CI for the pushed HTTP 425 fix and checkpoint; continue source-aware playback recovery, then complete physical Bluetooth/USB, Raspberry Pi and receiver acceptance, publisher rights review, and native Windows MSVC CI.",
-  "current_pr_state": "PR #5 open and mergeable at implementation/evidence checkpoint dd3def2; Actions run 282 failed before creating jobs, no combined statuses.",
+  "current_pr_state": "PR #5 open and mergeable at 3ef4b64; latest observed Actions run 283 failed before job creation with startup_failure and no combined statuses.",
   "live_catalog_revalidation": "2026-10-28T23:45:04Z: bounded validate-all decoded 25/25 stations in 25 attempts, no retries/failures. Point-in-time codec evidence only. Earlier sandboxed run was blocked before stream validation.",
   "six_required_gates_latest": "passed on implementation commit 23ee373: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked"
 }
