@@ -974,7 +974,30 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   names-only and compact category fit 25/25; all variants fit at 340 px. The
   compact variant preserves genre cues and saves 32 px; this is layout-fit
   evidence, not listener preference.
-- PR #3 remains open and mergeable. Run `40766701430` for head `28cf320` failed
+- PR #3 remains open and mergeable. Run `40766775155` for head `5f30955` failed
   at startup with zero jobs; combined status is empty and no code-level CI
   result is available. Physical audio, receiver and Pi runtime acceptance
   remains open.
+
+## IANA address coverage and documentation reconciliation (2026-10-28)
+
+- Checked the current IANA IPv4 and IPv6 special-purpose registries (updated
+  2025-10-09) and expanded regression cases for IPv4-mapped IPv6, NAT64,
+  discard-only, transition, documentation, benchmarking and reserved ranges.
+  The filter deliberately blocks broad protocol-assignment aggregates rather
+  than making per-address exceptions.
+- Corrected stale docs: direct streams do use manually validated redirect and
+  playlist hops, and CLI validation history can be persisted only when the
+  caller supplies `--history PATH`.
+- The focused address tests and all six workspace gates passed. The compact
+  station-label A/B/C measurement repeated: 295 px full categories fit 24/25,
+  names-only and compact categories 25/25; all fit at 340 px. A/B is layout
+  fit, not listener preference.
+- The headless nRSP ARM64 cross-check passed. No hardware was exercised.
+- Address-range regression expansion is committed as `610b4c8`.
+- PR #3 remains open with no reviews or inline threads. Run `40766775155` on
+  head `5f30955` failed at startup with zero jobs. The new head `610b4c8` has
+  no visible run or combined checks yet; remote CI remains unverified.
+- Rust-Boy's local workspace still pins revision `3d77d11`; update and validate
+  that integration pin only after this module's PR is accepted. Next: check
+  host compatibility, then run receiver/output/Pi field acceptance.

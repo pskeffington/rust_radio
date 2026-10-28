@@ -9,6 +9,8 @@ Status: research-backed architectural candidate list, 2026-10-26. **Source prese
 | [Rodio](https://github.com/RustAudio/rodio) | Higher level player on CPAL/Symphonia | Comparison candidate, not default engine | Device-switch and cancellation spike |
 | [whirr](https://github.com/samuelb/whirr) | Internet radio architecture reference | Study bounded HTTP/ICY queues, cancellation; independently implement | Fault-injection streaming |
 | [reqwest](https://docs.rs/reqwest/latest/reqwest/) | Rust HTTP client | HTTPS-only pinned publisher origin policy; redirects explicitly checked | SSRF, redirects, retries and inactivity timeouts |
+| [IANA IPv4 Special-Purpose Address Registry](https://www.iana.org/assignments/iana-ipv4-special-registry) | IPv4 special-use blocks and global-reachability flags (registry updated 2025-10-09) | Filter private, loopback, link-local, shared, reserved, documentation and non-routable protocol ranges; conservatively block all of 192.0.0.0/24 | Address-classification fixtures; DNS lookup uses the checked result set |
+| [IANA IPv6 Special-Purpose Address Registry](https://www.iana.org/assignments/iana-ipv6-special-registry) | IPv6 special-use blocks and global-reachability flags (registry updated 2025-10-09) | Conservatively deny special-use translation, discard-only, transition and documentation ranges as well as ULA/link-local; block 2001::/23 wholesale | IPv4/IPv6 address-classification fixtures and live curated-stream checks |
 | [SoapySDR](https://docs.rs/soapysdr/latest/soapysdr/) | SDR discovery and IQ access through native drivers | Optional feature-gated receive-only hardware bridge | Physical RTL-SDR and second receiver |
 | [rustfft](https://github.com/ejmahler/RustFFT) | Rust FFT processing | Spectrum/waterfall analysis research candidate | Deterministic IQ/FFT fixtures |
 | [rubato](https://github.com/HEnquist/rubato) | Audio sample-rate conversion | Compare resampling quality and bounded latency | Quality, clipping, ARM CPU and power tests |
@@ -28,7 +30,7 @@ Status: research-backed architectural candidate list, 2026-10-26. **Source prese
 
 ## Security and portability controls
 - No automatic station streaming, RF capture, or microphone access on import/launch.
-- Curated presets retain publisher endpoint authorization. A separate explicitly entered direct-stream path permits HTTPS and private/loopback literal IPv4 HTTP; it does not use proxies or follow redirects. Hosts should treat entered URLs as trusted operator input and protect query tokens.
+- Curated presets retain publisher endpoint authorization. Direct streams accept HTTPS and private/loopback literal IPv4 HTTP, use no proxy, and manually validate each redirect and playlist hop. Public/curated DNS answers are checked and pinned to prevent address rebinding; explicit private-source mode allows only private/loopback unicast answers. Hosts must protect query tokens and never interpret a valid URL as permission to relay or redistribute its audio.
 - All buffers, playlist sizes, decoded frames, retry budgets and metadata are bounded.
 - One active receiver, monotonic generation IDs and actual worker cancellation.
 - Satellite is receive-only, with protocol-specific permission and regulatory review. Do not automatically decode private traffic.
