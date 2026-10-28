@@ -3,6 +3,25 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Stop racing with playback retry (2026-10-28 23:14 UTC)
+
+- Added a deterministic regression for Stop arriving as a transient network
+  failure returns from an attempt. It asserts cancellation wins before the
+  retry wait, no second connection is attempted, and no stale recovery/error
+  event can replace Stopped.
+- Focused regression and all required local gates passed: format, default and
+  all-feature workspace tests, strict Clippy for both configurations, and
+  all-feature check. Windows GNU workspace test binaries compiled for default,
+  SDRconnect and direct nRSP-native; they were not run.
+- Repeated GUI label A/B/C: at 295 px, A full category fit 24/25, B names-only
+  and C compact category 25/25; all fit at 340 px; C saves 192 text pixels.
+  This is deterministic layout evidence, not listener preference evidence.
+- Source commit `0ede192` is pushed to open PR #5. Actions run 264 (`40785912226`) for this head failed with `startup_failure`;
+  combined statuses are empty, so remote CI still ran no jobs.
+- Highest next priority: continue playback lifecycle race coverage, then pursue
+  physical Bluetooth/USB recovery, Pi and receiver acceptance, publisher rights,
+  and healthy native Windows CI.
+
 ## Native output failure diagnostics (2026-10-28 23:10 UTC)
 
 - CPAL asynchronous output errors now retain their backend diagnostic instead
