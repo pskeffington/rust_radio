@@ -8,7 +8,8 @@ Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `set
 ## Listening interface
 
 The station selector fills the available width between previous/next controls;
-station rows pair each curated station name with its category, and the line below
+station rows pair each curated station name with its category; `CLASSICAL` is
+shortened to `CLASS` in the row, while the full genre remains on hover. The line below
 the selected station contains genre only. Validation history
 is kept out of this listening surface: a stale or missing silent check cannot
 contradict actual Playing. The single primary button becomes Play, Stop or Retry
@@ -29,10 +30,11 @@ Construction, embedding, station storage and the playback engine are unchanged.
 UI tests cover each playback state, stale validation during Playing, absence of
 decoder diagnostics on the listening surface, volume restoration and long error
 messages at 480×320. The station popup rows use up to 340 pixels of available
-width. A measured 14-point monospace label A/B with 20 pixels total horizontal
-button padding found category-suffixed labels fit 24/25 stations and names alone
-fit 25/25 at 295 pixels; both variants fit 25/25 at 340 pixels. The wider
-category-suffixed rows are kept for their scan cue without clipping. Native
+width. A measured 14-point monospace label A/B/C with 20 pixels total horizontal
+button padding found full category labels fit 24/25 stations, names alone 25/25,
+and compact category labels 25/25 at 295 pixels; all fit at 340 pixels. Shortening
+only `CLASSICAL` to `CLASS` preserves the category cue and saves 32 pixels for
+WCRB. Native
 muted acceptance checks
 Receiving audio now against actual playback, including switching/failure
 responsiveness. Physical touch and Pi rendering still need acceptance.

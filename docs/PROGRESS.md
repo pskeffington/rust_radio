@@ -28,6 +28,20 @@ Updated 2026-10-28. Active priorities and ownership are in the
   loss/recovery, Pi runtime, USB/receiver hardware and publisher rights remain
   separate acceptance gates.
 
+## Compact station category A/B/C (2026-10-28)
+
+- The 295 px A/B evidence showed only WCRB overflowing when the full station
+  name and category were shown. Variant C shortens `CLASSICAL` to `CLASS` while
+  preserving the category cue and full genre on hover.
+- egui 14-point monospace fit: full category A 24/25, names-only B 25/25, and
+  compact category C 25/25 at 295 px. All variants fit 25/25 at 340 px. C saves
+  32 text pixels on WCRB compared with A.
+- Implemented in `a417db6`; regression
+  `station_label_ab_compares_full_compact_and_name_only_variants` measures all
+  three alternatives and confirms WCRB is the only A overflow.
+- This compares compact layout fit, not listener preference. Hover text keeps
+  the station's full genre.
+
 ## Bounded native output stall handling (2026-10-28)
 
 - Code commit `ca4cf00` extracts the PCM-ring backpressure loop behind an
