@@ -3,6 +3,7 @@ use eframe::egui;
 use rust_radio_core::directory::curated_stations;
 
 const STATION_MENU_MAX_ROW_WIDTH: f32 = 340.0;
+const STATION_MENU_BUTTON_HORIZONTAL_PADDING: f32 = 10.0;
 #[cfg(test)]
 const PREVIOUS_STATION_MENU_ROW_WIDTH: f32 = 295.0;
 
@@ -175,6 +176,7 @@ impl RadioPanel {
             )
             .show_ui(ui, |ui| {
                 theme::apply(ui);
+                ui.spacing_mut().button_padding.x = STATION_MENU_BUTTON_HORIZONTAL_PADDING;
                 let row_width = ui.available_width().min(STATION_MENU_MAX_ROW_WIDTH);
                 ui.set_width(row_width);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
@@ -268,9 +270,8 @@ mod label_ab_test {
     fn name_plus_category_rows_fit_without_truncation() {
         let context = egui::Context::default();
         let mut results = None;
-        let mut button_horizontal_padding = 0.0;
+        let button_horizontal_padding = STATION_MENU_BUTTON_HORIZONTAL_PADDING * 2.0;
         let _ = context.run(Default::default(), |ctx| {
-            button_horizontal_padding = ctx.style().spacing.button_padding.x * 2.0;
             let current_row_text_width =
                 PREVIOUS_STATION_MENU_ROW_WIDTH - button_horizontal_padding;
             let widened_row_text_width = STATION_MENU_MAX_ROW_WIDTH - button_horizontal_padding;
