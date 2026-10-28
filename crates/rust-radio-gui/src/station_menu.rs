@@ -122,7 +122,7 @@ impl RadioPanel {
         let mut choice = None;
         let names: Vec<String> = curated_stations()
             .iter()
-            .map(|station| format!("{} · {}", station.name, station.category))
+            .map(|station| station_menu_label(station, true))
             .chain(self.ip_stations.iter().map(|station| station.name.clone()))
             .chain(std::iter::once("Custom public / LAN stream".into()))
             .collect();
@@ -241,5 +241,60 @@ impl RadioPanel {
                 self.ip_selection_changed();
             }
         }
+    }
+}
+
+fn station_menu_label(
+    station: &rust_radio_core::directory::InternetStation,
+    show_category: bool,
+) -> String {
+    if show_category {
+        format!("{} · {}", station.name, station.category)
+    } else {
+        station.name.to_owned()
+    }
+}
+
+#[cfg(test)]
+mod label_ab_test {
+    use super::*;
+
+    #[test]
+    fn name_plus_category_rows_fit_without_truncation() {
+        let context = egui::Context::default();
+        let mut results = None;
+        let _ = context.run(Default::default(), |ctx| {
+            results = Some(ctx.fonts(|fonts| {
+                let font = egui::FontId::proportional(14.0);
+                let row_text_width = 274.0;
+                let mut category_fit = 0;
+                let mut name_fit = 0;
+                let mut saved_width = 0.0;
+                for station in curated_stations() {
+                    let category = format!("> {}", station_menu_label(station, true));
+                    let name = format!("> {}", station_menu_label(station, false));
+                    let category_width = fonts
+                        .layout_no_wrap(category, font.clone(), egui::Color32::WHITE)
+                        .size()
+                        .x;
+                    let name_width = fonts
+                        .layout_no_wrap(name, font.clone(), egui::Color32::WHITE)
+                        .size()
+                        .x;
+                    category_fit += usize::from(category_width <= row_text_width);
+                    name_fit += usize::from(name_width <= row_text_width);
+                    saved_width += category_width - name_width;
+                }
+                (category_fit, name_fit, saved_width)
+            }));
+        });
+        let (category_fit, name_fit, saved_width) = results.unwrap();
+        let station_count = curated_stations().len();
+        eprintln!(
+            "Station label A/B: A {category_fit}/{station_count} rows fit; B {name_fit}/{station_count} fit; B saves {saved_width:.0}px total text width"
+        );
+        assert_eq!(category_fit, station_count);
+        assert_eq!(name_fit, station_count);
+        assert!(saved_width > 0.0);
     }
 }

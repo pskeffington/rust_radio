@@ -3,6 +3,17 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: station-list label A/B
+
+- Compared catalog rows that show `station · category` (A) with station-name-only
+  rows (B), using egui's proportional 14-point font and the popup's 274-pixel
+  text budget. Both variants fit all 25 curated stations without truncation;
+  B saves about 1,496 pixels across all labels but does not fit any additional
+  station names. Kept A because its category cue aids scanning without clipping.
+- Added a font-metric regression test to keep the current catalog labels within
+  the compact popup row width. This is an offline layout A/B, not a listener
+  cohort study; no audience preference was measured.
+
 ## Current module pass: listener-focused interface
 
 - Replaced the confusing Playing + Unverified combination with a presentation

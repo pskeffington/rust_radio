@@ -8,7 +8,8 @@ Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `set
 ## Listening interface
 
 The station selector fills the available width between previous/next controls;
-station text is larger and the line below contains genre only. Validation history
+station rows pair each curated station name with its category, and the line below
+the selected station contains genre only. Validation history
 is kept out of this listening surface: a stale or missing silent check cannot
 contradict actual Playing. The single primary button becomes Play, Stop or Retry
 as appropriate. A separate listening label shows Ready to listen, Checking
@@ -27,9 +28,11 @@ Live audio takes priority over historical silent-check results there too.
 Construction, embedding, station storage and the playback engine are unchanged.
 UI tests cover each playback state, stale validation during Playing, absence of
 decoder diagnostics on the listening surface, volume restoration and long error
-messages at 480×320. Native muted acceptance checks Receiving audio now against
-actual playback, including switching/failure responsiveness. Physical touch and
-Pi rendering still need acceptance.
+messages at 480×320. A measured label A/B test found both category-suffixed and
+name-only rows fit all 25 curated stations; the category-suffixed variant was
+kept for its extra scan cue without truncation. Native muted acceptance checks
+Receiving audio now against actual playback, including switching/failure
+responsiveness. Physical touch and Pi rendering still need acceptance.
 
 ## Launch on Mac
 ```sh
