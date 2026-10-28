@@ -820,3 +820,17 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Code commit `73d7eb2` is pushed. PR #3 is open and mergeable; its current head
   has no status checks or associated workflow run visible at query time. Prior
   run `40761915140` failed before creating jobs. Remote CI remains unverified.
+
+## Listener guidance for native output setup errors (2026-10-28)
+
+- The listening screen already mapped common CPAL output errors to an action,
+  but uncommon native setup messages for unsupported sample formats, receiver
+  PCM conversion and CPAL stream construction fell through to raw diagnostics.
+- Added these concrete native-output failure strings to the output-selection
+  guidance. Exact worker error text remains available in setup for diagnosis.
+- The focused presentation regression passed. Formatting, default/all-feature
+  workspace tests, strict Clippy in both configurations, all-feature check and
+  the compact station-label A/B test passed.
+- Code commit `176e169` is pushed. PR #3 is open and mergeable; current combined
+  status is empty with no workflow run visible at query time. Prior Actions run
+  `40762398646` failed before job creation, so remote CI remains unverified.
