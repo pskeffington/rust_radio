@@ -664,3 +664,7 @@ showed the prior head, so remote CI is pending/unverified.
   zero jobs for the preceding PR head. Combined commit status is empty. This is
   not evidence of a Rust job failure or a passing remote build; root cause is
   not available from the run metadata.
+
+The public-entry-point regression is committed as `082b029` and confirmed on the
+remote PR branch. The PR is open and mergeable. No status or PR-triggered run is
+visible yet for `082b029`; the startup failure above belongs to the prior head.

@@ -47,14 +47,15 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on implementation commit a417db6; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "latest_code_head_ci": "PR workflow run 40757657155 for prior head startup_failure with zero jobs; empty combined status; no remote Rust result",
+    "latest_code_head_ci": "Current head 082b029 has empty combined status and no PR-triggered workflow run visible at query time. Prior head run 40757657155 ended startup_failure with zero jobs.",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
-    "public_playback_admission_regression": "passed; curated internet and direct stream public start paths reject while process-wide slot is occupied"
+    "public_playback_admission_regression": "passed; curated internet and direct stream public start paths reject while process-wide slot is occupied",
+    "latest_regression_commit": "082b029; both public playback start APIs reject concurrent admission"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -69,7 +70,7 @@
   },
   "ci": {
     "latest_observed_head_run": 40757657155,
-    "conclusion": "PR-triggered Rust workflow run 40757657155 is startup_failure with zero jobs; combined commit status is empty. This does not identify a repository job failure or establish remote validation."
+    "conclusion": "Current code head 082b029 is pushed and PR #3 is open/mergeable; no combined status or PR-triggered run is visible yet. Prior head run 40757657155 ended startup_failure with zero jobs."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
