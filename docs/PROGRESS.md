@@ -21,6 +21,9 @@ Updated 2026-10-28. Active priorities and ownership are in the
   295 px: category+name fit 24/25 labels and names-only fit 25/25; both fit at
   340 px. Names-only saves 1,776 aggregate text pixels. This is a fit metric,
   not listener preference evidence.
+- A fresh bounded silent station sweep at 2026-10-28 19:32 UTC decoded all
+  25/25 catalog entries in 25 attempts at `decoded_audio`. This is point-in-time
+  decoder evidence only; it does not establish human audibility or rights.
 - The change is callback evidence only. Human-audible output, physical output
   loss/recovery, Pi runtime, USB/receiver hardware and publisher rights remain
   separate acceptance gates.
