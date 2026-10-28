@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:11:14Z",
+  "updated_at_utc": "2026-10-28T21:13:53Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -47,7 +47,8 @@
     "Added regression vectors for current IANA IPv4/IPv6 special-purpose ranges and corrected stale direct-stream redirect and optional feed-history documentation.",
     "Closed the direct HTTPS literal-IP resolver bypass: reject non-public IP literals before network access, with IPv4/IPv6 regressions; public HTTPS literals and explicit private IPv4 HTTP remain supported.",
     "Restricted explicitly selected private IPv4 HTTP streams to the same private origin and port for redirects and playlist entries; kept every DNS lookup public-only.",
-    "Closed the private-LAN redirect/playlist SSRF expansion: only same-origin HTTP at the explicitly selected private IPv4 address and port is allowed; all DNS lookups use public-only filtering."
+    "Closed the private-LAN redirect/playlist SSRF expansion: only same-origin HTTP at the explicitly selected private IPv4 address and port is allowed; all DNS lookups use public-only filtering.",
+    "Reviewed WBUR as an NPR-affiliated catalog candidate: official pages document a live site/app stream but no stable direct endpoint, and say content is copyrighted with rare licensing approvals. No feed added without endpoint and written product-use permission."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -96,7 +97,9 @@
     "dns_address_safety_tests": "passed; IPv4/IPv6 range classification, localhost resolver rejection, explicit private-mode allowance, and non-public HTTPS redirect rejection",
     "iana_address_range_regressions": "passed; IPv4-mapped IPv6, NAT64, discard-only, transition, documentation, benchmarking and reserved ranges; conservative aggregate blocks",
     "https_literal_ip_safety": "passed; direct HTTPS private/loopback/shared/link-local/mapped IPv6 literals rejected; public IPv4 literal accepted",
-    "private_redirect_boundary": "passed; same-origin relative path works; loopback redirect and PLS target to another private port are rejected; localhost DNS answer rejected"
+    "private_redirect_boundary": "passed; same-origin relative path works; loopback redirect and PLS target to another private port are rejected; localhost DNS answer rejected",
+    "npr_member_station_candidate": "WBUR official Ways to Listen and content licensing pages reviewed 2026-10-28; official live player/app access is documented but no stable direct endpoint or product-use permission was found; candidate excluded pending rights",
+    "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -110,9 +113,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40769502404,
-    "observed_head": "b63c388",
-    "conclusion": "Actions run 40769502404 for head b63c388 ended startup_failure with zero jobs. Combined commit status is empty; no job logs exist. GitHub reports PR #3 mergeable and local merge-tree found no conflict; remote CI remains unverified."
+    "latest_observed_head_run": 40769883867,
+    "observed_head": "eabf106",
+    "conclusion": "Actions run 40769883867 for head eabf106 ended startup_failure with zero jobs, no status checks and no job logs. PR #3 remains open and mergeable; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -120,5 +123,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Run physical audio/output, receiver, Raspberry Pi, and USB SDR acceptance when hardware is available; complete broadcaster redistribution-rights review before adding streams; investigate Actions startup failure only if actionable repository-level diagnostics appear."
+  "next_priority": "Obtain a publisher-provided NPR member-stream endpoint and written permission; continue physical audio/output, receiver, Raspberry Pi and USB SDR acceptance when hardware is available."
 }

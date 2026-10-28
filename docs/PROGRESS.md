@@ -1063,3 +1063,21 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - No hardware was exercised. Next: prioritize available physical audio/output,
   receiver, Pi and USB SDR acceptance, and complete station publisher-rights
   review before adding or redistributing more feeds.
+
+## NPR member-station candidate review (2026-10-28)
+
+- Reviewed WBUR's official [Ways to Listen](https://www.wbur.org/ways-to-listen)
+  and [content licensing](https://www.wbur.org/inside/licensing-wbur-content)
+  pages. WBUR documents live listening on its own site, apps and NPR One; the
+  public page does not identify a stable direct stream endpoint.
+- WBUR states its audio and other materials are copyrighted and that licensing
+  approvals are rare and may be declined. No product-use grant was found, so
+  WBUR is not added to the bundled station catalog. This is a rights/endpoint
+  gate, not a codec or availability failure.
+- Keep the NPR News request open for a named member station, publisher-provided
+  direct endpoint, and written permission applicable to this client.
+- Corrected the Literature Matrix's stale network-security statement to match
+  the current exact-origin private HTTP exception and public-only DNS policy.
+- At review time PR #3 was open and mergeable at head `eabf106`. Actions run
+  `40769883867` ended `startup_failure` with zero jobs and no status checks or
+  logs; remote CI remains unverified.
