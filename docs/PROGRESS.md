@@ -3,6 +3,24 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Native output gain coverage (2026-10-28 23:01 UTC)
+
+- Extended the generic CPAL callback regression so all eleven active PCM
+  formats are checked at 100%, 50%, and 0% volume, with full-scale and
+  intermediate samples plus consumed-sample accounting. This guards mute and
+  attenuation parity across signed, unsigned and floating device outputs.
+- Focused test, both default/all-feature workspace suites, strict Clippy gates,
+  all-feature check and formatting passed. Windows GNU test binaries compiled
+  for default, SDRconnect and direct nRSP-native configurations; not executed.
+- Repeated the GUI label A/B/C fit comparison: at 295 px, full categories fit
+  24/25 while names-only and compact labels fit 25/25; at 340 px all fit.
+  Layout fit only, not listener preference.
+- Source commit `452f444` is pushed to open, mergeable PR #5. The previous
+  checkpoint's Actions run 255 failed at startup before creating jobs; the
+  current source head has no run/status observed yet.
+- Next: continue source-driven recovery coverage; physical audio/Pi/receiver
+  acceptance, distribution rights and healthy Actions/MSVC validation remain.
+
 ## Native output sample-format coverage (2026-10-28 22:55 UTC)
 
 - Native CPAL output now dispatches to render callbacks for all eleven sample
