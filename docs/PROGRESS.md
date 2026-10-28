@@ -1185,3 +1185,18 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   Compact `CLASS` saves 32 px; layout-fit evidence only.
 - PR #3 was open and mergeable at `96e07cc`; no Actions run or status was
   visible for that head. The automation memory records the exact current head.
+
+## Actions startup and scheduled-workflow activation audit (2026-10-28)
+
+- PR #3 is open and mergeable at `62e35f0`, but the latest run
+  `40772372085` ended `startup_failure` at `2026-10-28T21:29:32Z`. GitHub
+  reports zero jobs and no run log exists. Repository Actions are enabled and
+  the selected-action policy allows GitHub-owned and verified actions; no
+  actionable repo allowlist issue was found.
+- The new `station-validation.yml` does not exist on default branch `main` yet:
+  `gh run list --workflow station-validation.yml` returns 404 there. Its cron
+  cannot run until that workflow reaches the default branch. PR checks have
+  not passed, so the merge gate remains unmet; no merge was attempted.
+- The real CLI/report formatter and local synthetic tests remain validated.
+  Remote execution and artifact creation are not verified; continue local
+  checks and revisit after an eligible Actions run is available.

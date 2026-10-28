@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:29:06Z",
+  "updated_at_utc": "2026-10-28T21:31:01Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -111,7 +111,8 @@
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #3 open and mergeable at 96e07cc; local git merge-tree origin/main HEAD reports no conflicts"
+    "current_pr_state": "PR #3 open and mergeable at 62e35f0; local git merge-tree origin/main HEAD reports no conflicts",
+    "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -125,9 +126,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40770761885,
-    "observed_head": "2bd4bfd",
-    "conclusion": "Actions run 40770761885 for head 2bd4bfd ended startup_failure with zero jobs; diagnostics have no jobs, annotations, statuses, or logs. PR #3 remains open and mergeable; remote CI remains unverified."
+    "latest_observed_head_run": 40772372085,
+    "observed_head": "62e35f0",
+    "conclusion": "Actions run 40772372085 for head 62e35f0 ended startup_failure at 2026-10-28T21:29:32Z with zero jobs and no run log. Repository Actions are enabled; selected actions allow GitHub-owned and verified actions. No actionable code/allowlist cause found. PR #3 remains open and mergeable; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
