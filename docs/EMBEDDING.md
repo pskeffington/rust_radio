@@ -70,6 +70,12 @@ Hosts should protect query tokens and ask for an explicit Play action before
 starting audio. `StationValidationTask::start_input(target, direct)` checks the
 same transport silently without opening audio output.
 
+`NativeRadioEngine::output_failed()` remains available until the engine is
+dropped, including after its worker finishes. It is true for audio-device
+failures and false for network failures or canceled sessions. Hosts can use it
+to explain output loss and offer device selection followed by explicit Play;
+changing the selected output alone must not start playback.
+
 Compatibility imports in `rust-radio-audio::compat_controller` refer to the
 same core controller types. `rust-radio-core::SessionState` is the same playback
 state type, so source selection and output-recovery policy cannot drift from the

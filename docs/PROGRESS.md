@@ -3,6 +3,20 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: output failure reporting
+
+- Extracted worker-result handling so output-loss classification, host-visible
+  `output_failed()` state and the terminal session error are recorded together.
+- Added synthetic regression coverage: output failure sets the host flag and
+  preserves the detail; network failure does not set the output flag; canceled
+  output failure does not report a stale error. No physical device was opened.
+- Passed formatting, default workspace tests (148 passed, one ignored), default
+  strict Clippy, all-feature tests (197 passed, two ignored), all-feature strict
+  Clippy and all-feature workspace check. Apple Silicon GUI checks passed for
+  default, `nrsp-native` and `sdrconnect`.
+- Next output gate is device-loss/reconnect acceptance on physical Bluetooth or
+  USB audio, including selecting a replacement output and explicit retry.
+
 ## Current module pass: station-list label A/B
 
 - Re-ran the label comparison with the actual 14-point monospace button font

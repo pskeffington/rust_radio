@@ -359,17 +359,13 @@ impl NativeRadioEngine {
                         &selected_output,
                     ),
                 };
-                if let Err(error) = result {
-                    if !worker_cancelled.load(Ordering::Acquire) {
-                        if matches!(error, PlaybackFailure::Output(_)) {
-                            worker_output_failed.store(true, Ordering::Release);
-                        }
-                        worker_controller
-                            .lock()
-                            .expect("radio state mutex poisoned")
-                            .event(generation, PlaybackEvent::Error(error.message()));
-                    }
-                }
+                record_worker_result(
+                    result,
+                    generation,
+                    &worker_controller,
+                    &worker_cancelled,
+                    &worker_output_failed,
+                );
             })
             .map_err(|e| format!("Unable to start radio worker: {e}"))?;
         Ok(Self {
@@ -459,8 +455,9 @@ impl NativeRadioEngine {
         Some(self.native_control.as_ref()?.stats())
     }
 
-    /// An audio-device failure is never treated as transient network loss.
-    /// The HUD can offer an explicit output selection/retry.
+    /// True after an audio-device failure, including after worker completion.
+    /// It remains false for network errors and canceled sessions so a host can
+    /// offer output selection/retry only when changing devices could help.
     pub fn output_failed(&self) -> bool {
         self.output_failed.load(Ordering::Acquire)
     }
@@ -556,6 +553,28 @@ impl Drop for NativeRadioEngine {
     fn drop(&mut self) {
         self.stop();
     }
+}
+
+fn record_worker_result(
+    result: Result<(), PlaybackFailure>,
+    generation: u64,
+    controller: &Arc<Mutex<RadioController>>,
+    cancelled: &AtomicBool,
+    output_failed: &AtomicBool,
+) {
+    let Err(error) = result else {
+        return;
+    };
+    if cancelled.load(Ordering::Acquire) {
+        return;
+    }
+    if matches!(&error, PlaybackFailure::Output(_)) {
+        output_failed.store(true, Ordering::Release);
+    }
+    controller
+        .lock()
+        .expect("radio state mutex poisoned")
+        .event(generation, PlaybackEvent::Error(error.message()));
 }
 
 fn signal(controller: &Arc<Mutex<RadioController>>, generation: u64, event: PlaybackEvent) {
@@ -1136,6 +1155,67 @@ mod tests {
             PlaybackFailure::Permanent("unknown codec".into()).class(),
             FailureClass::Permanent
         );
+    }
+
+    #[test]
+    fn worker_reports_output_failures_to_hosts_but_not_network_errors_or_stop() {
+        let (controller, generation) = recovery_controller();
+        let output_failed = Arc::new(AtomicBool::new(false));
+        record_worker_result(
+            Err(PlaybackFailure::Output("Bluetooth output lost".into())),
+            generation,
+            &controller,
+            &AtomicBool::new(false),
+            &output_failed,
+        );
+        assert!(output_failed.load(Ordering::Acquire));
+        let failed_session = controller.lock().unwrap().state().clone();
+        assert_eq!(failed_session.state, PlaybackState::Failed);
+        assert_eq!(
+            failed_session.last_error.as_deref(),
+            Some("Bluetooth output lost")
+        );
+        let engine = NativeRadioEngine {
+            controller: Arc::clone(&controller),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed: Arc::clone(&output_failed),
+            worker: None,
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
+        };
+        assert!(engine.output_failed());
+
+        let (controller, generation) = recovery_controller();
+        let output_failed = AtomicBool::new(false);
+        record_worker_result(
+            Err(PlaybackFailure::Network("stream disconnected".into())),
+            generation,
+            &controller,
+            &AtomicBool::new(false),
+            &output_failed,
+        );
+        assert!(!output_failed.load(Ordering::Acquire));
+        assert_eq!(
+            controller.lock().unwrap().state().state,
+            PlaybackState::Failed
+        );
+
+        let (controller, generation) = recovery_controller();
+        let output_failed = AtomicBool::new(false);
+        record_worker_result(
+            Err(PlaybackFailure::Output("Bluetooth output lost".into())),
+            generation,
+            &controller,
+            &AtomicBool::new(true),
+            &output_failed,
+        );
+        assert!(!output_failed.load(Ordering::Acquire));
+        let cancelled_session = controller.lock().unwrap().state().clone();
+        assert_eq!(cancelled_session.state, PlaybackState::Connecting);
+        assert!(cancelled_session.last_error.is_none());
     }
 
     #[cfg(feature = "nrsp-native")]
