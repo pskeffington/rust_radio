@@ -26,7 +26,7 @@ provenance remains in the extraction notes; dated evidence is in
 | Area | Delivered | Remaining acceptance |
 | --- | --- | --- |
 | Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host; core exposes bounded typed feed-history parsing | Release/tag decision after CI and platform gates |
-| IP playback and station catalog | Native MP3/AAC, fifteen publisher-documented third-party-player presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Grow the catalog toward ~25 diverse stations with publisher guidance and direct endpoints; national NPR continuous-feed rights remain unestablished; live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported |
+| IP playback and station catalog | Native MP3/AAC, nineteen publisher-documented third-party-player presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Grow the catalog toward ~25 diverse stations with publisher guidance and direct endpoints; national NPR continuous-feed rights remain unestablished; live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported |
 | Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
 | Compact GUI | Optional 480×320 egui panel with phosphor skin, availability-driven IP/nSDR/USB setup buttons, passive input discovery, direct nRSP-ST and USB controls, asynchronous station checks, saved public/LAN streams, keyboard menus and layout/lifecycle coverage | Physical touch and Pi rendering; fresh real-receiver GUI audio |
 | nRSP-ST | Direct native handshake, activation, live frequency/mode/bandwidth and FM stereo/de-emphasis/filter controls, real stereo-lock reports, presets, Opus playback and owned session Stop; optional SDRconnect adapter | Native authenticated login, extended link interruption/reconnect, other demodulator/antenna field checks, physical Pi client and raw I/Q |
@@ -36,7 +36,7 @@ provenance remains in the extraction notes; dated evidence is in
 
 ## Next development priorities
 
-1. Expand the safe station catalog from 12 toward approximately 25 diverse
+1. Expand the safe station catalog from 19 toward approximately 25 diverse
    stations, with first-party direct endpoints and third-party radio-player
    guidance. SomaFM remains excluded pending written permission. WPR News is a
    named NPR-member news service; no national continuous NPR feed has been

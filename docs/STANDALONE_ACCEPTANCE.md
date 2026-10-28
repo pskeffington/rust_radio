@@ -42,6 +42,12 @@ and Classic, All Classical, WFMT and KFUO, bringing the directory to twelve.
 WRVO's documented NPR News, PRX Remix and BBC World Service player streams
 expanded it to fifteen; the first is NPR-member station programming, not a
 national continuous NPR feed.
+WFMU's main, Give the Drummer Radio, Rock'n'Soul and Sheena's Jungle Room MP3
+streams, each linked from its official third-party-player listings, expanded
+the current catalog to nineteen.
+A bounded live sweep at 2026-10-28 22:08 UTC decoded all nineteen entries in
+one attempt each. This is point-in-time decoder evidence only; no physical
+output or device acceptance follows from this source addition.
 Each publisher documents listener playback in third-party radio players or
 internet radios; this does not authorize redistribution or relay. Latest sweep
 results, including stations that did not decode, are recorded in dated progress

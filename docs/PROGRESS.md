@@ -3,6 +3,32 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Four WFMU feeds and catalog validation (2026-10-28 22:10 UTC)
+
+- Added WFMU Freeform, Give the Drummer Radio, Rock'n'Soul Radio and Sheena's
+  Jungle Room from the publisher's official 128 kbps player links. Inspected
+  each official PLS file and selected only its fixed HTTPS MP3 endpoint; the
+  legacy plaintext alternatives are not accepted. The allowlist binds every
+  channel ID to `stream0.wfmu.org` and its exact path.
+- The runtime and JSON catalog now contain nineteen documented feeds. A
+  bounded sweep at 2026-10-28 22:08:28 UTC decoded all nineteen in one attempt
+  each. All four WFMU feeds decoded stereo MP3 at 44.1 kHz. This is
+  point-in-time decoder evidence only.
+- Added a regression covering each approved WFMU host/path pair and rejecting
+  plaintext, an alternate hostname, a cross-channel path and a deceptive path.
+  The focused test and catalog mirror parity test passed.
+- Station label A/B/C at 295 px: full category 18/19; names-only 19/19;
+  compact category 19/19. At 340 px all variants fit 19/19. Compact category
+  saves 128 aggregate text pixels. This is layout fit, not listener preference.
+- All six Rust gates passed: format, default tests, strict default Clippy,
+  all-feature tests, strict all-feature Clippy and all-feature check. Headless
+  AArch64 Linux checks passed for core-only, SDRconnect and direct nRSP-native.
+  One manual native audio output test remains ignored; no hardware acceptance
+  was performed.
+- Highest priority: add six more diverse, publisher-documented feeds toward
+  the ~25 target; retain hardware acceptance and remote Actions startup as
+  separate gates.
+
 ## WRVO public-radio catalog addition (2026-10-28 22:04 UTC)
 
 - Added WRVO 1 NPR News, WRVO 2 PRX Remix and WRVO 3 BBC World Service. WRVO's

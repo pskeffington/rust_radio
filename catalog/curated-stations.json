@@ -234,6 +234,66 @@
       "rights_reviewed_date": "2026-10-28",
       "nominal_kbps": 0,
       "format": "MP3"
+    },
+    {
+      "id": "wfmu",
+      "name": "WFMU Freeform Radio",
+      "broadcaster": "WFMU",
+      "genre": "Freeform / independent",
+      "language": "en",
+      "country": "US",
+      "category": "MIXED",
+      "playlist_url": "https://stream0.wfmu.org/freeform-128k",
+      "publisher_reference_url": "https://wfmu.org/playlists/D5",
+      "third_party_player_support": true,
+      "rights_reviewed_date": "2026-10-28",
+      "nominal_kbps": 128,
+      "format": "MP3"
+    },
+    {
+      "id": "wfmu-drummer",
+      "name": "Give the Drummer Radio",
+      "broadcaster": "WFMU",
+      "genre": "Eclectic / global / specialty",
+      "language": "en",
+      "country": "US",
+      "category": "WORLD",
+      "playlist_url": "https://stream0.wfmu.org/drummer",
+      "publisher_reference_url": "https://wfmu.org/playlists/D5",
+      "third_party_player_support": true,
+      "rights_reviewed_date": "2026-10-28",
+      "nominal_kbps": 128,
+      "format": "MP3"
+    },
+    {
+      "id": "wfmu-rock-soul",
+      "name": "WFMU Rock'n'Soul Radio",
+      "broadcaster": "WFMU",
+      "genre": "Rock / soul / rhythm and blues",
+      "language": "en",
+      "country": "US",
+      "category": "ROCK",
+      "playlist_url": "https://stream0.wfmu.org/rocknsoul",
+      "publisher_reference_url": "https://wfmu.org/playlists/D5",
+      "third_party_player_support": true,
+      "rights_reviewed_date": "2026-10-28",
+      "nominal_kbps": 128,
+      "format": "MP3"
+    },
+    {
+      "id": "wfmu-sheena",
+      "name": "Sheena's Jungle Room",
+      "broadcaster": "WFMU",
+      "genre": "Vintage / tropical / global",
+      "language": "en",
+      "country": "US",
+      "category": "WORLD",
+      "playlist_url": "https://stream0.wfmu.org/sheena",
+      "publisher_reference_url": "https://wfmu.org/playlists/D5",
+      "third_party_player_support": true,
+      "rights_reviewed_date": "2026-10-28",
+      "nominal_kbps": 128,
+      "format": "MP3"
     }
   ]
 }

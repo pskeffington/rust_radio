@@ -98,6 +98,13 @@ impl ApprovedEndpoint {
             "wrvo-bbc" => "WRVOHD3.mp3",
             _ => "",
         };
+        let wfmu_path = match station.id {
+            "wfmu" => "freeform-128k",
+            "wfmu-drummer" => "drummer",
+            "wfmu-rock-soul" => "rocknsoul",
+            "wfmu-sheena" => "sheena",
+            _ => "",
+        };
         let allowed = if station.id == "skylab" {
             authority == "uksoutha.streaming.broadcast.radio:29690"
                 && path.starts_with("skylab-radio-limited")
@@ -127,6 +134,8 @@ impl ApprovedEndpoint {
             (host == "playerservices.streamtheworld.com"
                 && path == format!("api/livestream-redirect/{wrvo_path}"))
                 || (wrvo_live_node && path == wrvo_path)
+        } else if !wfmu_path.is_empty() {
+            host == "stream0.wfmu.org" && path == wfmu_path
         } else {
             false
         };
@@ -772,6 +781,29 @@ mod tests {
             "https://29320.live.streamtheworld.com/WRVOHD2.mp3",
         ] {
             assert!(ApprovedEndpoint::new("wrvo-news", unsafe_url).is_err());
+        }
+    }
+
+    #[test]
+    fn wfmu_player_streams_are_limited_to_exact_https_station_paths() {
+        for (station_id, path) in [
+            ("wfmu", "freeform-128k"),
+            ("wfmu-drummer", "drummer"),
+            ("wfmu-rock-soul", "rocknsoul"),
+            ("wfmu-sheena", "sheena"),
+        ] {
+            assert!(
+                ApprovedEndpoint::new(station_id, &format!("https://stream0.wfmu.org/{path}"))
+                    .is_ok()
+            );
+        }
+        for unsafe_url in [
+            "https://stream2.wfmu.org/freeform-128k",
+            "http://stream0.wfmu.org/freeform-128k",
+            "https://stream0.wfmu.org/drummer",
+            "https://stream0.wfmu.org/freeform-128k.evil",
+        ] {
+            assert!(ApprovedEndpoint::new("wfmu", unsafe_url).is_err());
         }
     }
 

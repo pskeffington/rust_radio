@@ -34,7 +34,7 @@ pub struct InternetStation {
 /// Curated streams whose publishers document use in third-party radio players.
 /// This guidance covers end-user playback only; it is not redistribution or
 /// relay permission. Stations lacking this evidence stay out of this directory.
-pub const CURATED_STATIONS: [InternetStation; 15] = [
+pub const CURATED_STATIONS: [InternetStation; 19] = [
     InternetStation {
         id: "skylab",
         name: "Skylab Radio (UK)",
@@ -263,6 +263,66 @@ pub const CURATED_STATIONS: [InternetStation; 15] = [
         nominal_kbps: 0,
         format: "MP3",
     },
+    InternetStation {
+        id: "wfmu",
+        name: "WFMU Freeform Radio",
+        broadcaster: "WFMU",
+        language: "en",
+        country: "US",
+        genre: "Freeform / independent",
+        category: "MIXED",
+        playlist_url: "https://stream0.wfmu.org/freeform-128k",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmu-drummer",
+        name: "Give the Drummer Radio",
+        broadcaster: "WFMU",
+        language: "en",
+        country: "US",
+        genre: "Eclectic / global / specialty",
+        category: "WORLD",
+        playlist_url: "https://stream0.wfmu.org/drummer",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmu-rock-soul",
+        name: "WFMU Rock'n'Soul Radio",
+        broadcaster: "WFMU",
+        language: "en",
+        country: "US",
+        genre: "Rock / soul / rhythm and blues",
+        category: "ROCK",
+        playlist_url: "https://stream0.wfmu.org/rocknsoul",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmu-sheena",
+        name: "Sheena's Jungle Room",
+        broadcaster: "WFMU",
+        language: "en",
+        country: "US",
+        genre: "Vintage / tropical / global",
+        category: "WORLD",
+        playlist_url: "https://stream0.wfmu.org/sheena",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
 ];
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RadioSource {
@@ -445,7 +505,7 @@ mod tests {
     }
     #[test]
     fn curated_urls_have_publisher_provenance() {
-        assert_eq!(curated_stations().len(), 15);
+        assert_eq!(curated_stations().len(), 19);
         for (id, endpoint) in [
             (
                 "wpr-news",

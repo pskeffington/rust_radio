@@ -38,9 +38,11 @@ the regression reported A 4/5, B 5/5 and C 5/5 at 295 pixels. With twelve
 publisher-supported stations, it reports A 11/12, B 12/12 and C 12/12 at 295
 pixels; all fit at 340 pixels. Shortening `CLASSICAL` to `CLASS` preserves the
 category cue and saves 128 aggregate text pixels across four classical
-stations. With the current fifteen stations, A fits 14/15 and B/C fit 15/15 at
-295 pixels; all fit at 340 pixels. These are layout fit measurements, not
-listener preference evidence.
+stations. With the current nineteen stations, full category labels fit 18/19;
+names-only and compact category labels fit 19/19 at 295 pixels. All three
+variants fit at 340 pixels. Compact categories save 128 aggregate text pixels
+versus full categories. These are layout fit measurements, not listener
+preference evidence.
 Native
 muted acceptance checks
 Receiving audio now against actual playback, including switching/failure
