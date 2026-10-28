@@ -783,6 +783,29 @@ mod tests {
     }
 
     #[test]
+    fn websocket_upgrade_obeys_connection_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = Endpoint(listener.local_addr().unwrap());
+        let server = thread::spawn(move || {
+            let (_stream, _) = listener.accept().unwrap();
+            // Accept TCP but never answer the HTTP WebSocket upgrade.
+            thread::sleep(Duration::from_millis(150));
+        });
+
+        let started = Instant::now();
+        assert!(matches!(
+            Client::connect_until(
+                endpoint,
+                &AtomicBool::new(false),
+                started + Duration::from_millis(50),
+            ),
+            Err(Error::Timeout)
+        ));
+        assert!(started.elapsed() < Duration::from_millis(500));
+        server.join().unwrap();
+    }
+
+    #[test]
     fn handshake_recovers_session_and_rejects_malformed_envelopes() {
         let mut session = Session::initial();
         let (kind, payload) = session.decode(&hello(false)).unwrap();
