@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T21:51:30Z",
+  "updated_at_utc": "2026-10-28T22:04:05Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "9eb4e32 (checkpoint 43a0763)",
+  "implementation_commit": "6f11777 (machine checkpoint commit follows)",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -65,31 +65,39 @@
     "All six required Rust workspace validation gates passed; the loopback tests passed after rerunning with local-socket access.",
     "Pushed validated branch codex/catalog-publisher-permissions with implementation 9eb4e32 and machine-checkpoint commit 43a0763.",
     "Opened PR #5, applied codex and codex-automation labels, attached it to the task, and verified GitHub reports mergeable=true.",
-    "PR #5 Actions run 40775321206 ended startup_failure before job creation; combined commit status is empty, so remote CI remains unverified."
+    "PR #5 Actions run 40775321206 ended startup_failure before job creation; combined commit status is empty, so remote CI remains unverified.",
+    "Expanded the publisher-documented runtime and JSON catalogs from 12 to 15 entries with WRVO 1 NPR News, WRVO 2 PRX Remix and WRVO 3 BBC World Service; the WRVO News stream is member-station programming, not a national NPR continuous feed.",
+    "Allowed StreamTheWorld redirects only for numeric live-node host labels and the exact WRVO stream path; rejected deceptive hosts and cross-stream paths in a regression test.",
+    "Fresh bounded live sweep at 2026-10-28T22:01:22Z decoded all 15 feeds in 15 attempts, one each.",
+    "Repeated station label A/B/C on 15 entries: at 295px full category 14/15, names-only 15/15, compact category 15/15; at 340px all 15/15; layout fit only.",
+    "All six required Rust validation gates passed after the WRVO addition; one native audio hardware test remains ignored.",
+    "Headless AArch64 Linux checks passed for core-only, SDRconnect and direct nRSP-native configurations.",
+    "PR #5 was open and mergeable before this current source increment; previous remote Actions run 40775465859 failed startup before jobs were created.",
+    "Committed WRVO catalog expansion and validation as 6f1177742a35243d49fade107c867dfebd61140f on codex/catalog-publisher-permissions."
   ],
   "validation": {
-    "fmt": "passed on rights-corrected source",
-    "workspace_tests": "passed; loopback fixtures required local-socket permission after sandbox denial",
-    "workspace_clippy_strict": "passed with -D warnings",
-    "all_features_tests": "passed; loopback fixtures required local-socket permission; native output hardware tests remain ignored",
-    "all_features_clippy_strict": "passed with -D warnings",
-    "all_features_check": "passed",
-    "live_catalog_decode": "5/5 decoded_audio in 5 attempts, one per station, at 2026-10-28T21:48Z; point-in-time codec evidence only",
+    "fmt": "passed on WRVO catalog expansion",
+    "workspace_tests": "passed after adding TALK category to allowed catalog metadata; one native GUI audio output test ignored; loopback tests included",
+    "workspace_clippy_strict": "passed with -D warnings after WRVO expansion",
+    "all_features_tests": "passed after WRVO expansion; one manual native audio output test ignored; loopback tests included",
+    "all_features_clippy_strict": "passed with -D warnings after WRVO expansion",
+    "all_features_check": "passed after WRVO expansion",
+    "live_catalog_decode": "15/15 decoded_audio in 15 attempts, one per station, at 2026-10-28T22:01:22Z; point-in-time codec evidence only",
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
     "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed: at 295px A full category 4/5, B names-only 5/5, C compact category 5/5; at 340px all 5/5; C saves 32px; layout fit only",
+    "repeatable_layout_ab": "passed: at 295px A full category 14/15, B names-only 15/15, C compact category 15/15; at 340px all 15/15; layout fit only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "passed Ruby YAML parser on current station-validation.yml; cron cadence 17 */6 * * * matches the six-hour catalog freshness TTL",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
-    "latest_code_head_ci": "PR #5 head 43a0763 has no commit statuses; Actions run 40775321206 startup_failure before jobs, remote CI unverified",
+    "latest_code_head_ci": "PR #5 previous head 506aae8 has startup_failure run 40775465859 before jobs; current source increment not yet committed or pushed; remote CI unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
-    "arm64_headless_check": "on current head 3b57855, cargo check passed for core-only, sdrconnect and nrsp-native with --no-default-features on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
+    "arm64_headless_check": "passed on current source for core-only, sdrconnect and nrsp-native; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
@@ -124,33 +132,34 @@
     "current_pr_state": "PR #3 remains open at 1642027; local history has no conflict on preceding docs-only checkpoint 52be452; current GitHub mergeability is being recomputed after push",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
     "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
-    "catalog_mirror_parity": "passed; CLI regression validates ordered runtime/JSON station metadata and player-rights policy fields"
+    "catalog_mirror_parity": "passed; CLI regression validates ordered runtime/JSON station metadata and player-rights policy fields",
+    "wrvo_streamtheworld_allowlist": "passed; numeric live-node host labels and exact per-stream path only; deceptive hostname and cross-stream path rejected"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
     "variant_b": "station name only",
     "variant_c": "station name plus compact category (CLASSICAL becomes CLASS)",
-    "at_295px": "A 4/5; B 5/5; C 5/5 labels fit on the current five-station directory",
-    "at_340px": "A 5/5; B 5/5; C 5/5",
-    "variant_c_text_width_savings_vs_a": 32,
+    "at_295px": "A 14/15; B 15/15; C 15/15 labels fit on the current fifteen-station directory",
+    "at_340px": "A 15/15; B 15/15; C 15/15",
+    "variant_c_text_width_savings_vs_a": 128,
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
-    "interpretation": "compact-layout measurement on the current five-station directory, not listener preference"
+    "interpretation": "compact-layout measurement on the current fifteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40775321206,
-    "latest_pr_head": "43a07636ddda2fc774ad700103bfb7686f10dc9e",
+    "latest_pr_run": 40775465859,
+    "latest_pr_head": "506aae8b3923c10c66cafdbe7b103e7a3d955b44",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "GitHub Actions failed before job creation; no jobs or logs were returned. Local required workspace gates passed; remote CI remains unverified."
+    "details": "Previous GitHub Actions run failed before job creation; current catalog increment is validated locally but not yet pushed. Remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
     "Raspberry Pi native audio, display and touch acceptance",
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution",
-    "Expand the five-station safe catalog toward the approximately 25-station target using documented, authorized third-party player sources",
-    "NPR News inclusion requires a named broadcaster stream and applicable rights evidence"
+    "Expand the fifteen-station safe catalog toward the approximately 25-station target using documented third-party player sources",
+    "National continuous NPR feed inclusion requires a named endpoint and applicable rights evidence; WRVO 1 supplies NPR member-station news programming"
   ],
-  "next_priority": "Research, review and live-validate additional publisher-supported station endpoints; retain rights-based exclusions and the approximately 25-station target, then continue physical output, Pi and receiver acceptance when hardware is available."
+  "next_priority": "Commit and push the validated 15-station WRVO expansion to PR #5, monitor remote CI, then continue sourcing publisher-documented feeds toward approximately 25 while preserving physical hardware acceptance gates."
 }
