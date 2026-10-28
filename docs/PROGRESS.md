@@ -32,7 +32,8 @@ Updated 2026-10-28. Active priorities and ownership are in the
 
 - Follow-up UI polish: widened the station popup row cap to 340 pixels and
   corrected the A/B test to measure egui's monospace font. The focused regression
-  passes with the expected 24/25, 25/25, and 25/25 fit counts. Formatting,
+  measures 24/25 category rows at 295 pixels and 25/25 in the other three
+  label/width combinations. Formatting,
   default workspace tests (147 passed, one ignored), all-feature tests (196
   passed, two ignored), both strict Clippy configurations, and the all-feature
   check passed. The default, `nrsp-native` and `sdrconnect` Apple Silicon GUI

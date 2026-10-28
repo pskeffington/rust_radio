@@ -29,10 +29,11 @@ Construction, embedding, station storage and the playback engine are unchanged.
 UI tests cover each playback state, stale validation during Playing, absence of
 decoder diagnostics on the listening surface, volume restoration and long error
 messages at 480×320. The station popup rows use up to 340 pixels of available
-width. A measured 14-point monospace label A/B found category-suffixed labels
-fit 24/25 stations at 295 pixels and 25/25 at 340 pixels; station names alone
-fit 25/25 at 295 pixels. The wider category-suffixed rows are kept for their
-scan cue without clipping. Native muted acceptance checks
+width. A measured 14-point monospace label A/B with 20 pixels total horizontal
+button padding found category-suffixed labels fit 24/25 stations and names alone
+fit 25/25 at 295 pixels; both variants fit 25/25 at 340 pixels. The wider
+category-suffixed rows are kept for their scan cue without clipping. Native
+muted acceptance checks
 Receiving audio now against actual playback, including switching/failure
 responsiveness. Physical touch and Pi rendering still need acceptance.
 
