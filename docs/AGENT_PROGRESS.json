@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T22:17:14Z",
+  "updated_at_utc": "2026-10-28T22:18:20Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "7b62f76062504549d7380d6911291cdab0ffd25a (catalog increment; local gates passed)",
@@ -169,11 +169,11 @@
     "interpretation": "compact-layout measurement on the current nineteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40778781999,
-    "latest_pr_head": "7b62f76062504549d7380d6911291cdab0ffd25a",
+    "latest_pr_run": 40778857320,
+    "latest_pr_head": "78ac1aaa4b098ee28a8aada35a1dd7f7541aa9e0",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "GitHub Actions run 40778781999 for the 25-station head failed at startup before job creation; commit status is empty. All required local gates passed. Remote CI remains unverified."
+    "details": "Latest observed GitHub Actions run (237) for prior head 78ac1aa failed at startup before job creation; commit status and diagnostics are empty. Required local gates passed. Remote CI for any later checkpoint head must be checked separately."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
