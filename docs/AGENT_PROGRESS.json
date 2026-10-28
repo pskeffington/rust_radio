@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:08:49Z",
+  "updated_at_utc": "2026-10-28T21:11:14Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "bce23e1",
@@ -62,7 +62,7 @@
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed 2026-10-28: at 295px full category 24/25, names-only and compact 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout-fit evidence only",
+    "repeatable_layout_ab": "passed 2026-10-28: at 295px full category 24/25, names-only and compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout-fit evidence only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
@@ -70,7 +70,7 @@
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed after private-origin restrictions: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures had socket permission",
     "latest_code_head_ci": "Implementation source 882e9c0 has empty combined status and no associated PR workflow run visible; previous docs head fe8ae3c Actions run 40763293734 failed at startup before jobs were created",
-    "live_catalog_revalidation": "2026-10-28T20:46:29Z bounded validator run decoded 25/25 curated stations in 25 attempts through the checked-address resolver; point-in-time codec evidence only",
+    "live_catalog_revalidation": "2026-10-28T21:10:22Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; point-in-time codec evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
@@ -110,9 +110,9 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40767806650,
-    "observed_head": "d38e077",
-    "conclusion": "PR workflow run 40767806650 ended startup_failure with zero jobs on d38e077; no logs or status checks expose a code-level failure. Remote CI remains unverified."
+    "latest_observed_head_run": 40769502404,
+    "observed_head": "b63c388",
+    "conclusion": "Actions run 40769502404 for head b63c388 ended startup_failure with zero jobs. Combined commit status is empty; no job logs exist. GitHub reports PR #3 mergeable and local merge-tree found no conflict; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -120,5 +120,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Continue physical audio/output, receiver, Raspberry Pi, USB SDR and publisher-rights acceptance. Update Rust-Boy's dependency pin only after PR acceptance; investigate remote Actions startup failures only if actionable diagnostics appear."
+  "next_priority": "Run physical audio/output, receiver, Raspberry Pi, and USB SDR acceptance when hardware is available; complete broadcaster redistribution-rights review before adding streams; investigate Actions startup failure only if actionable repository-level diagnostics appear."
 }

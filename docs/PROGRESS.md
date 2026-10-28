@@ -1046,3 +1046,20 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   exercised. Next:
   pursue physical output/receiver/Pi acceptance and publisher rights review;
   monitor remote CI only if a run or diagnostic appears.
+
+## Current catalog and PR check (2026-10-28)
+
+- Ran `cargo run --quiet --locked -p rust-radio-cli -- validate-all --json`
+  at 2026-10-28 21:10 UTC through the checked-address resolver. All 25 curated
+  streams decoded supported audio in one attempt each (`decoded_audio`). This
+  is point-in-time codec evidence, not audible playback or permission to bundle
+  or redistribute the stream.
+- Repeated the station-label A/B/C regression: at 295 px, full category fits
+  24/25 labels; names-only and compact category fit 25/25. At 340 px all
+  variants fit 25/25. Layout-fit evidence only, not listener preference.
+- PR #3 remains open and mergeable with no reviews. Current head `b63c388`
+  Actions run `40769502404` failed at startup with zero jobs; combined status is
+  empty and no job logs exist. Remote CI remains unverified.
+- No hardware was exercised. Next: prioritize available physical audio/output,
+  receiver, Pi and USB SDR acceptance, and complete station publisher-rights
+  review before adding or redistributing more feeds.
