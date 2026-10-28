@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T19:30:30Z",
+  "updated_at_utc": "2026-10-28T19:31:32Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "df6a73d",
@@ -42,7 +42,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "df6a73d; callback-driven status reconciliation across IP, direct nRSP-native, SDRconnect and Soapy playback",
     "latest_full_gate_run": "all six required gates passed on implementation commit df6a73d; loopback fixtures required local socket permission; native audio manual test remains ignored",
-    "current_head_ci": "head 94f0daa has empty combined status; workflow run 40753639896 failed during startup before creating jobs",
+    "latest_code_head_ci": "PR head 76e7563 (implementation df6a73d) had empty combined status; Actions run 40754985187 failed at startup with zero jobs",
     "live_catalog_revalidation": "25/25 decoded at decoded_audio in 25 attempts on 2026-10-28; point-in-time evidence only",
     "arm64_headless_check": "cargo check -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on head 66f9efd; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "category+name 24/25 vs names-only 25/25 at 295px; both 25/25 at 340px; 1776px text-width savings; fit metric only",
@@ -57,8 +57,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40753639896,
-    "conclusion": "documentation head 84c4d51 had empty combined status; Actions run 40753909984 failed at startup and returned zero jobs; df6a73d awaits push/check"
+    "latest_observed_head_run": 40754985187,
+    "conclusion": "PR head 76e7563 (implementation df6a73d) had empty combined status; Actions run 40754985187 failed at startup and created zero jobs; no job-step failure is evidenced"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
