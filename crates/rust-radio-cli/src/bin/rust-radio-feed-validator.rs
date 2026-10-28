@@ -880,6 +880,41 @@ mod tests {
     }
 
     #[test]
+    fn shared_publisher_outage_does_not_blacklist_individual_stations() {
+        let path = temporary_report("publisher-outage");
+        assert_eq!(good_sweep(&path), 25);
+        let fresh = sweep_with(&path, Duration::ZERO, Duration::ZERO, |id| {
+            if station_by_id(id)
+                .unwrap()
+                .publisher_reference_url
+                .starts_with("https://somafm.com/")
+            {
+                Err("publisher CDN temporarily unreachable".into())
+            } else {
+                Ok(decoded(id, SystemTime::now()))
+            }
+        })
+        .unwrap();
+        assert_eq!(fresh, 3);
+        let report = read_snapshot(&path).unwrap();
+        assert_eq!(report["network_incident_suspected"], false);
+        assert_eq!(report["publisher_incidents_suspected"][0], "somafm");
+        let now = unix_seconds(SystemTime::now()).unwrap();
+        assert_eq!(eligible_count(&report, now, false), 25);
+        for entry in report["stations"].as_array().unwrap() {
+            if entry["publisher_reference_url"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://somafm.com/")
+            {
+                assert_eq!(entry["consecutive_failed_sweeps"], 0);
+                assert_eq!(current_health(entry, now), "degraded");
+            }
+        }
+        cleanup(&path);
+    }
+
+    #[test]
     fn corrupted_primary_restores_last_good_from_completed_backup() {
         let path = temporary_report("backup");
         assert_eq!(good_sweep(&path), 25);
