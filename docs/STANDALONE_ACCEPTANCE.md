@@ -56,6 +56,11 @@ results, including stations that did not decode, are recorded in dated progress
 notes. Decoder evidence is point-in-time only. Physical output and hardware
 acceptance remain separate.
 
+On 2026-10-28 at 22:43 UTC, a fresh bounded `validate-all --json` run decoded
+all 25 catalog entries in 25 total attempts. This confirms point-in-time decode
+health only; it does not verify audible output, ongoing availability or stream
+redistribution rights.
+
 
 ## Reliability pass: manual output and session control
 

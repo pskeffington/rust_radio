@@ -3,6 +3,19 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Live catalog and label comparison recheck (2026-10-28 22:43 UTC)
+
+- A fresh bounded `validate-all --json` run decoded all 25 catalog streams
+  in 25 total attempts. This is point-in-time codec evidence, not audible
+  playback or permission to redistribute or relay the streams.
+- Repeated the station-label fit comparison on all 25 entries. At 295 px,
+  full-category labels fit 24/25 while names-only and compact labels fit
+  25/25; all variants fit at 340 px. The compact variant preserves a short
+  category cue and saves 192 text pixels versus full category labels. This is
+  a rendered-layout measurement, not listener preference evidence.
+- Next: retain this freshness evidence as historical only; complete physical
+  audio/output, Pi, receiver/USB and publisher-rights acceptance separately.
+
 ## Bounded interactive CLI input (2026-10-28 22:42 UTC)
 
 - Interactive `listen` previously used `stdin.lines()` and an unbounded channel;
