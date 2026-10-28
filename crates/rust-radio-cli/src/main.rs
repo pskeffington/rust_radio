@@ -673,6 +673,23 @@ mod tests {
             serde_json::from_str(include_str!("../../../catalog/curated-stations.json"))
                 .expect("curated station JSON must parse");
         assert_eq!(mirror["schema_version"].as_u64(), Some(1));
+        assert_eq!(mirror["policy"]["freshness_ttl_hours"].as_u64(), Some(6));
+        assert_eq!(
+            mirror["policy"]["required_validation"].as_str(),
+            Some("decoded_audio")
+        );
+        assert_eq!(
+            mirror["policy"]["validation_state"].as_str(),
+            Some("unverified_until_runtime_probe")
+        );
+        assert_eq!(
+            mirror["policy"]["endpoint_policy"].as_str(),
+            Some("publisher_directed")
+        );
+        assert_eq!(
+            mirror["policy"]["redistribution"].as_str(),
+            Some("not_authorized")
+        );
         let stations = mirror["stations"]
             .as_array()
             .expect("catalog must contain a station array");
