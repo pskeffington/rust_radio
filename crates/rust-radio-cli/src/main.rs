@@ -436,6 +436,38 @@ mod tests {
     }
 
     #[test]
+    fn json_catalog_mirrors_runtime_station_metadata_in_order() {
+        let mirror: serde_json::Value =
+            serde_json::from_str(include_str!("../../../catalog/curated-stations.json"))
+                .expect("curated station JSON must parse");
+        assert_eq!(mirror["schema_version"].as_u64(), Some(1));
+        let stations = mirror["stations"]
+            .as_array()
+            .expect("catalog must contain a station array");
+        let runtime = curated_stations();
+        assert_eq!(stations.len(), runtime.len());
+        for (json, station) in stations.iter().zip(runtime) {
+            assert_eq!(json["id"].as_str(), Some(station.id));
+            assert_eq!(json["name"].as_str(), Some(station.name));
+            assert_eq!(json["broadcaster"].as_str(), Some(station.broadcaster));
+            assert_eq!(json["genre"].as_str(), Some(station.genre));
+            assert_eq!(json["language"].as_str(), Some(station.language));
+            assert_eq!(json["country"].as_str(), Some(station.country));
+            assert_eq!(json["category"].as_str(), Some(station.category));
+            assert_eq!(json["playlist_url"].as_str(), Some(station.playlist_url));
+            assert_eq!(
+                json["publisher_reference_url"].as_str(),
+                Some(station.publisher_reference_url)
+            );
+            assert_eq!(
+                json["nominal_kbps"].as_u64(),
+                Some(u64::from(station.nominal_kbps))
+            );
+            assert_eq!(json["format"].as_str(), Some(station.format));
+        }
+    }
+
+    #[test]
     fn invalid_validation_requests_fail_without_network_or_audio() {
         for args in [
             vec!["validate"],

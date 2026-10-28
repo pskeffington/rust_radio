@@ -1,6 +1,6 @@
 # Curated radio directory and feed health
 
-The **authoritative runtime directory** is `crates/rust-radio-core/src/directory.rs`. `catalog/curated-stations.json` is a machine-readable mirror for external tools and indexing; regenerate it when the Rust directory changes. The two lists must have identical ordered IDs, URLs, genres, and categories.
+The **authoritative runtime directory** is `crates/rust-radio-core/src/directory.rs`. `catalog/curated-stations.json` is a machine-readable mirror for external tools and indexing; regenerate it when the Rust directory changes. The two lists must have identical ordered IDs, names, broadcaster, genre, language, country, category, stream URLs, publisher references, codec hints and nominal bitrates. A CLI regression test enforces this parity.
 
 ## Operational rules
 

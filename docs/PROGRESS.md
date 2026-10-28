@@ -3,6 +3,18 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: catalog mirror parity
+
+- The metadata implementation exposed a stale `catalog/curated-stations.json`
+  mirror. Added broadcaster, language and country fields to all 25 JSON records
+  and added a CLI test comparing every mirrored metadata field and station order
+  against the runtime Rust catalog.
+- Updated `CURATED_FEED_POLICY.md` with the full parity contract. This prevents
+  external tools from seeing older metadata than the embedded runtime.
+- The parity test and all requested gates pass: format, default/all-feature
+  workspace tests, both strict Clippy configurations, and all-feature check.
+  Loopback HTTP fixtures passed with local-network permission.
+
 ## Current module pass: catalog metadata and NPR research
 
 - Added machine-readable broadcaster, ISO 639-1 language, and ISO 3166-1
