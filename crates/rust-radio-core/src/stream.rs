@@ -89,13 +89,14 @@ impl ApprovedEndpoint {
             .strip_prefix("livestreaming-node-")
             .and_then(|host| host.strip_suffix(".srg-ssr.ch"))
             .is_some_and(|node| !node.is_empty() && node.bytes().all(|byte| byte.is_ascii_digit()));
-        let wrvo_live_node = host
+        let streamtheworld_node = host
             .strip_suffix(".live.streamtheworld.com")
             .is_some_and(|node| !node.is_empty() && node.bytes().all(|byte| byte.is_ascii_digit()));
-        let wrvo_path = match station.id {
+        let streamtheworld_file = match station.id {
             "wrvo-news" => "WRVOFM.mp3",
             "wrvo-prx" => "WRVOHD2.mp3",
             "wrvo-bbc" => "WRVOHD3.mp3",
+            "kusc" => "KUSCMP128.mp3",
             _ => "",
         };
         let wfmu_path = match station.id {
@@ -103,6 +104,12 @@ impl ApprovedEndpoint {
             "wfmu-drummer" => "drummer",
             "wfmu-rock-soul" => "rocknsoul",
             "wfmu-sheena" => "sheena",
+            _ => "",
+        };
+        let kuaf_path = match station.id {
+            "kuaf" => "kuaf1",
+            "kuaf-classical" => "kuaf2",
+            "kuaf-jazz" => "kuaf3",
             _ => "",
         };
         let allowed = if station.id == "skylab" {
@@ -130,12 +137,18 @@ impl ApprovedEndpoint {
             host == "wfmt-live.streamguys1.com" && path == "wfmt256-aac"
         } else if station.id == "kfuo" {
             host == "kfuo.streamguys1.com" && path == "kfuo"
-        } else if !wrvo_path.is_empty() {
+        } else if !streamtheworld_file.is_empty() {
             (host == "playerservices.streamtheworld.com"
-                && path == format!("api/livestream-redirect/{wrvo_path}"))
-                || (wrvo_live_node && path == wrvo_path)
+                && path == format!("api/livestream-redirect/{streamtheworld_file}"))
+                || (streamtheworld_node && path == streamtheworld_file)
         } else if !wfmu_path.is_empty() {
             host == "stream0.wfmu.org" && path == wfmu_path
+        } else if station.id == "kunc" {
+            host == "ais-sa1.streamon.fm" && path == "7890_96k.mp3"
+        } else if station.id == "colorado-sound" {
+            host == "ais-sa1.streamon.fm" && path == "7891_96k.mp3"
+        } else if !kuaf_path.is_empty() {
+            authority == "war.streamguys1.com:7031" && path == kuaf_path
         } else {
             false
         };
@@ -756,11 +769,12 @@ mod tests {
     }
 
     #[test]
-    fn wrvo_streamtheworld_redirects_are_limited_to_numeric_shards_and_exact_station_paths() {
+    fn streamtheworld_redirects_are_limited_to_numeric_shards_and_exact_station_paths() {
         for (station_id, file) in [
             ("wrvo-news", "WRVOFM.mp3"),
             ("wrvo-prx", "WRVOHD2.mp3"),
             ("wrvo-bbc", "WRVOHD3.mp3"),
+            ("kusc", "KUSCMP128.mp3"),
         ] {
             assert!(ApprovedEndpoint::new(
                 station_id,
@@ -782,6 +796,15 @@ mod tests {
         ] {
             assert!(ApprovedEndpoint::new("wrvo-news", unsafe_url).is_err());
         }
+        assert!(ApprovedEndpoint::new(
+            "kusc",
+            "https://19273.live.streamtheworld.com/KUSCMP128.mp3"
+        )
+        .is_ok());
+        assert!(
+            ApprovedEndpoint::new("kusc", "https://19273.live.streamtheworld.com/WRVOFM.mp3")
+                .is_err()
+        );
     }
 
     #[test]
@@ -804,6 +827,28 @@ mod tests {
             "https://stream0.wfmu.org/freeform-128k.evil",
         ] {
             assert!(ApprovedEndpoint::new("wfmu", unsafe_url).is_err());
+        }
+    }
+
+    #[test]
+    fn kunc_colorado_sound_and_kuaf_streams_are_pinned_to_exact_https_paths() {
+        for (station_id, url) in [
+            ("kunc", "https://ais-sa1.streamon.fm/7890_96k.mp3"),
+            ("colorado-sound", "https://ais-sa1.streamon.fm/7891_96k.mp3"),
+            ("kuaf", "https://war.streamguys1.com:7031/kuaf1"),
+            ("kuaf-classical", "https://war.streamguys1.com:7031/kuaf2"),
+            ("kuaf-jazz", "https://war.streamguys1.com:7031/kuaf3"),
+        ] {
+            assert!(ApprovedEndpoint::new(station_id, url).is_ok());
+        }
+        for (station_id, url) in [
+            ("kunc", "https://ais-sa1.streamon.fm/7891_96k.mp3"),
+            ("colorado-sound", "https://ais-sa1.streamon.fm/7890_96k.mp3"),
+            ("kuaf", "https://war.streamguys1.com:7031/kuaf2"),
+            ("kuaf-jazz", "https://war.streamguys1.com:7030/kuaf3"),
+            ("kuaf-classical", "http://war.streamguys1.com:7031/kuaf2"),
+        ] {
+            assert!(ApprovedEndpoint::new(station_id, url).is_err());
         }
     }
 

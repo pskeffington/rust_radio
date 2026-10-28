@@ -41,8 +41,7 @@ category cue and saves 128 aggregate text pixels across four classical
 stations. With the current nineteen stations, full category labels fit 18/19;
 names-only and compact category labels fit 19/19 at 295 pixels. All three
 variants fit at 340 pixels. Compact categories save 128 aggregate text pixels
-versus full categories. These are layout fit measurements, not listener
-preference evidence.
+versus full categories. These are layout fit measurements, not listener preference evidence. With the current twenty-five stations, full category labels fit 24/25; names-only and compact category labels fit 25/25 at 295 pixels, and all variants fit 25/25 at 340 pixels. Compact categories save 192 aggregate text pixels versus full categories; `wcrb` is the sole full-category overflow. This remains a layout measurement, not a preference test.
 Native
 muted acceptance checks
 Receiving audio now against actual playback, including switching/failure

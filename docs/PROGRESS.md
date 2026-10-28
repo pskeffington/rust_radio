@@ -3,6 +3,15 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Twenty-five publisher-documented feeds (2026-10-28 22:14 UTC)
+
+- Added Classical California/KUSC, KUNC News, The Colorado Sound, and KUAF main, Classical and Jazz services. Publisher listening pages explicitly support third-party radio players or internet radios and provide the direct endpoints. Runtime allowlists pin exact HTTPS host/path pairs for StreamTheWorld, StreamOn and StreamGuys; cross-feed paths and unsafe schemes are rejected. These publisher playback listings do not grant redistribution or relay rights.
+- The runtime directory and JSON mirror now contain 25 entries. A bounded live sweep at 2026-10-28 22:14:21 UTC decoded 25/25 streams, one attempt each. This is point-in-time decoder evidence, not physical output acceptance.
+- Focused exact-endpoint boundary tests passed. Catalog mirror parity and JSON parsing passed.
+- Station label A/B/C at 295 px: full category 24/25; names-only 25/25; compact category 25/25. At 340 px all variants fit 25/25. Compact category saves 192 aggregate text pixels; `wcrb` is the full-category overflow. This evaluates layout fit, not listener preference.
+- Full workspace tests, formatting, strict default and all-feature Clippy, all-feature tests/check, and headless AArch64 Linux checks (core-only, SDRconnect, nRSP-native) passed. The manual native-audio test remains ignored; no physical audio, receiver or Pi acceptance was performed.
+- Highest priority: preserve the source/rights evidence and complete output/device acceptance; national continuous NPR feed rights and remote Actions startup remain unresolved.
+
 ## Four WFMU feeds and catalog validation (2026-10-28 22:10 UTC)
 
 - Added WFMU Freeform, Give the Drummer Radio, Rock'n'Soul Radio and Sheena's

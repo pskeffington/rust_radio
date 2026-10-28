@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:11:39Z",
+  "updated_at_utc": "2026-10-28T22:14:21Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "db4abd7202fad3d1c95762270fe3089489944b96 (checkpoint 98969b2b62d62c45ea40e1640b32fea915c17649; CI-state checkpoint follows)",
+  "implementation_commit": "pending; 25-station catalog increment validated locally",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -87,7 +87,12 @@
     "Committed the WFMU implementation and documentation as db4abd7202fad3d1c95762270fe3089489944b96; branch is codex/catalog-publisher-permissions.",
     "Pushed WFMU source commit db4abd7 and checkpoint 98969b2 to PR #5; PR remains open and mergeable.",
     "Updated the PR description with the 19-feed catalog, WFMU endpoints, live sweep, A/B/C results and test gates.",
-    "Actions run 40778021660 for pushed head 98969b2 ended startup_failure before job creation; combined status is empty, remote CI remains unverified."
+    "Actions run 40778021660 for pushed head 98969b2 ended startup_failure before job creation; combined status is empty, remote CI remains unverified.",
+    "added Classical California/KUSC, KUNC News, The Colorado Sound, and KUAF main/classical/jazz publisher-listed feeds with exact HTTPS endpoint allowlists",
+    "expanded runtime and JSON station catalog from 19 to 25 and recorded publisher provenance and review dates",
+    "bounded live decode sweep: 25/25 stations decoded, one attempt each, at 2026-10-28T22:14:21Z",
+    "station selector A/B/C fit measurement at 295px and 340px: 24/25 full category, 25/25 names-only and compact; compact saves 192 aggregate text pixels",
+    "full workspace tests, format, default/all-feature strict Clippy, all-feature tests/check, and three AArch64 headless feature checks passed"
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -96,7 +101,7 @@
     "all_features_tests": "passed on 19-station WFMU expansion; loopback fixtures included; one manual native output test ignored",
     "all_features_clippy_strict": "passed with -D warnings on 19-station WFMU expansion",
     "all_features_check": "passed on 19-station WFMU expansion",
-    "live_catalog_decode": "19/19 decoded_audio in 19 attempts, one per station, at 2026-10-28T22:08:28Z; point-in-time codec evidence only",
+    "live_catalog_decode": "passed 25/25 decoded_audio, one attempt each; checked_at 2026-10-28T22:14:21Z; point-in-time network evidence only",
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
     "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
@@ -108,11 +113,11 @@
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
+    "latest_full_gate_run": "passed: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features",
     "latest_code_head_ci": "PR #5 head 98969b2 has Actions run 40778021660 startup_failure before job creation; combined status empty, remote CI unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
-    "arm64_headless_check": "passed on current source for core-only, sdrconnect and nrsp-native; compile evidence only, not Pi runtime acceptance",
-    "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
+    "arm64_headless_check": "passed core-only, sdrconnect and nrsp-native: cargo check --locked -p rust-radio --no-default-features [feature flags] --target aarch64-unknown-linux-gnu; compile evidence only",
+    "layout_ab_recheck": "A 24/25, B 25/25, C 25/25 at 295px; all 25/25 at 340px; C saves 192 text pixels vs A; wcrb is A overflow; fit measurement, not preference evidence",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
@@ -146,9 +151,11 @@
     "current_pr_state": "PR #3 remains open at 1642027; local history has no conflict on preceding docs-only checkpoint 52be452; current GitHub mergeability is being recomputed after push",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
     "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
-    "catalog_mirror_parity": "passed; CLI regression validates ordered runtime/JSON station metadata and player-rights policy fields",
+    "catalog_mirror_parity": "passed; ordered runtime/JSON station metadata and third-party-player policy parity including all 25 records",
     "wrvo_streamtheworld_allowlist": "passed; numeric live-node host labels and exact per-stream path only; deceptive hostname and cross-stream path rejected",
-    "wfmu_exact_stream_allowlist": "passed; four publisher-listed fixed HTTPS stream paths; plaintext, wrong host and cross-channel paths rejected"
+    "wfmu_exact_stream_allowlist": "passed; four publisher-listed fixed HTTPS stream paths; plaintext, wrong host and cross-channel paths rejected",
+    "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
+    "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -162,19 +169,19 @@
     "interpretation": "compact-layout measurement on the current nineteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40778021660,
-    "latest_pr_head": "98969b2b62d62c45ea40e1640b32fea915c17649",
-    "latest_pr_conclusion": "startup_failure",
-    "latest_pr_jobs": 0,
-    "details": "Latest GitHub Actions run failed before job creation; combined commit status is empty. Required local gates passed; remote CI remains unverified."
+    "latest_pr_run": "pending post-push lookup",
+    "latest_pr_head": "pending post-push lookup",
+    "latest_pr_conclusion": "pending post-push lookup",
+    "latest_pr_jobs": "pending post-push lookup",
+    "details": "Local gates passed for the 25-station increment. Existing latest Actions run failed before job creation; check latest PR head after push. Remote CI is not considered passed."
   },
   "remaining_gates": [
-    "Physical Bluetooth and USB output loss/recovery",
+    "Physical Bluetooth and USB output loss/recovery acceptance",
     "Raspberry Pi native audio, display and touch acceptance",
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution",
-    "Expand the nineteen-station safe catalog by six more diverse feeds toward the approximately 25-station target using documented third-party player sources",
-    "National continuous NPR feed inclusion requires a named endpoint and applicable rights evidence; WRVO 1 supplies NPR member-station news programming"
+    "National continuous NPR feed inclusion requires a named endpoint and applicable rights evidence; WRVO 1 supplies NPR member-station news programming",
+    "GitHub Actions runner startup reliability; the latest historical run failed before job creation"
   ],
-  "next_priority": "Continue sourcing six diverse, publisher-documented feeds toward the approximately 25-station target; monitor recurring Actions startup failures and complete physical output, Pi and receiver acceptance when hardware is available."
+  "next_priority": "Publish and monitor the validated 25-feed increment; then complete physical output/Pi/receiver acceptance and resolve publisher distribution permissions and GitHub Actions startup failures."
 }

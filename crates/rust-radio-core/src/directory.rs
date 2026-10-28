@@ -34,7 +34,7 @@ pub struct InternetStation {
 /// Curated streams whose publishers document use in third-party radio players.
 /// This guidance covers end-user playback only; it is not redistribution or
 /// relay permission. Stations lacking this evidence stay out of this directory.
-pub const CURATED_STATIONS: [InternetStation; 19] = [
+pub const CURATED_STATIONS: [InternetStation; 25] = [
     InternetStation {
         id: "skylab",
         name: "Skylab Radio (UK)",
@@ -323,6 +323,98 @@ pub const CURATED_STATIONS: [InternetStation; 19] = [
         nominal_kbps: 128,
         format: "MP3",
     },
+    InternetStation {
+        id: "kusc",
+        name: "Classical California",
+        broadcaster: "Classical California",
+        language: "en",
+        country: "US",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url:
+            "https://playerservices.streamtheworld.com/api/livestream-redirect/KUSCMP128.mp3",
+        publisher_reference_url:
+            "https://www.classicalcalifornia.org/articles/how-to-listen-to-classical-california",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "kunc",
+        name: "KUNC News",
+        broadcaster: "KUNC",
+        language: "en",
+        country: "US",
+        genre: "NPR News / public affairs",
+        category: "NEWS",
+        playlist_url: "https://ais-sa1.streamon.fm/7890_96k.mp3",
+        publisher_reference_url: "https://www.kunc.org/listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 96,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "colorado-sound",
+        name: "The Colorado Sound",
+        broadcaster: "The Colorado Sound",
+        language: "en",
+        country: "US",
+        genre: "Independent / Colorado music",
+        category: "INDIE",
+        playlist_url: "https://ais-sa1.streamon.fm/7891_96k.mp3",
+        publisher_reference_url: "https://www.kunc.org/listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 96,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "kuaf",
+        name: "KUAF 91.3 FM",
+        broadcaster: "KUAF",
+        language: "en",
+        country: "US",
+        genre: "NPR News / local public affairs",
+        category: "NEWS",
+        playlist_url: "https://war.streamguys1.com:7031/kuaf1",
+        publisher_reference_url: "https://www.kuaf.com/ways-to-listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "kuaf-classical",
+        name: "KUAF 2 Classical",
+        broadcaster: "KUAF",
+        language: "en",
+        country: "US",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://war.streamguys1.com:7031/kuaf2",
+        publisher_reference_url: "https://www.kuaf.com/ways-to-listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "kuaf-jazz",
+        name: "KUAF 3 Jazz",
+        broadcaster: "KUAF",
+        language: "en",
+        country: "US",
+        genre: "Jazz",
+        category: "JAZZ",
+        playlist_url: "https://war.streamguys1.com:7031/kuaf3",
+        publisher_reference_url: "https://www.kuaf.com/ways-to-listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
 ];
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RadioSource {
@@ -505,7 +597,7 @@ mod tests {
     }
     #[test]
     fn curated_urls_have_publisher_provenance() {
-        assert_eq!(curated_stations().len(), 19);
+        assert_eq!(curated_stations().len(), 25);
         for (id, endpoint) in [
             (
                 "wpr-news",
