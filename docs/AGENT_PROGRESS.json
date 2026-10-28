@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T20:14:00Z",
+  "updated_at_utc": "2026-10-28T20:16:39Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "fdfd607",
@@ -31,7 +31,8 @@
     "Extracted direct nRSP retry sequencing into recover_nrsp_attempts and added an offline fixture that verifies bounded delay, one retry, output-progress clearing, reconnect mode, and restoration of latest tuning/FM settings.",
     "Added deterministic terminal-reconnect coverage: an initial active-stream timeout gets one retry, but permanent setup/protocol failure on reconnect stops without another wait; explicit receiver disconnect reason remains terminal and is preserved in the error detail.",
     "Added a loopback nRSP handshake-wait cancellation regression: cancellation during the post-WebSocket Hello wait returns promptly and the peer observes the socket closing.",
-    "Extracted the IP playback retry wrapper to test output-loss cleanup through production recovery logic: Bluetooth-style output loss stops after one attempt, skips network backoff and removes the active callback-progress handle."
+    "Extracted the IP playback retry wrapper to test output-loss cleanup through production recovery logic: Bluetooth-style output loss stops after one attempt, skips network backoff and removes the active callback-progress handle.",
+    "Ran a bounded live catalog sweep with outbound network permission: all 25 stations decoded in 25 total attempts; the earlier sandboxed sweep returned not_checked for all stations and was an environment restriction, not health evidence."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -53,8 +54,8 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on source 4a8cc57: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
-    "latest_code_head_ci": "Code head 4a8cc57 is pushed; combined status is empty and no PR-triggered workflow run is visible at query time; remote CI remains unverified",
-    "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
+    "latest_code_head_ci": "Code head 9647b3e has empty combined status; Actions run 40761496510 ended startup_failure with zero jobs; remote CI remains unverified",
+    "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T20:16:30Z decoded 25/25 at decoded_audio in 25 total attempts; point-in-time evidence only; sandboxed attempt was not_checked and is not station-health evidence",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "focused regression rerun passed this execution: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only, not listener preference",
     "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
@@ -85,8 +86,8 @@
   },
   "ci": {
     "latest_observed_head_run": null,
-    "previous_head_run": 40761050011,
-    "conclusion": "For current PR head 4a8cc57, GitHub returned empty combined status and no associated PR-triggered workflow run at query time. Earlier run 40761050011 failed at startup with zero jobs; remote CI remains unverified."
+    "previous_head_run": 40761496510,
+    "conclusion": "For current PR head 9647b3e, combined status is empty and Actions run 40761496510 failed at startup with zero jobs; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",

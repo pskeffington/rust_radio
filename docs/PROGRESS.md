@@ -782,3 +782,24 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   preceding head's Actions run failed before jobs were created; remote CI is
   unverified. Next: verify Bluetooth/USB loss and replacement-device recovery
   on real hardware while retaining these deterministic lifecycle checks.
+
+## Bounded catalog revalidation and label A/B (2026-10-28)
+
+- The first bounded `validate-all --json` run under the restricted sandbox
+  returned `Unavailable / not_checked` for all 25 stations after two
+  attempts each. A publisher playlist HEAD request succeeded when permitted,
+  so those results were treated as sandbox network restrictions, not station
+  failures.
+- Repeated the same silent validator with outbound network permission. At
+  2026-10-28 20:16:30 UTC, all 25 stations decoded supported audio in one
+  attempt each (25/25 at `decoded_audio`). This is point-in-time codec
+  evidence only; no audio device was opened and no redistribution permission
+  was established.
+- Re-ran the station-label A/B regression: at 295 px the full category labels
+  fit 24/25 rows while names-only and compact labels fit 25/25; at 340 px all
+  variants fit 25/25. `CLASS` saves 32 text pixels on WCRB. These are layout-fit
+  measurements, not listener preference evidence.
+- Current PR code head `9647b3e` has an empty combined status; Actions run
+  `40761496510` failed at startup before creating jobs. Remote CI remains
+  unverified. Next: run physical output-device recovery acceptance when
+  Bluetooth/USB hardware is available.
