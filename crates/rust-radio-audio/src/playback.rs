@@ -148,7 +148,12 @@ impl From<TransportError> for PlaybackFailure {
     }
 }
 
-fn probe_failure(error: DecodeError) -> PlaybackFailure {
+fn probe_failure(error: DecodeError, output_failed: bool) -> PlaybackFailure {
+    if output_failed {
+        return PlaybackFailure::Output(
+            "Native audio output failed while detecting stream format".into(),
+        );
+    }
     match error {
         DecodeError::IoError(error) => PlaybackFailure::Network(format!(
             "Radio stream interrupted during format detection: {error}"
@@ -807,7 +812,7 @@ fn decode_and_play(
             &FormatOptions::default(),
             &MetadataOptions::default(),
         )
-        .map_err(probe_failure)?;
+        .map_err(|error| probe_failure(error, output.has_failed()))?;
     let mut format = probed.format;
     let track = format
         .tracks()
@@ -1131,7 +1136,7 @@ mod tests {
         for error in [
             PlaybackFailure::from(TransportError::Permanent("HTTP 403".into())),
             PlaybackFailure::Output("speaker unavailable".into()),
-            probe_failure(DecodeError::Unsupported("unsupported codec")),
+            probe_failure(DecodeError::Unsupported("unsupported codec"), false),
         ] {
             let (controller, generation) = recovery_controller();
             let mut error = Some(error);
@@ -1145,12 +1150,26 @@ mod tests {
             assert!(result.is_err());
         }
         assert_eq!(
-            probe_failure(DecodeError::IoError(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "network disconnected during probe",
-            )))
+            probe_failure(
+                DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "network disconnected during probe",
+                )),
+                false,
+            )
             .class(),
             FailureClass::NetworkTransient
+        );
+        assert_eq!(
+            probe_failure(
+                DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "probe interrupted after audio device loss",
+                )),
+                true,
+            )
+            .class(),
+            FailureClass::OutputUnavailable
         );
     }
 
