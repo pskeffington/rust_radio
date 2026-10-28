@@ -689,6 +689,53 @@ mod tests {
             Err(Error::Cancelled)
         ));
     }
+
+    #[test]
+    fn handshake_wait_cancels_promptly_and_closes_the_socket() {
+        use std::sync::{mpsc, Arc};
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = Endpoint(listener.local_addr().unwrap());
+        let (handshake_tx, handshake_rx) = mpsc::channel();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let mut socket = tungstenite::accept(stream).unwrap();
+            handshake_tx.send(()).unwrap();
+            loop {
+                match socket.read() {
+                    Ok(Message::Close(_)) | Err(_) => break,
+                    Ok(_) => {}
+                }
+            }
+        });
+
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let cancel_after_handshake = Arc::clone(&cancelled);
+        let canceller = thread::spawn(move || {
+            handshake_rx
+                .recv_timeout(Duration::from_secs(2))
+                .expect("client completed the WebSocket handshake");
+            thread::sleep(Duration::from_millis(25));
+            cancel_after_handshake.store(true, Ordering::Release);
+        });
+
+        let started = Instant::now();
+        assert!(matches!(
+            Client::connect(endpoint, &cancelled),
+            Err(Error::Cancelled)
+        ));
+        assert!(
+            started.elapsed() < Duration::from_millis(500),
+            "handshake cancellation exceeded the responsiveness bound"
+        );
+
+        canceller.join().unwrap();
+        server.join().unwrap();
+    }
+
     #[test]
     fn handshake_recovers_session_and_rejects_malformed_envelopes() {
         let mut session = Session::initial();
