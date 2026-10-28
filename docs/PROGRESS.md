@@ -705,3 +705,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   remains open.
 - PR #3 remains open. At query time GitHub returned no status checks or
   PR-triggered run for `00576b1`; remote CI remains unverified.
+
+## Deterministic direct receiver reconnect fixture (2026-10-28)
+
+- Extracted the direct nRSP retry sequencing into `recover_nrsp_attempts` so
+  production playback and offline regression use the same code path.
+- The synthetic fixture injects a stream timeout, checks the bounded first
+  backoff, verifies exactly one retry, ensures the old output progress counter
+  is cleared, and confirms reconnect uses updated frequency, bandwidth and FM
+  settings with reconnect mode enabled.
+- The focused fixture passes. Formatting, default/all-feature workspace tests,
+  strict Clippy in both configurations, all-feature check and the compact-label
+  A/B regression pass. Loopback stream fixtures required local socket permission.
+- Code commit `724db2a` is pushed. PR #3 remains open; its current head has no
+  visible combined status or PR-triggered workflow run, so remote CI is
+  unverified. The fixture validates retry policy and state restoration, not a
+  physical receiver's RF/network recovery.

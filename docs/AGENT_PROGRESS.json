@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T19:59:40Z",
+  "updated_at_utc": "2026-10-28T20:02:33Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "00576b1",
+  "implementation_commit": "724db2a",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -27,7 +27,8 @@
     "Enforced exactly one process-wide native playback worker across NativeRadioEngine instances with an atomic RAII lease; a second start is rejected before resource opening and release is covered for normal exit and unwinding.",
     "Strengthened the process-wide playback admission regression to cover both public curated-station and direct-stream start APIs; both reject a second worker before resource opening.",
     "Classified IP format-probe I/O errors as audio-output failure when CPAL has reported device loss; this prevents spending network retry budget on a failed output while preserving network recovery for ordinary probe I/O.",
-    "Added bounded recovery for direct nRSP-ST active-stream transport errors and inactivity timeouts while preserving terminal startup/activation failures; retries restore the latest requested tuning and FM settings."
+    "Added bounded recovery for direct nRSP-ST active-stream transport errors and inactivity timeouts while preserving terminal startup/activation failures; retries restore the latest requested tuning and FM settings.",
+    "Extracted direct nRSP retry sequencing into recover_nrsp_attempts and added an offline fixture that verifies bounded delay, one retry, output-progress clearing, reconnect mode, and restoration of latest tuning/FM settings."
   ],
   "validation": {
     "fmt": "passed on current source",
@@ -42,14 +43,14 @@
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
     "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
     "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed on current source: 295px full category 24/25, names-only 25/25, compact category 25/25; 340px all 25/25; compact CLASS saves 32px; fit measure only",
+    "repeatable_layout_ab": "passed on current source: 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all 25/25; compact CLASS saves 32px; fit measure only",
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "all six required gates passed on code commit 00576b1: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
-    "latest_code_head_ci": "Current head 00576b1 has empty combined status and no PR-triggered run visible; remote CI unverified",
+    "latest_full_gate_run": "all six required gates passed on source including 724db2a: fmt, default/all-feature workspace tests, strict default/all-feature Clippy and all-feature check; loopback fixtures allowed",
+    "latest_code_head_ci": "Current head 724db2a has empty combined status and no PR-triggered run visible; remote CI unverified",
     "live_catalog_revalidation": "fresh bounded silent sweep at 2026-10-28T19:32Z decoded 25/25 at decoded_audio in 25 attempts; point-in-time evidence only",
     "arm64_headless_check": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on code head a417db6; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "three variants measured: full category 24/25, names-only 25/25, compact category 25/25 at 295px; all 25/25 at 340px; compact CLASS tag saves 32px on WCRB; layout fit only",
@@ -57,11 +58,12 @@
     "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
     "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
     "public_playback_admission_regression": "passed; curated internet and direct stream public start paths reject while process-wide slot is occupied",
-    "latest_regression_commit": "00576b1; bounded direct nRSP-ST active-stream recovery",
+    "latest_regression_commit": "724db2a; deterministic direct nRSP reconnect sequencing fixture",
     "probe_time_output_failure_classification": "passed; CPAL-reported failure during Symphonia format probe maps to OutputUnavailable; ordinary probe I/O remains NetworkTransient",
     "nrsp_active_stream_recovery": "passed; transport and inactivity timeout map to transient recovery, startup/activation and protocol failures remain terminal",
     "nrsp_reconnect_settings": "passed; latest desired frequency/mode/bandwidth and FM settings retained for retry",
-    "nrsp_output_setup_classification": "native receiver PCM conversion/output configuration errors classify as OutputUnavailable"
+    "nrsp_output_setup_classification": "native receiver PCM conversion/output configuration errors classify as OutputUnavailable",
+    "nrsp_reconnect_sequence_fixture": "passed; stream timeout produces one 1-second wait then one reconnect attempt with updated frequency/bandwidth/FM state and reconnecting=true; output attempt is cleared"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -77,7 +79,7 @@
   "ci": {
     "latest_observed_head_run": null,
     "previous_head_run": 40757657155,
-    "conclusion": "For current PR head 00576b1, GitHub returned empty combined status and no associated PR-triggered run at query time. Earlier run 40757657155 failed at startup with zero jobs; remote validation remains unavailable."
+    "conclusion": "For current PR head 724db2a, GitHub returned empty combined status and no associated PR-triggered run at query time. Earlier run 40757657155 failed at startup with zero jobs; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -85,5 +87,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Continue source-aware reconnect verification; physical nRSP interruption, Bluetooth/USB output recovery, Pi runtime, USB SDR, publisher-rights and Rust-Boy adoption gates remain open."
+  "next_priority": "Continue deterministic testing of nRSP reconnection around setup failures and receiver disconnect reasons, then physical receiver/output/Pi acceptance; preserve broadcaster-rights and Rust-Boy adoption gates."
 }
