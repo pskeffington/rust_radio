@@ -1175,6 +1175,44 @@ mod tests {
     }
 
     #[test]
+    fn stop_racing_with_transient_failure_skips_retry_and_recovery_event() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let mut attempts = 0;
+        let mut waits = 0;
+        recover_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            || {
+                attempts += 1;
+                cancelled.store(true, Ordering::Release);
+                controller
+                    .lock()
+                    .unwrap()
+                    .apply(RadioCommand::Stop)
+                    .unwrap();
+                Err(TransportError::Network("connection dropped".into()).into())
+            },
+            |_| {
+                waits += 1;
+                true
+            },
+        )
+        .unwrap();
+
+        assert_eq!(attempts, 1);
+        assert_eq!(waits, 0);
+        let mut controller = controller.lock().unwrap();
+        assert_eq!(controller.state().state, PlaybackState::Stopped);
+        assert!(!controller.event(generation, PlaybackEvent::ConnectionLost));
+        assert!(!controller.event(
+            generation,
+            PlaybackEvent::Error("stale retry failure".into())
+        ));
+    }
+
+    #[test]
     fn stop_during_retry_prevents_another_attempt_and_stale_events() {
         let (controller, generation) = recovery_controller();
         let cancelled = AtomicBool::new(false);
