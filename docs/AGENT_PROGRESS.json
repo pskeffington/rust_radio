@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:04:54Z",
+  "updated_at_utc": "2026-10-28T22:05:19Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "6f1177742a35243d49fade107c867dfebd61140f (checkpoint 5211b1831dda50a792901ffadba23532dcb343d6)",
+  "implementation_commit": "6f1177742a35243d49fade107c867dfebd61140f (checkpoint 5211b1831dda50a792901ffadba23532dcb343d6; final docs/checkpoint 40547e103b678ccf9ff457c8dcac57ab62bf4dca)",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -76,7 +76,8 @@
     "Committed WRVO catalog expansion and validation as 6f1177742a35243d49fade107c867dfebd61140f on codex/catalog-publisher-permissions.",
     "Pushed source commit 6f11777 and checkpoint commit 5211b18 to origin/codex/catalog-publisher-permissions.",
     "Updated PR #5 description with the 15-station source review, validation evidence and remaining hardware/rights gates; GitHub reports open and mergeable.",
-    "Latest pushed-head workflow run 40777122410 ended startup_failure before job creation; combined commit status is empty and remote CI remains unverified."
+    "Latest pushed-head workflow run 40777122410 ended startup_failure before job creation; combined commit status is empty and remote CI remains unverified.",
+    "Final progress and machine checkpoint commit 40547e1 was pushed; PR #5 remains open and mergeable at this head."
   ],
   "validation": {
     "fmt": "passed on WRVO catalog expansion",
@@ -98,7 +99,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on the current tree after aligning the catalog validation schedule to the six-hour freshness TTL; YAML parsed with Ruby standard library",
-    "latest_code_head_ci": "PR #5 pushed head 5211b18 has Actions run 40777122410 startup_failure before job creation; combined status empty, remote CI unverified",
+    "latest_code_head_ci": "PR #5 pushed head 40547e1 has Actions run 40777193831 startup_failure before job creation; combined status empty, remote CI unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
     "arm64_headless_check": "passed on current source for core-only, sdrconnect and nrsp-native; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
@@ -150,11 +151,11 @@
     "interpretation": "compact-layout measurement on the current fifteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40777122410,
-    "latest_pr_head": "5211b1831dda50a792901ffadba23532dcb343d6",
+    "latest_pr_run": 40777193831,
+    "latest_pr_head": "40547e103b678ccf9ff457c8dcac57ab62bf4dca",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "GitHub Actions failed before job creation on pushed head; combined commit status is empty. Local required gates passed; remote CI remains unverified."
+    "details": "Latest GitHub Actions run failed before job creation; combined commit status is empty. Local required gates passed; remote CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
