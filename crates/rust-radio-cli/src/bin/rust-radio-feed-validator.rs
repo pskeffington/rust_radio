@@ -443,6 +443,38 @@ fn probe_with_retry(
     unreachable!("at least one probe attempt is required")
 }
 
+fn publisher_group(station: &InternetStation) -> &'static str {
+    if station.publisher_reference_url.starts_with("https://somafm.com/") {
+        "somafm"
+    } else if station.id == "wcrb" || station.id == "gbhnews" {
+        "gbh"
+    } else {
+        "skylab"
+    }
+}
+
+/// Avoid counting a provider-wide failure as evidence that each individual
+/// station is bad. Single-station publishers are handled by normal hysteresis.
+fn unavailable_publishers(stations: &[Value]) -> Vec<&'static str> {
+    ["somafm", "gbh"]
+        .iter()
+        .copied()
+        .filter(|group| {
+            let indices: Vec<usize> = curated_stations()
+                .iter()
+                .enumerate()
+                .filter_map(|(index, station)| {
+                    (publisher_group(station) == *group).then_some(index)
+                })
+                .collect();
+            indices.len() >= 2
+                && indices
+                    .iter()
+                    .all(|&index| decoded_at(&stations[index]["validation"]).is_none())
+        })
+        .collect()
+}
+
 /// Resumable bounded sweep. Failed attempts do not advance failure hysteresis
 /// until an entire sweep completes. A zero-success cross-publisher sweep is
 /// classified as a possible *host-wide* outage, not 25 broken stations.
@@ -492,9 +524,12 @@ fn sweep_with(
         }
     }
     let network_incident = successes == 0 && total > 1;
+    let publisher_incidents = unavailable_publishers(&stations);
     if !network_incident {
-        for station in &mut stations {
-            if decoded_at(&station["validation"]).is_none() {
+        for (index, station) in stations.iter_mut().enumerate() {
+            if decoded_at(&station["validation"]).is_none()
+                && !publisher_incidents.contains(&publisher_group(&curated_stations()[index]))
+            {
                 let prior = station["consecutive_failed_sweeps"]
                     .as_u64()
                     .unwrap_or(0)
@@ -508,8 +543,12 @@ fn sweep_with(
             "WARNING: every publisher probe failed; treating this as a possible network/host incident"
         );
     }
+    if !publisher_incidents.is_empty() {
+        eprintln!("WARNING: simultaneous failures for publisher groups: {publisher_incidents:?}");
+    }
     let at = unix_seconds(SystemTime::now()).unwrap_or(started);
-    let completed = snapshot(&stations, total, true, started, at, network_incident);
+    let mut completed = snapshot(&stations, total, true, started, at, network_incident);
+    completed["publisher_incidents_suspected"] = json!(publisher_incidents);
     atomic_save(path, &completed)?;
     // Backup is updated *only* after a completed sweep. A crash or partial
     // scan never destroys the last complete copy.
