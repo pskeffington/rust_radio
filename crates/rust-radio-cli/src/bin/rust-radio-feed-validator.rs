@@ -623,7 +623,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_radio::directory::station_by_id;
     use rust_radio::validation_types::{ValidationStage, ValidationStatus};
+    use std::collections::BTreeMap;
 
     fn args(values: &[&str]) -> Vec<String> {
         values.iter().map(|s| (*s).into()).collect()
@@ -638,10 +640,45 @@ mod tests {
         report
     }
 
+    fn temporary_report(label: &str) -> PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        env::temp_dir()
+            .join(format!("rust-radio-validator-{}-{label}-{stamp}", process::id()))
+            .join("health.json")
+    }
+
+    fn cleanup(path: &Path) {
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    fn good_sweep(path: &Path) -> usize {
+        sweep_with(path, Duration::ZERO, Duration::ZERO, |id| {
+            Ok(decoded(id, SystemTime::now()))
+        })
+        .unwrap()
+    }
+
+    fn station<'a>(report: &'a Value, id: &str) -> &'a Value {
+        report["stations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"].as_str() == Some(id))
+            .unwrap()
+    }
+
     #[test]
     fn options_require_explicit_daemon_for_intervals() {
         assert_eq!(parse_args(&[]).unwrap().mode, Mode::Once);
         assert_eq!(parse_args(&args(&["--daemon"])).unwrap().interval.as_secs(), 14_400);
+        assert_eq!(
+            parse_args(&args(&["--strict-eligible"])).unwrap().mode,
+            Mode::StrictEligible
+        );
+        assert!(parse_args(&args(&["--eligible", "--strict-eligible"])).is_err());
         assert!(parse_args(&args(&["--once", "--daemon"])).is_err());
         assert!(parse_args(&args(&["--interval-minutes", "15"])).is_err());
         assert!(parse_args(&args(&["--daemon", "--interval-minutes", "0"])).is_err());
@@ -656,21 +693,39 @@ mod tests {
     }
 
     #[test]
-    fn health_requires_recent_real_decoded_frames() {
-        let now = SystemTime::now();
-        let fresh = validation_value(Ok(decoded("gbhnews", now)), now);
+    fn last_good_grace_is_bounded_and_does_not_claim_freshness() {
+        let now = UNIX_EPOCH + Duration::from_secs(1_000_000);
         let at = unix_seconds(now).unwrap();
-        assert_eq!(current_health(&fresh, at), "fresh");
+        let mut entry = empty_station(station_by_id("gbhnews").unwrap());
+        let good = validation_value(Ok(decoded("gbhnews", now)), now);
+        entry["last_good"] = good.clone();
+        entry["validation"] = good;
+        assert_eq!(current_health(&entry, at), "fresh");
         assert_eq!(
-            current_health(&fresh, at + FEED_FRESHNESS_TTL.as_secs() + 1),
+            current_health(&entry, at + FEED_FRESHNESS_TTL.as_secs() + 1),
             "stale"
         );
-        let mut failed = fresh.clone();
-        failed["status"] = json!("Unavailable");
-        assert_eq!(current_health(&failed, at), "failed");
-        let mut fake = fresh;
-        fake["decoded_frames"] = json!(0);
-        assert_eq!(current_health(&fake, at), "failed");
+        entry["validation"] = validation_value(Err("timeout".into()), now);
+        entry["consecutive_failed_sweeps"] = json!(1);
+        assert_eq!(current_health(&entry, at), "degraded");
+        assert!(is_eligible(&entry, at, false));
+        assert!(!is_eligible(&entry, at, true));
+        assert_eq!(
+            current_health(&entry, at + LAST_GOOD_GRACE.as_secs() + 1),
+            "stale"
+        );
+        assert!(!is_eligible(
+            &entry,
+            at + LAST_GOOD_GRACE.as_secs() + 1,
+            false
+        ));
+        entry["consecutive_failed_sweeps"] = json!(FAILURE_SWEEPS_TO_UNAVAILABLE);
+        assert_eq!(current_health(&entry, at), "unavailable");
+        assert!(!is_eligible(&entry, at, false));
+        let mut invalid = entry;
+        invalid["last_good"]["decoded_frames"] = json!(0);
+        invalid["consecutive_failed_sweeps"] = json!(0);
+        assert_eq!(current_health(&invalid, at), "unverified");
     }
 
     #[test]
@@ -695,35 +750,174 @@ mod tests {
     }
 
     #[test]
-    fn sweep_persists_progress_and_eligibility_without_live_network() {
-        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        let root = env::temp_dir().join(format!(
-            "rust-radio-validator-{}-{timestamp}",
-            process::id()
-        ));
-        let path = root.join("health.json");
-        let fresh = sweep_with(&path, Duration::ZERO, |id| {
+    fn one_failed_probe_gets_a_second_attempt_and_can_recover() {
+        let path = temporary_report("retry");
+        let mut attempts = BTreeMap::<String, usize>::new();
+        let fresh = sweep_with(&path, Duration::ZERO, Duration::ZERO, |id| {
+            let attempt = attempts.entry(id.to_owned()).or_default();
+            *attempt += 1;
+            if id == "gbhnews" && *attempt == 1 {
+                Err("transient CDN timeout".into())
+            } else {
+                Ok(decoded(id, SystemTime::now()))
+            }
+        })
+        .unwrap();
+        assert_eq!(fresh, 25);
+        assert_eq!(attempts.get("gbhnews"), Some(&2));
+        assert_eq!(attempts.get("skylab"), Some(&1));
+        let report = read_snapshot(&path).unwrap();
+        assert_eq!(station(&report, "gbhnews")["probe_attempts"], 2);
+        assert_eq!(
+            station(&report, "gbhnews")["consecutive_failed_sweeps"],
+            0
+        );
+        assert_eq!(report["fresh"], 25);
+        cleanup(&path);
+    }
+
+    #[test]
+    fn three_distinct_completed_failures_required_and_recovery_is_immediate() {
+        let path = temporary_report("hysteresis");
+        assert_eq!(good_sweep(&path), 25);
+        for cycle in 1..=FAILURE_SWEEPS_TO_UNAVAILABLE {
+            sweep_with(&path, Duration::ZERO, Duration::ZERO, |id| {
+                if id == "gbhnews" {
+                    Err("temporary station outage".into())
+                } else {
+                    Ok(decoded(id, SystemTime::now()))
+                }
+            })
+            .unwrap();
+            let report = read_snapshot(&path).unwrap();
+            let news = station(&report, "gbhnews");
+            assert_eq!(news["consecutive_failed_sweeps"], cycle);
+            assert!(decoded_at(&news["last_good"]).is_some());
+            assert_eq!(report["total"], 25);
+            assert_eq!(
+                current_health(news, unix_seconds(SystemTime::now()).unwrap()),
+                if cycle < FAILURE_SWEEPS_TO_UNAVAILABLE {
+                    "degraded"
+                } else {
+                    "unavailable"
+                }
+            );
+        }
+        assert_eq!(good_sweep(&path), 25);
+        let recovered = read_snapshot(&path).unwrap();
+        assert_eq!(station(&recovered, "gbhnews")["consecutive_failed_sweeps"], 0);
+        assert_eq!(
+            current_health(station(&recovered, "gbhnews"), unix_seconds(SystemTime::now()).unwrap()),
+            "fresh"
+        );
+        cleanup(&path);
+    }
+
+    #[test]
+    fn all_providers_failing_does_not_remove_previously_good_stations() {
+        let path = temporary_report("host-outage");
+        assert_eq!(good_sweep(&path), 25);
+        assert_eq!(
+            sweep_with(&path, Duration::ZERO, Duration::ZERO, |_id| {
+                Err("no network on host".into())
+            })
+            .unwrap(),
+            0
+        );
+        let report = read_snapshot(&path).unwrap();
+        let now = unix_seconds(SystemTime::now()).unwrap();
+        assert_eq!(report["network_incident_suspected"], true);
+        assert_eq!(report["degraded"], 25);
+        assert_eq!(report["total"], 25);
+        assert_eq!(eligible_count(&report, now, false), 25);
+        assert_eq!(eligible_count(&report, now, true), 0);
+        for item in report["stations"].as_array().unwrap() {
+            assert_eq!(item["consecutive_failed_sweeps"], 0);
+            assert!(decoded_at(&item["last_good"]).is_some());
+        }
+        cleanup(&path);
+    }
+
+    #[test]
+    fn corrupted_primary_restores_last_good_from_completed_backup() {
+        let path = temporary_report("backup");
+        assert_eq!(good_sweep(&path), 25);
+        assert!(backup_path(&path).exists());
+        fs::write(&path, b"bad-json").unwrap();
+        let backup = read_with_redundancy(&path).unwrap().unwrap();
+        assert_eq!(backup["fresh"], 25);
+        sweep_with(&path, Duration::ZERO, Duration::ZERO, |id| {
+            if id == "gbhnews" {
+                Err("temporarily offline".into())
+            } else {
+                Ok(decoded(id, SystemTime::now()))
+            }
+        })
+        .unwrap();
+        let recovered = read_snapshot(&path).unwrap();
+        let news = station(&recovered, "gbhnews");
+        assert_eq!(news["consecutive_failed_sweeps"], 1);
+        assert!(decoded_at(&news["last_good"]).is_some());
+        assert_eq!(current_health(news, unix_seconds(SystemTime::now()).unwrap()), "degraded");
+        cleanup(&path);
+    }
+
+    #[test]
+    fn sweep_retains_25_entries_and_publishes_partial_and_complete_evidence() {
+        let path = temporary_report("partial");
+        let fresh = sweep_with(&path, Duration::ZERO, Duration::ZERO, |id| {
             if id == "gbhnews" {
                 Ok(decoded(id, SystemTime::now()))
             } else {
-                Err("synthetic unavailable".into())
+                Err("synthetic failure".into())
             }
         })
         .unwrap();
         assert_eq!(fresh, 1);
         let report = read_snapshot(&path).unwrap();
-        assert_eq!(report["complete"].as_bool(), Some(true));
+        assert_eq!(report["complete"], true);
         assert_eq!(report["checked"], 25);
         assert_eq!(report["fresh"], 1);
-        assert_eq!(report["failed"], 24);
-        assert_eq!(
-            current_health(
-                &report["stations"].as_array().unwrap().iter()
-                    .find(|station| station["id"] == "gbhnews").unwrap()["validation"],
-                unix_seconds(SystemTime::now()).unwrap()
-            ),
-            "fresh"
-        );
-        fs::remove_dir_all(root).unwrap();
+        assert_eq!(report["unverified"], 24);
+        assert_eq!(report["network_incident_suspected"], false);
+        assert_eq!(station(&report, "gbhnews")["health"], "fresh");
+        assert_eq!(report["schema_version"], 2);
+        assert!(backup_path(&path).exists());
+        cleanup(&path);
+    }
+
+    #[test]
+    fn old_schema_decoded_evidence_is_migrated_without_resetting_health() {
+        let path = temporary_report("legacy");
+        let now = unix_seconds(SystemTime::now()).unwrap();
+        let old: Vec<Value> = curated_stations()
+            .iter()
+            .map(|station| {
+                let mut entry = empty_station(station);
+                entry["validation"] =
+                    validation_value(Ok(decoded(station.id, SystemTime::now())), SystemTime::now());
+                entry.as_object_mut().unwrap().remove("last_good");
+                entry.as_object_mut().unwrap().remove("consecutive_failed_sweeps");
+                entry
+            })
+            .collect();
+        let mut legacy = snapshot(&old, 25, true, now, now, false);
+        legacy["schema_version"] = json!(1);
+        atomic_save(&path, &legacy).unwrap();
+        sweep_with(&path, Duration::ZERO, Duration::ZERO, |id| {
+            if id == "gbhnews" {
+                Err("network timeout".into())
+            } else {
+                Ok(decoded(id, SystemTime::now()))
+            }
+        })
+        .unwrap();
+        let after = read_snapshot(&path).unwrap();
+        let news = station(&after, "gbhnews");
+        assert_eq!(after["schema_version"], 2);
+        assert_eq!(news["consecutive_failed_sweeps"], 1);
+        assert!(decoded_at(&news["last_good"]).is_some());
+        assert_eq!(current_health(news, unix_seconds(SystemTime::now()).unwrap()), "degraded");
+        cleanup(&path);
     }
 }
