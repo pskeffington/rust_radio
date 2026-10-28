@@ -23,6 +23,9 @@ Updated 2026-10-28. Active priorities and ownership are in the
   `startup_failure`; GitHub reports zero jobs, so there are no job logs to
   diagnose. The scheduled workflow is installed on `main`, but runner execution
   remains unverified.
+- The checkpoint PR's Rust Actions run `40773644526` failed the same way before
+  any job was created, confirming this is still a repository runner-startup
+  blocker rather than a source test result.
 - Physical Bluetooth/USB output recovery, Pi audio/display/touch, supported USB
   SDR, extended receiver recovery and publisher distribution rights remain open.
   The A/B test does not establish listener preference or accessibility.

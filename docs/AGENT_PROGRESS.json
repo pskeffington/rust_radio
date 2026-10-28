@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T21:37:42Z",
+  "updated_at_utc": "2026-10-28T21:38:40Z",
   "status": "in_progress",
   "branch": "codex/station-validation-workflow-recovery",
   "implementation_commit": "5568fb3d6cad9d8f44206fea1f28bebea0fba300",
@@ -63,7 +63,8 @@
     "Fresh bounded validate-all sweep decoded all 25 stations in one attempt each at 2026-10-28T21:37Z.",
     "Strict credential-safe summary consumed the live report and its four unit tests passed; station-validation workflow YAML parsed.",
     "Headless aarch64-unknown-linux-gnu checks passed for core-only, SDRconnect and nrsp-native feature configurations.",
-    "Manually dispatched station validation on main; run 40773152365 failed at startup with zero jobs and no logs."
+    "Manually dispatched station validation on main; run 40773152365 failed at startup with zero jobs and no logs.",
+    "PR #4 Rust Actions run 40773644526 also failed with startup_failure and zero jobs, confirming the remote runner blocker persists."
   ],
   "validation": {
     "fmt": "passed on merged commit 5568fb3",
@@ -85,7 +86,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "all six required gates passed on merged default-branch commit 5568fb3d6cad9d8f44206fea1f28bebea0fba300",
-    "latest_code_head_ci": "manual catalog workflow run 40773152365 on main ended startup_failure with zero jobs; no logs exist; remote CI remains unverified",
+    "latest_code_head_ci": "PR #4 run 40773644526 ended startup_failure with zero jobs; no job logs; remote CI remains unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
     "arm64_headless_check": "cargo check passed for core-only, sdrconnect and nrsp-native on aarch64-unknown-linux-gnu; compile evidence only, not Pi runtime acceptance",
     "layout_ab_recheck": "passed 2026-10-28 this run: at 295px full category 24/25, names-only 25/25, compact category 25/25; at 340px all variants 25/25; compact CLASS saves 32px; layout fit only",
@@ -134,12 +135,14 @@
     "interpretation": "Repeated layout-fit measurement on merged commit; not listener preference evidence"
   },
   "ci": {
-    "latest_observed_head_run": 40773152365,
-    "observed_head": "5568fb3d6cad9d8f44206fea1f28bebea0fba300",
-    "event": "workflow_dispatch",
-    "conclusion": "startup_failure",
-    "jobs": 0,
-    "details": "GitHub Actions created no jobs or logs; repository/workflow code has no actionable diagnostic from this run."
+    "latest_pr_run": 40773644526,
+    "latest_pr_head": "3e4913f77bf0ecdcefd8ee1c0f17333cfca3b153",
+    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_jobs": 0,
+    "station_validation_run": 40773152365,
+    "station_validation_conclusion": "startup_failure",
+    "station_validation_jobs": 0,
+    "details": "Both GitHub Actions runs failed before job creation; neither run has job logs or an actionable repository-code diagnostic."
   },
   "remaining_gates": [
     "GitHub Actions runner startup and scheduled catalog execution",
