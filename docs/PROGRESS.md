@@ -3,6 +3,66 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## WRVO public-radio catalog addition (2026-10-28 22:04 UTC)
+
+- Added WRVO 1 NPR News, WRVO 2 PRX Remix and WRVO 3 BBC World Service. WRVO's
+  official listening page publishes direct third-party-player MP3 links, and
+  its stream page identifies each service. This adds a named NPR-member news
+  stream; it does not establish a national continuous NPR feed or grant
+  redistribution rights.
+- WRVO uses numbered `live.streamtheworld.com` redirect shards. The endpoint
+  validator now accepts only all-numeric shard names paired with the exact
+  stream-specific MP3 path; cross-stream and deceptive-host regression cases
+  are rejected.
+- A bounded live decoder sweep at 2026-10-28 22:01 UTC decoded 15/15 entries in
+  one attempt each. WRVO 1 decoded mono MP3/44.1 kHz; WRVO 2 and 3 mono MP3/
+  22.05 kHz. This is point-in-time codec evidence only.
+- Station label A/B/C at 295 px: A full category 14/15, B names-only 15/15,
+  C compact category 15/15. At 340 px all variants fit 15/15. C saves 128
+  aggregate text pixels against A. These are layout-fit measurements, not
+  listener preference evidence.
+- Focused StreamTheWorld redirect regression passed. Default and all-feature
+  workspace suites passed (including 57 core tests; one manual audio output
+  test ignored). Both strict Clippy runs, format check and all-feature check
+  passed. Core-only, SDRconnect and direct nRSP-native AArch64 Linux headless
+  compile checks also passed; this is not Pi runtime acceptance.
+- Catalog label A/B/C passed at 295 px: A full category 14/15, B names-only
+  15/15, C compact category 15/15; all variants fit at 340 px. No physical
+  output or receiver hardware was exercised.
+- Highest priority: push the validated catalog expansion and checkpoint to
+  PR #5, monitor remote CI, then continue toward 25 from first-party
+  documented sources.
+
+## Publisher-supported catalog expansion (2026-10-28)
+
+- Added seven publisher-documented endpoints, growing the directory from five
+  to twelve: WPR News and Music, Radio Swiss Jazz and Classic, All Classical,
+  WFMT and KFUO. Their official stream pages and exact source endpoints are
+  recorded in the literature matrix. WPR News is a named regional/member
+  broadcaster news service; a national continuous NPR stream remains
+  unestablished. SomaFM stays excluded pending written permission.
+- The first live sweep decoded 10/12; both Swiss stations returned
+  `UnsafeEndpoint` after publisher URLs redirected to numbered
+  `livestreaming-node-*.srg-ssr.ch` hosts. A bounded header check confirmed the
+  pattern. The allowlist now accepts only numeric node labels and the exact
+  station-specific paths; unsafe suffixes, labels and cross-station paths have
+  regression coverage.
+- The repeated bounded live sweep decoded 12/12 stations in one attempt each
+  at 2026-10-28 21:54 UTC. Decoded formats: Skylab MP3/48 kHz; WCRB AAC/48;
+  GBH News AAC/32; KEXP AAC/44.1; Radio Paradise, WPR News, WPR Music, Radio
+  Swiss Jazz, Radio Swiss Classic and All Classical MP3/44.1 or 48; WFMT
+  AAC/48; KFUO AAC/44.1. This is point-in-time decoder evidence only.
+- Repeated GUI label A/B/C with the expanded roster: at 295 px, A full category
+  fit 11/12, B names-only and C compact category fit 12/12. At 340 px all three
+  fit 12/12. C saves 128 aggregate text pixels across the four classical
+  stations. This is layout-fit evidence, not listener preference.
+- `cargo test -p rust-radio-core` passed (47 tests); the focused GUI A/B/C test
+  passed; the catalog policy mirror was updated. The expanded sources were
+  subsequently rechecked with the full workspace gates. No physical playback
+  or hardware was exercised.
+- Highest priority: complete full validation and PR update for this increment,
+  then keep expanding toward 25 with first-party authorized diverse sources.
+
 ## Publisher rights review and safe catalog correction (2026-10-28 21:49 UTC)
 
 - Rechecked the catalog after finding SomaFM's current Terms of Service reject

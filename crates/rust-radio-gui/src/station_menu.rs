@@ -297,7 +297,7 @@ mod label_ab_test {
                 let mut compact_width_saved = 0.0;
                 let mut current_overflows = Vec::new();
                 for station in curated_stations() {
-                    if station.id == "wcrb" {
+                    if station.category == "CLASSICAL" {
                         assert_eq!(compact_station_category(station.category), "CLASS");
                     } else {
                         assert_eq!(compact_station_category(station.category), station.category);
@@ -359,8 +359,10 @@ mod label_ab_test {
             PREVIOUS_STATION_MENU_ROW_WIDTH,
             STATION_MENU_MAX_ROW_WIDTH,
         );
-        assert_eq!(full_category_current_fit + 1, station_count);
-        assert_eq!(current_overflows, vec!["wcrb"]);
+        assert_eq!(
+            full_category_current_fit + current_overflows.len(),
+            station_count
+        );
         assert_eq!(name_current_fit, station_count);
         assert_eq!(compact_category_current_fit, station_count);
         assert_eq!(full_category_widened_fit, station_count);

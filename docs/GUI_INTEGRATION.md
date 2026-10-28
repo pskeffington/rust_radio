@@ -33,11 +33,15 @@ messages at 480×320. The station popup rows use up to 340 pixels of available
 width. A measured 14-point monospace label A/B/C with 20 pixels total horizontal
 button padding originally found full category labels fit 24/25 stations, names
 alone 25/25, and compact category labels 25/25 at 295 pixels; all fit at 340
-pixels. After the 2026-10-28 rights review reduced the directory to five
-publisher-supported stations, the same regression reports A 4/5, B 5/5 and C
-5/5 at 295 pixels; all fit at 340 pixels. Shortening only `CLASSICAL` to
-`CLASS` preserves the category cue and saves 32 pixels for WCRB. These are layout
-fit measurements, not listener preference evidence. Native
+pixels. After the 2026-10-28 rights review first reduced the directory to five,
+the regression reported A 4/5, B 5/5 and C 5/5 at 295 pixels. With twelve
+publisher-supported stations, it reports A 11/12, B 12/12 and C 12/12 at 295
+pixels; all fit at 340 pixels. Shortening `CLASSICAL` to `CLASS` preserves the
+category cue and saves 128 aggregate text pixels across four classical
+stations. With the current fifteen stations, A fits 14/15 and B/C fit 15/15 at
+295 pixels; all fit at 340 pixels. These are layout fit measurements, not
+listener preference evidence.
+Native
 muted acceptance checks
 Receiving audio now against actual playback, including switching/failure
 responsiveness. Physical touch and Pi rendering still need acceptance.

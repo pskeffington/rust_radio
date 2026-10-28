@@ -35,12 +35,18 @@ On 2026-10-27, explicit live `validate` checks decoded PCM from all ten curated 
 The earlier SomaFM sweep documents historical codec availability only. After
 reviewing the publisher's current Terms of Service, SomaFM presets and their
 HTTP-to-HTTPS playlist compatibility rule were removed pending written
-permission. The current five entries are Skylab Radio, WCRB Classical, GBH 89.7
-News Radio, KEXP 90.3 FM and Radio Paradise Main Mix. Each publisher documents
-listener playback in third-party radio players; this does not authorize
-redistribution or relay. A fresh bounded silent sweep decoded all five entries
-in one attempt each at 2026-10-28 21:48 UTC. This is point-in-time decoder
-evidence only. Physical output and hardware acceptance remain separate.
+permission. The directory initially retained five entries: Skylab Radio, WCRB
+Classical, GBH 89.7 News Radio, KEXP 90.3 FM and Radio Paradise Main Mix. A
+subsequent publisher-source review added WPR News and Music, Radio Swiss Jazz
+and Classic, All Classical, WFMT and KFUO, bringing the directory to twelve.
+WRVO's documented NPR News, PRX Remix and BBC World Service player streams
+expanded it to fifteen; the first is NPR-member station programming, not a
+national continuous NPR feed.
+Each publisher documents listener playback in third-party radio players or
+internet radios; this does not authorize redistribution or relay. Latest sweep
+results, including stations that did not decode, are recorded in dated progress
+notes. Decoder evidence is point-in-time only. Physical output and hardware
+acceptance remain separate.
 
 
 ## Reliability pass: manual output and session control

@@ -34,7 +34,7 @@ pub struct InternetStation {
 /// Curated streams whose publishers document use in third-party radio players.
 /// This guidance covers end-user playback only; it is not redistribution or
 /// relay permission. Stations lacking this evidence stay out of this directory.
-pub const CURATED_STATIONS: [InternetStation; 5] = [
+pub const CURATED_STATIONS: [InternetStation; 15] = [
     InternetStation {
         id: "skylab",
         name: "Skylab Radio (UK)",
@@ -108,6 +108,159 @@ pub const CURATED_STATIONS: [InternetStation; 5] = [
         third_party_player_support: true,
         rights_reviewed_date: "2026-10-28",
         nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wpr-news",
+        name: "WPR News",
+        broadcaster: "Wisconsin Public Radio",
+        language: "en",
+        country: "US",
+        genre: "News / talk / public affairs",
+        category: "NEWS",
+        playlist_url: "https://wpr-ice.streamguys1.com/wpr-ideas-mp3-64",
+        publisher_reference_url: "https://www.wpr.org/ways-to-listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 64,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wpr-music",
+        name: "WPR Music",
+        broadcaster: "Wisconsin Public Radio",
+        language: "en",
+        country: "US",
+        genre: "Music / culture",
+        category: "MIXED",
+        playlist_url: "https://wpr-ice.streamguys1.com/wpr-music-mp3-96",
+        publisher_reference_url: "https://www.wpr.org/ways-to-listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 96,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "radio-swiss-jazz",
+        name: "Radio Swiss Jazz",
+        broadcaster: "Swiss Satellite Radio",
+        language: "de",
+        country: "CH",
+        genre: "Jazz / blues / soul",
+        category: "JAZZ",
+        playlist_url: "https://stream.srg-ssr.ch/srgssr/rsj/mp3/128",
+        publisher_reference_url: "https://www.radioswissjazz.ch/de/empfang/internet",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "radio-swiss-classic",
+        name: "Radio Swiss Classic",
+        broadcaster: "Swiss Satellite Radio",
+        language: "de",
+        country: "CH",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://stream.srg-ssr.ch/srgssr/rsc_de/mp3/128",
+        publisher_reference_url: "https://www.radioswissclassic.ch/de/empfang/internet",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "all-classical",
+        name: "All Classical Radio",
+        broadcaster: "All Classical Public Media",
+        language: "en",
+        country: "US",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://allclassical.streamguys1.com/ac128kmp3",
+        publisher_reference_url: "https://www.allclassical.org/contact/contact-our-technical-team/",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmt",
+        name: "WFMT Classical",
+        broadcaster: "WFMT",
+        language: "en",
+        country: "US",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://wfmt-live.streamguys1.com/wfmt256-aac",
+        publisher_reference_url: "https://www.wfmt.com/how-to-listen/",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 256,
+        format: "AAC",
+    },
+    InternetStation {
+        id: "kfuo",
+        name: "KFUO Radio",
+        broadcaster: "KFUO Radio",
+        language: "en",
+        country: "US",
+        genre: "Faith / classical / talk",
+        category: "MIXED",
+        playlist_url: "https://kfuo.streamguys1.com/kfuo",
+        publisher_reference_url: "https://www.kfuo.org/listening-options/",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "Streaming audio (verify at runtime)",
+    },
+    InternetStation {
+        id: "wrvo-news",
+        name: "WRVO 1 NPR News",
+        broadcaster: "WRVO Public Media",
+        language: "en",
+        country: "US",
+        genre: "NPR News / local public affairs",
+        category: "NEWS",
+        playlist_url:
+            "https://playerservices.streamtheworld.com/api/livestream-redirect/WRVOFM.mp3",
+        publisher_reference_url: "https://www.wrvo.org/listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wrvo-prx",
+        name: "WRVO 2 PRX Remix",
+        broadcaster: "WRVO Public Media",
+        language: "en",
+        country: "US",
+        genre: "Spoken word / PRX Remix",
+        category: "TALK",
+        playlist_url:
+            "https://playerservices.streamtheworld.com/api/livestream-redirect/WRVOHD2.mp3",
+        publisher_reference_url: "https://www.wrvo.org/digital-streaming",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wrvo-bbc",
+        name: "WRVO 3 BBC World Service",
+        broadcaster: "WRVO Public Media",
+        language: "en",
+        country: "US",
+        genre: "International news / BBC World Service",
+        category: "NEWS",
+        playlist_url:
+            "https://playerservices.streamtheworld.com/api/livestream-redirect/WRVOHD3.mp3",
+        publisher_reference_url: "https://www.wrvo.org/digital-streaming",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
         format: "MP3",
     },
 ];
@@ -292,7 +445,33 @@ mod tests {
     }
     #[test]
     fn curated_urls_have_publisher_provenance() {
-        assert_eq!(curated_stations().len(), 5);
+        assert_eq!(curated_stations().len(), 15);
+        for (id, endpoint) in [
+            (
+                "wpr-news",
+                "https://wpr-ice.streamguys1.com/wpr-ideas-mp3-64",
+            ),
+            (
+                "wpr-music",
+                "https://wpr-ice.streamguys1.com/wpr-music-mp3-96",
+            ),
+            (
+                "radio-swiss-jazz",
+                "https://stream.srg-ssr.ch/srgssr/rsj/mp3/128",
+            ),
+            (
+                "radio-swiss-classic",
+                "https://stream.srg-ssr.ch/srgssr/rsc_de/mp3/128",
+            ),
+            (
+                "all-classical",
+                "https://allclassical.streamguys1.com/ac128kmp3",
+            ),
+            ("wfmt", "https://wfmt-live.streamguys1.com/wfmt256-aac"),
+            ("kfuo", "https://kfuo.streamguys1.com/kfuo"),
+        ] {
+            assert_eq!(station_by_id(id).unwrap().playlist_url, endpoint);
+        }
         let mut ids = std::collections::BTreeSet::new();
         for station in curated_stations() {
             assert!(ids.insert(station.id), "duplicate station ID");
@@ -329,7 +508,8 @@ mod tests {
                 "POP",
                 "LOUNGE",
                 "NEWS",
-                "MIXED"
+                "MIXED",
+                "TALK"
             ]
             .contains(&station.category));
             assert!(!station.genre.is_empty());
@@ -355,19 +535,6 @@ mod tests {
                     "https://wgbh-live.streamguys1.com/wgbh"
                 );
                 assert!(station.genre.starts_with("NPR /"));
-            } else if station.id == "kexp" {
-                assert_eq!(
-                    station.playlist_url,
-                    "https://kexp.streamguys1.com/kexp160.aac"
-                );
-                assert_eq!(station.format, "AAC");
-            } else {
-                assert_eq!(station.id, "radio-paradise");
-                assert_eq!(
-                    station.playlist_url,
-                    "https://stream.radioparadise.com/mp3-128"
-                );
-                assert_eq!(station.format, "MP3");
             }
             assert!(station.third_party_player_support);
             assert_eq!(station.rights_reviewed_date, "2026-10-28");

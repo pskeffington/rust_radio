@@ -85,6 +85,19 @@ impl ApprovedEndpoint {
         }
 
         let host = authority.strip_suffix(":443").unwrap_or(authority);
+        let swiss_stream_node = host
+            .strip_prefix("livestreaming-node-")
+            .and_then(|host| host.strip_suffix(".srg-ssr.ch"))
+            .is_some_and(|node| !node.is_empty() && node.bytes().all(|byte| byte.is_ascii_digit()));
+        let wrvo_live_node = host
+            .strip_suffix(".live.streamtheworld.com")
+            .is_some_and(|node| !node.is_empty() && node.bytes().all(|byte| byte.is_ascii_digit()));
+        let wrvo_path = match station.id {
+            "wrvo-news" => "WRVOFM.mp3",
+            "wrvo-prx" => "WRVOHD2.mp3",
+            "wrvo-bbc" => "WRVOHD3.mp3",
+            _ => "",
+        };
         let allowed = if station.id == "skylab" {
             authority == "uksoutha.streaming.broadcast.radio:29690"
                 && path.starts_with("skylab-radio-limited")
@@ -96,6 +109,24 @@ impl ApprovedEndpoint {
             host == "kexp.streamguys1.com" && path == "kexp160.aac"
         } else if station.id == "radio-paradise" {
             host == "stream.radioparadise.com"
+        } else if station.id == "wpr-news" {
+            host == "wpr-ice.streamguys1.com" && path == "wpr-ideas-mp3-64"
+        } else if station.id == "wpr-music" {
+            host == "wpr-ice.streamguys1.com" && path == "wpr-music-mp3-96"
+        } else if station.id == "radio-swiss-jazz" {
+            (host == "stream.srg-ssr.ch" || swiss_stream_node) && path == "srgssr/rsj/mp3/128"
+        } else if station.id == "radio-swiss-classic" {
+            (host == "stream.srg-ssr.ch" || swiss_stream_node) && path == "srgssr/rsc_de/mp3/128"
+        } else if station.id == "all-classical" {
+            host == "allclassical.streamguys1.com" && path == "ac128kmp3"
+        } else if station.id == "wfmt" {
+            host == "wfmt-live.streamguys1.com" && path == "wfmt256-aac"
+        } else if station.id == "kfuo" {
+            host == "kfuo.streamguys1.com" && path == "kfuo"
+        } else if !wrvo_path.is_empty() {
+            (host == "playerservices.streamtheworld.com"
+                && path == format!("api/livestream-redirect/{wrvo_path}"))
+                || (wrvo_live_node && path == wrvo_path)
         } else {
             false
         };
@@ -667,6 +698,81 @@ mod tests {
             b"#EXTM3U\nhttps://somafm.com/m3u/groovesalad.m3u"
         )
         .is_err());
+    }
+
+    #[test]
+    fn every_curated_station_has_a_validated_https_root() {
+        for station in crate::directory::curated_stations() {
+            ApprovedEndpoint::new(station.id, station.playlist_url)
+                .unwrap_or_else(|error| panic!("{}: {error:?}", station.id));
+        }
+        assert!(ApprovedEndpoint::new(
+            "radio-swiss-jazz",
+            "https://livestreaming-node-3.srg-ssr.ch/srgssr/rsj/mp3/128"
+        )
+        .is_ok());
+        for unsafe_url in [
+            "https://livestreaming-node-x.srg-ssr.ch/srgssr/rsj/mp3/128",
+            "https://attacker.livestreaming-node-3.srg-ssr.ch/srgssr/rsj/mp3/128",
+            "https://livestreaming-node-3.srg-ssr.ch/srgssr/rsc_de/mp3/128",
+        ] {
+            assert!(ApprovedEndpoint::new("radio-swiss-jazz", unsafe_url).is_err());
+        }
+    }
+
+    #[test]
+    fn radio_swiss_shard_redirect_is_limited_to_its_numeric_node_and_station_path() {
+        let origin = "https://stream.srg-ssr.ch/srgssr/rsj/mp3/128";
+        let shard = "https://livestreaming-node-3.srg-ssr.ch/srgssr/rsj/mp3/128";
+        let client = FakeHttp(vec![
+            Fixture {
+                url: origin,
+                status: 302,
+                mime: "text/plain",
+                redirect: Some(shard),
+                metaint: None,
+                body: Vec::new(),
+            },
+            Fixture {
+                url: shard,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: vec![0; 8],
+            },
+        ]);
+        let opened = open_station(&client, "radio-swiss-jazz").unwrap();
+        assert_eq!(opened.endpoint.url(), shard);
+    }
+
+    #[test]
+    fn wrvo_streamtheworld_redirects_are_limited_to_numeric_shards_and_exact_station_paths() {
+        for (station_id, file) in [
+            ("wrvo-news", "WRVOFM.mp3"),
+            ("wrvo-prx", "WRVOHD2.mp3"),
+            ("wrvo-bbc", "WRVOHD3.mp3"),
+        ] {
+            assert!(ApprovedEndpoint::new(
+                station_id,
+                &format!(
+                    "https://playerservices.streamtheworld.com/api/livestream-redirect/{file}"
+                )
+            )
+            .is_ok());
+            assert!(ApprovedEndpoint::new(
+                station_id,
+                &format!("https://29320.live.streamtheworld.com/{file}")
+            )
+            .is_ok());
+        }
+        for unsafe_url in [
+            "https://x29320.live.streamtheworld.com/WRVOFM.mp3",
+            "https://29320.live.streamtheworld.com.evil.test/WRVOFM.mp3",
+            "https://29320.live.streamtheworld.com/WRVOHD2.mp3",
+        ] {
+            assert!(ApprovedEndpoint::new("wrvo-news", unsafe_url).is_err());
+        }
     }
 
     #[test]
