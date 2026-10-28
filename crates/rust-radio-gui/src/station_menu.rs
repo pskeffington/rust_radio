@@ -163,7 +163,10 @@ impl RadioPanel {
                 ui.set_width(295.0);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                 for (index, name) in names.iter().enumerate() {
-                    let health = curated_stations().get(index).map(|station| self.validation_label(station.id)).unwrap_or("CUSTOM");
+                    let health = curated_stations()
+                        .get(index)
+                        .map(|station| self.validation_label(station.id))
+                        .unwrap_or("CUSTOM");
                     let label = format!("{} {}", if index == selected { ">" } else { " " }, name);
                     let row = ui
                         .add_sized(
@@ -173,8 +176,16 @@ impl RadioPanel {
                                 .truncate(),
                         )
                         .on_hover_text(if let Some(station) = curated_stations().get(index) {
-                            format!("{}\nGenre: {}\nFeed: {}\nPublisher: {}", station.name, station.genre, health, station.publisher_reference_url)
-                        } else { name.clone() });
+                            format!(
+                                "{}\nGenre: {}\nFeed: {}\nPublisher: {}",
+                                station.name,
+                                station.genre,
+                                health,
+                                station.publisher_reference_url
+                            )
+                        } else {
+                            name.clone()
+                        });
                     if row.clicked() {
                         choice = Some(index);
                     }

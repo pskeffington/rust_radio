@@ -372,10 +372,9 @@ pub fn station_tcp_reachable(id: &str, timeout: Duration) -> Option<IpReachabili
         "skylab" => ("uksoutha.streaming.broadcast.radio", 29690),
         "wcrb" | "gbhnews" => ("wgbh-live.streamguys1.com", 443),
         "groovesalad" | "secretagent" | "lush" | "dronezone" | "deepspaceone" | "spacestation"
-        | "beatblender" | "defcon" | "u80s" | "indiepop" | "folkfwd" | "metal"
-        | "bootliquor" | "sonicuniverse" | "bossa" | "reggae" | "thistle"
-        | "fluid" | "cliqhop" | "thetrip" | "leftcoast70s"
-        | "illstreet" => ("somafm.com", 443),
+        | "beatblender" | "defcon" | "u80s" | "indiepop" | "folkfwd" | "metal" | "bootliquor"
+        | "sonicuniverse" | "bossa" | "reggae" | "thistle" | "fluid" | "cliqhop" | "thetrip"
+        | "leftcoast70s" | "illstreet" => ("somafm.com", 443),
         _ => return None,
     };
     let timeout = timeout.min(Duration::from_secs(3));
@@ -456,8 +455,24 @@ mod tests {
         let mut ids = std::collections::BTreeSet::new();
         for station in curated_stations() {
             assert!(ids.insert(station.id), "duplicate station ID");
-            assert!(["CHILL", "AMBIENT", "ELECTRONIC", "RETRO", "CLASSICAL", "INDIE", "FOLK", "ROCK", "ROOTS", "JAZZ", "WORLD", "HIPHOP", "DANCE", "NEWS", "LOUNGE"]
-                .contains(&station.category));
+            assert!([
+                "CHILL",
+                "AMBIENT",
+                "ELECTRONIC",
+                "RETRO",
+                "CLASSICAL",
+                "INDIE",
+                "FOLK",
+                "ROCK",
+                "ROOTS",
+                "JAZZ",
+                "WORLD",
+                "HIPHOP",
+                "DANCE",
+                "NEWS",
+                "LOUNGE"
+            ]
+            .contains(&station.category));
             assert!(!station.genre.is_empty());
             assert!(station.playlist_url.starts_with("https://"));
             assert!(station.publisher_reference_url.starts_with("https://"));
@@ -470,7 +485,10 @@ mod tests {
                     "https://www.skylabradio.com/listen"
                 );
             } else if station.id == "gbhnews" {
-                assert_eq!(station.playlist_url, "https://wgbh-live.streamguys1.com/wgbh");
+                assert_eq!(
+                    station.playlist_url,
+                    "https://wgbh-live.streamguys1.com/wgbh"
+                );
                 assert_eq!(station.category, "NEWS");
             } else if station.id == "wcrb" {
                 assert_eq!(

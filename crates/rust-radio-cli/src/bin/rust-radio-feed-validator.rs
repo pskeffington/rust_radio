@@ -183,15 +183,11 @@ fn current_health(station: &Value, now_unix: u64) -> &'static str {
             "stale"
         };
     }
-    if station["consecutive_failed_sweeps"].as_u64().unwrap_or(0)
-        >= FAILURE_SWEEPS_TO_UNAVAILABLE
-    {
+    if station["consecutive_failed_sweeps"].as_u64().unwrap_or(0) >= FAILURE_SWEEPS_TO_UNAVAILABLE {
         return "unavailable";
     }
     if let Some(last_good) = decoded_at(&station["last_good"]) {
-        return if now_unix >= last_good
-            && now_unix - last_good <= LAST_GOOD_GRACE.as_secs()
-        {
+        return if now_unix >= last_good && now_unix - last_good <= LAST_GOOD_GRACE.as_secs() {
             "degraded"
         } else {
             "stale"
@@ -236,11 +232,10 @@ fn restore_station(station: &InternetStation, old: Option<&Value>) -> Value {
         } else if decoded_at(&old["validation"]).is_some() {
             entry["last_good"] = old["validation"].clone();
         }
-        entry["consecutive_failed_sweeps"] =
-            json!(old["consecutive_failed_sweeps"]
-                .as_u64()
-                .unwrap_or(0)
-                .min(FAILURE_SWEEPS_TO_UNAVAILABLE));
+        entry["consecutive_failed_sweeps"] = json!(old["consecutive_failed_sweeps"]
+            .as_u64()
+            .unwrap_or(0)
+            .min(FAILURE_SWEEPS_TO_UNAVAILABLE));
         entry["probe_attempts"] = json!(old["probe_attempts"].as_u64().unwrap_or(0).min(2));
     }
     entry
@@ -331,16 +326,11 @@ fn atomic_save(path: &Path, report: &Value) -> io::Result<()> {
 
 fn read_snapshot(path: &Path) -> Result<Value, String> {
     let file = File::open(path).map_err(|error| format!("Cannot read report: {error}"))?;
-    if file
-        .metadata()
-        .map_err(|error| error.to_string())?
-        .len()
-        > MAX_REPORT_BYTES
-    {
+    if file.metadata().map_err(|error| error.to_string())?.len() > MAX_REPORT_BYTES {
         return Err("Feed report exceeds maximum size".into());
     }
-    let report: Value = serde_json::from_reader(file)
-        .map_err(|error| format!("Invalid feed report: {error}"))?;
+    let report: Value =
+        serde_json::from_reader(file).map_err(|error| format!("Invalid feed report: {error}"))?;
     if !matches!(report["schema_version"].as_u64(), Some(1 | 2))
         || report["total"].as_u64() != Some(curated_stations().len() as u64)
     {
@@ -444,7 +434,10 @@ fn probe_with_retry(
 }
 
 fn publisher_group(station: &InternetStation) -> &'static str {
-    if station.publisher_reference_url.starts_with("https://somafm.com/") {
+    if station
+        .publisher_reference_url
+        .starts_with("https://somafm.com/")
+    {
         "somafm"
     } else if station.id == "wcrb" || station.id == "gbhnews" {
         "gbh"
@@ -493,13 +486,24 @@ fn sweep_with(
     let mut stations: Vec<_> = curated_stations()
         .iter()
         .enumerate()
-        .map(|(index, station)| restore_station(station, old.and_then(|entries| entries.get(index))))
+        .map(|(index, station)| {
+            restore_station(station, old.and_then(|entries| entries.get(index)))
+        })
         .collect();
     let total = stations.len();
     let mut successes = 0usize;
-    atomic_save(path, &snapshot(&stations, 0, false, started, started, false))?;
+    atomic_save(
+        path,
+        &snapshot(&stations, 0, false, started, started, false),
+    )?;
     for (index, station) in curated_stations().iter().enumerate() {
-        eprintln!("[{}/{}] {} / {}", index + 1, total, station.id, station.genre);
+        eprintln!(
+            "[{}/{}] {} / {}",
+            index + 1,
+            total,
+            station.id,
+            station.genre
+        );
         let (report, attempts) = probe_with_retry(station.id, retry_pause, &mut validate);
         let passed = decoded_at(&report).is_some();
         stations[index]["validation"] = report.clone();
@@ -514,7 +518,9 @@ fn sweep_with(
         eprintln!(
             "  {}: {} ({} probe{})",
             station.id,
-            partial["stations"][index]["health"].as_str().unwrap_or("unverified"),
+            partial["stations"][index]["health"]
+                .as_str()
+                .unwrap_or("unverified"),
             attempts,
             if attempts == 1 { "" } else { "s" },
         );
@@ -571,7 +577,10 @@ fn show_report(path: &Path, eligible_mode: Option<bool>) -> Result<bool, String>
             .filter(|entry| is_eligible(entry, now, strict))
             .filter_map(|entry| entry["id"].as_str())
             .collect();
-        println!("{}", serde_json::to_string(&ids).map_err(|error| error.to_string())?);
+        println!(
+            "{}",
+            serde_json::to_string(&ids).map_err(|error| error.to_string())?
+        );
         return Ok(true);
     }
     let fresh = entries
@@ -627,10 +636,8 @@ fn run(options: Options) -> Result<bool, String> {
                             options.output.display(),
                         );
                         if options.mode == Mode::Once {
-                            return Ok(
-                                eligible == curated_stations().len()
-                                    && report["network_incident_suspected"].as_bool() != Some(true),
-                            );
+                            return Ok(eligible == curated_stations().len()
+                                && report["network_incident_suspected"].as_bool() != Some(true));
                         }
                     }
                     Err(error) => {
@@ -690,7 +697,10 @@ mod tests {
             .unwrap()
             .as_nanos();
         env::temp_dir()
-            .join(format!("rust-radio-validator-{}-{label}-{stamp}", process::id()))
+            .join(format!(
+                "rust-radio-validator-{}-{label}-{stamp}",
+                process::id()
+            ))
             .join("health.json")
     }
 
@@ -717,7 +727,10 @@ mod tests {
     #[test]
     fn options_require_explicit_daemon_for_intervals() {
         assert_eq!(parse_args(&[]).unwrap().mode, Mode::Once);
-        assert_eq!(parse_args(&args(&["--daemon"])).unwrap().interval.as_secs(), 14_400);
+        assert_eq!(
+            parse_args(&args(&["--daemon"])).unwrap().interval.as_secs(),
+            14_400
+        );
         assert_eq!(
             parse_args(&args(&["--strict-eligible"])).unwrap().mode,
             Mode::StrictEligible
@@ -787,7 +800,10 @@ mod tests {
             assert_eq!(entry["genre"], station.genre);
             assert_eq!(entry["category"], station.category);
             assert_eq!(entry["playlist_url"], station.playlist_url);
-            assert_eq!(entry["publisher_reference_url"], station.publisher_reference_url);
+            assert_eq!(
+                entry["publisher_reference_url"],
+                station.publisher_reference_url
+            );
         }
         assert!(directory.iter().any(|station| station.id == "gbhnews"));
         assert!(!directory.iter().any(|station| station.id == "poptron"));
@@ -812,10 +828,7 @@ mod tests {
         assert_eq!(attempts.get("skylab"), Some(&1));
         let report = read_snapshot(&path).unwrap();
         assert_eq!(station(&report, "gbhnews")["probe_attempts"], 2);
-        assert_eq!(
-            station(&report, "gbhnews")["consecutive_failed_sweeps"],
-            0
-        );
+        assert_eq!(station(&report, "gbhnews")["consecutive_failed_sweeps"], 0);
         assert_eq!(report["fresh"], 25);
         cleanup(&path);
     }
@@ -849,9 +862,15 @@ mod tests {
         }
         assert_eq!(good_sweep(&path), 25);
         let recovered = read_snapshot(&path).unwrap();
-        assert_eq!(station(&recovered, "gbhnews")["consecutive_failed_sweeps"], 0);
         assert_eq!(
-            current_health(station(&recovered, "gbhnews"), unix_seconds(SystemTime::now()).unwrap()),
+            station(&recovered, "gbhnews")["consecutive_failed_sweeps"],
+            0
+        );
+        assert_eq!(
+            current_health(
+                station(&recovered, "gbhnews"),
+                unix_seconds(SystemTime::now()).unwrap()
+            ),
             "fresh"
         );
         cleanup(&path);
@@ -937,7 +956,10 @@ mod tests {
         let news = station(&recovered, "gbhnews");
         assert_eq!(news["consecutive_failed_sweeps"], 1);
         assert!(decoded_at(&news["last_good"]).is_some());
-        assert_eq!(current_health(news, unix_seconds(SystemTime::now()).unwrap()), "degraded");
+        assert_eq!(
+            current_health(news, unix_seconds(SystemTime::now()).unwrap()),
+            "degraded"
+        );
         cleanup(&path);
     }
 
@@ -973,10 +995,15 @@ mod tests {
             .iter()
             .map(|station| {
                 let mut entry = empty_station(station);
-                entry["validation"] =
-                    validation_value(Ok(decoded(station.id, SystemTime::now())), SystemTime::now());
+                entry["validation"] = validation_value(
+                    Ok(decoded(station.id, SystemTime::now())),
+                    SystemTime::now(),
+                );
                 entry.as_object_mut().unwrap().remove("last_good");
-                entry.as_object_mut().unwrap().remove("consecutive_failed_sweeps");
+                entry
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("consecutive_failed_sweeps");
                 entry
             })
             .collect();
@@ -996,7 +1023,10 @@ mod tests {
         assert_eq!(after["schema_version"], 2);
         assert_eq!(news["consecutive_failed_sweeps"], 1);
         assert!(decoded_at(&news["last_good"]).is_some());
-        assert_eq!(current_health(news, unix_seconds(SystemTime::now()).unwrap()), "degraded");
+        assert_eq!(
+            current_health(news, unix_seconds(SystemTime::now()).unwrap()),
+            "degraded"
+        );
         cleanup(&path);
     }
 }

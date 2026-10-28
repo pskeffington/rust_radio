@@ -151,7 +151,9 @@ fn single_bad_check_does_not_hide_a_previously_good_station() {
     good.stage = rust_radio_core::validation::ValidationStage::DecodedAudio;
     good.decoded_frames = 512;
     good.checked_at = Some(SystemTime::now());
-    panel.last_good_checks.insert("skylab", good.checked_at.unwrap());
+    panel
+        .last_good_checks
+        .insert("skylab", good.checked_at.unwrap());
     panel.validations.insert("skylab", good);
     assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
 
@@ -160,7 +162,9 @@ fn single_bad_check_does_not_hide_a_previously_good_station() {
     failed.checked_at = Some(SystemTime::now());
     panel.validations.insert("skylab", failed);
     assert_eq!(panel.validation_label("skylab"), "DEGRADED / RETRY");
-    assert!(curated_stations().iter().any(|station| station.id == "skylab"));
+    assert!(curated_stations()
+        .iter()
+        .any(|station| station.id == "skylab"));
 }
 
 #[test]

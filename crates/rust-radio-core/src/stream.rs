@@ -586,11 +586,7 @@ mod tests {
 
     #[test]
     fn gbh_news_endpoint_is_exact_and_cannot_access_other_mounts() {
-        assert!(ApprovedEndpoint::new(
-            "gbhnews",
-            "https://wgbh-live.streamguys1.com/wgbh"
-        )
-        .is_ok());
+        assert!(ApprovedEndpoint::new("gbhnews", "https://wgbh-live.streamguys1.com/wgbh").is_ok());
         for bad in [
             "http://wgbh-live.streamguys1.com/wgbh",
             "https://wgbh-live.streamguys1.com/classical-hi/",

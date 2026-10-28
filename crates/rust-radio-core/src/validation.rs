@@ -6,8 +6,12 @@ use std::time::{Duration, SystemTime};
 pub const FEED_FRESHNESS_TTL: Duration = Duration::from_secs(6 * 60 * 60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FeedHealth { Fresh, Stale, Unverified, Failed }
-
+pub enum FeedHealth {
+    Fresh,
+    Stale,
+    Unverified,
+    Failed,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValidationStage {

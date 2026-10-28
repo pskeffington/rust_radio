@@ -376,7 +376,9 @@ async fn pump_input(
                     next = backup;
                     continue;
                 }
-                return Err(TransportError::Network("Radio connect/header timeout".into()));
+                return Err(TransportError::Network(
+                    "Radio connect/header timeout".into(),
+                ));
             }
         };
         let status = response.status();
@@ -455,8 +457,7 @@ async fn pump_input(
                 let mut urls = Vec::with_capacity(entries.len());
                 for endpoint in entries {
                     urls.push(
-                        reqwest::Url::parse(endpoint.url())
-                            .map_err(|_| "Invalid playlist URL")?,
+                        reqwest::Url::parse(endpoint.url()).map_err(|_| "Invalid playlist URL")?,
                     );
                 }
                 let mut urls = urls.into_iter();
