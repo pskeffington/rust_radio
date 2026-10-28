@@ -1161,32 +1161,38 @@ mod tests {
     fn worker_reports_output_failures_to_hosts_but_not_network_errors_or_stop() {
         let (controller, generation) = recovery_controller();
         let output_failed = Arc::new(AtomicBool::new(false));
-        record_worker_result(
-            Err(PlaybackFailure::Output("Bluetooth output lost".into())),
-            generation,
-            &controller,
-            &AtomicBool::new(false),
-            &output_failed,
-        );
-        assert!(output_failed.load(Ordering::Acquire));
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let worker_controller = Arc::clone(&controller);
+        let worker_output_failed = Arc::clone(&output_failed);
+        let worker_cancelled = Arc::clone(&cancelled);
+        let worker = thread::spawn(move || {
+            record_worker_result(
+                Err(PlaybackFailure::Output("Bluetooth output lost".into())),
+                generation,
+                &worker_controller,
+                &worker_cancelled,
+                &worker_output_failed,
+            );
+        });
+        let mut engine = NativeRadioEngine {
+            controller: Arc::clone(&controller),
+            cancelled,
+            volume: Arc::new(AtomicU8::new(60)),
+            output_failed,
+            worker: Some(worker),
+            #[cfg(feature = "nrsp-native")]
+            native_control: None,
+            #[cfg(feature = "sdrconnect")]
+            receiver: Arc::new(Mutex::new(None)),
+        };
+        finish_test_engine(&mut engine);
+        assert!(engine.output_failed());
         let failed_session = controller.lock().unwrap().state().clone();
         assert_eq!(failed_session.state, PlaybackState::Failed);
         assert_eq!(
             failed_session.last_error.as_deref(),
             Some("Bluetooth output lost")
         );
-        let engine = NativeRadioEngine {
-            controller: Arc::clone(&controller),
-            cancelled: Arc::new(AtomicBool::new(false)),
-            volume: Arc::new(AtomicU8::new(60)),
-            output_failed: Arc::clone(&output_failed),
-            worker: None,
-            #[cfg(feature = "nrsp-native")]
-            native_control: None,
-            #[cfg(feature = "sdrconnect")]
-            receiver: Arc::new(Mutex::new(None)),
-        };
-        assert!(engine.output_failed());
 
         let (controller, generation) = recovery_controller();
         let output_failed = AtomicBool::new(false);
