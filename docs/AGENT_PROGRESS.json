@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T19:05:04Z",
+  "updated_at_utc": "2026-10-28T19:06:06Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "e0f96f5",
+  "implementation_commit": "52b85cc",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -37,7 +37,9 @@
     "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
-    "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required"
+    "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
+    "implementation_commit": "52b85cc; shared headless feed-history parser",
+    "latest_full_gate_run": "all six required gates passed on the shared parser increment; A/B fit test repeated afterward"
   },
   "a_b_test": {
     "variant_a": "category plus station name",
@@ -57,5 +59,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "After the headless API is reviewed/merged, update and test a Rust-Boy host pin in its own repository; continue physical output-loss and Pi acceptance gates."
+  "next_priority": "After this API is reviewed/merged, update and test a Rust-Boy host pin in its own repository; continue physical output-loss and Pi acceptance gates."
 }

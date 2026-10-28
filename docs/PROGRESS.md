@@ -5,6 +5,7 @@ Updated 2026-10-28. Active priorities and ownership are in the
 
 ## Current module pass: strict saved-history validation (2026-10-28)
 
+- Implementation commit: `52b85cc` (shared host-neutral parser).
 - Tightened both the CLI history writer and GUI host importer to reject unknown
   status/stage values, future record timestamps, inconsistent decoded evidence,
   invalid attempt/failure counts and mismatched health states. Invalid old files
