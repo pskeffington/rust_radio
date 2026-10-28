@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T19:23:27Z",
+  "updated_at_utc": "2026-10-28T19:30:30Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
-  "implementation_commit": "94f0daa",
+  "implementation_commit": "df6a73d",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/3",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -19,7 +19,8 @@
     "Moved versioned feed-history parsing and freshness recomputation into rust-radio-core and re-exported the API from the headless facade.",
     "Reused the core parser from CLI persistence and GUI saved-history import, removing duplicate schema validation.",
     "Added a headless embedding contract test proving saved history is readable without GUI or I/O.",
-    "Reconciled IP PlaybackStarted snapshots with actual native callback sample consumption, including delayed callbacks and per-retry counters."
+    "Reconciled IP PlaybackStarted snapshots with actual native callback sample consumption, including delayed callbacks and per-retry counters.",
+    "Extended callback-consumed status reconciliation to direct nRSP-native, SDRconnect and Soapy playback; clear failed attempt progress before recovery."
   ],
   "validation": {
     "fmt": "passed",
@@ -39,13 +40,13 @@
     "workflow_yaml": "parsed",
     "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
-    "implementation_commit": "52b85cc; shared headless feed-history parser",
-    "latest_full_gate_run": "all six required gates passed on implementation commit 94f0daa; default and all-feature loopback fixtures required local network permission; native audio manual test remains ignored",
+    "implementation_commit": "df6a73d; callback-driven status reconciliation across IP, direct nRSP-native, SDRconnect and Soapy playback",
+    "latest_full_gate_run": "all six required gates passed on implementation commit df6a73d; loopback fixtures required local socket permission; native audio manual test remains ignored",
     "current_head_ci": "head 94f0daa has empty combined status; workflow run 40753639896 failed during startup before creating jobs",
     "live_catalog_revalidation": "25/25 decoded at decoded_audio in 25 attempts on 2026-10-28; point-in-time evidence only",
     "arm64_headless_check": "cargo check -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed on head 66f9efd; compile evidence only, not Pi runtime",
     "layout_ab_recheck": "category+name 24/25 vs names-only 25/25 at 295px; both 25/25 at 340px; 1776px text-width savings; fit metric only",
-    "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing; retry counter isolation and Stop tested"
+    "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy"
   },
   "a_b_test": {
     "variant_a": "category plus station name",
@@ -57,7 +58,7 @@
   },
   "ci": {
     "latest_observed_head_run": 40753639896,
-    "conclusion": "head 94f0daa has empty combined status; Actions run 40753639896 failed at startup and returned zero jobs"
+    "conclusion": "documentation head 84c4d51 had empty combined status; Actions run 40753909984 failed at startup and returned zero jobs; df6a73d awaits push/check"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -65,5 +66,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "After this API is reviewed/merged, update and test a Rust-Boy host pin in its own repository; continue physical output-loss and Pi acceptance gates."
+  "next_priority": "Check CI for the newly published callback fix; continue physical output-loss, Pi, receiver/USB and Rust-Boy host adoption gates."
 }

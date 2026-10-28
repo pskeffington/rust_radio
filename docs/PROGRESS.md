@@ -3,6 +3,28 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Cross-source callback status reconciliation (2026-10-28)
+
+- Implementation commit `df6a73d` shares the native callback-consumed sample
+  counter with the session status reconciler for IP, direct nRSP-native,
+  SDRconnect and Soapy playback. `Playing` can now be observed after delayed
+  output callbacks even if the source is waiting for its next packet/read.
+- Recovery clears the ended attempt's counter before a retry; each new output
+  attempt receives its own counter. The regression checks delayed callback
+  progress for SDR, IP retry isolation, and Stop precedence.
+- The focused callback tests passed (2/2). All six required gates passed:
+  formatting, default workspace tests, strict default Clippy, all-feature
+  workspace tests, strict all-feature Clippy and all-feature check. Loopback
+  fixtures required local socket permission. One manual native-output test
+  remains intentionally ignored.
+- Headless AArch64 SDRconnect compilation passed. The layout A/B repeated at
+  295 px: category+name fit 24/25 labels and names-only fit 25/25; both fit at
+  340 px. Names-only saves 1,776 aggregate text pixels. This is a fit metric,
+  not listener preference evidence.
+- The change is callback evidence only. Human-audible output, physical output
+  loss/recovery, Pi runtime, USB/receiver hardware and publisher rights remain
+  separate acceptance gates.
+
 ## Delayed callback playback-state fix (2026-10-28)
 
 - Implementation commit `94f0daa` gives each IP stream attempt its own
