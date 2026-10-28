@@ -3,6 +3,25 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Cancellation after audio headers (2026-10-28 23:16 UTC)
+
+- Added a loopback HTTP fixture that returns successful audio headers then
+  stalls before sending body bytes. Canceling the session aborts the first
+  reader wait and reaps the transport worker within the bounded 500 ms check.
+  This complements pending-header cancellation coverage.
+- Focused integration test passed; all six local gates passed: formatting,
+  default/all-feature workspace tests, both strict Clippy runs and all-feature
+  check. Windows GNU test binaries compiled for default, SDRconnect and direct
+  nRSP-native; they were not run.
+- Repeated GUI label A/B/C: at 295 px, A full category fit 24/25, B names-only
+  and C compact category 25/25; all fit at 340 px; C saves 192 px. Layout fit
+  evidence only, not listener preference.
+- Source commit `3264bc7` is pushed to PR #5, which is open and mergeable. No
+  run or combined status was observed for this head; previous run 264 failed
+  before job creation (`startup_failure`).
+- Next: inspect cancellation during decoder probing and output startup, then
+  continue physical Bluetooth/USB, Pi, receiver and publisher-rights acceptance.
+
 ## Stop racing with playback retry (2026-10-28 23:14 UTC)
 
 - Added a deterministic regression for Stop arriving as a transient network

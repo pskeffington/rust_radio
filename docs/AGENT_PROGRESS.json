@@ -1,10 +1,12 @@
 {
-  "updated_at_utc": "2026-10-28T23:14:07Z",
+  "updated_at_utc": "2026-10-28T23:16:58Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "0ede192ed4b18147c2699fcb2b4d8ddd4878a73a; added playback Stop/transient-failure race regression.",
+  "implementation_commit": "3264bc779331e6b7e38bb45571fff6abaa15270d; loopback integration test covers cancellation after successful audio headers while first body read is pending.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Added cancellation_after_audio_headers_interrupts_the_first_reader_wait: after 200 audio headers but before body data, cancel aborts ChunkReader promptly and transport cleanup completes within 500ms.",
+    "Added playback Stop/transient-failure race test; full local workspace gates passed, Windows GNU binaries compiled in three feature configurations, repeated GUI A/B/C.",
     "Added stop_racing_with_transient_failure_skips_retry_and_recovery_event: Stop concurrent with transient failure suppresses wait, retry and stale state event.",
     "Passed full default/all-feature tests and both strict Clippy configurations, formatting and all-feature check; cross-compiled Windows GNU test binaries for three feature combinations and repeated station-label A/B/C.",
     "Preserved CPAL native output error details through asynchronous failure state and playback recovery classification; synthetic diagnostic tests passed.",
@@ -192,8 +194,9 @@
     "native_audio_sample_formats": "passed callback conversion and gain regression for all eleven active CPAL 0.16 PCM formats (I8, I16, I24, I32, I64, U8, U16, U32, U64, F32, F64), testing -1.0, -0.5, 0, 0.75, 1.0 at 100%, 50%, and 0% volume plus played-sample accounting.",
     "native_live_volume_changes": "passed for I8, I16, I24, I32, I64, U8, U16, U32, U64, F32 and F64; separate callback buffers picked up 100%, 50% and 0% volume and consumed-sample count reached three.",
     "native_output_failure_diagnostics": "passed focused tests for recording asynchronous backend diagnostics and propagation into PlaybackFailure; no hardware used.",
-    "station_label_ab": "passed repeat at 295px: A full category 24/25; B names-only 25/25; C compact category 25/25; all fit at 340px; C saves 192px vs A. Layout fit only, not preference.",
-    "playback_stop_retry_race": "passed focused deterministic test: Stop during transient attempt failure performs no wait/retry and rejects stale ConnectionLost/Error events."
+    "station_label_ab": "passed repeat: at 295px A full category 24/25, B names-only and C compact category 25/25; all fit at 340px; C saves 192px vs A. Layout measurement, not listener preference.",
+    "playback_stop_retry_race": "passed focused deterministic test: Stop during transient attempt failure performs no wait/retry and rejects stale ConnectionLost/Error events.",
+    "post_header_stream_cancellation": "passed loopback HTTP integration: server returns audio/mpeg headers and stalls before body; cancellation produces ConnectionAborted, releases NetworkGuard worker under 500ms, one request only."
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -207,11 +210,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40785912226,
-    "latest_pr_head": "0ede192ed4b18147c2699fcb2b4d8ddd4878a73a",
-    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_run": null,
+    "latest_pr_head": "3264bc779331e6b7e38bb45571fff6abaa15270d",
+    "latest_pr_conclusion": "no_run_observed",
     "latest_pr_jobs": 0,
-    "details": "Actions run 264 for source head 0ede192 failed before job creation (startup_failure); combined statuses empty. PR #5 remains open and mergeable. Native MSVC CI remains unverified."
+    "details": "PR #5 open and mergeable at source head 3264bc7. No PR-triggered workflow run or combined status observed for this commit. Previous run 264 for head 0ede192 failed before job creation (startup_failure); native MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -222,6 +225,6 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue deterministic playback lifecycle race coverage, particularly Stop during an in-flight connection/open and output teardown; then continue physical Bluetooth/USB, Raspberry Pi, receiver and publisher-rights gates and retry Windows MSVC CI when Actions runner is healthy.",
-  "current_pr_state": "PR #5 open and mergeable at source head 0ede192; Actions run 264 failed before job creation with startup_failure, no combined statuses."
+  "next_priority": "Inspect cancellation during decoder probing and native output startup, then continue physical Bluetooth/USB, Raspberry Pi and receiver acceptance, publisher distribution review and retry Windows MSVC CI when Actions starts jobs.",
+  "current_pr_state": "PR #5 open and mergeable at source head 3264bc7; no run/status observed for this head."
 }
