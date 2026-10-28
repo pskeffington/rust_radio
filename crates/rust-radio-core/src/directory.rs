@@ -246,14 +246,14 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
         format: "MP3",
     },
     InternetStation {
-        id: "poptron",
-        name: "PopTron",
-        genre: "Electropop / indie dance",
-        category: "POP",
-        playlist_url: "https://somafm.com/m3u/poptron.m3u",
-        publisher_reference_url: "https://somafm.com/poptron/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
+        id: "gbhnews",
+        name: "GBH 89.7 — NPR News (Boston)",
+        genre: "NPR news / public affairs / local reporting",
+        category: "NEWS",
+        playlist_url: "https://wgbh-live.streamguys1.com/wgbh",
+        publisher_reference_url: "https://www.wgbh.org/help/how-to-access-live-radio-streams",
+        nominal_kbps: 0,
+        format: "Streaming audio (verify at runtime)",
     },
     InternetStation {
         id: "leftcoast70s",
@@ -370,10 +370,11 @@ impl RadioConnectivity for PublisherTcpCheck {
 pub fn station_tcp_reachable(id: &str, timeout: Duration) -> Option<IpReachability> {
     let (host, port) = match id {
         "skylab" => ("uksoutha.streaming.broadcast.radio", 29690),
+        "wcrb" | "gbhnews" => ("wgbh-live.streamguys1.com", 443),
         "groovesalad" | "secretagent" | "lush" | "dronezone" | "deepspaceone" | "spacestation"
         | "beatblender" | "defcon" | "u80s" | "indiepop" | "folkfwd" | "metal"
         | "bootliquor" | "sonicuniverse" | "bossa" | "reggae" | "thistle"
-        | "fluid" | "cliqhop" | "thetrip" | "poptron" | "leftcoast70s"
+        | "fluid" | "cliqhop" | "thetrip" | "leftcoast70s"
         | "illstreet" => ("somafm.com", 443),
         _ => return None,
     };
@@ -455,7 +456,7 @@ mod tests {
         let mut ids = std::collections::BTreeSet::new();
         for station in curated_stations() {
             assert!(ids.insert(station.id), "duplicate station ID");
-            assert!(["CHILL", "AMBIENT", "ELECTRONIC", "RETRO", "CLASSICAL", "INDIE", "FOLK", "ROCK", "ROOTS", "JAZZ", "WORLD", "HIPHOP", "DANCE", "POP", "LOUNGE"]
+            assert!(["CHILL", "AMBIENT", "ELECTRONIC", "RETRO", "CLASSICAL", "INDIE", "FOLK", "ROCK", "ROOTS", "JAZZ", "WORLD", "HIPHOP", "DANCE", "NEWS", "LOUNGE"]
                 .contains(&station.category));
             assert!(!station.genre.is_empty());
             assert!(station.playlist_url.starts_with("https://"));
@@ -468,6 +469,9 @@ mod tests {
                     station.publisher_reference_url,
                     "https://www.skylabradio.com/listen"
                 );
+            } else if station.id == "gbhnews" {
+                assert_eq!(station.playlist_url, "https://wgbh-live.streamguys1.com/wgbh");
+                assert_eq!(station.category, "NEWS");
             } else if station.id == "wcrb" {
                 assert_eq!(
                     station.playlist_url,
