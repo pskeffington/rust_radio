@@ -199,7 +199,19 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
         return Err("Stream URL must not contain credentials or a fragment".into());
     }
     match url.scheme() {
-        "https" if url.host().is_some() => Ok(()),
+        "https" if url.host().is_some() => {
+            let literal_ip = url.host_str().and_then(|host| {
+                host.trim_start_matches('[')
+                    .trim_end_matches(']')
+                    .parse::<std::net::IpAddr>()
+                    .ok()
+            });
+            if literal_ip.is_some_and(|address| !is_allowed_address(address, false)) {
+                Err("HTTPS streams cannot target a non-public IP address".into())
+            } else {
+                Ok(())
+            }
+        }
         "http" => match url
             .host_str()
             .and_then(|host| host.parse::<std::net::Ipv4Addr>().ok())
@@ -587,6 +599,7 @@ mod tests {
     fn direct_urls_require_explicit_safe_schemes_and_no_credentials() {
         for url in [
             "https://example.com/live?token=abc",
+            "https://8.8.8.8/live",
             "http://127.0.0.1:8080/live",
             "http://192.168.1.5:8000/live",
         ] {
@@ -595,6 +608,12 @@ mod tests {
         for url in [
             "http://example.com/live",
             "http://169.254.169.254/",
+            "https://127.0.0.1/live",
+            "https://192.168.1.5/live",
+            "https://[::1]/live",
+            "https://[::ffff:127.0.0.1]/live",
+            "https://100.64.0.1/live",
+            "https://[fe80::1]/live",
             "https://user:pass@example.com/",
             "https://example.com/#fragment",
             "file:///tmp/audio",
