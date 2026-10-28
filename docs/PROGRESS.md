@@ -17,9 +17,9 @@ Updated 2026-10-28. Active priorities and ownership are in the
   names-only and C compact category fit 25/25; all fit at 340 px. C saves
   192 px vs A; A overflows `wcrb`. This is layout evidence, not preference data.
 - Source commit `03e3025` and checkpoint `1a8c307` are pushed to open,
-  mergeable PR #5. Actions run 273 (`40787755763`) for the checkpoint failed
-  before job creation (`startup_failure`); combined statuses are empty. Native
-  Windows MSVC CI remains unverified.
+  mergeable PR #5. Actions run 274 (`40787809365`) for checkpoint `c3f2798` failed before job
+  creation (`startup_failure`); combined statuses are empty. Native Windows
+  MSVC CI remains unverified.
 - Next: continue playback lifecycle race coverage; physical output/Pi/receiver
   operation and publisher-rights review remain open acceptance gates.
 

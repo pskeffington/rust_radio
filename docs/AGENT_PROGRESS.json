@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:31:00Z",
+  "updated_at_utc": "2026-10-28T23:30:21Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "03e3025f81b865690c52b8b782fac59faccb46e3; output startup errors clear callback progress; concurrent Stop suppresses the stale error while active sessions preserve it.",
@@ -218,11 +218,11 @@
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data"
   },
   "ci": {
-    "latest_pr_run": 40787755763,
-    "latest_pr_head": "1a8c307a84353ea120b29858ea08fa8ad83d3950",
+    "latest_pr_run": 40787809365,
+    "latest_pr_head": "c3f2798e6a97748ad4890e8009a59abba65f65b6",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR Actions run 273 (40787755763) for checkpoint 1a8c307 failed before job creation with startup_failure; combined statuses are empty. PR #5 remains open and mergeable. Windows GNU test binaries compiled for default, SDRconnect and direct nRSP-native but were not run; native MSVC CI remains unverified."
+    "details": "PR Actions run 274 (40787809365) for checkpoint  c3f2798 failed before job creation with startup_failure; combined statuses are empty. PR #5 remains open and mergeable. Windows GNU test binaries compiled for default, SDRconnect and direct nRSP-native but were not run; native MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -234,5 +234,5 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Continue deterministic playback lifecycle race coverage; separately close physical Bluetooth/USB, Raspberry Pi/receiver, publisher-rights and healthy native Windows MSVC CI gates.",
-  "current_pr_state": "PR #5 open and mergeable at checkpoint head 1a8c307; Actions run 273 failed before job creation (startup_failure), with no combined statuses."
+  "current_pr_state": "PR #5 open and mergeable at checkpoint head c3f2798; Actions run 274 failed before job creation (startup_failure), with no combined statuses."
 }
