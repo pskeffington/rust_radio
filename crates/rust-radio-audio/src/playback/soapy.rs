@@ -99,6 +99,8 @@ mod tests {
     struct Fixture {
         caps: RadioCapabilities,
         calls: Rc<RefCell<Vec<&'static str>>>,
+        phase: f32,
+        sample_index: u64,
     }
     impl RadioDevice for Fixture {
         fn capabilities(&self) -> &RadioCapabilities {
@@ -111,7 +113,16 @@ mod tests {
         fn read_iq(&mut self, buffer: &mut [i16]) -> Result<usize, RadioError> {
             self.calls.borrow_mut().push("read");
             for pair in buffer.chunks_exact_mut(2) {
-                pair.copy_from_slice(&[20_000, 0]);
+                let time = self.sample_index as f32 / INPUT_RATE_HZ as f32;
+                let modulation = (2.0 * std::f32::consts::PI * 1000.0 * time).sin();
+                self.phase = (self.phase
+                    + 2.0 * std::f32::consts::PI * 45_000.0 * modulation / INPUT_RATE_HZ as f32)
+                    .rem_euclid(2.0 * std::f32::consts::PI);
+                pair.copy_from_slice(&[
+                    (self.phase.cos() * 20_000.0) as i16,
+                    (self.phase.sin() * 20_000.0) as i16,
+                ]);
+                self.sample_index += 1;
             }
             Ok(buffer.len())
         }
@@ -127,9 +138,13 @@ mod tests {
         pushed: usize,
         started: Cell<bool>,
         fail_start: bool,
+        peak: f32,
     }
     impl ip_pcm::Sink for FixtureSink {
-        fn push(&mut self, _: &[f32], cancelled: &AtomicBool) -> bool {
+        fn push(&mut self, frame: &[f32], cancelled: &AtomicBool) -> bool {
+            for sample in frame {
+                self.peak = self.peak.max(sample.abs());
+            }
             self.pushed += 2;
             if self.pushed >= 100 {
                 cancelled.store(true, Ordering::Release);
@@ -165,6 +180,8 @@ mod tests {
             let receiver = Fixture {
                 caps: SimulatedRadio::default().capabilities().clone(),
                 calls: Rc::clone(&calls),
+                phase: 0.0,
+                sample_index: 0,
             };
             let mut control = RadioController::default();
             let generation = control.apply(RadioCommand::PlaySdr).unwrap();
@@ -174,6 +191,7 @@ mod tests {
                 pushed: 0,
                 started: Cell::new(false),
                 fail_start,
+                peak: 0.0,
             };
             let mut converter = PcmConverter::new(AUDIO_RATE_HZ, AUDIO_RATE_HZ, 1, 2).unwrap();
             let result = receive_to_sink(
@@ -194,6 +212,10 @@ mod tests {
                 );
             } else {
                 assert!(result.is_ok());
+                assert!(
+                    output.peak > 0.05,
+                    "synthetic FM tone did not reach the output sink"
+                );
                 assert!(cancelled.load(Ordering::Acquire));
                 assert_eq!(
                     control.lock().unwrap().state().state,
@@ -238,6 +260,8 @@ mod tests {
         let receiver = Fixture {
             caps: SimulatedRadio::default().capabilities().clone(),
             calls: Rc::clone(&calls),
+            phase: 0.0,
+            sample_index: 0,
         };
         let mut control = RadioController::default();
         let generation = control.apply(RadioCommand::PlaySdr).unwrap();
