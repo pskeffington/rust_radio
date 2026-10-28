@@ -258,7 +258,8 @@ fn station_indexes_preserve_catalog_order_and_wrap_in_both_directions() {
     let stations = curated_stations();
     let count = stations.len()
         + usize::from(cfg!(feature = "sdrconnect"))
-        + usize::from(cfg!(feature = "soapy-sdr"));
+        + usize::from(cfg!(feature = "soapy-sdr"))
+        + 1;
     for index in 0..count {
         assert_eq!(panel.source_index(), index);
         if index < stations.len() {
@@ -279,7 +280,8 @@ fn large_station_steps_remain_in_bounds_without_overflow() {
     let mut panel = RadioPanel::new();
     let count = curated_stations().len()
         + usize::from(cfg!(feature = "sdrconnect"))
-        + usize::from(cfg!(feature = "soapy-sdr"));
+        + usize::from(cfg!(feature = "soapy-sdr"))
+        + 1;
     for direction in [isize::MIN, isize::MAX, -100, -1, 0, 1, 100] {
         panel.select_source(count - 1);
         let expected = ((count as i128 - 1) + direction as i128).rem_euclid(count as i128) as usize;
@@ -376,4 +378,19 @@ fn selecting_sdr_cancels_an_in_flight_station_check() {
     finish_panel(&mut panel);
     assert!(panel.validations.is_empty());
     assert!(panel.is_sdr_selected());
+}
+
+#[test]
+fn direct_selection_and_validation_are_offline() {
+    let mut panel = RadioPanel::new();
+    let index = curated_stations().len()
+        + usize::from(cfg!(feature = "sdrconnect"))
+        + usize::from(cfg!(feature = "soapy-sdr"));
+    panel.select_source(index);
+    assert!(panel.direct_selected);
+    panel.direct_url = "http://example.com/stream".into();
+    assert!(panel.start_selected().is_err());
+    assert!(!panel.is_active());
+    panel.select_source(0);
+    assert!(!panel.direct_selected);
 }

@@ -1,7 +1,7 @@
 //! Silent, bounded station validation using the same MP3/AAC decoder as playback.
 //! These synchronous checks belong on a host worker, never the GUI render thread.
 
-use crate::media::LiveMediaSource;
+use crate::media::{AdtsCompat, LiveMediaSource};
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::stream::{open_station, RadioHttp, StreamError};
 use rust_radio_core::validation::{StationValidation, ValidationStage, ValidationStatus};
@@ -220,12 +220,21 @@ fn decode_response<R: Read + Send + 'static>(
     if let Some(mime) = &report.content_type {
         hint.mime_type(mime.split(';').next().unwrap_or(mime).trim());
     }
-    let source = LiveMediaSource::new(
-        io::Cursor::new(first_byte)
-            .chain(reader)
-            .take(MAX_VALIDATION_BYTES),
-    );
-    let media = MediaSourceStream::new(Box::new(source), Default::default());
+    let reader = io::Cursor::new(first_byte)
+        .chain(reader)
+        .take(MAX_VALIDATION_BYTES);
+    let media = if report
+        .content_type
+        .as_deref()
+        .is_some_and(|mime| mime.contains("aac"))
+    {
+        MediaSourceStream::new(
+            Box::new(LiveMediaSource::new(AdtsCompat::new(reader))),
+            Default::default(),
+        )
+    } else {
+        MediaSourceStream::new(Box::new(LiveMediaSource::new(reader)), Default::default())
+    };
     let probed = match symphonia::default::get_probe().format(
         &hint,
         media,

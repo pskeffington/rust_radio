@@ -18,6 +18,8 @@ pub const PANEL_HEIGHT: f32 = 320.0;
 /// Owns one radio session. Embed with `panel.show(ui)` inside an existing HUD.
 pub struct RadioPanel {
     station_index: usize,
+    direct_selected: bool,
+    direct_url: String,
     #[cfg(feature = "sdrconnect")]
     sdr_selected: bool,
     #[cfg(feature = "sdrconnect")]
@@ -44,6 +46,8 @@ impl Default for RadioPanel {
     fn default() -> Self {
         Self {
             station_index: 0,
+            direct_selected: false,
+            direct_url: String::new(),
             #[cfg(feature = "sdrconnect")]
             sdr_selected: false,
             #[cfg(feature = "sdrconnect")]
@@ -154,6 +158,9 @@ impl RadioPanel {
     }
 
     fn start_selected(&self) -> Result<NativeRadioEngine, String> {
+        if self.direct_selected {
+            return NativeRadioEngine::start_stream(&self.direct_url, self.volume, &self.output);
+        }
         #[cfg(feature = "soapy-sdr")]
         if self.usb_selected {
             let frequency = self
@@ -180,7 +187,7 @@ impl RadioPanel {
     }
 
     fn start_validation(&mut self) {
-        if self.is_active() || self.is_receiver_selected() {
+        if self.is_active() || self.is_receiver_selected() || self.direct_selected {
             return;
         }
         match StationValidationTask::start(self.selected_station().id) {
@@ -194,7 +201,10 @@ impl RadioPanel {
 
     fn cancel_stale_validation(&mut self) {
         if let Some(task) = &self.validation {
-            if self.is_receiver_selected() || task.station_id() != self.selected_station().id {
+            if self.is_receiver_selected()
+                || self.direct_selected
+                || task.station_id() != self.selected_station().id
+            {
                 task.request_cancel();
             }
         }
@@ -235,7 +245,8 @@ impl RadioPanel {
     fn step_station(&mut self, direction: isize) {
         let count = curated_stations().len()
             + usize::from(cfg!(feature = "sdrconnect"))
-            + usize::from(cfg!(feature = "soapy-sdr"));
+            + usize::from(cfg!(feature = "soapy-sdr"))
+            + 1;
         if count == 0 {
             return;
         }
@@ -245,7 +256,11 @@ impl RadioPanel {
     }
 
     fn source_index(&self) -> usize {
-        if self.is_sdr_selected() {
+        if self.direct_selected {
+            curated_stations().len()
+                + usize::from(cfg!(feature = "sdrconnect"))
+                + usize::from(cfg!(feature = "soapy-sdr"))
+        } else if self.is_sdr_selected() {
             curated_stations().len()
         } else if self.is_usb_selected() {
             curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"))
@@ -255,6 +270,10 @@ impl RadioPanel {
     }
 
     fn select_source(&mut self, index: usize) {
+        self.direct_selected = index
+            == curated_stations().len()
+                + usize::from(cfg!(feature = "sdrconnect"))
+                + usize::from(cfg!(feature = "soapy-sdr"));
         #[cfg(feature = "sdrconnect")]
         {
             self.sdr_selected = index == curated_stations().len();
@@ -297,6 +316,9 @@ impl RadioPanel {
     }
 
     fn source_detail(&self) -> String {
+        if self.direct_selected {
+            return "DIRECT STREAM / SET URL IN SETTINGS".into();
+        }
         #[cfg(feature = "soapy-sdr")]
         if self.usb_selected {
             return format!("USB FM / {} Hz / MONO", self.usb_frequency);

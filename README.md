@@ -4,7 +4,7 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 ## Status (2026-10-27)
 
-The standalone module provides bounded HTTPS streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
+The standalone module provides bounded internet and private-LAN streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
 
 IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
 
@@ -41,7 +41,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 2. Resource access requires an explicit host command. Construction, browsing and preference reads do not autoplay; validation never opens audio output or activates a receiver.
 3. One active session; generation-tagged state and real worker cancellation.
 4. `Playing` requires samples consumed by the native output callback; audible listening is verified separately.
-5. Bounded streaming memory, TLS and publisher endpoint validation, controlled redirects and timeouts.
+5. Bounded streaming memory, publisher endpoint validation for presets, explicit direct URLs, controlled redirects and timeouts.
 6. Keep audio output devices, Bluetooth pairing and touch UI under OS/host ownership.
 7. No RF transmit path. Satellite reception is research-stage only.
 8. Any curated broadcaster inclusion requires a redistribution/embedding rights review before released bundles.
@@ -67,6 +67,13 @@ frequency in SETTINGS. Get the ID using the `sdr-devices` CLI command shown in
 [USB receiver setup](docs/SDR_RECEIVE.md). This initial path requires a compatible
 SoapySDR driver supporting 240 ksample/s CS16 and has not yet been validated on a
 physical dongle.
+
+Select **WCRB Classical (Boston)** or **Skylab Radio** and press PLAY. For another broadcaster or a LAN source, select **Direct IP stream**, open SETTINGS, and enter its direct MP3 or AAC stream URL. A station website is not necessarily its audio URL; for example, GBH publishes the [WCRB direct stream](https://www.wgbh.org/help/how-to-access-live-radio-streams). The URL stays in panel memory only. The direct input accepts HTTPS URLs and HTTP URLs with a literal private or loopback IPv4 address. Credentials and fragments are rejected; redirects, playlists and HLS are not followed on this path. Direct URLs can include a query string: protect any token it contains, including from shell history when using the CLI.
+
+```sh
+cargo run -p rust-radio-cli -- listen wcrb --seconds 30
+cargo run -p rust-radio-cli -- stream-listen 'https://example.org/live.mp3' --seconds 30
+```
 
 The native transport resolves bounded M3U and PLS playlists using publisher-approved URLs. Legacy HTTP entries inside SomaFM playlists are requested over HTTPS after the same host/port/path checks; there is no plaintext fallback. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
 

@@ -87,6 +87,8 @@ impl ApprovedEndpoint {
         let allowed = if station.id == "skylab" {
             authority == "uksoutha.streaming.broadcast.radio:29690"
                 && path.starts_with("skylab-radio-limited")
+        } else if station.id == "wcrb" {
+            authority == "wgbh-live.streamguys1.com" && path == "classical-hi/"
         } else {
             let host = authority.strip_suffix(":443").unwrap_or(authority);
             !host.contains(':')
@@ -334,7 +336,10 @@ pub fn icy_interval(value: Option<&str>) -> Result<Option<usize>, StreamError> {
         .trim()
         .parse()
         .map_err(|_| StreamError::InvalidIcyInterval)?;
-    if !(1..=MAX_ICY_INTERVAL).contains(&number) {
+    if number == 0 {
+        return Ok(None);
+    }
+    if number > MAX_ICY_INTERVAL {
         return Err(StreamError::InvalidIcyInterval);
     }
     Ok(Some(number))
@@ -864,10 +869,7 @@ mod tests {
 
     #[test]
     fn invalid_icy_interval_and_content_are_rejected() {
-        assert!(matches!(
-            icy_interval(Some("0")),
-            Err(StreamError::InvalidIcyInterval)
-        ));
+        assert_eq!(icy_interval(Some("0")).unwrap(), None);
         assert!(matches!(
             icy_interval(Some("abc")),
             Err(StreamError::InvalidIcyInterval)

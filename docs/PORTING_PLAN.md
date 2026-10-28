@@ -26,7 +26,7 @@ provenance remains in the extraction notes; dated evidence is in
 | Area | Delivered | Remaining acceptance |
 | --- | --- | --- |
 | Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host | Release/tag decision after CI and platform gates |
-| IP playback | Native MP3/AAC, bounded M3U/PLS and ICY, cancellation, three retries, station validation and native callback checks | Live DNS/TLS cancellation and extended interruption tests; HLS remains unsupported |
+| IP playback | Native MP3/AAC, WCRB/Skylab presets, explicit public HTTPS and private IPv4 HTTP direct streams, bounded curated M3U/PLS and ICY, cancellation and native callback checks | Live DNS/TLS cancellation, long-running network and LAN hardware tests; direct playlists, redirects and HLS remain unsupported |
 | Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
 | Compact GUI | Optional 480×320 egui panel with phosphor skin, IP stations, feature-gated nRSP-ST source, background station validation and offline layout/lifecycle coverage | Physical touch and Pi rendering; fresh real-receiver GUI audio |
 | nRSP-ST | Direct read-only service status without SDRconnect; optional SDRconnect PCM and startup handling; real Mac PCM and speaker evidence | Direct native audio/tuning protocol; real stopped-device activation/recovery and raw I/Q |

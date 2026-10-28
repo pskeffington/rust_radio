@@ -24,7 +24,7 @@ pub struct InternetStation {
 /// Inclusion is not proof a stream is online, licensed for redistribution,
 /// or supported by the local decoder at runtime.
 /// The broadcaster's conditions allow personal listening, not rebroadcasting.
-pub const CURATED_STATIONS: [InternetStation; 10] = [
+pub const CURATED_STATIONS: [InternetStation; 11] = [
     InternetStation {
         id: "skylab",
         name: "Skylab Radio (UK)",
@@ -34,6 +34,16 @@ pub const CURATED_STATIONS: [InternetStation; 10] = [
         publisher_reference_url: "https://www.skylabradio.com/listen",
         nominal_kbps: 0,
         format: "Streaming audio (verify at runtime)",
+    },
+    InternetStation {
+        id: "wcrb",
+        name: "WCRB Classical (Boston)",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://wgbh-live.streamguys1.com/classical-hi/",
+        publisher_reference_url: "https://www.wgbh.org/help/how-to-access-live-radio-streams",
+        nominal_kbps: 0,
+        format: "AAC",
     },
     InternetStation {
         id: "groovesalad",
@@ -298,11 +308,12 @@ mod tests {
     }
     #[test]
     fn curated_urls_have_publisher_provenance() {
-        assert_eq!(curated_stations().len(), 10);
+        assert_eq!(curated_stations().len(), 11);
         let mut ids = std::collections::BTreeSet::new();
         for station in curated_stations() {
             assert!(ids.insert(station.id), "duplicate station ID");
-            assert!(["CHILL", "AMBIENT", "ELECTRONIC", "RETRO"].contains(&station.category));
+            assert!(["CHILL", "AMBIENT", "ELECTRONIC", "RETRO", "CLASSICAL"]
+                .contains(&station.category));
             assert!(!station.genre.is_empty());
             assert!(station.playlist_url.starts_with("https://"));
             assert!(station.publisher_reference_url.starts_with("https://"));
@@ -314,6 +325,12 @@ mod tests {
                     station.publisher_reference_url,
                     "https://www.skylabradio.com/listen"
                 );
+            } else if station.id == "wcrb" {
+                assert_eq!(
+                    station.playlist_url,
+                    "https://wgbh-live.streamguys1.com/classical-hi/"
+                );
+                assert_eq!(station.format, "AAC");
             } else {
                 assert!(station.playlist_url.starts_with("https://somafm.com/m3u/"));
                 assert!(station.playlist_url.ends_with(".m3u"));

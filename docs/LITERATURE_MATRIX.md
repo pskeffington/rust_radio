@@ -27,7 +27,7 @@ Status: research-backed architectural candidate list, 2026-10-26. **Source prese
 
 ## Security and portability controls
 - No automatic station streaming, RF capture, or microphone access on import/launch.
-- Strict HTTP endpoint authorization: disallow user-controlled LAN, loopback, metadata endpoints, arbitrary redirects and proxy bypass.
+- Curated presets retain publisher endpoint authorization. A separate explicitly entered direct-stream path permits HTTPS and private/loopback literal IPv4 HTTP; it does not use proxies or follow redirects. Hosts should treat entered URLs as trusted operator input and protect query tokens.
 - All buffers, playlist sizes, decoded frames, retry budgets and metadata are bounded.
 - One active receiver, monotonic generation IDs and actual worker cancellation.
 - Satellite is receive-only, with protocol-specific permission and regulatory review. Do not automatically decode private traffic.

@@ -57,6 +57,17 @@ impl RadioPanel {
                 }
             });
             ui.separator();
+            if self.direct_selected {
+                ui.label("Direct MP3 / AAC stream URL");
+                ui.add_enabled(
+                    !self.is_active(),
+                    egui::TextEdit::singleline(&mut self.direct_url)
+                        .desired_width(325.0)
+                        .char_limit(2048),
+                );
+                ui.label("HTTPS or private IPv4 HTTP / URL is not saved.");
+                return;
+            }
             #[cfg(feature = "soapy-sdr")]
             if self.is_usb_selected() {
                 let enabled = !self.is_active();

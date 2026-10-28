@@ -67,6 +67,24 @@ fn synthetic_mp3_and_aac_decode_without_audio_hardware() {
 }
 
 #[test]
+fn mpeg2_adts_aac_decodes_without_changing_frame_payload() {
+    let mut bytes = AAC.to_vec();
+    let mut pos = 0;
+    while pos + 7 <= bytes.len() {
+        assert_eq!(&bytes[pos..pos + 2], &[0xff, 0xf1]);
+        let length = ((bytes[pos + 3] as usize & 3) << 11)
+            | ((bytes[pos + 4] as usize) << 3)
+            | ((bytes[pos + 5] as usize) >> 5);
+        assert!(length >= 7 && pos + length <= bytes.len());
+        bytes[pos + 1] = 0xf9;
+        pos += length;
+    }
+    assert_eq!(pos, bytes.len());
+    let report = validate_with(&Fixture::audio("audio/aac", &bytes), "groovesalad").unwrap();
+    assert!(report.is_decoded(), "{report:?}");
+}
+
+#[test]
 fn legacy_http_playlist_uses_only_https_requests_and_decodes_pcm() {
     let mut fixture = Fixture::audio("audio/mpeg", MP3);
     fixture.playlist = b"#EXTM3U\nhttp://ice5.somafm.com/groovesalad-128-mp3\n".into();

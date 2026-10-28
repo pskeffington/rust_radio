@@ -4,7 +4,7 @@
 use crate::compat_controller::{
     PlaybackEvent, PlaybackState, RadioCommand, RadioController, RadioSession,
 };
-use crate::media::LiveMediaSource;
+use crate::media::{AdtsCompat, LiveMediaSource};
 use crate::output::NativeAudioOutput;
 use rust_radio_core::directory::station_by_id;
 use rust_radio_core::pcm::PcmConverter;
@@ -34,6 +34,7 @@ mod soapy;
 
 enum PlaybackSource {
     Internet(String),
+    Direct(String),
     #[cfg(feature = "sdrconnect")]
     SdrConnect(rust_radio_sdr::sdrconnect::Endpoint),
     #[cfg(feature = "soapy")]
@@ -126,6 +127,16 @@ impl NativeRadioEngine {
         )
     }
 
+    /// Play an explicitly selected direct MP3 or AAC stream URL.
+    pub fn start_stream(url: &str, volume_percent: u8, output_id: &str) -> Result<Self, String> {
+        radio_net::validate_direct_url(url)?;
+        Self::start(
+            PlaybackSource::Direct(url.to_owned()),
+            volume_percent,
+            output_id,
+        )
+    }
+
     /// Explicit native playback of SDRconnect's selected primary receiver.
     /// Starts reception if stopped and control is allowed. Missing startup
     /// confirmation requires explicit retry; Stop leaves shared reception running.
@@ -196,6 +207,7 @@ impl NativeRadioEngine {
             PlaybackSource::Internet(station_id) => RadioCommand::PlayInternet {
                 station_id: station_id.clone(),
             },
+            PlaybackSource::Direct(_) => RadioCommand::PlayStream,
             #[cfg(feature = "sdrconnect")]
             PlaybackSource::SdrConnect(_) => RadioCommand::PlaySdr,
             #[cfg(feature = "soapy")]
@@ -221,6 +233,16 @@ impl NativeRadioEngine {
                 let result = match source {
                     PlaybackSource::Internet(id) => play_with_recovery(
                         &id,
+                        false,
+                        generation,
+                        &worker_controller,
+                        &worker_cancelled,
+                        worker_volume,
+                        &selected_output,
+                    ),
+                    PlaybackSource::Direct(url) => play_with_recovery(
+                        &url,
+                        true,
                         generation,
                         &worker_controller,
                         &worker_cancelled,
@@ -393,6 +415,7 @@ fn signal(controller: &Arc<Mutex<RadioController>>, generation: u64, event: Play
 /// codecs remain terminal; session Stop overrides any scheduled retry.
 fn play_with_recovery(
     station_id: &str,
+    direct: bool,
     generation: u64,
     controller: &Arc<Mutex<RadioController>>,
     cancelled: &Arc<AtomicBool>,
@@ -406,6 +429,7 @@ fn play_with_recovery(
         || {
             decode_and_play(
                 station_id,
+                direct,
                 generation,
                 controller,
                 cancelled,
@@ -473,6 +497,7 @@ fn interruptible_wait(cancelled: &AtomicBool, delay: Duration) -> bool {
 
 fn decode_and_play(
     station_id: &str,
+    direct: bool,
     generation: u64,
     controller: &Arc<Mutex<RadioController>>,
     cancelled: &Arc<AtomicBool>,
@@ -484,8 +509,11 @@ fn decode_and_play(
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
-    let (stream, _network_guard) =
-        radio_net::open_station_classified(station_id, Arc::clone(cancelled))?;
+    let (stream, _network_guard) = if direct {
+        radio_net::open_direct_classified(station_id, Arc::clone(cancelled))?
+    } else {
+        radio_net::open_station_classified(station_id, Arc::clone(cancelled))?
+    };
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
@@ -498,8 +526,17 @@ fn decode_and_play(
     } else {
         hint.with_extension("mp3");
     }
-    let source = LiveMediaSource::new(stream.reader);
-    let media = MediaSourceStream::new(Box::new(source), Default::default());
+    let media = if mime.contains("aac") {
+        MediaSourceStream::new(
+            Box::new(LiveMediaSource::new(AdtsCompat::new(stream.reader))),
+            Default::default(),
+        )
+    } else {
+        MediaSourceStream::new(
+            Box::new(LiveMediaSource::new(stream.reader)),
+            Default::default(),
+        )
+    };
     let probed = symphonia::default::get_probe()
         .format(
             &hint,

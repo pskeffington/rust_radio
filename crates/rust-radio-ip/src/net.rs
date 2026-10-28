@@ -160,6 +160,42 @@ pub fn open_station(
     open_station_classified(station_id, cancelled).map_err(|error| error.to_string())
 }
 
+/// Validate a user-entered direct audio URL without making a network request.
+/// Plain HTTP is limited to literal private or loopback IPv4 addresses.
+pub fn validate_direct_url(value: &str) -> Result<(), String> {
+    if value.len() > 2048
+        || value
+            .bytes()
+            .any(|b| b.is_ascii_control() || b.is_ascii_whitespace())
+    {
+        return Err("Invalid stream URL".into());
+    }
+    let url = reqwest::Url::parse(value).map_err(|_| "Invalid stream URL")?;
+    if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
+        return Err("Stream URL must not contain credentials or a fragment".into());
+    }
+    match url.scheme() {
+        "https" if url.host().is_some() => Ok(()),
+        "http" => match url
+            .host_str()
+            .and_then(|host| host.parse::<std::net::Ipv4Addr>().ok())
+        {
+            Some(ip) if ip.is_private() || ip.is_loopback() => Ok(()),
+            _ => Err("HTTP streams require a private or loopback IPv4 address".into()),
+        },
+        _ => Err("Use an HTTPS stream URL or a private IPv4 HTTP URL".into()),
+    }
+}
+
+/// Start an explicitly entered direct audio stream. URLs are not persisted.
+pub fn open_direct_classified(
+    url: &str,
+    cancelled: Arc<AtomicBool>,
+) -> Result<(RadioInput, NetworkGuard), TransportError> {
+    validate_direct_url(url).map_err(TransportError::Permanent)?;
+    open_input(url.to_owned(), true, cancelled)
+}
+
 /// Start an approved stream, preserving structured errors for recovery policy.
 /// `open_station` remains available for hosts using its original string errors.
 pub fn open_station_classified(
@@ -169,7 +205,14 @@ pub fn open_station_classified(
     if station_by_id(station_id).is_none() {
         return Err("Unapproved internet radio station".into());
     }
-    let id = station_id.to_owned();
+    open_input(station_id.to_owned(), false, cancelled)
+}
+
+fn open_input(
+    id: String,
+    direct: bool,
+    cancelled: Arc<AtomicBool>,
+) -> Result<(RadioInput, NetworkGuard), TransportError> {
     if cancelled.load(Ordering::Acquire) {
         return Err(TransportError::Cancelled);
     }
@@ -191,7 +234,13 @@ pub fn open_station_classified(
                 })
                 .and_then(|runtime| {
                     runtime.block_on(until_cancelled(
-                        pump_station(&id, &worker_cancel, &startup_tx, &audio_tx),
+                        async {
+                            if direct {
+                                pump_direct(&id, &worker_cancel, &startup_tx, &audio_tx).await
+                            } else {
+                                pump_station(&id, &worker_cancel, &startup_tx, &audio_tx).await
+                            }
+                        },
                         &worker_cancel,
                         &worker_stopped,
                     ))
@@ -344,46 +393,158 @@ async fn pump_station(
                 "Server did not return an audio stream: {mime}"
             )));
         }
-        let icy_header = response
-            .headers()
-            .get("icy-metaint")
-            .map(|v| v.to_str().map(str::to_owned))
-            .transpose()
-            .map_err(|_| "Invalid ICY metadata interval header")?;
-        let metaint = icy_interval(icy_header.as_deref())
-            .map_err(|e| format!("ICY metadata rejected: {e}"))?;
-        startup
-            .send(Ok(StreamHeaders {
-                content_type,
-                icy_interval: metaint,
-            }))
-            .map_err(|_| "Radio decoder no longer available")?;
+        return pump_audio(response, content_type, cancelled, startup, audio).await;
+    }
+    Err("Radio exceeded redirect/playlist hop limit".into())
+}
 
-        loop {
-            if cancelled.load(Ordering::Acquire) {
+async fn pump_direct(
+    url: &str,
+    cancelled: &AtomicBool,
+    startup: &SyncSender<Result<StreamHeaders, TransportError>>,
+    audio: &SyncSender<Vec<u8>>,
+) -> Result<(), TransportError> {
+    let client = reqwest::Client::builder()
+        .redirect(Policy::none())
+        .no_proxy()
+        .connect_timeout(Duration::from_secs(5))
+        .build()
+        .map_err(|_| "Cannot initialize radio HTTP client")?;
+    let response = timeout(
+        CONNECT_DEADLINE,
+        client.get(url).header("Icy-MetaData", "1").send(),
+    )
+    .await
+    .map_err(|_| TransportError::Network("Radio connect/header timeout".into()))?
+    .map_err(|_| TransportError::Network("Radio stream connection failed".into()))?;
+    if response.status().is_redirection() {
+        return Err("Direct stream redirects are not supported".into());
+    }
+    if !response.status().is_success() {
+        return Err(TransportError::http_status(response.status()));
+    }
+    let content_type = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .map(|v| v.to_str().map(str::to_owned))
+        .transpose()
+        .map_err(|_| "Invalid radio content-type header")?;
+    if playlist_format(url, content_type.as_deref()).is_some() {
+        return Err("Enter a direct audio stream URL, not a playlist".into());
+    }
+    let mime = content_type
+        .as_deref()
+        .unwrap_or("")
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    if !mime.starts_with("audio/") && mime != "application/octet-stream" {
+        return Err("Server did not return an audio stream".into());
+    }
+    pump_audio(response, content_type, cancelled, startup, audio).await
+}
+
+async fn pump_audio(
+    mut response: reqwest::Response,
+    content_type: Option<String>,
+    cancelled: &AtomicBool,
+    startup: &SyncSender<Result<StreamHeaders, TransportError>>,
+    audio: &SyncSender<Vec<u8>>,
+) -> Result<(), TransportError> {
+    let icy_header = response
+        .headers()
+        .get("icy-metaint")
+        .map(|v| v.to_str().map(str::to_owned))
+        .transpose()
+        .map_err(|_| "Invalid ICY metadata interval header")?;
+    let metaint =
+        icy_interval(icy_header.as_deref()).map_err(|e| format!("ICY metadata rejected: {e}"))?;
+    startup
+        .send(Ok(StreamHeaders {
+            content_type,
+            icy_interval: metaint,
+        }))
+        .map_err(|_| "Radio decoder no longer available")?;
+
+    loop {
+        if cancelled.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        let piece = timeout(READ_DEADLINE, response.chunk())
+            .await
+            .map_err(|_| TransportError::Network("Radio audio read inactivity timeout".into()))?
+            .map_err(|_| TransportError::Network("Radio audio read failed".into()))?;
+        let Some(piece) = piece else {
+            return Err(TransportError::Network("Radio stream ended".into()));
+        };
+        for fragment in piece.chunks(CHUNK_SIZE) {
+            if !send_fragment(audio, fragment.to_vec(), cancelled).await {
                 return Ok(());
-            }
-            let piece = timeout(READ_DEADLINE, response.chunk())
-                .await
-                .map_err(|_| TransportError::Network("Radio audio read inactivity timeout".into()))?
-                .map_err(|e| TransportError::Network(format!("Radio audio read failed: {e}")))?;
-            let Some(piece) = piece else {
-                return Err(TransportError::Network("Radio stream ended".into()));
-            };
-            for fragment in piece.chunks(CHUNK_SIZE) {
-                if !send_fragment(audio, fragment.to_vec(), cancelled).await {
-                    return Ok(());
-                }
             }
         }
     }
-    Err("Radio exceeded redirect/playlist hop limit".into())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn direct_urls_require_explicit_safe_schemes_and_no_credentials() {
+        for url in [
+            "https://example.com/live?token=abc",
+            "http://127.0.0.1:8080/live",
+            "http://192.168.1.5:8000/live",
+        ] {
+            assert!(validate_direct_url(url).is_ok());
+        }
+        for url in [
+            "http://example.com/live",
+            "http://169.254.169.254/",
+            "https://user:pass@example.com/",
+            "https://example.com/#fragment",
+            "file:///tmp/audio",
+            "not a url",
+        ] {
+            assert!(validate_direct_url(url).is_err());
+        }
+    }
+
+    #[test]
+    fn direct_loopback_stream_delivers_audio_and_refuses_redirects() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        for redirect in [false, true] {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0; 1024];
+                assert!(socket.read(&mut request).unwrap() > 0);
+                if redirect {
+                    socket.write_all(b"HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:9/\r\nContent-Length: 0\r\n\r\n").unwrap();
+                } else {
+                    socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nicy-metaint: 0\r\nContent-Length: 4\r\n\r\nTEST").unwrap();
+                }
+            });
+            let result = open_direct_classified(
+                &format!("http://{address}/audio"),
+                Arc::new(AtomicBool::new(false)),
+            );
+            if redirect {
+                assert!(matches!(result, Err(TransportError::Permanent(_))));
+            } else {
+                let (mut input, _guard) = result.unwrap();
+                let mut bytes = [0; 4];
+                input.reader.read_exact(&mut bytes).unwrap();
+                assert_eq!(&bytes, b"TEST");
+            }
+            server.join().unwrap();
+        }
+    }
 
     struct DropNotice(mpsc::Sender<()>);
 

@@ -46,6 +46,7 @@ impl Default for RadioSession {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RadioCommand {
     PlayInternet { station_id: String },
+    PlayStream,
     PlaySdr,
     Stop,
     SetVolume(u8),
@@ -87,6 +88,13 @@ impl RadioController {
                 self.session.state = PlaybackState::Connecting;
                 self.session.input = Some(InputKind::Internet);
                 self.session.station_id = Some(station_id);
+                self.session.last_error = None;
+            }
+            RadioCommand::PlayStream => {
+                self.session.generation = self.session.generation.wrapping_add(1);
+                self.session.state = PlaybackState::Connecting;
+                self.session.input = Some(InputKind::Internet);
+                self.session.station_id = None;
                 self.session.last_error = None;
             }
             RadioCommand::PlaySdr => {

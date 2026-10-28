@@ -19,6 +19,7 @@ mod sdrconnect;
 struct ListenArgs<'a> {
     station: &'a str,
     sdrconnect: bool,
+    direct: bool,
     seconds: Option<u64>,
     output: &'a str,
     volume: u8,
@@ -26,6 +27,9 @@ struct ListenArgs<'a> {
 
 fn usage() {
     eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!(
+        "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
+    );
     eprintln!("Interactive listen commands: status | volume N | stop");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
@@ -60,18 +64,20 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
         return Err("missing listen source");
     }
     let sdrconnect = args[0] == "sdrconnect-listen";
+    let direct = args[0] == "stream-listen";
     if sdrconnect {
         #[cfg(feature = "sdrconnect")]
         rust_radio::receiver::sdrconnect::Endpoint::parse(&args[1])
             .map_err(|_| "invalid SDRconnect peer")?;
         #[cfg(not(feature = "sdrconnect"))]
         return Err("enable the sdrconnect feature for native nRSP-ST audio");
-    } else if args[0] != "listen" || station_by_id(&args[1]).is_none() {
+    } else if !direct && (args[0] != "listen" || station_by_id(&args[1]).is_none()) {
         return Err("unknown curated station");
     }
     let mut parsed = ListenArgs {
         station: &args[1],
         sdrconnect,
+        direct,
         seconds: None,
         output: "system",
         volume: 60,
@@ -130,12 +136,20 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
         {
             return Err("enable the sdrconnect feature".into());
         }
+    } else if args.direct {
+        NativeRadioEngine::start_stream(args.station, args.volume, args.output)?
     } else {
         NativeRadioEngine::start_internet(args.station, args.volume, args.output)?
     };
     println!(
         "RUST RADIO / {} / output {} / volume {}%",
-        args.station, args.output, args.volume
+        if args.direct {
+            "DIRECT STREAM"
+        } else {
+            args.station
+        },
+        args.output,
+        args.volume
     );
     monitor(engine, args.seconds)
 }
@@ -228,7 +242,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 Err("Station did not pass decoded-audio validation".into())
             }
         }
-        Some("listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
+        Some("listen" | "stream-listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
         Some("sdr-devices") if args.len() == 1 => sdr::devices(),
         Some("sdr-capture") => sdr::capture(args),
         Some("sdr-listen") => sdr::listen(args),

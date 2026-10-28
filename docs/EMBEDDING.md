@@ -60,8 +60,12 @@ Hosts retain ownership of their UI, preferences and one engine at a time. The
 standalone egui panel is not required by pip_boy's HTML HUD. Stable station IDs,
 playback states and generation-tagged commands/events are shared through
 `rust_radio::controller`; directory, parser, PCM and recovery APIs are also
-available without loading audio dependencies. Host storage continues to use
-station IDs, not arbitrary URLs.
+available without loading audio dependencies. Host storage continues to use station IDs. Hosts can also explicitly call
+`NativeRadioEngine::start_stream(url, volume, output)` for a direct MP3/AAC
+URL; it is retained only for that engine session. Direct input accepts HTTPS
+or private/loopback literal IPv4 HTTP, rejects credentials and fragments, and
+does not follow redirects or playlists. Hosts should protect query tokens and
+ask for an explicit Play action before connecting.
 
 Compatibility imports in `rust-radio-audio::compat_controller` refer to the
 same core controller types. `rust-radio-core::SessionState` is the same playback

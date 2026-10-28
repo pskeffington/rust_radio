@@ -3,7 +3,26 @@
 Updated 2026-10-27. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
-## Current module pass
+## Current module pass: internet and LAN streams
+
+- Added WCRB Classical as a publisher-documented preset and explicit direct
+  HTTPS/private IPv4 HTTP stream entry in the standalone GUI, CLI and embedding
+  API. Stream URLs are session-only. Direct input refuses redirects, playlists,
+  credentials and fragments; MP3 and AAC use the existing bounded player.
+- WCRB sends MPEG-2 ADTS AAC. A frame-aware compatibility reader normalizes
+  the ADTS ID bit for the existing decoder without modifying AAC payloads;
+  generated MPEG-2 ADTS fixture and live native callback tests cover the path.
+  A zero ICY metadata interval is treated as disabled. WCRB preset and direct
+  URL and Skylab preset each reached the Mac native output callback at zero
+  volume; these runs do not establish audible listening.
+- All-feature workspace tests (156 passed, one manual test ignored), strict
+  Clippy, formatting and build passed. The direct transport also has a local
+  HTTP audio and redirect fixture; a real LAN broadcaster remains to be tested.
+- Direct nRSP-ST audio and tuning are still unimplemented. Previous direct
+  service checks established reachability only; they did not establish a usable
+  audio protocol. SDRconnect remains required for the existing nRSP-ST audio path.
+
+## Previous module pass: USB mono FM
 
 - Added initial standalone USB mono-FM playback via the existing SoapySDR
   adapter, a 240 ksample/s I/Q demodulator, shared native output and explicit
