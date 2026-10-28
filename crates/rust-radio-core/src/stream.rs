@@ -557,6 +557,24 @@ mod tests {
     }
 
     #[test]
+    fn gbh_news_endpoint_is_exact_and_cannot_access_other_mounts() {
+        assert!(ApprovedEndpoint::new(
+            "gbhnews",
+            "https://wgbh-live.streamguys1.com/wgbh"
+        )
+        .is_ok());
+        for bad in [
+            "http://wgbh-live.streamguys1.com/wgbh",
+            "https://wgbh-live.streamguys1.com/classical-hi/",
+            "https://wgbh-live.streamguys1.com/wgbh-extra",
+            "https://wgbh-live.streamguys1.com/wgbh?token=bad",
+            "https://wgbh-live.streamguys1.com.evil.test/wgbh",
+        ] {
+            assert!(ApprovedEndpoint::new("gbhnews", bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
     fn m3u_limits_and_comments_are_handled() {
         let playlist = b"#EXTM3U\r\n#EXTINF:-1,Groove Salad\r\nhttps://ice5.somafm.com/groovesalad-128-mp3\r\n";
         let parsed = parse_m3u("groovesalad", playlist).unwrap();
