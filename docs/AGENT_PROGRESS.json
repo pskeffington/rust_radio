@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-28T22:21:47Z",
+  "updated_at_utc": "2026-10-28T22:22:36Z",
   "status": "in_progress",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "pending commit for discovery-drop cancellation regression and acceptance-doc corrections",
+  "implementation_commit": "ae5028db2ce29385ad6b561ffaa2ee2328692793; discovery cancellation regression and documentation corrections passed all required local gates",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added a four-worker bounded silent catalog validator with ordered credential-safe JSON results.",
@@ -117,7 +117,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
     "latest_full_gate_run": "passed: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features",
-    "latest_code_head_ci": "PR #5 head b17b9fd Actions run 40778954761 (run 238) startup_failure before job creation; combined status empty; remote CI unverified",
+    "latest_code_head_ci": "PR #5 head ae5028d Actions run 40779428686 (run 239) startup_failure before job creation; combined status empty; remote CI unverified",
     "live_catalog_revalidation": "2026-10-28T21:28Z: bounded validate-all decoded all 25 curated streams in 25 total attempts via checked-address resolver; strict schema-aware summary script consumed the report and displayed decoded_audio/one attempt per station without endpoints or server diagnostics; point-in-time codec evidence only",
     "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
     "layout_ab_recheck": "A 24/25, B 25/25, C 25/25 at 295px; all 25/25 at 340px; C saves 192 text pixels vs A; wcrb is A overflow; fit measurement, not preference evidence",
@@ -151,7 +151,7 @@
     "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
     "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
     "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #5 open and mergeable at b17b9fdbd938793f86560e05c83c885257167669 before this pending increment",
+    "current_pr_state": "PR #5 open and mergeable at ae5028db2ce29385ad6b561ffaa2ee2328692793; description updated with discovery lifecycle test",
     "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
     "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
     "catalog_mirror_parity": "passed; ordered runtime/JSON station metadata and third-party-player policy parity including all 25 records",
@@ -173,11 +173,11 @@
     "interpretation": "compact-layout measurement on the current nineteen-station directory, not listener preference"
   },
   "ci": {
-    "latest_pr_run": 40778954761,
-    "latest_pr_head": "b17b9fdbd938793f86560e05c83c885257167669",
+    "latest_pr_run": 40779428686,
+    "latest_pr_head": "ae5028db2ce29385ad6b561ffaa2ee2328692793",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "Latest observed run 238 on PR #5 head b17b9fd failed before job creation; combined commit status was empty. Full local validation passed. Check the new pushed head separately."
+    "details": "Latest observed run 239 on PR #5 head ae5028d failed before job creation; combined commit status was empty. The full local workspace and AArch64 gates passed."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",

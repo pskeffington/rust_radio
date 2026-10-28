@@ -8,7 +8,7 @@ Updated 2026-10-28. Active priorities and ownership are in the
 - Added a bounded lifecycle regression for the discovery worker: the test blocks synthetic driver work, drops its `InputScan`, confirms Drop returns without waiting, and then verifies the worker observes cancellation. The audio crate test and both workspace suites pass with it.
 - Full required local gates passed: format, default tests, strict default Clippy, all-feature tests, strict all-feature Clippy, and all-feature check. Headless AArch64 core-only, SDRconnect and nRSP-native checks also passed. One physical native audio test remains ignored.
 - Corrected the standalone acceptance record to use the existing 25/25 bounded decoder sweep at 22:14:21 UTC, and corrected catalog policy wording to match the configured six-hour/manual workflow. The schedule remains inactive until merged to the default branch. Fixed duplicate roadmap numbering.
-- PR #5 remains open and mergeable at the pre-increment head `b17b9fd`. Actions run 238 failed at startup with zero jobs and no combined status. The remote runner failure has no repository-side job diagnostics; do not infer a code failure.
+- PR #5 remains open and mergeable at `ae5028d`. Actions run 239 on that head failed at startup with zero jobs and no combined status. The remote runner failure has no repository-side job diagnostics; do not infer a code failure.
 - The production goal remains active. Next priorities: physical output/device gates and a runner-side explanation for repeated startup failures; retain the 25-entry catalog unless new evidence warrants change.
 
 ## Twenty-five publisher-documented feeds (2026-10-28 22:14 UTC)
