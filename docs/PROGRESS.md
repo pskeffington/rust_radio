@@ -748,3 +748,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   any jobs. Remote CI is unverified, not a code-test failure. Next, inspect the
   checked-in receiver wire contract for any safe handshake-stage fixture, then
   continue physical receiver/output/Pi acceptance.
+
+## nRSP handshake cancellation during Hello wait (2026-10-28)
+
+- Added a loopback regression that completes the native WebSocket handshake,
+  withholds the receiver's initial Hello, then cancels the client while it is
+  waiting for that response. The client returns `Cancelled` within a 500 ms
+  bound and the server observes the connection close. This exercises the real
+  `Client::connect` read loop, not only the pre-cancelled fast path.
+- The focused test passed. The full default and all-features workspace suites,
+  formatting, strict Clippy in both configurations, all-features check and the
+  station-label A/B regression passed. Socket fixtures required local-network
+  permission. No physical receiver behavior is inferred.
+- Code commit `c66b883` is pushed to the PR branch. PR #3 is open and mergeable;
+  current combined status is empty and no associated PR workflow run was
+  visible at query time. Remote CI remains unverified. Next, continue receiver
+  and device recovery acceptance, which requires physical hardware.
