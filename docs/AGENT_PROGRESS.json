@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T19:08:09Z",
+  "updated_at_utc": "2026-10-28T19:08:36Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "52b85cc",
@@ -40,7 +40,7 @@
     "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
     "implementation_commit": "52b85cc; shared headless feed-history parser",
     "latest_full_gate_run": "all six required gates passed on the shared parser increment; A/B fit test repeated afterward",
-    "current_head_ci": "no status checks; latest workflow startup_failure with zero jobs"
+    "current_head_ci": "no combined status; workflow run 40751586284 returned zero jobs after startup_failure"
   },
   "a_b_test": {
     "variant_a": "category plus station name",
@@ -51,8 +51,8 @@
     "interpretation": "compact-layout measurement, not listener preference"
   },
   "ci": {
-    "latest_observed_head_run": 40751270432,
-    "conclusion": "PR head fdea7eb has empty combined status; Actions run 40751270432 failed during startup and returned zero jobs"
+    "latest_observed_head_run": 40751586284,
+    "conclusion": "head 1cb43f1 has empty combined status; Actions run 40751586284 failed at startup and returned zero jobs"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
