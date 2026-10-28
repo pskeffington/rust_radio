@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T18:49:47Z",
+  "updated_at_utc": "2026-10-28T18:53:57Z",
   "status": "in_progress",
   "branch": "codex/station-label-layout-ab",
   "implementation_commit": "8384f26",
@@ -13,7 +13,9 @@
     "Added one delayed retry for transient unavailable reports; permanent rejections remain single-attempt.",
     "Added opt-in atomic 64 KiB feed-health history with freshness and consecutive failure state.",
     "Added host API to import saved feed evidence into the GUI with live-result precedence and no playback gating.",
-    "Added a shared versioned fixture consumed by CLI and GUI tests to prevent the persisted schema from drifting."
+    "Added a shared versioned fixture consumed by CLI and GUI tests to prevent the persisted schema from drifting.",
+    "Strictly validate saved-history status, stage, freshness, timestamps, attempts and counters in both the CLI rewriter and GUI importer.",
+    "Normalize transport errors without a stage to not_checked so persisted history remains importable."
   ],
   "validation": {
     "fmt": "passed",
@@ -26,6 +28,8 @@
     "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
     "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
     "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
+    "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
+    "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
     "repeatable_layout_ab": "passed; 24/25 vs 25/25 at 295px, both 25/25 at 340px, 1776px saved",
     "workflow_yaml": "parsed"
   },
@@ -39,7 +43,7 @@
   },
   "ci": {
     "latest_observed_prior_head_run": 40746359995,
-    "conclusion": "startup_failure before jobs; empty combined status"
+    "conclusion": "current head c35955a has empty combined status and no PR workflow runs; prior observed run failed before jobs"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery",
@@ -47,5 +51,5 @@
     "Receiver hardware recovery and supported USB SDR acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Observe CI after the shared history contract change, then exercise saved-history import in Rust-Boy while keeping live playback and checks authoritative."
+  "next_priority": "Exercise saved-history import through the actual Rust-Boy host while keeping live playback and checks authoritative; then validate output-loss recovery on hardware."
 }

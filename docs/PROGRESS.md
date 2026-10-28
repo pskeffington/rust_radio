@@ -3,6 +3,28 @@
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
+## Current module pass: strict saved-history validation (2026-10-28)
+
+- Tightened both the CLI history writer and GUI host importer to reject unknown
+  status/stage values, future record timestamps, inconsistent decoded evidence,
+  invalid attempt/failure counts and mismatched health states. Invalid old files
+  are left untouched; transport errors without stage data normalize to
+  `not_checked` so the saved contract remains readable.
+- Corrected stale README and feed-policy statements that described persistence
+  and host import as future work.
+- Focused CLI/GUI history tests pass. All six required gates pass: formatting,
+  default workspace tests, strict default Clippy, all-feature tests, strict
+  all-feature Clippy and all-feature check. Loopback fixture tests passed with
+  local network permission. One native-audio GUI test remains intentionally
+  ignored because it requires physical audio output.
+- Repeated the compact station-row A/B: category+name 24/25 vs name-only 25/25
+  at 295 px; both 25/25 at 340 px; name-only saves 1,776 text pixels. This is a
+  fit metric, not a user preference measurement.
+- PR #3 is open and reports mergeable. GitHub currently returns no combined
+  status or workflow runs for head `c35955a`; the previously observed action
+  attempt failed before jobs were created. Physical output recovery, Pi runtime,
+  USB SDR acceptance, publisher rights and Rust-Boy host exercise remain open.
+
 ## Current module pass: scheduled feed sweep and endpoint recovery
 
 - Added `rust-radio-cli validate-all --json`, which runs at most four checks at
@@ -12,8 +34,8 @@ Updated 2026-10-28. Active priorities and ownership are in the
   fail the completed sweep. Offline regression coverage verifies concurrency,
   ordered results, and JSON shape.
 - Added daily scheduled and manually dispatchable GitHub Actions validation;
-  the JSON report is retained for 30 days. Documented that this is point-in-time
-  evidence and does not implement persistent freshness or playback gating.
+  the JSON report is retained for 30 days. This remains point-in-time evidence
+  and does not itself persist runtime freshness or gate playback.
 - The first live sweep decoded 24/25 feeds. `leftcoast70s` returned HTTP 404,
   exposing that the validator incorrectly classified every HTTP status as
   temporary. HTTP 408, 425, 429 and 5xx remain `unavailable`; other rejected
@@ -43,9 +65,8 @@ Updated 2026-10-28. Active priorities and ownership are in the
   Synthetic coverage proves a transient outage followed by decoded audio is
   marked recovered, while a simulated 404 is attempted once and remains a
   visible failure. Focused tests pass.
-- This improves short-outage tolerance without persisting health or admitting
-  stale results; persistent evidence/backoff remains the next implementation
-  step.
+- This improves short-outage tolerance without admitting stale results; local
+  persistence and host import were added in the subsequent feed-history pass.
 - Final format, default/all-feature workspace tests, strict default/all-feature
   Clippy and all-feature check pass after the retry change. A bounded live sweep
   decoded 25/25 feeds in 25 attempts, so no retry was needed during that sample.
@@ -481,6 +502,7 @@ are recorded separately from real-receiver evidence.
   passed; the parallel failure remains unresolved. No dashboard implementation
   was changed by these radio passes.
 
-Station history is currently kept for the CLI invocation or panel lifetime.
-Persistent validation history, HLS transport and satellite adapters remain
-deferred; they are not prerequisites for the accepted MP3/AAC/native PCM paths.
+Station history can be persisted by the CLI to an opt-in bounded file and
+imported by an egui host; saved history remains informational and never gates
+playback. HLS transport and satellite adapters remain deferred; they are not
+prerequisites for the accepted MP3/AAC/native PCM paths.

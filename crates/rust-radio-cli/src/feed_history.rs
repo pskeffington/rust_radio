@@ -154,12 +154,13 @@ fn merge(previous: Option<&str>, report: &Value) -> Result<Value, String> {
         } else {
             previous_failures.saturating_add(1)
         };
+        let stage = result["stage"].as_str().unwrap_or("not_checked");
         stations.insert(
             id.to_owned(),
             json!({
                 "last_checked_at_unix": checked,
                 "last_status": status,
-                "last_stage": result["stage"],
+                "last_stage": stage,
                 "attempts": result["attempts"].as_u64().unwrap_or(1),
                 "last_decoded_at_unix": last_decoded,
                 "consecutive_failures": failures,
@@ -192,16 +193,68 @@ fn parse_previous(raw: &str) -> Result<Map<String, Value>, String> {
     if stations.len() > valid_ids.len() {
         return Err("Feed history contains too many stations".into());
     }
+    let updated_at = previous["updated_at_unix"]
+        .as_u64()
+        .ok_or_else(|| "Feed history has no valid update timestamp".to_owned())?;
     for (id, record) in stations {
+        let checked_at = record["last_checked_at_unix"].as_u64();
+        let status = record["last_status"].as_str();
+        let stage = record["last_stage"].as_str();
+        let attempts = record["attempts"].as_u64();
+        let failures = record["consecutive_failures"].as_u64();
+        let decoded_at = record["last_decoded_at_unix"].as_u64();
+        let health = record["health"].as_str();
+        let valid_status = matches!(
+            status,
+            Some(
+                "unverified"
+                    | "unavailable"
+                    | "invalid_stream"
+                    | "unsupported"
+                    | "cancelled"
+                    | "decoded"
+                    | "check_error"
+            )
+        );
+        let valid_stage = matches!(
+            stage,
+            Some(
+                "not_checked"
+                    | "endpoint_reached"
+                    | "stream_response"
+                    | "supported_codec"
+                    | "decoded_audio"
+            )
+        );
+        let decoded = status == Some("decoded");
+        let valid_health = if decoded {
+            matches!(health, Some("fresh" | "stale"))
+        } else if matches!(status, Some("unverified" | "cancelled")) {
+            health == Some("unverified")
+        } else {
+            health == Some("failed")
+        };
         if !valid_ids.contains(&id.as_str())
-            || record["last_checked_at_unix"].as_u64().is_none()
-            || record["consecutive_failures"].as_u64().is_none()
-            || record["consecutive_failures"].as_u64().unwrap_or(u64::MAX) > 1_000_000
+            || checked_at.map_or(true, |time| time > updated_at)
+            || !valid_status
+            || !valid_stage
+            || !valid_health
+            || attempts.map_or(true, |count| !(1..=2).contains(&count))
+            || failures.map_or(true, |count| count > 1_000_000)
         {
             return Err("Feed history contains an invalid station record".into());
         }
-        if record["last_decoded_at_unix"].as_u64().is_none()
-            && !record["last_decoded_at_unix"].is_null()
+        if decoded
+            && (stage != Some("decoded_audio") || decoded_at != checked_at || failures != Some(0))
+        {
+            return Err("Feed history contains inconsistent decoded evidence".into());
+        }
+        if !decoded && stage == Some("decoded_audio") {
+            return Err("Feed history contains inconsistent decoded stage".into());
+        }
+        if decoded_at.is_some_and(|time| Some(time) > checked_at)
+            || decoded_at.is_some_and(|time| time > updated_at)
+            || (decoded_at.is_none() && !record["last_decoded_at_unix"].is_null())
         {
             return Err("Feed history has an invalid last decoded timestamp".into());
         }
@@ -280,6 +333,39 @@ mod tests {
         assert!(update_file(&path, &report(1_000_000, "decoded", true)).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "not-json");
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn inconsistent_history_is_rejected_before_rewrite() {
+        let path = temp_path();
+        let mut invalid: Value =
+            serde_json::from_str(include_str!("../../../testdata/feed-health-v1.json")).unwrap();
+        invalid["stations"]["skylab"]["last_stage"] = json!("endpoint_reached");
+        fs::write(&path, serde_json::to_vec(&invalid).unwrap()).unwrap();
+        assert!(update_file(&path, &report(1_700_000_100, "unavailable", false)).is_err());
+        assert_eq!(
+            fs::read(&path).unwrap(),
+            serde_json::to_vec(&invalid).unwrap()
+        );
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn transport_errors_without_stage_produce_valid_history_records() {
+        let mut report = report(1_700_000_100, "check_error", false);
+        let result = report["results"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|result| result["station_id"] == "skylab")
+            .unwrap();
+        result.as_object_mut().unwrap().remove("stage");
+        result.as_object_mut().unwrap().remove("checked_at_unix");
+
+        let updated = merge(None, &report).unwrap();
+        assert_eq!(updated["stations"]["skylab"]["last_status"], "check_error");
+        assert_eq!(updated["stations"]["skylab"]["last_stage"], "not_checked");
+        assert_eq!(updated["stations"]["skylab"]["health"], "failed");
     }
 
     #[test]

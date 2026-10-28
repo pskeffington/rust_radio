@@ -26,6 +26,7 @@ pub(super) fn parse_history(
     if value["schema_version"].as_u64() != Some(1) {
         return Err("Unsupported feed validation history schema".into());
     }
+    let updated_at = epoch(value["updated_at_unix"].as_u64(), "update")?;
     let stations = value["stations"]
         .as_object()
         .ok_or_else(|| "Feed validation history has no stations object".to_owned())?;
@@ -39,7 +40,23 @@ pub(super) fn parse_history(
             .find(|station| station.id == id)
             .ok_or_else(|| format!("Unknown curated station in feed history: {id}"))?;
         let checked_at = epoch(record["last_checked_at_unix"].as_u64(), "last check")?;
+        if checked_at > updated_at {
+            return Err(format!("Future station check in feed history for {id}"));
+        }
         let status = parse_status(record["last_status"].as_str())?;
+        let stage = record["last_stage"]
+            .as_str()
+            .ok_or_else(|| format!("Missing validation stage in feed history for {id}"))?;
+        if !matches!(
+            stage,
+            "not_checked"
+                | "endpoint_reached"
+                | "stream_response"
+                | "supported_codec"
+                | "decoded_audio"
+        ) {
+            return Err(format!("Unknown validation stage in feed history for {id}"));
+        }
         let attempts = record["attempts"]
             .as_u64()
             .filter(|attempts| (1..=2).contains(attempts))
@@ -53,7 +70,7 @@ pub(super) fn parse_history(
         let last_decoded = match record["last_decoded_at_unix"].as_u64() {
             Some(timestamp) => {
                 let time = epoch(Some(timestamp), "last decoded")?;
-                if time > checked_at {
+                if time > checked_at || time > updated_at {
                     return Err(format!("Future decoded timestamp in feed history for {id}"));
                 }
                 Some(time)
@@ -66,16 +83,26 @@ pub(super) fn parse_history(
             }
         };
         if status == ValidationStatus::Decoded {
-            if last_decoded != Some(checked_at)
-                || record["last_stage"].as_str() != Some("decoded_audio")
-                || failures != 0
-            {
+            if last_decoded != Some(checked_at) || stage != "decoded_audio" || failures != 0 {
                 return Err(format!(
                     "Inconsistent decoded evidence in feed history for {id}"
                 ));
             }
-        } else if last_decoded.is_some_and(|time| time > checked_at) {
-            return Err(format!("Invalid decoded evidence in feed history for {id}"));
+        } else if stage == "decoded_audio" {
+            return Err(format!(
+                "Inconsistent decoded stage in feed history for {id}"
+            ));
+        }
+        let health = record["health"]
+            .as_str()
+            .ok_or_else(|| format!("Missing health in feed history for {id}"))?;
+        let valid_health = match status {
+            ValidationStatus::Decoded => matches!(health, "fresh" | "stale"),
+            ValidationStatus::Cancelled | ValidationStatus::Unverified => health == "unverified",
+            _ => health == "failed",
+        };
+        if !valid_health {
+            return Err(format!("Inconsistent health in feed history for {id}"));
         }
         parsed.insert(
             station.id,
@@ -167,6 +194,14 @@ mod tests {
         assert!(parse_history("{}").is_err());
         assert!(parse_history(&history("decoded", Some(1_000_001), 1_000_000)).is_err());
         assert!(parse_history(&history("decoded", None, 1_000_000)).is_err());
+        let mut wrong_stage: Value =
+            serde_json::from_str(&history("decoded", Some(1_000_000), 1_000_000)).unwrap();
+        wrong_stage["stations"]["skylab"]["last_stage"] = Value::String("endpoint_reached".into());
+        assert!(parse_history(&wrong_stage.to_string()).is_err());
+        let mut future_update: Value =
+            serde_json::from_str(&history("decoded", Some(1_000_000), 1_000_000)).unwrap();
+        future_update["updated_at_unix"] = json!(999_999);
+        assert!(parse_history(&future_update.to_string()).is_err());
     }
 
     #[test]
