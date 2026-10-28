@@ -1734,3 +1734,7 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Linux ARM64 headless check did not complete: `ring` could not find `aarch64-linux-gnu-gcc`. The Rust target is installed, but the cross C compiler is absent; this is an environment limitation, not a Rust diagnostic.
 - PR #5 is open and mergeable at `139c00c`. Actions run 286 (`40790287485`) for that head ended `startup_failure` before job creation; jobs and combined statuses are empty. No production code changed during this acceptance-only run.
 - Remaining: audible output, Bluetooth/USB loss recovery, Raspberry Pi audio/display/touch and receiver acceptance; publisher rights, national NPR source/rights, native Windows MSVC CI.
+
+
+- Evidence checkpoint `37a7463` was pushed at 23:55 UTC. PR #5 remains open and
+  mergeable; no run or combined status was visible for that head.
