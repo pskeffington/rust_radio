@@ -103,6 +103,14 @@ pub struct NativeAudioOutput {
 
 impl NativeAudioOutput {
     pub fn open(volume: Arc<AtomicU8>, output_id: &str) -> Result<Self, String> {
+        Self::open_with_progress(volume, output_id, Arc::new(AtomicU64::new(0)))
+    }
+
+    pub(crate) fn open_with_progress(
+        volume: Arc<AtomicU8>,
+        output_id: &str,
+        played_samples: Arc<AtomicU64>,
+    ) -> Result<Self, String> {
         let host = cpal::default_host();
         let device = resolve_output(&host, output_id)?;
         let supported = device
@@ -118,7 +126,6 @@ impl NativeAudioOutput {
         // Two seconds of interleaved device-rate PCM; bounded to at most ~12 MiB.
         let ring = HeapRb::<f32>::new(sample_rate as usize * channels * 2);
         let (producer, consumer) = ring.split();
-        let played_samples = Arc::new(AtomicU64::new(0));
         let failed = Arc::new(AtomicBool::new(false));
         let stream = match sample_format {
             SampleFormat::F32 => build_stream::<f32>(
