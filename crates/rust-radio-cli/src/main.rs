@@ -493,6 +493,7 @@ fn diagnostics_json(
     serde_json::json!({
         "output_prebuffer_ms": prebuffer_ms,
         "buffer_ready_latency_observed_ms": diagnostics.buffer_ready_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
+        "prebuffer_fill_latency_observed_ms": diagnostics.prebuffer_fill_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
         "first_play_latency_observed_ms": diagnostics.first_play_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
         "underrun_samples": diagnostics.underrun_samples,
     })
@@ -799,6 +800,7 @@ mod tests {
             rust_radio::NativePlaybackDiagnostics {
                 underrun_samples: 23,
                 buffer_ready_latency_observed: Some(Duration::from_millis(500)),
+                prebuffer_fill_latency_observed: Some(Duration::from_millis(300)),
                 first_play_latency_observed: Some(Duration::from_millis(734)),
             },
         ))
@@ -807,6 +809,10 @@ mod tests {
         assert_eq!(
             diagnostics["buffer_ready_latency_observed_ms"].as_f64(),
             Some(500.0)
+        );
+        assert_eq!(
+            diagnostics["prebuffer_fill_latency_observed_ms"].as_f64(),
+            Some(300.0)
         );
         assert_eq!(
             diagnostics["first_play_latency_observed_ms"].as_f64(),
