@@ -4,6 +4,7 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import platform
 import statistics
@@ -16,9 +17,20 @@ PROFILES = {
     "balanced": 350,
     "resilient": 500,
 }
+MAX_OUTPUT_RATE_HZ = 192_000
+MAX_OUTPUT_CHANNELS = 8
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_URL = "http://127.0.0.1:18743/live"
 CATALOG_PATH = REPO_ROOT / "catalog/curated-stations.json"
+
+
+def is_finite_nonnegative_number(value):
+    if type(value) not in (int, float) or value < 0:
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def parse_args():
@@ -101,28 +113,55 @@ def run_trial(args, trial, variant, profile):
     ]
     if result.returncode or len(diagnostic_lines) != 1:
         raise RuntimeError(
-            f"trial {trial} {variant} failed (exit {result.returncode});\n"
-            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            f"trial {trial} {variant} failed (exit {result.returncode}; "
+            f"diagnostic records={len(diagnostic_lines)})"
         )
     try:
         metrics = json.loads(diagnostic_lines[0])
     except json.JSONDecodeError as error:
         raise RuntimeError(f"trial {trial} {variant} emitted invalid diagnostics JSON") from error
-    if metrics.get("output_prebuffer_ms") != expected_prebuffer_ms:
-        raise RuntimeError(
-            f"trial {trial} {variant} reported prebuffer "
-            f"{metrics.get('output_prebuffer_ms')!r}, expected {expected_prebuffer_ms}ms"
-        )
-    required = {
+    expected_fields = {
+        "output_prebuffer_ms",
         "buffer_ready_latency_observed_ms",
         "first_play_latency_observed_ms",
         "output_samples_consumed_current_attempt",
         "prebuffer_fill_latency_observed_ms",
         "underrun_samples",
     }
-    missing = required.difference(metrics)
-    if missing:
-        raise RuntimeError(f"trial {trial} {variant} omitted diagnostics: {sorted(missing)}")
+    if not isinstance(metrics, dict) or set(metrics) != expected_fields:
+        raise RuntimeError(f"trial {trial} {variant} emitted an invalid diagnostics schema")
+    if (
+        type(metrics["output_prebuffer_ms"]) is not int
+        or metrics["output_prebuffer_ms"] != expected_prebuffer_ms
+    ):
+        raise RuntimeError(
+            f"trial {trial} {variant} reported an invalid prebuffer; "
+            f"expected {expected_prebuffer_ms}ms"
+        )
+    latency_fields = {
+        "buffer_ready_latency_observed_ms",
+        "first_play_latency_observed_ms",
+        "prebuffer_fill_latency_observed_ms",
+    }
+    if any(
+        not is_finite_nonnegative_number(metrics[field])
+        or metrics[field] > (args.seconds + 60) * 1_000
+        for field in latency_fields
+    ):
+        raise RuntimeError(f"trial {trial} {variant} emitted invalid latency diagnostics")
+    counter_fields = {
+        "output_samples_consumed_current_attempt",
+        "underrun_samples",
+    }
+    maximum_sample_count = (
+        MAX_OUTPUT_RATE_HZ * MAX_OUTPUT_CHANNELS * (args.seconds + 60)
+    )
+    if any(
+        type(metrics[field]) is not int
+        or not 0 <= metrics[field] <= maximum_sample_count
+        for field in counter_fields
+    ):
+        raise RuntimeError(f"trial {trial} {variant} emitted invalid sample counters")
     return {
         "trial": trial,
         "variant": variant,

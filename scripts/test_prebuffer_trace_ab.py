@@ -65,6 +65,77 @@ class PrebufferTraceAbTests(unittest.TestCase):
         self.assertEqual(record["profile"], "balanced")
         self.assertEqual(record["output_prebuffer_ms"], 350)
 
+    def test_trial_rejects_extra_url_diagnostics_without_leaking_values(self):
+        diagnostics = {
+            "output_prebuffer_ms": 350,
+            "buffer_ready_latency_observed_ms": 400.0,
+            "first_play_latency_observed_ms": 450.0,
+            "output_samples_consumed_current_attempt": 1234,
+            "prebuffer_fill_latency_observed_ms": 350.0,
+            "underrun_samples": 0,
+            "resolved_url": "http://127.0.0.1/live?token=private-token",
+        }
+        args = self.parse_with_temporary_cli(
+            "--url", "http://127.0.0.1/live?token=private-token"
+        )
+        with patch("run_prebuffer_trace_ab.subprocess.run") as run:
+            run.return_value.returncode = 0
+            run.return_value.stdout = (
+                f"RUST RADIO DIAGNOSTICS {json.dumps(diagnostics)}\n"
+            )
+            run.return_value.stderr = ""
+            with self.assertRaisesRegex(RuntimeError, "invalid diagnostics schema") as error:
+                run_trial(args, 1, "A", "balanced")
+
+        self.assertNotIn("private-token", str(error.exception))
+        self.assertNotIn("127.0.0.1", str(error.exception))
+
+    def test_trial_failure_does_not_echo_cli_output(self):
+        secret = "private-query-token"
+        args = self.parse_with_temporary_cli(
+            "--url", f"http://127.0.0.1/live?token={secret}"
+        )
+        with patch("run_prebuffer_trace_ab.subprocess.run") as run:
+            run.return_value.returncode = 2
+            run.return_value.stdout = f"failed URL contains {secret}"
+            run.return_value.stderr = f"stream error includes {secret}"
+            with self.assertRaisesRegex(RuntimeError, "diagnostic records=0") as error:
+                run_trial(args, 1, "A", "balanced")
+
+        self.assertNotIn(secret, str(error.exception))
+
+    def test_trial_rejects_non_finite_or_mistyped_metrics(self):
+        base = {
+            "output_prebuffer_ms": 350,
+            "buffer_ready_latency_observed_ms": 400.0,
+            "first_play_latency_observed_ms": 450.0,
+            "output_samples_consumed_current_attempt": 1234,
+            "prebuffer_fill_latency_observed_ms": 350.0,
+            "underrun_samples": 0,
+        }
+        malformed = (
+            {**base, "buffer_ready_latency_observed_ms": float("nan")},
+            {**base, "buffer_ready_latency_observed_ms": float("inf")},
+            {**base, "buffer_ready_latency_observed_ms": 10**400},
+            {**base, "first_play_latency_observed_ms": 1_000_000.0},
+            {**base, "first_play_latency_observed_ms": True},
+            {**base, "output_samples_consumed_current_attempt": -1},
+            {**base, "output_samples_consumed_current_attempt": 104_448_001},
+            {**base, "underrun_samples": False},
+            {**base, "output_prebuffer_ms": True},
+        )
+        args = self.parse_with_temporary_cli("--station", "wpr-news")
+        for diagnostics in malformed:
+            with self.subTest(diagnostics=diagnostics):
+                with patch("run_prebuffer_trace_ab.subprocess.run") as run:
+                    run.return_value.returncode = 0
+                    run.return_value.stdout = (
+                        f"RUST RADIO DIAGNOSTICS {json.dumps(diagnostics)}\n"
+                    )
+                    run.return_value.stderr = ""
+                    with self.assertRaises(RuntimeError):
+                        run_trial(args, 1, "A", "balanced")
+
     def test_curated_station_preflight_requires_decoded_json(self):
         validation = {
             "station_id": "wpr-news",

@@ -1,5 +1,23 @@
 # Radio development progress
 
+## A/B diagnostics privacy hardening (2026-10-29 04:31 UTC)
+
+- `scripts/run_prebuffer_trace_ab.py` now accepts only the six playback diagnostic
+  fields used by the summary. Unexpected additions, including URL/detail fields,
+  abort before being copied into the trial record. Latencies must be finite, non-negative and within the trial timeout; prebuffer
+  values and sample counters require exact integer types, with counters bounded
+  by supported output rates/channels and the trial timeout.
+- Trial failures no longer echo CLI stdout/stderr or arbitrary diagnostic values,
+  preventing query tokens or future URL-bearing fields from leaking through error
+  reports. Twelve Python regressions passed, including token-bearing CLI output,
+  unexpected URL fields, non-finite values, booleans and oversized numbers. Python
+  compile and `git diff --check` passed.
+- All six locked Rust workspace gates passed. The first default test run was
+  blocked by sandbox-denied loopback sockets in six existing integration fixtures;
+  rerunning with local socket access passed the workspace and all-feature suites.
+- Actions run 360 (`40818001252`) on PR head `76d4d8d` failed before job creation;
+  GitHub returned zero jobs and no combined statuses, so it has no diagnostic logs.
+
 ## WPR News longer live buffering A/B (2026-10-29 04:22 UTC)
 
 - The runner performed its single-station JSON preflight first; WPR News decoded

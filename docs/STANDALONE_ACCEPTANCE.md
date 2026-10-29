@@ -370,3 +370,11 @@ Balanced 350 ms and resilient 500 ms buffer-ready medians were 1490.077 and
 +108.563 ms range. The ranges cross zero; retain the resilient engine default
 until reliability or listening evidence supports a change. Full raw evidence is
 in `docs/AGENT_PROGRESS.json` under `wpr_news_live_ab_30s_followup`.
+
+
+The A/B runner accepts only the six playback diagnostic fields needed for its
+summary and preserves no unknown CLI fields. It rejects non-finite, negative or out-of-timeout
+latencies and mistyped, negative or out-of-range prebuffer and sample counts. Failed trials do not
+echo raw CLI stdout or stderr, so a loopback query token or future URL-bearing
+diagnostic cannot be copied into an error report. Regression coverage is in
+`scripts/test_prebuffer_trace_ab.py`.

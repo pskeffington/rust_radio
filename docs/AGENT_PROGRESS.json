@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T04:28:51Z",
+  "updated_at_utc": "2026-10-29T04:34:37Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "1204391e0f029c069a29c7d5589653a7643fe1e7",
@@ -252,7 +252,8 @@
     "Ran the eight-trial counterbalanced 350/500ms native A/B against the captured Skylab timing trace with added multi-gap stalls; zero underruns in both profiles. The startup direction opposed the WCRB combined replay, so the evidence supports no profile winner.",
     "Extended the counterbalanced buffering A/B result summaries with per-profile median/min/max latencies and adjacent paired A-minus-B deltas; added two regressions. Ran an end-to-end native Skylab timing/stall replay to verify output, and all six Rust workspace gates passed.",
     "Validated WPR News (MP3, 44.1kHz mono) without opening output, then ran eight counterbalanced muted native 350/500ms trials. Both profiles had zero underruns; paired latency summaries were mixed with ranges crossing zero, so no profile/default change is justified.",
-    "Added schema-version-1 single-station validation JSON using the validate-all envelope, omitting resolved URLs and detail, and made curated A/B trials require/store a decoded preflight before output opens. Added CLI and runner regressions; full six Rust gates passed. Verified the updated flow on WPR News in eight counterbalanced muted native trials."
+    "Added schema-version-1 single-station validation JSON using the validate-all envelope, omitting resolved URLs and detail, and made curated A/B trials require/store a decoded preflight before output opens. Added CLI and runner regressions; full six Rust gates passed. Verified the updated flow on WPR News in eight counterbalanced muted native trials.",
+    "Hardened the A/B runner against secret-bearing diagnostic fields and raw CLI output leaks; exact-field validation, finite/range checks, and 12 regressions pass."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -348,22 +349,22 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40817891412,
-    "latest_pr_head": "c9bd35999567475e52b7d918949d3eba6722d111",
+    "latest_pr_run": 40818001252,
+    "latest_pr_head": "76d4d8d51a3cda1ab1cf5903a4b4060e733e41d5",
     "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no combined statuses",
     "latest_pr_jobs": 0,
-    "latest_pr_run_number": 359,
+    "latest_pr_run_number": 360,
     "latest_pr_status_checks": 0,
-    "exact_current_head": "c9bd35999567475e52b7d918949d3eba6722d111",
+    "exact_current_head": "76d4d8d51a3cda1ab1cf5903a4b4060e733e41d5",
     "exact_current_head_workflow_runs": [
       {
-        "run_id": 40817891412,
-        "run_number": 359,
+        "run_id": 40818001252,
+        "run_number": 360,
         "conclusion": "startup_failure"
       }
     ],
     "exact_current_head_combined_statuses": [],
-    "details": "At 2026-10-29T04:28:51Z, PR #5 is open and mergeable at c9bd35999567475e52b7d918949d3eba6722d111. Actions run 359 on this exact head failed with startup_failure before any jobs were created; the jobs endpoint returned zero jobs and no combined statuses. No logs exist for diagnosis."
+    "details": "At 2026-10-29T04:34:37Z, PR #5 is open and mergeable at 76d4d8d51a3cda1ab1cf5903a4b4060e733e41d5. Actions run 360 failed before any jobs were created; the jobs endpoint returned zero and commit combined statuses are empty. No logs exist for diagnosis. Local A/B diagnostics privacy hardening is validated but uncommitted."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -375,7 +376,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Obtain physical Bluetooth/USB output-loss and reconnect acceptance plus blinded audible profile preference. Complete native Windows MSVC and Raspberry Pi runtime gates. The recent muted live A/B runs show zero underruns but paired latency ranges cross zero; do not change the buffering default. Investigate repeated Actions startup failures only if actionable diagnostics appear.",
-  "current_pr_state": "PR #5 is open and mergeable at c9bd35999567475e52b7d918949d3eba6722d111. Actions run 359 (40817891412) on this exact head failed with startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses are empty.",
+  "current_pr_state": "PR #5 is open and mergeable at 76d4d8d51a3cda1ab1cf5903a4b4060e733e41d5. Actions run 360 (40818001252) on this head failed with startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses are empty. The diagnostics hardening is locally validated but uncommitted.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1207,7 +1208,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T04:28:51Z",
+  "current_pr_state_checked_at_utc": "2026-10-29T04:34:37Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -4452,5 +4453,24 @@
       }
     },
     "interpretation": "Silent preflight decoded WPR News MP3 at 44.1 kHz mono (1152 frames). Eight 30-second muted native trials compared balanced 350 ms and resilient 500 ms in ABBA/BAAB order. All eight had zero callback underruns. Buffer-ready means were 1438.958/1490.883 ms and medians 1490.077/1480.564 ms. Paired A-minus-B median was +20.399 ms (range -404.680 to +156.185 ms); first-play median +4.967 ms (range -439.430 to +108.563 ms). Ranges cross zero and neither profile underruns; no default or listening-preference conclusion follows."
+  },
+  "prebuffer_ab_diagnostics_privacy_hardening": {
+    "date_utc": "2026-10-29T04:31Z",
+    "changes": [
+      "A/B playback diagnostics now require the exact six-field schema; unexpected fields such as resolved_url are rejected before persistence.",
+      "Latency values must be finite, non-negative and within the per-trial timeout; prebuffer values and sample counters require exact integer types, with counters bounded by the maximum supported output rate/channel count and timeout.",
+      "Trial failure errors no longer echo raw CLI stdout/stderr; unexpected diagnostic values are omitted from error messages."
+    ],
+    "regression_tests": "scripts/test_prebuffer_trace_ab.py: 12 passed; includes secret-bearing unexpected field, token-bearing failure output, NaN/oversized numeric and type boundary cases.",
+    "python_compile": "passed",
+    "cargo_gates": {
+      "fmt": "passed",
+      "test_workspace_locked": "passed with local loopback access; default sandbox first denied six loopback integration fixtures",
+      "clippy_workspace_all_targets_locked": "passed",
+      "test_workspace_all_features_locked": "passed with local loopback access",
+      "clippy_workspace_all_features_all_targets_locked": "passed",
+      "check_workspace_all_features_locked": "passed"
+    },
+    "git_diff_check": "passed"
   }
 }
