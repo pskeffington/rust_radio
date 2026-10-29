@@ -2283,3 +2283,11 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - PR #5 was open and reported mergeable at head `e6818ef`. Latest Actions run
   326 (`40803639508`) failed with `startup_failure` before job creation; no jobs
   or combined status checks were present. Remote CI remains unverified.
+
+- Final checkpoint at 2026-10-29 02:07:57 UTC: pushed fixture/evidence commit
+  `66d2b9ec95b940a834b31d699108b477f7f38478` to PR #5. GitHub reports the PR
+  open but currently returns `mergeable=false`; local `git merge-tree` against
+  refreshed `origin/main` completes cleanly. No Actions run or combined status
+  is visible for this head. The previous head `e6818ef` had run 326
+  (`40803639508`), which failed with `startup_failure` before job creation and
+  created zero jobs.

@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-29T02:07:17Z",
+  "updated_at_utc": "2026-10-29T02:07:57Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
+  "implementation_commit": "66d2b9ec95b940a834b31d699108b477f7f38478: loopback prebuffer A/B fixture, measured stall results, and acceptance procedure",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -219,7 +219,8 @@
     "Added scripts/prebuffer_fixture_server.py and a generated 12-second stereo MP3 fixture for a loopback-only, paced 500ms chunk-gap native playback A/B.",
     "Ran eight muted native CPAL A/B/B/A trials on macOS ARM64 with a 500ms gap after chunk 20: A=200ms averaged 35,840 missing callback samples; B=500ms averaged 7,168 (80% lower). B increased mean buffer-ready latency by 291ms and first-play latency by 300ms.",
     "Recorded corrected schedule and caveats: an earlier chunk-10 stall could land before playback started, so those trials were excluded. The checked procedure checks the measured buffer-ready timestamp against the post-start stall position.",
-    "Validated fixture script syntax/help, JSON parsing, ffprobe duration (12.042438 seconds), and git diff whitespace; no Rust source changed, so workspace gates were not rerun."
+    "Validated fixture script syntax/help, JSON parsing, ffprobe duration (12.042438 seconds), and git diff whitespace; no Rust source changed, so workspace gates were not rerun.",
+    "Pushed implementation/evidence checkpoint 66d2b9e; PR #5 remains open. Exact current head has no workflow run or combined statuses; GitHub mergeable=false snapshot conflicts with a clean local merge-tree result."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -316,8 +317,8 @@
   },
   "ci": {
     "latest_pr_run": 40803639508,
-    "latest_pr_head": "e6818efeb4607f63ccdf60294f5cad80fbc777e0",
-    "latest_pr_conclusion": "startup_failure before job creation",
+    "latest_pr_head": "66d2b9ec95b940a834b31d699108b477f7f38478",
+    "latest_pr_conclusion": "previous head e6818ef failed startup before job creation; no run visible for current head",
     "latest_pr_jobs": 0,
     "details": "At 2026-10-29T01:58:38Z PR #5 was open at 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true; latest returned false. No Actions run or combined status is visible for this head. A fresh merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; no jobs/logs exist. Native Windows MSVC CI remains unverified.",
     "latest_pr_run_number": 326,
@@ -333,7 +334,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Repeat the loopback comparison on a second host and with measured live-stream jitter; obtain separate human audible evidence. Investigate the recurring GitHub Actions startup_failure. Physical Bluetooth/USB output recovery, Pi audio/display/touch, nRSP/Soapy hardware, Windows MSVC, publisher-rights review and Rust-Boy adoption remain open.",
-  "current_pr_state": "PR #5 open and GitHub reports mergeable at checked head e6818efeb4607f63ccdf60294f5cad80fbc777e0; latest run 326 (40803639508) failed before jobs with startup_failure; no combined statuses. This run adds documentation/script/fixture evidence and will push a follow-up checkpoint.",
+  "current_pr_state": "PR #5 remains open at pushed head 66d2b9ec95b940a834b31d699108b477f7f38478. GitHub currently reports mergeable=false; local git merge-tree against origin/main completed cleanly. No workflow run or combined status is visible for this head. Previous head e6818ef had Actions run 326 (40803639508), startup_failure before job creation with zero jobs.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
