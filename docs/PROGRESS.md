@@ -1,6 +1,6 @@
 # Radio development progress
 
-## Curated A/B validation preflight (2026-10-29 04:16 UTC)
+## Curated A/B validation preflight (2026-10-29 04:16 UTC; checkpoint 04:20 UTC)
 
 - Added `rust-radio-cli validate STATION --json` as a version-1 report using the
   existing `validate-all --json` envelope with one station result. The record
@@ -23,7 +23,7 @@
 - All six locked Rust workspace gates passed. CLI JSON/privacy regressions passed;
   Python runner suite passed 9/9, along with compile/help, workflow YAML, JSON and
   diff checks. Actions run 354 (`40816126511`) on current pushed head `288c81b`
-  failed before job creation with zero jobs and no combined statuses.
+  failed before job creation with zero jobs and no combined statuses. Implementation commit `1204391` is now pushed to PR #5, which remains open and mergeable. For exact head `1204391e0f029c069a29c7d5589653a7643fe1e7`, GitHub currently reports no workflow run and no combined status. The preceding run 354 on parent `288c81b` failed at startup before any jobs were created.
 - Next: physical Bluetooth/USB output-loss and reconnect tests, blinded audible
   comparison, native Windows MSVC and Raspberry Pi runtime acceptance.
 
