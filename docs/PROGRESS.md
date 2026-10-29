@@ -1967,3 +1967,10 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   hardware test was performed. Next: record native callback underruns and
   startup latency during a repeated audible 200/500 ms Mac comparison, then
   run the same acceptance on Raspberry Pi if available.
+
+- Final post-push check on `be8b76e`: all six workspace gates passed again,
+  including the exact committed loopback timing fixture. PR #5 is open and
+  mergeable at that head. No workflow run or combined status was visible for
+  `be8b76e`; run 302 for its parent evidence checkpoint `aa523fa` is still the
+  latest observed and failed before job creation. No audible or hardware
+  acceptance was performed.

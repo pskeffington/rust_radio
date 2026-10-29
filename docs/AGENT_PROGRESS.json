@@ -1,10 +1,11 @@
 {
-  "updated_at_utc": "2026-10-29T00:28:55Z",
+  "updated_at_utc": "2026-10-29T00:30:48Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "0f8229967950140d0fec90382ddf5dd456dbdee4; NetworkGuard response-body chunk timing snapshots and bounded live Skylab/WCRB sample.",
+  "implementation_commit": "be8b76e179814fcf7aefe948531505bf967265da; clarified inclusive timing counter names and verified the transport snapshot with a paced loopback HTTP integration fixture.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Final post-push validation repeated all six required gates on be8b76e; the new paced loopback timing integration passed. PR #5 remains open and mergeable; current head has no run/status visible, while parent checkpoint aa523fa run 302 failed before jobs.",
     "Added a paced loopback HTTP regression that drives three audio response chunks 80ms and 350ms apart through open_direct_classified and verifies NetworkGuard timing_snapshot reports the chunk/interval counts and the >=200ms threshold. Renamed public counters to gaps_at_or_over_200ms / 500ms for boundary clarity.",
     "Repeated 200ms vs 500ms synthetic prebuffer A/B: modeled silence 0/100/600ms vs 0/0/300ms under 100/300/800ms stalls; B adds 300ms startup. Repeated live samples on Skylab (138 chunks / 137 intervals; 59.034ms mean, 655.573ms max; 15 >=200ms, 7 >=500ms) and WCRB (76 / 75; 85.341ms mean, 413.231ms max; 16 >=200ms, 0 >=500ms). Not audible underrun evidence.",
     "All six required gates passed with the loopback timing regression included: format, default workspace tests, strict default Clippy, all-feature workspace tests, strict all-feature Clippy, all-feature check.",
@@ -282,7 +283,7 @@
     "latest_pr_head": "aa523fae39a01042411bf81ae25e93c0f6424697",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at aa523fa, no reviews. Actions run 302 (40793876301) ended startup_failure before job creation (zero jobs, empty combined statuses). Native Windows MSVC CI remains unverified."
+    "details": "PR #5 open and mergeable at source commit be8b76e. No workflow run or combined status visible for this head at 2026-10-29T00:30Z. Latest observed run 302 (40793876301) for parent aa523fa ended startup_failure before jobs; zero jobs/statuses. Native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -294,9 +295,9 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Run a repeated audible 200ms vs 500ms native playback A/B and capture callback underruns plus startup latency on Mac; then repeat on Raspberry Pi if available.",
-  "current_pr_state": "PR #5 open and mergeable at evidence head aa523fa when checked at 2026-10-29T00:24Z; no reviews. Actions run 302 (40793876301) for aa523fa failed with startup_failure before jobs; zero jobs and no combined status.",
+  "current_pr_state": "PR #5 open and mergeable at source commit be8b76e179814fcf7aefe948531505bf967265da when checked at 2026-10-29T00:30Z. No workflow run or combined status visible for this head. Latest observed Actions run 302 (40793876301) for parent evidence checkpoint aa523fa failed before jobs (startup_failure, zero jobs/statuses).",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on follow-up before commit: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
+  "six_required_gates_latest": "passed on commit be8b76e179814fcf7aefe948531505bf967265da: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
   "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed.",
