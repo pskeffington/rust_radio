@@ -2332,3 +2332,24 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   combined status is visible on this exact head. Prior head `14eb1ed` run 328
   failed before job creation; diagnostics returned no jobs, checks, annotations
   or logs.
+
+## Live-feed buffering comparison across MP3 and AAC (2026-10-29)
+
+- Revalidated publisher-approved Skylab as MP3 48 kHz stereo and WCRB Classical
+  as AAC 48 kHz stereo. Each feed received eight 30-second muted native CPAL
+  trials on system output, A/B/B/A repeated twice (A=200 ms, B=500 ms). All 16
+  trials completed and every run reported zero callback underrun samples.
+- Skylab A fill/buffer-ready/first-play means were 69.927/624.650/658.095 ms;
+  B means were 156.235/841.651/869.374 ms. B averaged 217.001 ms slower to
+  buffer-ready, while B run-to-run latency spread was substantial.
+- WCRB A means were 156.777/1551.381/1590.584 ms; B means were
+  174.520/1546.533/1586.083 ms. The buffer-ready means differed by only
+  -4.848 ms (B faster); latency variance exceeded this difference.
+- Both feeds showed zero missing samples in both profiles, so this trial did
+  not measure a real-feed dropout advantage. Volume was 0%, so it provides no
+  audible-quality or listener-preference evidence. Keep the profile decision
+  provisional. Exact per-trial samples and callback counts are in
+  `docs/AGENT_PROGRESS.json` under `live_cross_feed_native_ab_followup`.
+- Current PR #5 head `137f56a` is open and GitHub reports mergeable. Actions run
+  330 (`40805620409`) failed with `startup_failure` before job creation; the job
+  and PR diagnostics queries returned no jobs, checks or logs.
