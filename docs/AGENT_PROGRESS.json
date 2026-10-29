@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T03:16:47Z",
+  "updated_at_utc": "2026-10-29T03:18:08Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "98235f5528aef8f028d16c8518c5b788baed4764 + 2fa930aefe7b1aef46d1dda91e94a09a4c647033: additive balanced buffering preset API and profile-selectable A/B runner; original public buffering enum retained unchanged",
@@ -239,7 +239,8 @@
     "Ran eight muted 350ms-versus-500ms trials: aggregate missing share 5.834% vs 2.348%, mean buffer-ready latency 674.922ms vs 979.370ms; all trials had underruns.",
     "All six workspace gates passed, plus Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check.",
     "Preserved source compatibility: the existing public IpBufferingProfile enum and methods remain unchanged; the 350ms choice uses additive IpBufferingPreset and start methods. Full gates and cross-target checks passed after this correction.",
-    "After pushing the documentation checkpoint, refreshed PR #5: open/mergeable. Actions run 338 for head 76bec55 failed before job creation; jobs endpoint returned zero jobs and combined statuses were empty."
+    "After pushing the documentation checkpoint, refreshed PR #5: open/mergeable. Actions run 338 for head 76bec55 failed before job creation; jobs endpoint returned zero jobs and combined statuses were empty.",
+    "Updated PR #5 body with the balanced buffering API, A/B results and validation. Refreshed current head 67e35f1: Actions run 339 failed at startup with zero jobs; combined statuses were empty."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -353,7 +354,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "The three-profile synthetic comparison shows a measurable latency/missing-sample tradeoff, but no listener preference and no zero-underrun profile. Obtain a blinded audible comparison and physical output-loss acceptance; then repeat on a second host or a measured live trace before considering any default change. Keep 500ms engine default.",
-  "current_pr_state": "PR #5 remains open and GitHub reports mergeable=true at the pushed head 76bec551dab768e29d43cb97b4c5b52b0eddaf2c. Workflow run 338 (40811219355) ended startup_failure with zero jobs; combined commit statuses are empty. Remote CI remains unverified.",
+  "current_pr_state": "PR #5 remains open and mergeable at pushed head 67e35f15a28f72992e86b10d3ceab0d83d524a2c. Actions run 339 (40811281044) ended startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses are empty. Remote CI remains unverified.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1194,7 +1195,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T03:16:47Z",
+  "current_pr_state_checked_at_utc": "2026-10-29T03:18:08Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
