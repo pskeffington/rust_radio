@@ -113,31 +113,42 @@ observations before selecting a new default.
 ### Controlled loopback network-stall comparison
 
 This optional stress test streams a generated 12-second MP3 over loopback HTTP
-with one repeatable 500ms chunk gap after output has had time to start. It uses
-the actual decoder, ring buffer and native CPAL callback, but no broadcaster or
+with three repeatable gaps of different lengths after output has had time to
+start. It uses the actual decoder, ring buffer and native CPAL callback, but no broadcaster or
 physical network; set volume to zero to avoid audible output. The fixture server
 binds only to `127.0.0.1`:
 
 ```sh
-python3 scripts/prebuffer_fixture_server.py --stall-ms 500 --stall-after-chunks 20 --chunk-bytes 1600 --interval-ms 100
+python3 scripts/prebuffer_fixture_server.py --stall-schedule '20:350,38:500,54:250' --chunk-bytes 1600 --interval-ms 100
 ```
 
 In a second terminal, run both profiles in A/B/B/A order twice, keeping the
 duration, output and fixture URL the same:
 
 ```sh
-cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live?stall_ms=500' --seconds 6 --volume 0 --output system --buffering low-latency
-cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live?stall_ms=500' --seconds 6 --volume 0 --output system --buffering resilient
-cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live?stall_ms=500' --seconds 6 --volume 0 --output system --buffering resilient
-cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live?stall_ms=500' --seconds 6 --volume 0 --output system --buffering low-latency
+cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live' --seconds 8 --volume 0 --output system --buffering low-latency
+cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live' --seconds 8 --volume 0 --output system --buffering resilient
+cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live' --seconds 8 --volume 0 --output system --buffering resilient
+cargo run -p rust-radio-cli -- stream-listen 'http://127.0.0.1:18743/live' --seconds 8 --volume 0 --output system --buffering low-latency
 # Repeat the four commands above once more.
 ```
 
 Compare the same JSON fields as the live-feed A/B. Each 1600-byte chunk is
 about 100ms of the generated 128 kbps stream and is sent every 100ms; the
-server pauses once after chunk 20. An earlier schedule paused after chunk 10
-while probing could still be buffering, and one 200ms run had zero underruns
+server pauses after chunks 20, 38 and 54 for 350, 500 and 250ms respectively.
+This deterministic multi-gap profile represents changing delivery jitter,
+not a statistical model of any broadcaster. An earlier schedule paused after
+chunk 10 while probing could still be buffering, and one 200ms run had zero underruns
 because the gap landed before playback. The later pause makes the measured
 event post-start on this host, but check `buffer_ready_latency_observed_ms`
 against the gap position on each platform before interpreting results. This
 test does not establish a live station's jitter profile or audible quality.
+
+The CLI also reports `output_samples_consumed_current_attempt`, counted by the
+native output callback. For a run without output recovery, estimate missing
+sample share as `underrun_samples / (underrun_samples +
+output_samples_consumed_current_attempt)`. This denominator includes the
+profile-specific time the callback actually ran and is more useful than raw
+underrun totals when startup times differ. After recovery, the consumed count
+resets per output attempt while underruns remain session-cumulative, so do not
+combine them into a ratio for a session that retried.

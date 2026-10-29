@@ -800,6 +800,19 @@ impl NativeRadioEngine {
         }
     }
 
+    /// Return the PCM sample count consumed by the current native output
+    /// callback attempt. For uninterrupted sessions, combine it with
+    /// `NativePlaybackDiagnostics::underrun_samples` to compare missing-sample
+    /// share across runs with different startup times. The underrun counter is
+    /// session-cumulative while this count resets when output recovery begins.
+    pub fn output_samples_consumed(&self) -> u64 {
+        self.output_progress
+            .lock()
+            .expect("output progress mutex poisoned")
+            .as_ref()
+            .map_or(0, |samples| samples.load(Ordering::Relaxed))
+    }
+
     pub fn set_volume(&self, percent: u8) -> Result<(), String> {
         self.controller
             .lock()
@@ -1880,6 +1893,7 @@ mod tests {
         assert_eq!(engine.diagnostics().first_play_latency_observed, None);
         callback_samples.store(1, Ordering::Release);
         assert_eq!(engine.status().state, PlaybackState::Playing);
+        assert_eq!(engine.output_samples_consumed(), 1);
         output_underruns.store(37, Ordering::Release);
         let diagnostics = engine.diagnostics();
         assert_eq!(diagnostics.underrun_samples, 37);
@@ -1891,6 +1905,7 @@ mod tests {
             .unwrap()
             .event(generation, PlaybackEvent::ConnectionLost));
         clear_output_attempt(&output_progress);
+        assert_eq!(engine.output_samples_consumed(), 0);
         assert_eq!(engine.status().state, PlaybackState::Recovering);
 
         let next_attempt_samples = begin_output_attempt(&output_progress);

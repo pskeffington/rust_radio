@@ -374,14 +374,22 @@ fn monitor(
                     let diagnostics = engine.diagnostics();
                     println!(
                         "RUST RADIO DIAGNOSTICS {}",
-                        diagnostics_json(prebuffer_ms, diagnostics)
+                        diagnostics_json(
+                            prebuffer_ms,
+                            diagnostics,
+                            engine.output_samples_consumed()
+                        )
                     );
                     Ok(())
                 } else {
                     let diagnostics = engine.diagnostics();
                     println!(
                         "RUST RADIO DIAGNOSTICS {}",
-                        diagnostics_json(prebuffer_ms, diagnostics)
+                        diagnostics_json(
+                            prebuffer_ms,
+                            diagnostics,
+                            engine.output_samples_consumed()
+                        )
                     );
                     Err("No decoded PCM reached the audio callback".into())
                 };
@@ -394,7 +402,11 @@ fn monitor(
                 println!("RADIO {:?} / {:?}", snapshot.state, snapshot.last_error);
                 println!(
                     "RUST RADIO DIAGNOSTICS {}",
-                    diagnostics_json(prebuffer_ms, engine.diagnostics())
+                    diagnostics_json(
+                        prebuffer_ms,
+                        engine.diagnostics(),
+                        engine.output_samples_consumed(),
+                    )
                 );
                 #[cfg(feature = "nrsp-native")]
                 if let Some(status) = engine.nrsp_native_status() {
@@ -489,12 +501,14 @@ fn monitor(
 fn diagnostics_json(
     prebuffer_ms: u16,
     diagnostics: rust_radio::NativePlaybackDiagnostics,
+    output_samples_consumed: u64,
 ) -> String {
     serde_json::json!({
         "output_prebuffer_ms": prebuffer_ms,
         "buffer_ready_latency_observed_ms": diagnostics.buffer_ready_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
         "prebuffer_fill_latency_observed_ms": diagnostics.prebuffer_fill_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
         "first_play_latency_observed_ms": diagnostics.first_play_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
+        "output_samples_consumed_current_attempt": output_samples_consumed,
         "underrun_samples": diagnostics.underrun_samples,
     })
     .to_string()
@@ -803,6 +817,7 @@ mod tests {
                 prebuffer_fill_latency_observed: Some(Duration::from_millis(300)),
                 first_play_latency_observed: Some(Duration::from_millis(734)),
             },
+            1_234,
         ))
         .unwrap();
         assert_eq!(diagnostics["output_prebuffer_ms"].as_u64(), Some(200));
@@ -819,6 +834,10 @@ mod tests {
             Some(734.0)
         );
         assert_eq!(diagnostics["underrun_samples"].as_u64(), Some(23));
+        assert_eq!(
+            diagnostics["output_samples_consumed_current_attempt"].as_u64(),
+            Some(1_234)
+        );
     }
 
     #[cfg(feature = "sdrconnect")]

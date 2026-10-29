@@ -2291,3 +2291,36 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   is visible for this head. The previous head `e6818ef` had run 326
   (`40803639508`), which failed with `startup_failure` before job creation and
   created zero jobs.
+
+## Denominator-aware native prebuffer A/B under deterministic jitter (2026-10-29)
+
+- Extended `scripts/prebuffer_fixture_server.py` with a deterministic schedule
+  of gaps: 350 ms after chunk 20, 500 ms after chunk 38, and 250 ms after chunk
+  54. The same generated MP3 is delivered in 1600-byte chunks paced at 100 ms.
+- Added `NativeRadioEngine::output_samples_consumed()` and CLI JSON field
+  `output_samples_consumed_current_attempt`, measured from samples consumed by
+  the CPAL callback. For uninterrupted trials, missing-sample share is
+  `underrun_samples / (underrun_samples + output_samples_consumed_current_attempt)`.
+  Output consumption is per attempt, while underruns are session-cumulative, so
+  do not compute the ratio after an output recovery.
+- Ran eight muted eight-second native CPAL trials on macOS 26.5.2 ARM64/system
+  output at 0%, A/B/B/A twice. A=200 ms fill/buffer-ready/first-play means were
+  465.716/681.857/728.336 ms. B=500 ms means were 717.970/934.037/972.242 ms.
+  B added 252.254 ms to fill, 252.179 ms to buffer-ready and 243.906 ms to
+  first play on average.
+- A consumed [557312,558336,549120,567552] output samples and had
+  [88832,90880,88832,87808] underrun samples, for a 13.7658% missing share.
+  B consumed [552192,553216,561408,560384] and had [69376,65280,70400,70400]
+  underrun samples, for an 11.0065% share (20.05% lower relative, 2.76 points
+  lower). Both profiles still had substantial silent samples; this is a single
+  synthetic muted block, not audibility, listener preference or hardware proof.
+- All six required Cargo gates passed after adding the metric: fmt, default
+  tests, strict Clippy, all-feature tests, strict all-feature Clippy and
+  all-feature check. Focused CLI serialization and callback attempt/reset tests,
+  fmt, Python syntax/help and `git diff --check` passed after the final JSON
+  field clarification.
+- Latest Actions run 328 (`40804563359`) on preceding head `14eb1ed` failed with
+  `startup_failure` before job creation. The jobs query returned no jobs; PR
+  diagnostics returned empty checks, annotations and logs. No root cause is
+  available from GitHub. Hardware, audible, Windows MSVC, rights and Rust-Boy
+  gates remain open.

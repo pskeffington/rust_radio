@@ -35,9 +35,13 @@ class FixtureHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.flush()
         chunk_size = self.server.chunk_bytes
+        schedule = dict(self.server.stall_schedule)
         try:
             for index, offset in enumerate(range(0, len(FIXTURE), chunk_size)):
-                if index == self.server.stall_after_chunks and stall_ms:
+                scheduled_stall_ms = schedule.get(index)
+                if scheduled_stall_ms is not None:
+                    sleep(scheduled_stall_ms / 1_000)
+                elif not schedule and index == self.server.stall_after_chunks and stall_ms:
                     sleep(stall_ms / 1_000)
                 payload = FIXTURE[offset : offset + chunk_size]
                 self.wfile.write(f"{len(payload):X}\r\n".encode("ascii"))
@@ -48,8 +52,8 @@ class FixtureHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"0\r\n\r\n")
             self.wfile.flush()
             print(
-                f"served {len(FIXTURE)} bytes; stall={stall_ms}ms; "
-                f"after_chunk={self.server.stall_after_chunks}",
+                f"served {len(FIXTURE)} bytes; "
+                f"schedule={self.server.stall_schedule or ((self.server.stall_after_chunks, stall_ms),)}",
                 flush=True,
             )
         except (BrokenPipeError, ConnectionResetError):
@@ -69,6 +73,10 @@ def main():
     parser.add_argument("--port", type=int, default=18743)
     parser.add_argument("--stall-ms", type=int, default=500)
     parser.add_argument("--stall-after-chunks", type=int, default=20)
+    parser.add_argument(
+        "--stall-schedule",
+        help="comma-separated chunk-index:delay-ms pairs, e.g. 20:350,38:500,54:250",
+    )
     parser.add_argument("--chunk-bytes", type=int, default=1600)
     parser.add_argument("--interval-ms", type=int, default=100)
     args = parser.parse_args()
@@ -81,15 +89,33 @@ def main():
     if not 1 <= args.interval_ms <= 5_000:
         parser.error("interval-ms must be between 1 and 5000")
 
+    stall_schedule = []
+    if args.stall_schedule:
+        try:
+            for item in args.stall_schedule.split(","):
+                chunk_text, delay_text = item.split(":", maxsplit=1)
+                chunk_index, delay_ms = int(chunk_text), int(delay_text)
+                if chunk_index <= 0 or not 1 <= delay_ms <= 5_000:
+                    raise ValueError
+                stall_schedule.append((chunk_index, delay_ms))
+        except ValueError:
+            parser.error("stall-schedule must use positive chunk:delay-ms pairs (1..5000ms)")
+        if len(stall_schedule) > 32 or len({chunk for chunk, _ in stall_schedule}) != len(stall_schedule):
+            parser.error("stall-schedule must contain at most 32 unique chunk indices")
+        if stall_schedule != sorted(stall_schedule):
+            parser.error("stall-schedule chunk indices must be increasing")
+
     server = LoopbackServer(("127.0.0.1", args.port), FixtureHandler)
     server.stall_ms = args.stall_ms
     server.stall_after_chunks = args.stall_after_chunks
+    server.stall_schedule = tuple(stall_schedule)
     server.chunk_bytes = args.chunk_bytes
     server.interval_ms = args.interval_ms
     print(
         f"serving synthetic MP3 on http://127.0.0.1:{server.server_port}/live"
-        f"?stall_ms={args.stall_ms}; stop_after_chunk={args.stall_after_chunks}; "
-        f"chunk_bytes={args.chunk_bytes}; interval_ms={args.interval_ms}",
+        f"; default_stall={args.stall_ms}ms after chunk {args.stall_after_chunks}; "
+        f"chunk_bytes={args.chunk_bytes}; interval_ms={args.interval_ms}; "
+        f"stall_schedule={server.stall_schedule}",
         flush=True,
     )
     try:

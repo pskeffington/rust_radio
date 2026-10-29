@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T02:07:57Z",
+  "updated_at_utc": "2026-10-29T02:17:37Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "66d2b9ec95b940a834b31d699108b477f7f38478: loopback prebuffer A/B fixture, measured stall results, and acceptance procedure",
@@ -220,7 +220,11 @@
     "Ran eight muted native CPAL A/B/B/A trials on macOS ARM64 with a 500ms gap after chunk 20: A=200ms averaged 35,840 missing callback samples; B=500ms averaged 7,168 (80% lower). B increased mean buffer-ready latency by 291ms and first-play latency by 300ms.",
     "Recorded corrected schedule and caveats: an earlier chunk-10 stall could land before playback started, so those trials were excluded. The checked procedure checks the measured buffer-ready timestamp against the post-start stall position.",
     "Validated fixture script syntax/help, JSON parsing, ffprobe duration (12.042438 seconds), and git diff whitespace; no Rust source changed, so workspace gates were not rerun.",
-    "Pushed implementation/evidence checkpoint 66d2b9e; PR #5 remains open. Exact current head has no workflow run or combined statuses; GitHub mergeable=false snapshot conflicts with a clean local merge-tree result."
+    "Pushed implementation/evidence checkpoint 66d2b9e; PR #5 remains open. Exact current head has no workflow run or combined statuses; GitHub mergeable=false snapshot conflicts with a clean local merge-tree result.",
+    "Extended the loopback fixture to accept a deterministic multi-gap schedule (20:350ms, 38:500ms, 54:250ms), representing changing chunk arrival jitter.",
+    "Added NativeRadioEngine::output_samples_consumed and CLI output_samples_consumed_current_attempt so A/B analysis can normalize underruns by actual callback demand; docs clarify the denominator scope and retry caveat.",
+    "All six workspace gates passed after adding the callback-consumption diagnostic: fmt, default workspace tests, strict default Clippy, all-feature tests, strict all-feature Clippy and all-feature check. Focused CLI serialization and callback retry/reset tests plus fmt passed again after clarifying the JSON key.",
+    "Ran eight 8-second muted native CPAL A/B/B/A trials twice on the deterministic three-gap fixture. The 500ms profile reduced the callback-missing sample share from 13.7658% to 11.0065% (20.05% relative), while adding about 252ms buffer-ready latency; exact raw counts are recorded in loopback_multi_gap_ab_latest."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -316,12 +320,12 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40803639508,
-    "latest_pr_head": "66d2b9ec95b940a834b31d699108b477f7f38478",
-    "latest_pr_conclusion": "previous head e6818ef failed startup before job creation; no run visible for current head",
+    "latest_pr_run": 40804563359,
+    "latest_pr_head": "14eb1ed64853ca3f0f43b342bf0205b8ec381b09",
+    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; diagnostic query returned empty checks and logs",
     "latest_pr_jobs": 0,
     "details": "At 2026-10-29T01:58:38Z PR #5 was open at 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true; latest returned false. No Actions run or combined status is visible for this head. A fresh merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; no jobs/logs exist. Native Windows MSVC CI remains unverified.",
-    "latest_pr_run_number": 326,
+    "latest_pr_run_number": 328,
     "latest_pr_status_checks": 0
   },
   "remaining_gates": [
@@ -333,8 +337,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Repeat the loopback comparison on a second host and with measured live-stream jitter; obtain separate human audible evidence. Investigate the recurring GitHub Actions startup_failure. Physical Bluetooth/USB output recovery, Pi audio/display/touch, nRSP/Soapy hardware, Windows MSVC, publisher-rights review and Rust-Boy adoption remain open.",
-  "current_pr_state": "PR #5 remains open at pushed head 66d2b9ec95b940a834b31d699108b477f7f38478. GitHub currently reports mergeable=false; local git merge-tree against origin/main completed cleanly. No workflow run or combined status is visible for this head. Previous head e6818ef had Actions run 326 (40803639508), startup_failure before job creation with zero jobs.",
+  "next_priority": "Push the callback-consumption diagnostic and deterministic multi-gap fixture, then repeat the denominator-aware A/B on another host and with measured live-stream jitter. Obtain human audible evidence; investigate CI startup_failure (no diagnostics/jobs available); continue device-loss, Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy gates.",
+  "current_pr_state": "PR #5 open at base commit 14eb1ed before this uncommitted increment; latest Actions run 328 (40804563359) startup_failure before job creation with zero jobs; CI diagnostics expose no jobs, checks, annotations or logs. Earlier merge-tree against refreshed main was clean; final source increment not yet pushed.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -551,13 +555,14 @@
     "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1"
   },
   "validation_latest": {
-    "fmt": "passed: cargo fmt --all -- --check",
-    "default_tests": "passed: cargo test --workspace with local loopback fixture access",
-    "default_clippy": "passed: cargo clippy --workspace --all-targets -- -D warnings",
-    "all_feature_tests": "passed: cargo test --workspace --all-features with local loopback fixture access",
-    "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets -- -D warnings",
-    "all_feature_check": "passed: cargo check --workspace --all-features",
-    "focused": "passed: playback::ip_pcm::tests::prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls using the production ring and output::render_samples path"
+    "fmt": "passed: cargo fmt --all -- --check (including after final diagnostic-key clarification)",
+    "default_tests": "passed: cargo test --workspace --locked; focused audio and CLI regressions passed again after the final JSON-key adjustment",
+    "default_clippy": "passed: cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "all_feature_tests": "passed: cargo test --workspace --all-features --locked; one public-feed timing test remains ignored by design",
+    "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings",
+    "all_feature_check": "passed: cargo check --workspace --all-features --locked",
+    "fixture": "passed: Python syntax/help; live native CLI consumed eight loopback requests using schedule 20:350,38:500,54:250; all trials exited successfully with muted volume and callback diagnostics",
+    "diff_check": "passed: git diff --check"
   },
   "live_prebuffer_ab_prior_wcrb": {
     "checked_in_prior_run_utc": "2026-10-29 before 01:03 UTC (buffer-ready instrumentation not yet present)",
@@ -1079,5 +1084,99 @@
       "underrun_samples": -28672
     },
     "interpretation": "In this single eight-run synthetic block, the 500ms profile reduced reported missing samples by 80% but added about 291ms to buffer-ready and 300ms to first-play means. B still reported misses in every run. This demonstrates a synthetic resilience/startup tradeoff on one macOS host, not audible quality, broadcaster jitter tolerance, or hardware acceptance. Keep defaults provisional and compare under controlled measured live jitter plus human listening."
+  },
+  "loopback_multi_gap_ab_latest": {
+    "checked_at_utc": "2026-10-29T02:17:37Z",
+    "fixture": "Generated 12.042438-second 440Hz stereo 44.1kHz MP3 over a 127.0.0.1-only HTTP server. 1600-byte chunks are paced at 100ms; deterministic gaps are 350ms after chunk 20, 500ms after chunk 38, and 250ms after chunk 54.",
+    "environment": "macOS 26.5.2 ARM64, native rust-radio-cli/CPAL system output, volume 0%, 8 seconds per run; all eight native trials completed successfully. No broadcaster or human listening.",
+    "trial_design": "A/B/B/A repeated twice. A=200ms low-latency; B=500ms resilient. Callback consumed-sample count and underrun count are both measured by the native CPAL callback. Missing share = underruns/(consumed+underruns); denominator covers active output demand. No output recovery occurred in any trial.",
+    "variant_a": {
+      "buffer_fill_latency_observed_ms": [
+        461.433834,
+        463.161292,
+        469.083292,
+        469.187416
+      ],
+      "buffer_ready_latency_observed_ms": [
+        676.765,
+        651.636416,
+        782.705042,
+        616.322666
+      ],
+      "first_play_latency_observed_ms": [
+        733.986708,
+        717.483541,
+        830.574458,
+        631.298541
+      ],
+      "output_samples_consumed_current_attempt": [
+        557312,
+        558336,
+        549120,
+        567552
+      ],
+      "underrun_samples": [
+        88832,
+        90880,
+        88832,
+        87808
+      ],
+      "means": {
+        "buffer_fill_latency_observed_ms": 465.716459,
+        "buffer_ready_latency_observed_ms": 681.857281,
+        "first_play_latency_observed_ms": 728.335812,
+        "output_samples_consumed_current_attempt": 558080,
+        "underrun_samples": 89088,
+        "missing_sample_share_percent": 13.765823
+      }
+    },
+    "variant_b": {
+      "buffer_fill_latency_observed_ms": [
+        715.093417,
+        717.623083,
+        724.462166,
+        714.702084
+      ],
+      "buffer_ready_latency_observed_ms": [
+        957.718166,
+        1024.988083,
+        871.292459,
+        882.147417
+      ],
+      "first_play_latency_observed_ms": [
+        1005.473458,
+        1059.919708,
+        902.901459,
+        920.674542
+      ],
+      "output_samples_consumed_current_attempt": [
+        552192,
+        553216,
+        561408,
+        560384
+      ],
+      "underrun_samples": [
+        69376,
+        65280,
+        70400,
+        70400
+      ],
+      "means": {
+        "buffer_fill_latency_observed_ms": 717.970188,
+        "buffer_ready_latency_observed_ms": 934.036531,
+        "first_play_latency_observed_ms": 972.242292,
+        "output_samples_consumed_current_attempt": 556800,
+        "underrun_samples": 68864,
+        "missing_sample_share_percent": 11.006547
+      }
+    },
+    "delta_b_minus_a_means": {
+      "buffer_fill_latency_observed_ms": 252.253729,
+      "buffer_ready_latency_observed_ms": 252.17925,
+      "first_play_latency_observed_ms": 243.90648,
+      "missing_sample_share_percentage_points": -2.759276,
+      "missing_sample_share_relative_percent": -20.049
+    },
+    "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   }
 }
