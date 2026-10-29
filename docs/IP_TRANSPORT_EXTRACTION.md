@@ -10,7 +10,7 @@ The short probe and sustained stream paths are intentionally separate. `probe::N
 
 Each connection has its own cancellation flag. Dropping its guard or byte reader cancels pending HTTP and queue work before joining the receiver, without stopping the user-authorized session needed for recovery. Pending async work is checked every 25 ms; existing connect and inactivity deadlines still apply. Offline regression tests cover stalled work, a full retained queue, reader/guard drop order, stale buffered bytes, fresh connections and session cancellation.
 
-Hosts that need recovery policy can use `net::open_station_classified()` and `error::TransportError`; the original `open_station()` keeps its string-error API. Connection/header and read failures, HTTP 408/429 and 5xx responses are transient. Invalid endpoints, playlists, content and other HTTP rejections are permanent. Playback shares a three-retry budget across startup and in-stream failures, waiting 1, 2 and 4 seconds; Stop interrupts those waits. Stream I/O failures during decoder probing also use that budget, while unsupported formats and output-device failures remain terminal.
+Hosts that need recovery policy can use `net::open_station_classified()` and `error::TransportError`; the original `open_station()` keeps its string-error API. Connection/header and read failures, plus HTTP 408, 425, 429, 500, 502, 503 and 504 responses, are transient. Other HTTP responses—including 501, 505, 506, 507, 508, 510 and 511—are permanent, as are invalid endpoints, playlists and content. Playback shares a three-retry budget across startup and in-stream failures, waiting 1, 2 and 4 seconds; Stop interrupts those waits. Stream I/O failures during decoder probing also use that budget, while unsupported formats and output-device failures remain terminal.
 
 Core validation and native playback share M3U/PLS format detection and parsing. Both enforce 16 KiB/16-entry limits and validate every stream URL against the station's publisher allowlist. PLS requires a matching `NumberOfEntries`, contiguous `FileN` indices and `Version=2` when present; the transport selects the first entry in numeric order. Metadata is inert. HLS MIME types, `.m3u8` URLs and `#EXT-X-` manifest tags return an explicit unsupported-transport error without fetching segments. Playlist nesting remains disallowed.
 
@@ -23,7 +23,7 @@ separate verification items.
 
 Remaining validation:
 1. Check dependency MSRV compatibility and adopt a reviewed application lockfile.
-2. Exercise cancellation and startup expiry against live DNS/TLS and stalled servers.
-3. Audit DNS/address-based SSRF safeguards at connection time; validating host strings alone does not ensure resolved IP safety.
+2. Exercise cancellation and startup expiry against live DNS/TLS; loopback stalled-server regressions already cover the deterministic fixture path.
+3. Keep the resolver-backed non-public-address and timeout regressions when upgrading the HTTP client or DNS integration.
 4. Complete physical Bluetooth output loss/recovery; the completed host migration
    and Mac speaker evidence do not establish Bluetooth parity.

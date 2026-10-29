@@ -1781,3 +1781,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The current docs head `3ad18a8` had no PR workflow run visible when checked;
   prior head `fe9fbbd` run 289 failed before jobs with `startup_failure` (zero
   jobs, no combined statuses). Remote CI remains unverified.
+
+
+## Transport contract and latest PR check (2026-10-29 00:03 UTC)
+
+- Corrected `docs/IP_TRANSPORT_EXTRACTION.md`: playback retries HTTP 408, 425,
+  429, 500, 502, 503 and 504; other HTTP responses are permanent, matching
+  `TransportError::http_status` and its focused regression. Replaced the stale
+  pending DNS audit with the resolver regression-maintenance requirement;
+  SafeResolver already rejects private DNS answers and preserves transient
+  resolver timeouts.
+- Repeated the GUI station-label A/B/C regression and HTTP status retry test;
+  both passed. At 295 px, compact genre labels fit 25/25 and full labels 24/25;
+  at 340 px all fit. This is layout fit, not listener preference.
+- PR #5 remains open and mergeable at `b502d10`, with no reviews. Actions run
+  291 (`40791274189`) ended `startup_failure` before job creation; jobs and
+  combined statuses are empty. Local CI remains the available validation path.
