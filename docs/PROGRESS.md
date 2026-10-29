@@ -1816,3 +1816,23 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   reviews. No workflow run or combined status is visible for `e29b173`; the last
   observed run 291 (`40791274189`) on `b502d10` failed before jobs with
   `startup_failure`.
+
+
+## Native output stall diagnostic (2026-10-29 00:11 UTC)
+
+- The five-second full-ring callback watchdog now records `Native audio output
+  stopped consuming samples` when the OS callback stalls without an asynchronous
+  device error. `OutputFailure` keeps the first diagnostic instead of allowing a
+  later generic watchdog message to hide the backend error. The CPAL sample
+  callback remains lock-free; recording happens on the decoder/error path.
+- Focused watchdog test confirms failure is bounded and exposes the detail;
+  output error-detail retention regression passed. The GUI station label A/B was
+  repeated on the current tree and passed: at 295px A 24/25, B/C 25/25; at
+  340px all fit 25/25; C saves 192px. Fit only, not preference evidence.
+- All six workspace gates passed on the exact source tree: format, default and
+  all-feature tests, strict Clippy in both configurations, and all-feature
+  check. Loopback fixture tests ran with local test networking enabled.
+- Source commit `4415ef0` and preceding GUI performance commit `e29b173` are on
+  PR #5. PR is open and mergeable with no reviews. No Actions run or combined
+  status is visible for `4415ef0`; run 291 on `b502d10` failed before job
+  creation (`startup_failure`, zero jobs).
