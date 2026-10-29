@@ -360,3 +360,13 @@ between profiles; it does not outweigh the separate multi-gap comparison that
 favored 500 ms for missing-sample share. The server combination is covered by
 `scripts/test_prebuffer_fixture_server.py`; detailed trial data is in
 `docs/AGENT_PROGRESS.json` under `combined_wcrb_trace_and_stalls_ab`.
+
+
+The WPR News 30-second follow-up repeated the decode preflight and eight muted
+native trials in counterbalanced ABBA/BAAB order. All eight had zero underruns.
+Balanced 350 ms and resilient 500 ms buffer-ready medians were 1490.077 and
+1480.564 ms; paired A-minus-B median was +20.399 ms with a -404.680 to
++156.185 ms range. First-play paired median was +4.967 ms with a -439.430 to
++108.563 ms range. The ranges cross zero; retain the resilient engine default
+until reliability or listening evidence supports a change. Full raw evidence is
+in `docs/AGENT_PROGRESS.json` under `wpr_news_live_ab_30s_followup`.

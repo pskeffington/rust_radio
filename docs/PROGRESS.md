@@ -1,5 +1,24 @@
 # Radio development progress
 
+## WPR News longer live buffering A/B (2026-10-29 04:22 UTC)
+
+- The runner performed its single-station JSON preflight first; WPR News decoded
+  as MP3, 44.1 kHz mono with 1152 frames. Eight 30-second muted native CPAL
+  trials compared balanced 350 ms and resilient 500 ms in ABBA then BAAB order.
+  All eight had zero callback underruns.
+- Buffer-ready means were 1438.958/1490.883 ms and medians 1490.077/1480.564
+  ms. Paired A-minus-B median was +20.399 ms (range -404.680 to +156.185 ms);
+  first-play paired median was +4.967 ms (range -439.430 to +108.563 ms). The
+  broad paired ranges cross zero. This adds no startup winner, reliability
+  difference, or listener-preference evidence; retain the 500 ms resilient
+  default. Full preflight and per-trial data are in
+  `wpr_news_live_ab_30s_followup` in `docs/AGENT_PROGRESS.json`.
+- The A/B harness regression passed 9/9 before the live run. No Rust source
+  changed. GitHub Actions run 356 (`40817262098`) for exact PR head `4e74011`
+  failed before job creation (`startup_failure`); GitHub returned zero jobs and
+  no combined statuses, so there are no remote job logs to diagnose. PR #5
+  remains open and mergeable.
+
 ## Curated A/B validation preflight (2026-10-29 04:16 UTC; checkpoint 04:20 UTC)
 
 - Added `rust-radio-cli validate STATION --json` as a version-1 report using the
