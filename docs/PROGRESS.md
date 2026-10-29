@@ -1858,3 +1858,29 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Next: exercise the 500 ms policy with live network jitter and audible output,
   verify Raspberry Pi CPU/memory/start latency, and continue Bluetooth/output
   loss recovery acceptance.
+
+
+## Live catalog and native startup recheck (2026-10-29 00:17 UTC)
+
+- Bounded live `validate-all --json` at 00:16:38 UTC decoded all 25 feeds in
+  25 attempts, one per feed, without failures or retries. This is point-in-time
+  codec evidence; it does not measure inter-chunk jitter or audible quality.
+- Existing ignored integration test
+  `native_ip_playback_switching_failure_retry_and_responsiveness` passed on the
+  host CPAL output at 0% volume with loopback MP3/AAC fixtures. The 500 ms IP
+  prebuffer reached callback-confirmed Playing and the test exercised playlist
+  and redirect streams, switching, failure, retry, responsiveness and Stop.
+  This is muted callback/lifecycle evidence, not audible or device-loss
+  acceptance.
+- Repeated the jitter A/B: 200 ms vs 500 ms under 100/300/800 ms synthetic
+  stalls yields 0/100/600 ms vs 0/0/300 ms modeled silence; B adds 300 ms
+  startup. Repeated GUI label A/B: at 295 px, full category fits 24/25 while
+  names-only and compact fit 25/25; all fit at 340 px. Both are repeatable
+  synthetic/layout tests, not audience or field measurements.
+- PR #5 remains open and mergeable at `577dc21`, with no reviews. No workflow
+  run or combined status is visible for the current head; run 291 on `b502d10`
+  failed before job creation (`startup_failure`, zero jobs).
+- Next: measure chunk-arrival jitter on approved live streams and perform
+  audible/target-device checks before claiming field benefit from the longer
+  buffer. Raspberry Pi runtime, Bluetooth/USB loss, receiver and rights gates
+  remain open.
