@@ -1,5 +1,28 @@
 # Radio development progress
 
+## WPR News live-feed buffering A/B (2026-10-29 04:05 UTC)
+
+- Silent CLI validation decoded Wisconsin Public Radio News at
+  `https://wpr-ice.streamguys1.com/wpr-ideas-mp3-64`: MP3, 44.1 kHz mono,
+  1152 decoded frames. Validation did not open audio output.
+- Ran eight 15-second counterbalanced muted native trials on macOS ARM64/system
+  output, balanced 350 ms (A) vs resilient 500 ms (B), A/B/B/A then B/A/A/B.
+  All eight had zero callback underruns. Buffer-ready/first-play means were
+  1574.757/1606.892 ms and 1456.876/1496.955 ms; medians were
+  1615.866/1655.414 ms and 1421.652/1472.593 ms.
+- Paired A-minus-B buffer-ready median was +132.680 ms, range -102.329 to
+  +308.492 ms; first-play median +123.552 ms, range -123.519 to +316.165 ms.
+  Although the aggregate startup values favored 500 ms, paired ranges crossed
+  zero and neither profile underrun. This does not establish a reliability
+  winner or listener preference; retain the current default. Raw trials and
+  validation evidence are in `docs/AGENT_PROGRESS.json` under
+  `wpr_news_live_balanced_resilient_ab`.
+- Actions run 352 (`40815715224`) on the then-current head `69ed85a` also
+  ended `startup_failure` before job creation; there were zero jobs and no
+  combined statuses.
+- Next: prioritize physical output-loss/reconnect and audible listening tests,
+  followed by native Windows MSVC and Raspberry Pi runtime acceptance.
+
 ## A/B spread and paired latency reporting (2026-10-29 04:03 UTC)
 
 - Extended `scripts/run_prebuffer_trace_ab.py` to report median/min/max for

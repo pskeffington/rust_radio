@@ -111,6 +111,19 @@ callback measurements establish neither audible quality nor listener
 preference; perform a separate audible trial and record human listening
 observations before selecting a new default.
 
+### WPR News live muted buffering comparison
+
+At 2026-10-29 04:05 UTC, bounded silent validation decoded the curated WPR News
+feed as MP3 at 44.1 kHz mono. Eight 15-second muted native CPAL trials compared
+balanced 350 ms and resilient 500 ms with counterbalanced ordering; all had zero
+callback underruns. Buffer-ready/first-play means were 1574.757/1606.892 ms vs
+1456.876/1496.955 ms, while medians were 1615.866/1655.414 ms vs
+1421.652/1472.593 ms. Paired A-minus-B medians were +132.680 ms for
+buffer-ready and +123.552 ms for first-play, but both paired ranges crossed
+zero. This single muted feed shows no dropout difference or human preference
+and does not justify changing the default. Raw data is in
+`docs/AGENT_PROGRESS.json` under `wpr_news_live_balanced_resilient_ab`.
+
 ### Controlled loopback network-stall comparison
 
 This optional stress test streams a generated 12-second MP3 over loopback HTTP
