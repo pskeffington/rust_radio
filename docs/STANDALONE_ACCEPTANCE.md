@@ -387,3 +387,13 @@ News validation and eight-trial A/B run passed through the normalized envelope.
 The 350/500 ms comparison had zero underruns, while paired startup ranges
 crossed zero; it does not establish a profile winner. Raw data is in
 `docs/AGENT_PROGRESS.json` under `wpr_news_mime_sanitized_ab_8s`.
+
+
+A later WPR News repeat used the same balanced 350 ms and resilient 500 ms
+profiles in counterbalanced order, with eight muted 30-second trials and zero
+underruns. Paired buffer-ready median was +93.042 ms A-minus-B (range
+-300.417 to +246.531 ms); first-play median was +84.789 ms (range -304.425
+to +264.875 ms). Both ranges cross zero and the result reverses the earlier
+small-block direction. Keep the resilient default; no preference was measured.
+Raw data is under `wpr_news_live_ab_30s_overnight_followup` in
+`docs/AGENT_PROGRESS.json`.

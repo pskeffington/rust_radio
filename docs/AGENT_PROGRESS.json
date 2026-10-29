@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T04:39:47Z",
+  "updated_at_utc": "2026-10-29T23:39:47Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "ba881be75afa006b49df4db8c97d753e6b18bf44",
@@ -254,7 +254,8 @@
     "Validated WPR News (MP3, 44.1kHz mono) without opening output, then ran eight counterbalanced muted native 350/500ms trials. Both profiles had zero underruns; paired latency summaries were mixed with ranges crossing zero, so no profile/default change is justified.",
     "Added schema-version-1 single-station validation JSON using the validate-all envelope, omitting resolved URLs and detail, and made curated A/B trials require/store a decoded preflight before output opens. Added CLI and runner regressions; full six Rust gates passed. Verified the updated flow on WPR News in eight counterbalanced muted native trials.",
     "Hardened and pushed A/B diagnostics privacy handling in commit 8d68310: exact-field validation, finite/time/count bounds, no raw CLI output in failures; Python regressions pass 12/12 and all six locked Rust workspace gates pass.",
-    "Sanitized remote Content-Type parameters out of both single and batch validation JSON, bounding the retained MIME value; all six Rust workspace gates passed and an end-to-end WPR A/B verified the normalized schema."
+    "Sanitized remote Content-Type parameters out of both single and batch validation JSON, bounding the retained MIME value; all six Rust workspace gates passed and an end-to-end WPR A/B verified the normalized schema.",
+    "Reran all-feature workspace tests with local loopback socket access: passed. Repeated WPR balanced/resilient 30-second A/B eight times with zero underruns; paired ranges overlap and reverse the earlier small startup difference, so retain default."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -350,16 +351,22 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40818606116,
-    "latest_pr_head": "e1182acd078477343c88af1790bacc125826a17c",
+    "latest_pr_run": 40819022289,
+    "latest_pr_head": "ec53bf1cd571cb72bf0d22d480d297ff353364c8",
     "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no combined statuses",
     "latest_pr_jobs": 0,
-    "latest_pr_run_number": 362,
+    "latest_pr_run_number": 364,
     "latest_pr_status_checks": 0,
-    "exact_current_head": "ba881be75afa006b49df4db8c97d753e6b18bf44",
-    "exact_current_head_workflow_runs": [],
+    "exact_current_head": "ec53bf1cd571cb72bf0d22d480d297ff353364c8",
+    "exact_current_head_workflow_runs": [
+      {
+        "run_id": 40819022289,
+        "run_number": 364,
+        "conclusion": "startup_failure"
+      }
+    ],
     "exact_current_head_combined_statuses": [],
-    "details": "At 2026-10-29T04:39:47Z, PR #5 is open and mergeable at ba881be75afa006b49df4db8c97d753e6b18bf44. No Actions run or combined status is visible for this exact head. Latest observed run 362 (40818606116) on parent e1182ac failed before jobs were created; the jobs endpoint returned zero and no statuses."
+    "details": "At 2026-10-29T23:39:47Z, PR #5 is open and mergeable at ec53bf1cd571cb72bf0d22d480d297ff353364c8. Actions run 364 ended before jobs were created; jobs endpoint returned zero and combined commit statuses are empty. No logs exist for diagnosis."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -371,7 +378,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Obtain physical Bluetooth/USB output-loss and reconnect acceptance plus blinded audible profile preference. Complete native Windows MSVC and Raspberry Pi runtime gates. The recent muted live A/B runs show zero underruns but paired latency ranges cross zero; do not change the buffering default. Investigate repeated Actions startup failures only if actionable diagnostics appear.",
-  "current_pr_state": "PR #5 is open and mergeable at ba881be75afa006b49df4db8c97d753e6b18bf44. No Actions run or combined status is visible for this exact head. Latest observed run 362 (40818606116) on parent e1182ac failed before job creation; jobs/statuses were empty.",
+  "current_pr_state": "PR #5 is open and mergeable at ec53bf1cd571cb72bf0d22d480d297ff353364c8. Actions run 364 (40819022289) on this exact head failed with startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses are empty.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1203,7 +1210,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T04:39:47Z",
+  "current_pr_state_checked_at_utc": "2026-10-29T23:39:47Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -4691,5 +4698,236 @@
       }
     },
     "interpretation": "The updated CLI silently preflighted WPR News as MP3 at 44.1 kHz mono (1152 frames); machine output carried only normalized content_type audio/mpeg, with URL/detail fields absent. Eight counterbalanced 8-second muted native trials compared balanced 350ms and resilient 500ms; all had zero underruns. Buffer-ready A/B means 1522.834/1655.351ms; paired A-minus-B median -128.792ms (range -671.608 to +399.125ms). First-play paired median -114.943ms (range -676.902 to +420.357ms). Ranges cross zero; no default or listener-preference conclusion."
+  },
+  "wpr_news_live_ab_30s_overnight_followup": {
+    "started_at_utc": "2026-10-29T23:35:42+00:00",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "url": null,
+    "station": "wpr-news",
+    "station_validation": {
+      "checked_at_unix": 1793316942,
+      "results": [
+        {
+          "attempts": 1,
+          "channels": 1,
+          "checked_at_unix": 1793316942,
+          "codec": "mp3",
+          "content_type": "audio/mpeg",
+          "decoded": true,
+          "decoded_frames": 1152,
+          "recovered": false,
+          "sample_rate": 44100,
+          "stage": "decoded_audio",
+          "station_id": "wpr-news",
+          "status": "decoded"
+        }
+      ],
+      "schema_version": 1
+    },
+    "seconds": 30,
+    "volume": 0,
+    "output": "system",
+    "repetitions": 2,
+    "order_scheme": "alternating_abba_baab",
+    "profiles": {
+      "A": "balanced",
+      "B": "resilient"
+    },
+    "trial_order": [
+      "A",
+      "B",
+      "B",
+      "A",
+      "B",
+      "A",
+      "A",
+      "B"
+    ],
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 1486.826417,
+        "first_play_latency_observed_ms": 1516.144917,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2738176,
+        "prebuffer_fill_latency_observed_ms": 96.4615,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 1418.68075,
+        "first_play_latency_observed_ms": 1456.234333,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2747392,
+        "prebuffer_fill_latency_observed_ms": 111.83741599999999,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 1160.4273329999999,
+        "first_play_latency_observed_ms": 1185.614375,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2769920,
+        "prebuffer_fill_latency_observed_ms": 106.609292,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 1406.957875,
+        "first_play_latency_observed_ms": 1450.488959,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2747392,
+        "prebuffer_fill_latency_observed_ms": 104.0205,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 5,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 1312.9231670000001,
+        "first_play_latency_observed_ms": 1339.786542,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2754560,
+        "prebuffer_fill_latency_observed_ms": 103.946291,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 6,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 1430.86175,
+        "first_play_latency_observed_ms": 1449.454167,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2745344,
+        "prebuffer_fill_latency_observed_ms": 104.067166,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 7,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 1198.875625,
+        "first_play_latency_observed_ms": 1237.683417,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2767872,
+        "prebuffer_fill_latency_observed_ms": 102.16808300000001,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 8,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 1499.292667,
+        "first_play_latency_observed_ms": 1542.1084999999998,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2736128,
+        "prebuffer_fill_latency_observed_ms": 112.2095,
+        "underrun_samples": 0
+      }
+    ],
+    "summary": {
+      "A": {
+        "profile": "balanced",
+        "prebuffer_ms": 350,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 1380.88041675,
+        "mean_first_play_latency_observed_ms": 1413.442865,
+        "mean_prebuffer_fill_latency_observed_ms": 101.67931225000001,
+        "output_samples_consumed_current_attempt": 10998784,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 1380.88041675,
+            "median": 1418.9098125,
+            "min": 1198.875625,
+            "max": 1486.826417
+          },
+          "first_play": {
+            "mean": 1413.442865,
+            "median": 1449.971563,
+            "min": 1237.683417,
+            "max": 1516.144917
+          },
+          "prebuffer_fill": {
+            "mean": 101.67931225000001,
+            "median": 103.0942915,
+            "min": 96.4615,
+            "max": 104.067166
+          }
+        }
+      },
+      "B": {
+        "profile": "resilient",
+        "prebuffer_ms": 500,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 1347.83097925,
+        "mean_first_play_latency_observed_ms": 1380.9359375,
+        "mean_prebuffer_fill_latency_observed_ms": 108.65062474999999,
+        "output_samples_consumed_current_attempt": 11008000,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 1347.83097925,
+            "median": 1365.8019585000002,
+            "min": 1160.4273329999999,
+            "max": 1499.292667
+          },
+          "first_play": {
+            "mean": 1380.9359375,
+            "median": 1398.0104375,
+            "min": 1185.614375,
+            "max": 1542.1084999999998
+          },
+          "prebuffer_fill": {
+            "mean": 108.65062474999999,
+            "median": 109.223354,
+            "min": 103.946291,
+            "max": 112.2095
+          }
+        }
+      },
+      "paired_latency_difference_ms": {
+        "definition": "A minus B; negative values mean A was faster",
+        "pairs": 4,
+        "metrics": {
+          "buffer_ready": {
+            "mean": 33.04943750000001,
+            "median": 93.04212499999994,
+            "min": -300.41704200000004,
+            "max": 246.5305420000002
+          },
+          "first_play": {
+            "mean": 32.50692750000002,
+            "median": 84.78910450000001,
+            "min": -304.42508299999986,
+            "max": 264.8745839999999
+          },
+          "prebuffer_fill": {
+            "mean": -6.971312499999996,
+            "median": -6.315104499999997,
+            "min": -15.37591599999999,
+            "max": 0.12087499999999807
+          }
+        }
+      }
+    },
+    "interpretation": "The updated single-station JSON preflight decoded WPR News as MP3, 44.1 kHz mono with 1152 frames and returned normalized audio/mpeg without URL/detail fields. Eight counterbalanced 30-second muted native trials compared balanced 350 ms and resilient 500 ms; all had zero underruns. Buffer-ready means were 1380.880/1347.831 ms and medians 1418.910/1365.802 ms. Paired A-minus-B buffer-ready median was +93.042 ms (range -300.417 to +246.531 ms); first-play median +84.789 ms (range -304.425 to +264.875 ms). The ranges cross zero and no dropout separation occurred; do not change the default or claim listener preference."
+  },
+  "latest_all_features_workspace_test": {
+    "command": "cargo test --workspace --all-features --locked",
+    "result": "passed",
+    "timestamp_utc": "2026-10-29T23:39:47Z",
+    "environment": "macOS ARM64 with local loopback socket access",
+    "context": "The preceding restricted sandbox attempt denied six existing loopback HTTP fixture binds; rerun passed without code changes."
   }
 }

@@ -1,5 +1,24 @@
 # Radio development progress
 
+## All-feature test rerun and overnight WPR A/B (2026-10-29 23:35 UTC)
+
+- Reran `cargo test --workspace --all-features --locked` with local socket
+  access. The full suite passed; the earlier sandbox-only run had failed to bind
+  six existing loopback HTTP fixtures. No code assertion failed.
+- Repeated the WPR News balanced 350 ms vs resilient 500 ms comparison after a
+  longer time interval: silent JSON preflight decoded MP3, 44.1 kHz mono, 1152
+  frames. Eight counterbalanced 30-second muted native trials completed with
+  zero underruns. Buffer-ready means/medians were 1380.880/1418.910 ms vs
+  1347.831/1365.802 ms. Paired A-minus-B median was +93.042 ms (range
+  -300.417 to +246.531 ms); first-play median +84.789 ms (range -304.425 to
+  +264.875 ms). Both paired ranges cross zero, and neither profile underruns.
+  This does not support a default change or listening-preference claim; the
+  timing direction differs from the earlier WPR block. Raw results are under
+  `wpr_news_live_ab_30s_overnight_followup` in `docs/AGENT_PROGRESS.json`.
+- PR #5 remains open and mergeable at `ec53bf1`. Actions run 364
+  (`40819022289`) failed before job creation; jobs and combined statuses are
+  empty, with no remote log to diagnose.
+
 ## Validation MIME metadata sanitization (2026-10-29 04:37 UTC)
 
 - Both `validate STATION --json` and `validate-all --json` now retain only a
