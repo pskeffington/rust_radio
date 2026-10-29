@@ -1,10 +1,13 @@
 {
-  "updated_at_utc": "2026-10-29T00:30:48Z",
+  "updated_at_utc": "2026-10-29T00:38:37Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "be8b76e179814fcf7aefe948531505bf967265da; clarified inclusive timing counter names and verified the transport snapshot with a paced loopback HTTP integration fixture.",
+  "implementation_commit": "10eea53; CPAL callback now counts missing output samples in a relaxed atomic counter, and the 200ms/500ms prebuffer A/B exercises the production callback renderer.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Added device-rate native callback underrun_samples to NativeAudioOutput; only callback buffers containing missing samples increment the atomic counter. Callback remains lock-free and allocation-free.",
+    "Reworked the prebuffer A/B to render through production render_samples: 200ms vs 500ms input buffer with injected 100/300/800ms stalls produced 0/100/600 vs 0/0/300 missing samples (1 model sample = 1ms). Repeatable callback-level synthetic evidence, not device/audible acceptance.",
+    "All six required local gates passed on 10eea53. Focused callback underrun and A/B tests passed. Muted native CPAL GUI integration passed with loopback fixtures and zero volume; no real underrun totals or audible acceptance inferred.",
     "Final post-push validation repeated all six required gates on be8b76e; the new paced loopback timing integration passed. PR #5 remains open and mergeable; current head has no run/status visible, while parent checkpoint aa523fa run 302 failed before jobs.",
     "Added a paced loopback HTTP regression that drives three audio response chunks 80ms and 350ms apart through open_direct_classified and verifies NetworkGuard timing_snapshot reports the chunk/interval counts and the >=200ms threshold. Renamed public counters to gaps_at_or_over_200ms / 500ms for boundary clarity.",
     "Repeated 200ms vs 500ms synthetic prebuffer A/B: modeled silence 0/100/600ms vs 0/0/300ms under 100/300/800ms stalls; B adds 300ms startup. Repeated live samples on Skylab (138 chunks / 137 intervals; 59.034ms mean, 655.573ms max; 15 >=200ms, 7 >=500ms) and WCRB (76 / 75; 85.341ms mean, 413.231ms max; 16 >=200ms, 0 >=500ms). Not audible underrun evidence.",
@@ -279,11 +282,11 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40793876301,
-    "latest_pr_head": "aa523fae39a01042411bf81ae25e93c0f6424697",
+    "latest_pr_run": 40794577869,
+    "latest_pr_head": "604dd42f4872a8e0f7f84bba6de4c964e3708b7e",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at source commit be8b76e. No workflow run or combined status visible for this head at 2026-10-29T00:30Z. Latest observed run 302 (40793876301) for parent aa523fa ended startup_failure before jobs; zero jobs/statuses. Native Windows MSVC CI remains unverified."
+    "details": "PR #5 open and mergeable at pre-change head 604dd42. Actions run 304 (40794577869) failed with startup_failure before jobs, with zero jobs and no combined statuses. Native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -294,10 +297,10 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Run a repeated audible 200ms vs 500ms native playback A/B and capture callback underruns plus startup latency on Mac; then repeat on Raspberry Pi if available.",
-  "current_pr_state": "PR #5 open and mergeable at source commit be8b76e179814fcf7aefe948531505bf967265da when checked at 2026-10-29T00:30Z. No workflow run or combined status visible for this head. Latest observed Actions run 302 (40793876301) for parent evidence checkpoint aa523fa failed before jobs (startup_failure, zero jobs/statuses).",
+  "next_priority": "Expose per-session native callback underrun counts and initial playback latency for diagnostics, then run repeated live-feed 200ms vs 500ms A/B on audible Mac and target device; retain hardware, receiver, rights and Windows CI gates.",
+  "current_pr_state": "PR #5 open and mergeable at pre-change head 604dd42 when checked at 2026-10-29T00:39Z. Actions run 304 (40794577869) failed before jobs (startup_failure, zero jobs); no combined statuses.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on commit be8b76e179814fcf7aefe948531505bf967265da: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
+  "six_required_gates_latest": "passed on source commit 10eea53: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
   "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed.",
@@ -321,9 +324,20 @@
     ],
     "added_initial_buffer_ms": 300,
     "selected": "500ms for Internet IP streams",
-    "interpretation": "Deterministic steady-state jitter model only; not live network or hardware measurement."
+    "interpretation": "The deterministic A/B uses production render_samples callback and underrun accounting with one synthetic sample representing one millisecond. It models callback underrun counts for injected stalls and initial fill cost; it is not physical playback, actual live underrun measurement, or listener preference evidence.",
+    "callback_underruns_a_samples": [
+      0,
+      100,
+      600
+    ],
+    "callback_underruns_b_samples": [
+      0,
+      0,
+      300
+    ],
+    "unit_sample_duration_ms": 1
   },
-  "muted_native_integration_latest": "Passed 2026-10-29 with the 500ms IP prebuffer: ignored native_ip_playback_switching_failure_and_responsiveness on host CPAL at 0% volume with loopback MP3/AAC; callback Playing, redirect/playlist, switching, failure, retry, responsive rendering and Stop. Not audible/device-loss acceptance.",
+  "muted_native_integration_latest": "Passed 2026-10-29 on source 10eea53: ignored native_ip_playback_switching_failure_retry_and_responsiveness using host CPAL at 0% volume and loopback MP3/AAC; callback Playing, redirect/playlist, switching, failure, retry, responsiveness and Stop. This does not report underrun counts or establish audible/device-loss acceptance.",
   "live_chunk_timing_latest": {
     "test": "cargo test -p rust-radio-ip --test live_timing -- --ignored --nocapture",
     "timestamp_utc": "2026-10-29T00:28Z",

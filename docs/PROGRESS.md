@@ -1974,3 +1974,35 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   `be8b76e`; run 302 for its parent evidence checkpoint `aa523fa` is still the
   latest observed and failed before job creation. No audible or hardware
   acceptance was performed.
+
+
+## Native callback underrun counter and A/B (2026-10-29 00:38 UTC)
+
+- Added a device-rate `underrun_samples` counter to `NativeAudioOutput`. The
+  CPAL callback adds missing samples to a relaxed atomic only when it emitted
+  silence; it keeps the callback lock-free and allocation-free. The output
+  exposes a read-only snapshot getter for diagnostics. This does not yet feed
+  host session status or listener-facing UI.
+- Reworked the 200 ms vs 500 ms regression to call the same `render_samples`
+  callback used by CPAL, with one synthetic sample representing one millisecond
+  of output. Across injected 100/300/800 ms stalls, callback underrun counts
+  were A: 0/100/600 samples and B: 0/0/300 samples; B still requires 300 ms
+  more initial fill in this model. This is repeatable callback-level evidence,
+  not physical playback or listener preference.
+- Focused callback tests passed: silence output is counted as underrun while
+  consumed samples are not; prebuffer A/B reports the expected counts. The
+  muted native GUI/CPAL integration passed on this commit with loopback MP3/AAC,
+  switching, failure/retry and Stop paths. It does not measure audible quality
+  or report actual live underrun totals.
+- All six workspace gates passed on source commit `10eea53`: formatting,
+  default and all-feature tests, strict Clippy in both feature configurations,
+  and all-feature check. The A/B test exercises the production callback renderer
+  but remains a synthetic input schedule.
+- Before this change, PR #5 was open and mergeable at `604dd42`. Actions run 304
+  (`40794577869`) failed before creating jobs (`startup_failure`, zero jobs);
+  there were no combined status checks. Remote CI remains unavailable as code
+  validation.
+- Next: wire callback counters into per-session diagnostic telemetry and use
+  repeated live-feed runs to compare actual initial-play latency and underruns
+  for both prebuffer variants. Keep the 500 ms choice provisional pending
+  audible Mac and target-device acceptance.
