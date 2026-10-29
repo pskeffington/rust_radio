@@ -17,7 +17,7 @@
   changed. GitHub Actions run 356 (`40817262098`) for exact PR head `4e74011`
   failed before job creation (`startup_failure`); GitHub returned zero jobs and
   no combined statuses, so there are no remote job logs to diagnose. PR #5
-  remains open and mergeable.
+  remains open and mergeable. Evidence commit `47e7169` is pushed; PR #5 remains open and mergeable, with no workflow run or combined status visible for that exact head at 04:26 UTC.
 
 ## Curated A/B validation preflight (2026-10-29 04:16 UTC; checkpoint 04:20 UTC)
 
