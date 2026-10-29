@@ -2173,3 +2173,37 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   before job creation (`startup_failure`); no combined statuses were present.
   The PR is open with no reviews. This checkpoint records the second-feed
   measurements and retains the hardware, audible and CI gates.
+
+## Decoded-audio buffer-fill comparison (2026-10-29)
+
+- Added `prebuffer_fill_latency_observed_ms`, measured on the decode worker from
+  the first decoded PCM packet until the output reaches the configured
+  prebuffer threshold and starts. This separates buffer fill from connection,
+  probing and decoder startup. No timing or mutex work was added to the CPAL
+  callback. CLI JSON and the standalone acceptance procedure include the field.
+- Both approved feeds decoded immediately before testing: Skylab MP3 48 kHz
+  stereo and WCRB AAC 48 kHz stereo. Each feed received eight 30-second muted
+  CPAL trials on system output at 0% volume, A/B/B/A repeated twice. All 16
+  trials completed and reported zero callback underrun samples.
+- Skylab A=200 ms fill samples: 68.142/57.965/56.153/68.780 ms (mean 62.760);
+  B=500 ms: 70.150/308.547/162.379/67.332 ms (mean 152.102). B took 89.342 ms
+  longer to fill on average. Total buffer-ready means were 706.213 ms (A) and
+  886.484 ms (B); first-play means were 761.332 ms (A) and 921.154 ms (B).
+- WCRB A fill samples: 176.892/144.593/64.507/99.943 ms (mean 121.484); B:
+  230.141/221.973/288.302/77.832 ms (mean 204.562). B took 83.078 ms longer
+  to fill on average. Total buffer-ready means were 1408.225 ms (A) and
+  1585.672 ms (B); first-play means were 1426.773 ms (A) and 1618.475 ms (B).
+- In these runs, the 500 ms profile took about 83–89 ms longer from first
+  decoded PCM to threshold and 160–192 ms longer to first play. Skylab's bursty
+  response delivery let three of four B runs fill much faster than 500 ms; one
+  took 309 ms. Network and decoder startup still varied substantially. Zero
+  underruns in both profiles means this sample did not show a drop-out benefit
+  under real stalls. Keep 500 ms provisional because synthetic stall evidence
+  favors it under delayed chunks, but collect jittered live tests and audible
+  user comparisons before choosing a final default.
+- All six workspace gates passed on the implementation: format, default tests,
+  strict default Clippy, all-feature tests, strict all-feature Clippy and
+  all-feature check. Audio all-feature library suite: 55 passed, 1 ignored
+  manual hardware test. CLI all-feature suite: 20 passed. Local socket fixtures
+  passed with network permission. Physical/human listening acceptance remains
+  untested.
