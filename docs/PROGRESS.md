@@ -2042,3 +2042,39 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   playback and collect repeatable audible 200 ms/500 ms A/B measurements on
   Mac; repeat on Pi when available. Keep modeled A/B results separate from
   hardware evidence.
+
+
+## Operator-facing buffer profiles and live muted A/B (2026-10-29 00:53 UTC)
+
+- Added `IpBufferingProfile::{LowLatency, Resilient}` to the stable headless API
+  and `--buffering low-latency|resilient` to curated/direct CLI playback. The
+  existing start methods remain on the 500 ms resilient default; native SDR
+  sources remain at 200 ms. Timed and interactive CLI output now reports one
+  JSON diagnostic snapshot with configured output prebuffer, observed
+  first-play latency, and callback underrun samples. Invalid profiles fail
+  before output or network resources open.
+- Added an alternating four-run muted live callback A/B on Skylab, same system
+  output, 30 seconds per run, at 0% volume: A/B/B/A. Results (observed
+  first-play latency; callback underrun samples): A 200 ms = 674.615 ms / 0; B
+  500 ms = 992.154 ms / 0; B = 738.498 ms / 0; A = 827.602 ms / 0. Mean: A
+  751.109 ms, B 865.326 ms; B was 114.218 ms slower in this small sample. All
+  four real native callback sessions consumed PCM and ended cleanly. Zero
+  underruns across these four 30-second windows does not establish audible
+  quality or prove the larger buffer reduces dropouts. Stream/decode timing
+  varies more than this 2-trial-per-variant comparison can characterize; keep
+  500 ms default provisional and collect more runs before changing it.
+- Fresh bounded validation immediately before the A/B decoded Skylab MP3 at
+  48 kHz stereo. `cargo run -p rust-radio-cli -- outputs` found the system
+  default available. Output remained muted, so no listener preference was
+  measured.
+- Passed all six local workspace gates on the source changes: format; default
+  and all-feature workspace tests (all local IP/SDR fixture tests passed with
+  local-network permission); strict default/all-feature Clippy; all-feature
+  check. Also passed focused CLI tests (16 default, 20 with all features),
+  audio unit tests (53 passed, 1 ignored with all features), and diff checks.
+- PR #5 was open and mergeable at `816b5e6`; Actions run 308
+  (`40796119804`) failed with `startup_failure` before job creation, with zero
+  jobs and no combined status on the base head before this implementation increment.
+- Next: collect more muted live runs across at least two approved feeds and
+  then arrange a separate human audible comparison; preserve the 500 ms default
+  until stronger latency/underrun and listening evidence supports a change.

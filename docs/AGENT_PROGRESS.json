@@ -1,10 +1,16 @@
 {
-  "updated_at_utc": "2026-10-29T00:45:01Z",
+  "updated_at_utc": "2026-10-29T00:53:29Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "13997d7b0e13514e3a03ceb149f7e92efda4cf47: per-session native underrun diagnostics and observed first-play latency wired to the stable facade.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
+    "Added CLI --buffering low-latency|resilient selection and structured diagnostic snapshots for timed/interactive playback; invalid profiles are rejected before I/O.",
+    "Ran four muted 30s live native callback trials on Skylab/system output in A/B/B/A order. Low-latency 200ms: 674.615ms/0 underruns and 827.602ms/0. Resilient 500ms: 992.154ms/0 and 738.498ms/0. Means 751.109ms vs 865.326ms. Two trials/profile, small sample; no default change or audible claim.",
+    "Fresh pre-test Skylab validation decoded MP3 48kHz stereo; system default output enumerated available. Playback volume was 0%, callback consumed PCM; no listener preference measurement.",
+    "Passed all six workspace gates on current source changes; default/all-feature tests passed with permitted local fixture sockets, strict Clippy both feature modes, formatting and all-feature check. Focused CLI tests passed (16 default, 20 all-features), all-feature audio tests passed (53, 1 ignored).",
+    "PR #5 was open and mergeable at base head 816b5e6; Actions run 308 (40796119804) failed before job creation (startup_failure, zero jobs/statuses). This implementation increment follows that base.",
     "Wired CPAL callback underrun samples through IP, direct nRSP-ST, SDRconnect, and Soapy playback into one per-session counter.",
     "Added NativeRadioEngine::diagnostics() with underrun samples and first-play latency observed at host polling after callback consumption; documented the polling interval caveat.",
     "Re-exported NativePlaybackDiagnostics from rust_radio stable facade and tested no latency before callback progress, known underrun count, and recorded latency after progress.",
@@ -304,10 +310,10 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Expose bounded operator-facing native playback diagnostics and compare actual first-play latency/underruns for repeated 200ms versus 500ms playback on Mac and, when available, Raspberry Pi; retain physical-device and Windows MSVC gates.",
-  "current_pr_state": "PR #5 is open and mergeable at 13997d7b0e13514e3a03ceb149f7e92efda4cf47 (checked 2026-10-29T00:45Z); GitHub reports no workflow run or combined status for this head.",
+  "next_priority": "Run more repeated 200ms/500ms muted native A/B samples across at least two approved live stations, capture the human audible A/B separately, then decide whether evidence supports changing the 500ms default.",
+  "current_pr_state": "PR #5 open and mergeable at base 816b5e6; Actions run 308 (40796119804) ended startup_failure before job creation, with zero jobs and no combined status. Implementation increment from that base is now committed and pushed in a following checkpoint.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "fmt passed; cargo test --workspace passed after loopback permission retry; strict default Clippy passed; cargo test --workspace --all-features blocked by denied local TCP binds in IP/SDR fixture tests; strict all-feature Clippy passed; all-feature workspace check passed.",
+  "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
   "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed.",
@@ -394,5 +400,41 @@
       "gaps_at_or_over_500ms": 0
     },
     "interpretation": "One short sample each, measuring reqwest response-body chunks observed by the transport pump; not packet timing, decoded-buffer occupancy, callback underruns, audible acceptance, or proof a specific prebuffer prevents dropouts. Supports retaining 500ms IP prebuffer for further A/B against 200ms."
+  },
+  "live_prebuffer_ab_latest": {
+    "checked_at_utc": "2026-10-29T00:53:29Z",
+    "station": "skylab",
+    "endpoint_validation": "decoded MP3, 48000Hz stereo before trials",
+    "output": "system default output; available",
+    "volume_percent": 0,
+    "trial_seconds": 30,
+    "order": "A/B/B/A",
+    "variant_a": {
+      "profile": "low-latency",
+      "prebuffer_ms": 200,
+      "first_play_latency_observed_ms": [
+        674.615416,
+        827.60225
+      ],
+      "underrun_samples": [
+        0,
+        0
+      ],
+      "mean_latency_ms": 751.108833
+    },
+    "variant_b": {
+      "profile": "resilient",
+      "prebuffer_ms": 500,
+      "first_play_latency_observed_ms": [
+        992.15425,
+        738.498417
+      ],
+      "underrun_samples": [
+        0,
+        0
+      ],
+      "mean_latency_ms": 865.3263335
+    },
+    "interpretation": "Muted real CPAL callback measurements, not listener preference. Two trials per profile are small; all four runs had zero callback underruns, and B mean latency was 114.218ms slower in this sample. Retain 500ms default pending more runs and human audible comparison."
   }
 }

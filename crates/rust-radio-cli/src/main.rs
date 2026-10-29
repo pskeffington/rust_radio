@@ -3,7 +3,7 @@ use rust_radio::directory::{curated_stations, station_by_id};
 use rust_radio::output::available_outputs;
 use rust_radio::validation::validate_station;
 use rust_radio::validation_types::{StationValidation, ValidationStage, ValidationStatus};
-use rust_radio::NativeRadioEngine;
+use rust_radio::{IpBufferingProfile, NativeRadioEngine};
 use std::collections::VecDeque;
 use std::io::{self, BufRead};
 use std::sync::{mpsc, Arc, Mutex};
@@ -25,15 +25,17 @@ struct ListenArgs<'a> {
     seconds: Option<u64>,
     output: &'a str,
     volume: u8,
+    buffering: IpBufferingProfile,
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|resilient]");
     eprintln!(
-        "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
+        "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|resilient]"
     );
     eprintln!("Input discovery: inputs (enable nrsp-native and/or soapy-sdr for receiver scans)");
     eprintln!("Interactive listen commands: status | volume N | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
+    eprintln!("IP buffering profiles: low-latency=200ms | resilient=500ms; run with --volume 0 for muted callback A/B measurements");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
     eprintln!("Direct nRSP-ST control/audio: nrsp-native-status IP:9001 | nrsp-listen IP:9001 FREQ_HZ MODE [--seconds N] [--volume N] [--output ID] (enable nrsp-native)");
@@ -219,10 +221,12 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
         seconds: None,
         output: "system",
         volume: 60,
+        buffering: IpBufferingProfile::Resilient,
     };
     let mut used_seconds = false;
     let mut used_output = false;
     let mut used_volume = false;
+    let mut used_buffering = false;
     let mut i = 2;
     while i < args.len() {
         if i + 1 >= args.len() {
@@ -257,9 +261,20 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
                 parsed.output = id;
                 used_output = true;
             }
+            "--buffering" if !used_buffering => {
+                parsed.buffering = match args[i + 1].as_str() {
+                    "low-latency" => IpBufferingProfile::LowLatency,
+                    "resilient" => IpBufferingProfile::Resilient,
+                    _ => return Err("buffering must be low-latency or resilient"),
+                };
+                used_buffering = true;
+            }
             _ => return Err("unknown or repeated listen option"),
         }
         i += 2;
+    }
+    if sdrconnect && used_buffering {
+        return Err("IP buffering profiles apply only to internet radio streams");
     }
     Ok(parsed)
 }
@@ -275,9 +290,19 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
             return Err("enable the sdrconnect feature".into());
         }
     } else if args.direct {
-        NativeRadioEngine::start_stream(args.station, args.volume, args.output)?
+        NativeRadioEngine::start_stream_with_buffering(
+            args.station,
+            args.volume,
+            args.output,
+            args.buffering,
+        )?
     } else {
-        NativeRadioEngine::start_internet(args.station, args.volume, args.output)?
+        NativeRadioEngine::start_internet_with_buffering(
+            args.station,
+            args.volume,
+            args.output,
+            args.buffering,
+        )?
     };
     println!(
         "RUST RADIO / {} / output {} / volume {}%",
@@ -289,10 +314,20 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
         args.output,
         args.volume
     );
-    monitor(engine, args.seconds)
+    let prebuffer_ms = if args.sdrconnect {
+        200
+    } else {
+        args.buffering.prebuffer_ms()
+    };
+    println!("OUTPUT PREBUFFER / {prebuffer_ms} ms");
+    monitor(engine, args.seconds, prebuffer_ms)
 }
 
-fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), String> {
+fn monitor(
+    mut engine: NativeRadioEngine,
+    seconds: Option<u64>,
+    prebuffer_ms: u16,
+) -> Result<(), String> {
     // A separate stdin reader lets the main thread monitor duration and playback failures.
     let (tx, rx) = mpsc::sync_channel::<String>(INTERACTIVE_COMMAND_QUEUE);
     if seconds.is_none() {
@@ -336,8 +371,18 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
         if let Some(seconds) = seconds {
             if start.elapsed() >= Duration::from_secs(seconds) {
                 break if audible {
+                    let diagnostics = engine.diagnostics();
+                    println!(
+                        "RUST RADIO DIAGNOSTICS {}",
+                        diagnostics_json(prebuffer_ms, diagnostics)
+                    );
                     Ok(())
                 } else {
+                    let diagnostics = engine.diagnostics();
+                    println!(
+                        "RUST RADIO DIAGNOSTICS {}",
+                        diagnostics_json(prebuffer_ms, diagnostics)
+                    );
                     Err("No decoded PCM reached the audio callback".into())
                 };
             }
@@ -347,6 +392,10 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                 break Ok(());
             } else if command == "status" {
                 println!("RADIO {:?} / {:?}", snapshot.state, snapshot.last_error);
+                println!(
+                    "RUST RADIO DIAGNOSTICS {}",
+                    diagnostics_json(prebuffer_ms, engine.diagnostics())
+                );
                 #[cfg(feature = "nrsp-native")]
                 if let Some(status) = engine.nrsp_native_status() {
                     println!("NATIVE STATUS {status:?}");
@@ -435,6 +484,18 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
     engine.stop();
     println!("RUST RADIO / STOPPED");
     result
+}
+
+fn diagnostics_json(
+    prebuffer_ms: u16,
+    diagnostics: rust_radio::NativePlaybackDiagnostics,
+) -> String {
+    serde_json::json!({
+        "output_prebuffer_ms": prebuffer_ms,
+        "first_play_latency_observed_ms": diagnostics.first_play_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
+        "underrun_samples": diagnostics.underrun_samples,
+    })
+    .to_string()
 }
 
 /// Read one bounded command without allowing a long line or a fast producer to
@@ -694,6 +755,7 @@ mod tests {
             vec!["listen", "skylab", "--volume", "101"],
             vec!["listen", "skylab", "--output", "https://localhost"],
             vec!["listen", "skylab", "--volume", "60", "--volume", "70"],
+            vec!["listen", "skylab", "--buffering", "fast"],
         ] {
             assert!(parse_listen(&options(&args)).is_err(), "{:?}", args);
         }
@@ -709,7 +771,42 @@ mod tests {
         ]);
         assert_eq!(parse_listen(&parsed).unwrap().volume, 25);
         assert_eq!(parse_listen(&parsed).unwrap().seconds, Some(30));
+        assert_eq!(
+            parse_listen(&parsed).unwrap().buffering,
+            IpBufferingProfile::Resilient
+        );
+        assert_eq!(
+            parse_listen(&options(&[
+                "listen",
+                "skylab",
+                "--buffering",
+                "low-latency"
+            ]))
+            .unwrap()
+            .buffering,
+            IpBufferingProfile::LowLatency
+        );
         assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
+    }
+
+    #[test]
+    fn buffering_profiles_are_bounded_and_report_their_configured_duration() {
+        assert_eq!(IpBufferingProfile::LowLatency.prebuffer_ms(), 200);
+        assert_eq!(IpBufferingProfile::Resilient.prebuffer_ms(), 500);
+        let diagnostics: serde_json::Value = serde_json::from_str(&diagnostics_json(
+            200,
+            rust_radio::NativePlaybackDiagnostics {
+                underrun_samples: 23,
+                first_play_latency_observed: Some(Duration::from_millis(734)),
+            },
+        ))
+        .unwrap();
+        assert_eq!(diagnostics["output_prebuffer_ms"].as_u64(), Some(200));
+        assert_eq!(
+            diagnostics["first_play_latency_observed_ms"].as_f64(),
+            Some(734.0)
+        );
+        assert_eq!(diagnostics["underrun_samples"].as_u64(), Some(23));
     }
 
     #[cfg(feature = "sdrconnect")]

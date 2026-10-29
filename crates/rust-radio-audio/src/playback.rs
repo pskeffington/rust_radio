@@ -27,6 +27,8 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 mod ip_pcm;
+#[cfg(any(feature = "nrsp-native", feature = "sdrconnect", feature = "soapy"))]
+const NON_IP_PREBUFFER: Duration = Duration::from_millis(200);
 #[cfg(feature = "nrsp-native")]
 mod nrsp_native;
 #[cfg(feature = "nrsp-native")]
@@ -101,7 +103,30 @@ pub(super) struct PlaybackContext<'a> {
     pub(super) volume: Arc<AtomicU8>,
     pub(super) output_id: &'a str,
     pub(super) output_underruns: Arc<AtomicU64>,
+    ip_prebuffer: Duration,
     output_progress: &'a OutputProgress,
+}
+
+/// The two bounded IP-radio buffering profiles used for repeatable latency
+/// and underrun comparisons. Existing start methods retain the resilient profile.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IpBufferingProfile {
+    LowLatency,
+    #[default]
+    Resilient,
+}
+
+impl IpBufferingProfile {
+    pub const fn prebuffer_ms(self) -> u16 {
+        match self {
+            Self::LowLatency => 200,
+            Self::Resilient => 500,
+        }
+    }
+
+    const fn duration(self) -> Duration {
+        Duration::from_millis(self.prebuffer_ms() as u64)
+    }
 }
 
 /// Read-only output measurements from one native playback session. First-play
@@ -239,6 +264,20 @@ impl NativeRadioEngine {
         volume_percent: u8,
         output_id: &str,
     ) -> Result<Self, String> {
+        Self::start_internet_with_buffering(
+            station_id,
+            volume_percent,
+            output_id,
+            IpBufferingProfile::Resilient,
+        )
+    }
+
+    pub fn start_internet_with_buffering(
+        station_id: &str,
+        volume_percent: u8,
+        output_id: &str,
+        profile: IpBufferingProfile,
+    ) -> Result<Self, String> {
         if station_by_id(station_id).is_none() {
             return Err("Unknown curated internet radio station".into());
         }
@@ -246,16 +285,33 @@ impl NativeRadioEngine {
             PlaybackSource::Internet(station_id.to_owned()),
             volume_percent,
             output_id,
+            profile.duration(),
         )
     }
 
     /// Play an explicitly selected direct MP3 or AAC stream URL.
     pub fn start_stream(url: &str, volume_percent: u8, output_id: &str) -> Result<Self, String> {
+        Self::start_stream_with_buffering(
+            url,
+            volume_percent,
+            output_id,
+            IpBufferingProfile::Resilient,
+        )
+    }
+
+    /// Play a direct stream with one of the bounded IP-radio buffering profiles.
+    pub fn start_stream_with_buffering(
+        url: &str,
+        volume_percent: u8,
+        output_id: &str,
+        profile: IpBufferingProfile,
+    ) -> Result<Self, String> {
         radio_net::validate_direct_url(url)?;
         Self::start(
             PlaybackSource::Direct(url.to_owned()),
             volume_percent,
             output_id,
+            profile.duration(),
         )
     }
 
@@ -277,6 +333,7 @@ impl NativeRadioEngine {
             PlaybackSource::NrspNative(endpoint, config, None),
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -298,6 +355,7 @@ impl NativeRadioEngine {
             PlaybackSource::NrspNative(endpoint, config, Some(settings)),
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -317,6 +375,7 @@ impl NativeRadioEngine {
             PlaybackSource::SdrConnect(endpoint),
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -348,6 +407,7 @@ impl NativeRadioEngine {
             },
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -359,7 +419,12 @@ impl NativeRadioEngine {
             .clone()
     }
 
-    fn start(source: PlaybackSource, volume_percent: u8, output_id: &str) -> Result<Self, String> {
+    fn start(
+        source: PlaybackSource,
+        volume_percent: u8,
+        output_id: &str,
+        ip_prebuffer: Duration,
+    ) -> Result<Self, String> {
         if volume_percent > 100 {
             return Err("Volume must be between 0 and 100".into());
         }
@@ -423,6 +488,7 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_underruns: Arc::clone(&worker_output_underruns),
+                            ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
                     ),
@@ -436,6 +502,7 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_underruns: Arc::clone(&worker_output_underruns),
+                            ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
                     ),
@@ -457,6 +524,7 @@ impl NativeRadioEngine {
                                         volume: Arc::clone(&worker_volume),
                                         output_id: &selected_output,
                                         output_underruns: Arc::clone(&worker_output_underruns),
+                                        ip_prebuffer,
                                         output_progress: &worker_output_progress,
                                     },
                                     control,
@@ -480,6 +548,7 @@ impl NativeRadioEngine {
                                 volume: Arc::clone(&worker_volume),
                                 output_id: &selected_output,
                                 output_underruns: Arc::clone(&worker_output_underruns),
+                                ip_prebuffer,
                                 output_progress: &worker_output_progress,
                             };
                             sdrconnect::play(endpoint, &context, &worker_receiver).map_err(
@@ -505,6 +574,7 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_underruns: Arc::clone(&worker_output_underruns),
+                            ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
                     ),
@@ -929,6 +999,7 @@ fn decode_and_play(
                 context.output_id,
                 played_samples,
                 Arc::clone(&context.output_underruns),
+                context.ip_prebuffer,
             )
         },
         || clear_output_attempt(context.output_progress),

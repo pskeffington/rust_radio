@@ -12,6 +12,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const DEFAULT_PREBUFFER: Duration = Duration::from_millis(200);
+#[cfg(test)]
 const IP_RADIO_PREBUFFER: Duration = Duration::from_millis(500);
 
 /// CPAL exposes OS-managed audio endpoints. Connected Bluetooth speakers
@@ -170,13 +171,14 @@ impl NativeAudioOutput {
         output_id: &str,
         played_samples: Arc<AtomicU64>,
         underrun_samples: Arc<AtomicU64>,
+        prebuffer: Duration,
     ) -> Result<Self, String> {
         Self::open_with_prebuffer(
             volume,
             output_id,
             played_samples,
             underrun_samples,
-            IP_RADIO_PREBUFFER,
+            prebuffer,
         )
     }
 

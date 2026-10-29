@@ -9,7 +9,9 @@ pub use rust_radio_core::{
 };
 
 #[cfg(feature = "ip-radio")]
-pub use rust_radio_audio::playback::{NativePlaybackDiagnostics, NativeRadioEngine};
+pub use rust_radio_audio::playback::{
+    IpBufferingProfile, NativePlaybackDiagnostics, NativeRadioEngine,
+};
 #[cfg(feature = "ip-radio")]
 pub use rust_radio_audio::{discovery, output, playback, validation};
 #[cfg(feature = "ip-radio")]
