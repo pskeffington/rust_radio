@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-29T00:23:22Z",
+  "updated_at_utc": "2026-10-29T00:24:10Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
+  "implementation_commit": "0f8229967950140d0fec90382ddf5dd456dbdee4; NetworkGuard response-body chunk timing snapshots and bounded live Skylab/WCRB sample.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added NetworkGuard::timing_snapshot() for bounded response-body chunk interval diagnostics and deterministic threshold coverage; an explicit live sample measured Skylab (182 chunks, 44ms mean, 653ms max, 15 gaps >=200ms, 7 >=500ms) and WCRB (76 chunks, 85ms mean, 406ms max, 16 >=200ms, 0 >=500ms). This is one short transport sample per station, not packet or audible-underrun evidence.",
@@ -279,7 +279,7 @@
     "latest_pr_head": "b502d10a0366d1a62d0574c4e0d2300f9f397841",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at 3a121df, no reviews. No Actions run or combined status visible for 3a121df. Last observed run 291 (40791274189) on b502d10 failed before job creation with startup_failure; zero jobs and no combined statuses."
+    "details": "PR #5 open and mergeable at implementation commit 0f82299, no reviews. At 2026-10-29T00:24Z no Actions workflow run or combined status visible for this head. Last historical run 291 (40791274189) on b502d10 failed before jobs (startup_failure); native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -291,9 +291,9 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Repeat audible 200ms vs 500ms playback A/B while recording callback underruns and startup latency; then validate on Raspberry Pi and continue physical output-loss, receiver, rights, and Windows MSVC gates.",
-  "current_pr_state": "PR #5 open and mergeable at evidence head 577dc21 when checked at 00:18Z; no reviews, no workflow run or combined status visible. Last observed run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses).",
+  "current_pr_state": "PR #5 open and mergeable at 0f8229967950140d0fec90382ddf5dd456dbdee4 when checked at 2026-10-29T00:24Z; no reviews; no workflow runs or combined statuses for this head. Latest observed historical Actions run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses).",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on current implementation before commit: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
+  "six_required_gates_latest": "passed on implementation commit 0f8229967950140d0fec90382ddf5dd456dbdee4: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
   "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed.",

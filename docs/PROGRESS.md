@@ -1930,8 +1930,9 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   workspace tests, strict default Clippy, all-feature workspace tests, strict
   all-feature Clippy, and all-feature workspace check. The live timing test
   remains ignored in normal CI and passed when explicitly run.
-- PR #5 is open and mergeable; this commit's workflow state is to be checked
-  after push. No physical playback, target-device, or device-loss acceptance
+- PR #5 is open and mergeable at implementation commit `0f82299`, with no
+  reviews. At 00:24 UTC, GitHub showed no workflow runs or combined statuses for
+  the new head. No physical playback, target-device, or device-loss acceptance
   was performed. Next: compare callback underruns and startup latency during
   repeated audible A/B playback on Mac, then repeat on Raspberry Pi if
   available.
