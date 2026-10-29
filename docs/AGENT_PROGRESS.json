@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T03:44:59Z",
+  "updated_at_utc": "2026-10-29T03:46:07Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "98235f5528aef8f028d16c8518c5b788baed4764 + 2fa930aefe7b1aef46d1dda91e94a09a4c647033: additive balanced buffering preset API and profile-selectable A/B runner; original public buffering enum retained unchanged",
@@ -245,7 +245,8 @@
     "Validated Skylab as decoded MP3, 48kHz stereo, then ran eight muted 30-second trials in A/B/B/A order twice comparing 350ms and 500ms. Both profiles had zero callback underruns; mean buffer-ready was 753.643ms vs 934.959ms and first-play 802.896ms vs 965.990ms.",
     "Refreshed PR #5 after pushing the curated live-feed A/B harness: PR open/mergeable at 28af928; exact-head Actions and combined status were empty. PR body includes the live A/B result.",
     "Validated WCRB as decoded AAC 48kHz stereo, then completed eight 30-second muted native A/B trials (balanced 350ms vs resilient 500ms). All eight had zero callback underruns; means were 2227.812/1427.275ms buffer-ready and 2266.739/1462.261ms first-play. Added raw per-trial data and cautions to the machine-readable checkpoint, progress log and standalone acceptance evidence. No Rust source changed.",
-    "Repeated WCRB A/B twice: two fixed-order blocks repeated a 3.5s first-A startup outlier. Changed the runner to alternate A/B/B/A and B/A/A/B blocks and added an ordering regression. Counterbalanced eight-trial WCRB run had zero underruns, means 1607.326/1549.155ms buffer-ready and 1648.815/1573.061ms first-play. No reliability or listening preference difference. All six Rust gates and Windows GNU/AArch64 checks passed before the Python-only runner change; four Python tests and runner checks passed afterward."
+    "Repeated WCRB A/B twice: two fixed-order blocks repeated a 3.5s first-A startup outlier. Changed the runner to alternate A/B/B/A and B/A/A/B blocks and added an ordering regression. Counterbalanced eight-trial WCRB run had zero underruns, means 1607.326/1549.155ms buffer-ready and 1648.815/1573.061ms first-play. No reliability or listening preference difference. All six Rust gates and Windows GNU/AArch64 checks passed before the Python-only runner change; four Python tests and runner checks passed afterward.",
+    "GitHub Actions run 344 for pushed head fa4bce7 ended startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses were empty. PR #5 remains open and mergeable."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -359,7 +360,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Use the new counterbalanced A/B runner on bursty/intermittent traces or live feeds; get blinded audible preference and physical output-loss/recovery acceptance. Investigate repeated GitHub Actions startup_failure with zero jobs/logs, and retain Windows MSVC and physical Pi as separate acceptance gates.",
-  "current_pr_state": "PR #5 remains open and mergeable at source head 317a16fad1307d99734084cb63a06bc0888fd189. Exact-head Actions run 343 (40812675091) ended startup_failure before job creation; job list and combined statuses are empty.",
+  "current_pr_state": "PR #5 remains open and mergeable at pushed source head fa4bce7fd3f7e744924fe564c91a2fcb60d268ed. Actions run 344 (40813939126) ended startup_failure at 2026-10-29T03:45:37Z before job creation; jobs and combined statuses are empty.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1191,7 +1192,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T03:32:28Z",
+  "current_pr_state_checked_at_utc": "2026-10-29T03:46:07Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",

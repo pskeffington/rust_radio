@@ -27,6 +27,10 @@
   block, consistent with an order effect without identifying its mechanism.
   Next: use the counterbalanced runner for intermittent trace/feed tests and
   obtain audible preference and physical output-loss evidence.
+- After pushing this counterbalanced update, Actions run 344
+  (`40813939126`) for `fa4bce7` also ended `startup_failure` before job
+  creation. GitHub returned zero jobs and no combined statuses, so this
+  remains an external runner startup blocker rather than a code-test failure.
 
 ## Curated WCRB live-feed 350/500 ms A/B (2026-10-29 03:31 UTC)
 
