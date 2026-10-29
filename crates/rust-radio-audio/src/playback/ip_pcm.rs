@@ -80,12 +80,16 @@ impl SinkState {
 mod tests {
     use super::*;
     use std::cell::Cell;
+    use std::sync::Mutex;
+    use std::thread;
+    use std::time::{Duration, Instant};
 
     struct BoundedSink {
         buffered: usize,
         pushed: usize,
         played: u64,
         started: Cell<bool>,
+        prebuffer_samples: usize,
         fail_start: bool,
         overflowed: bool,
     }
@@ -111,7 +115,7 @@ mod tests {
             self.buffered
         }
         fn prebuffer(&self) -> usize {
-            4
+            self.prebuffer_samples
         }
         fn played(&self) -> u64 {
             self.played
@@ -131,6 +135,7 @@ mod tests {
             pushed: 0,
             played: 0,
             started: Cell::new(false),
+            prebuffer_samples: 4,
             fail_start,
             overflowed: false,
         }
@@ -158,6 +163,59 @@ mod tests {
         assert_eq!(
             events,
             [PlaybackEvent::Buffered, PlaybackEvent::PlaybackStarted]
+        );
+    }
+
+    #[test]
+    fn measured_prebuffer_fill_tracks_paced_decoded_packets() {
+        fn fill_latency(prebuffer_samples: usize) -> Duration {
+            let mut converter = PcmConverter::new(48_000, 48_000, 2, 2).unwrap();
+            let mut output = sink(false);
+            output.prebuffer_samples = prebuffer_samples;
+            let mut state = SinkState::default();
+            let observed = Mutex::new(None);
+            let first_decoded_audio_at = Instant::now();
+            let cancelled = AtomicBool::new(false);
+
+            for packet_index in 0..4 {
+                if packet_index > 0 {
+                    thread::sleep(Duration::from_millis(10));
+                }
+                let keep_going = state
+                    .feed(
+                        &mut converter,
+                        &[0.25, -0.25],
+                        &mut output,
+                        &cancelled,
+                        |event| {
+                            if event == PlaybackEvent::Buffered {
+                                super::super::record_prebuffer_fill_latency(
+                                    &observed,
+                                    first_decoded_audio_at,
+                                );
+                            }
+                        },
+                    )
+                    .unwrap();
+                assert!(keep_going);
+                if output.started.get() {
+                    break;
+                }
+            }
+
+            assert!(
+                output.started.get(),
+                "prebuffer threshold was never reached"
+            );
+            let latency = observed.lock().unwrap().unwrap();
+            latency
+        }
+
+        let low_latency_fill = fill_latency(4);
+        let resilient_fill = fill_latency(8);
+        assert!(
+            resilient_fill > low_latency_fill,
+            "larger prebuffer should cross its threshold after more paced packets: {low_latency_fill:?} vs {resilient_fill:?}"
         );
     }
 
