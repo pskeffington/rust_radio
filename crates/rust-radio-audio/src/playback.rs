@@ -103,6 +103,8 @@ pub(super) struct PlaybackContext<'a> {
     pub(super) volume: Arc<AtomicU8>,
     pub(super) output_id: &'a str,
     pub(super) output_underruns: Arc<AtomicU64>,
+    buffer_ready_latency_observed: Arc<Mutex<Option<Duration>>>,
+    playback_started_at: Instant,
     ip_prebuffer: Duration,
     output_progress: &'a OutputProgress,
 }
@@ -134,6 +136,9 @@ impl IpBufferingProfile {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NativePlaybackDiagnostics {
     pub underrun_samples: u64,
+    /// Worker-measured time until the selected IP prebuffer threshold is met.
+    /// This is recorded when the paused output is started, outside the audio callback.
+    pub buffer_ready_latency_observed: Option<Duration>,
     pub first_play_latency_observed: Option<Duration>,
 }
 
@@ -250,6 +255,7 @@ pub struct NativeRadioEngine {
     output_progress: OutputProgress,
     output_underruns: Arc<AtomicU64>,
     playback_started_at: Instant,
+    buffer_ready_latency_observed: Arc<Mutex<Option<Duration>>>,
     first_play_latency_observed: Mutex<Option<Duration>>,
     worker: Option<JoinHandle<()>>,
     #[cfg(feature = "nrsp-native")]
@@ -458,6 +464,8 @@ impl NativeRadioEngine {
         let output_underruns = Arc::new(AtomicU64::new(0));
         let worker_output_underruns = Arc::clone(&output_underruns);
         let playback_started_at = Instant::now();
+        let buffer_ready_latency_observed = Arc::new(Mutex::new(None));
+        let worker_buffer_ready_latency_observed = Arc::clone(&buffer_ready_latency_observed);
         #[cfg(feature = "sdrconnect")]
         let receiver = Arc::new(Mutex::new(None));
         #[cfg(feature = "sdrconnect")]
@@ -488,6 +496,10 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_underruns: Arc::clone(&worker_output_underruns),
+                            buffer_ready_latency_observed: Arc::clone(
+                                &worker_buffer_ready_latency_observed,
+                            ),
+                            playback_started_at,
                             ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
@@ -502,6 +514,10 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_underruns: Arc::clone(&worker_output_underruns),
+                            buffer_ready_latency_observed: Arc::clone(
+                                &worker_buffer_ready_latency_observed,
+                            ),
+                            playback_started_at,
                             ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
@@ -524,6 +540,10 @@ impl NativeRadioEngine {
                                         volume: Arc::clone(&worker_volume),
                                         output_id: &selected_output,
                                         output_underruns: Arc::clone(&worker_output_underruns),
+                                        buffer_ready_latency_observed: Arc::clone(
+                                            &worker_buffer_ready_latency_observed,
+                                        ),
+                                        playback_started_at,
                                         ip_prebuffer,
                                         output_progress: &worker_output_progress,
                                     },
@@ -548,6 +568,10 @@ impl NativeRadioEngine {
                                 volume: Arc::clone(&worker_volume),
                                 output_id: &selected_output,
                                 output_underruns: Arc::clone(&worker_output_underruns),
+                                buffer_ready_latency_observed: Arc::clone(
+                                    &worker_buffer_ready_latency_observed,
+                                ),
+                                playback_started_at,
                                 ip_prebuffer,
                                 output_progress: &worker_output_progress,
                             };
@@ -574,6 +598,10 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_underruns: Arc::clone(&worker_output_underruns),
+                            buffer_ready_latency_observed: Arc::clone(
+                                &worker_buffer_ready_latency_observed,
+                            ),
+                            playback_started_at,
                             ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
@@ -596,6 +624,7 @@ impl NativeRadioEngine {
             output_progress,
             output_underruns,
             playback_started_at,
+            buffer_ready_latency_observed,
             first_play_latency_observed: Mutex::new(None),
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]
@@ -737,6 +766,10 @@ impl NativeRadioEngine {
             .expect("first-play latency mutex poisoned");
         NativePlaybackDiagnostics {
             underrun_samples: self.output_underruns.load(Ordering::Relaxed),
+            buffer_ready_latency_observed: *self
+                .buffer_ready_latency_observed
+                .lock()
+                .expect("buffer-ready latency mutex poisoned"),
             first_play_latency_observed,
         }
     }
@@ -854,6 +887,15 @@ pub(super) fn begin_output_attempt(progress: &OutputProgress) -> Arc<AtomicU64> 
 
 pub(super) fn clear_output_attempt(progress: &OutputProgress) {
     *progress.lock().expect("output progress mutex poisoned") = None;
+}
+
+fn record_buffer_ready_latency(observed: &Mutex<Option<Duration>>, playback_started_at: Instant) {
+    let mut latency = observed
+        .lock()
+        .expect("buffer-ready latency mutex poisoned");
+    if latency.is_none() {
+        *latency = Some(playback_started_at.elapsed());
+    }
 }
 
 /// Retry typed connection and stream I/O failures. Device loss and invalid
@@ -1146,7 +1188,15 @@ fn decode_and_play(
             samples.samples(),
             &mut output,
             context.cancelled,
-            |event| signal(context.controller, context.generation, event),
+            |event| {
+                if event == PlaybackEvent::Buffered {
+                    record_buffer_ready_latency(
+                        &context.buffer_ready_latency_observed,
+                        context.playback_started_at,
+                    );
+                }
+                signal(context.controller, context.generation, event)
+            },
         )?;
         if !keep_going {
             if output.has_failed() && !context.cancelled.load(Ordering::Acquire) {
@@ -1700,6 +1750,17 @@ mod tests {
         assert_eq!(output_attempts_cleared, 2);
     }
 
+    #[test]
+    fn buffer_ready_latency_records_first_worker_observation_once() {
+        let started_at = Instant::now();
+        let observed = Mutex::new(None);
+        record_buffer_ready_latency(&observed, started_at);
+        let first = observed.lock().unwrap().unwrap();
+        thread::sleep(Duration::from_millis(2));
+        record_buffer_ready_latency(&observed, started_at);
+        assert_eq!(*observed.lock().unwrap(), Some(first));
+    }
+
     fn completed_test_engine(panics: bool) -> NativeRadioEngine {
         let mut controller = RadioController::default();
         controller
@@ -1715,6 +1776,7 @@ mod tests {
             output_progress: Arc::new(Mutex::new(None)),
             output_underruns: Arc::new(AtomicU64::new(0)),
             playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
             first_play_latency_observed: Mutex::new(None),
             #[cfg(feature = "nrsp-native")]
             native_control: None,
@@ -1748,6 +1810,7 @@ mod tests {
             output_progress: Arc::clone(&output_progress),
             output_underruns: Arc::clone(&output_underruns),
             playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
             first_play_latency_observed: Mutex::new(None),
             worker: None,
             #[cfg(feature = "nrsp-native")]
@@ -1802,6 +1865,7 @@ mod tests {
             output_progress: Arc::new(Mutex::new(Some(Arc::clone(&callback_samples)))),
             output_underruns: Arc::new(AtomicU64::new(0)),
             playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
             first_play_latency_observed: Mutex::new(None),
             worker: None,
             #[cfg(feature = "nrsp-native")]
@@ -1877,6 +1941,7 @@ mod tests {
             output_progress: Arc::new(Mutex::new(None)),
             output_underruns: Arc::new(AtomicU64::new(0)),
             playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
             first_play_latency_observed: Mutex::new(None),
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]
@@ -2004,6 +2069,7 @@ mod tests {
             output_progress: Arc::new(Mutex::new(None)),
             output_underruns: Arc::new(AtomicU64::new(0)),
             playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
             first_play_latency_observed: Mutex::new(None),
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]

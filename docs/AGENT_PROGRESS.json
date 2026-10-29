@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T00:54:21Z",
+  "updated_at_utc": "2026-10-29T01:10:16Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "7434ce9bd9e113d5773bc1a2c69b444992e7c60a: bounded 200/500ms IP buffering profiles and operator-facing live callback diagnostics; repeated muted Skylab A/B evidence recorded.",
@@ -199,88 +199,23 @@
     "Rechecked PR #5 at evidence head 577dc21: open and mergeable, no reviews. No Actions run/status visible; prior run 291 on b502d10 startup_failure before jobs.",
     "Fresh bounded live validate-all at 2026-10-29T00:16:38Z decoded 25/25 feeds in 25 attempts without retries/failures; point-in-time codec evidence only.",
     "Muted CPAL integration passed with 500ms IP prebuffer and loopback MP3/AAC fixtures; callback startup/lifecycle only, not audible, live jitter or physical device-loss evidence.",
-    "Repeated synthetic IP prebuffer and GUI label A/B regressions; results unchanged. No new source defect was verified and no source change was made this revalidation."
+    "Repeated synthetic IP prebuffer and GUI label A/B regressions; results unchanged. No new source defect was verified and no source change was made this revalidation.",
+    "Added worker-side buffer_ready_latency_observed to NativePlaybackDiagnostics and CLI JSON. It records the first prebuffer-threshold/start event outside the CPAL callback, keeping callback timing lock-free; first-play polling latency remains available separately.",
+    "Focused validation: rust-radio-audio all-feature library tests passed (54 passed, 1 manual native-output test ignored); rust-radio-cli all-feature tests passed (20 passed). cargo check -p rust-radio-audio --all-features passed.",
+    "The built-in production-renderer synthetic IP prebuffer A/B regression also passed in this run as part of the audio suite; injected 100/300/800ms stalls yield 0/100/600 vs 0/0/300 missing samples for 200ms/500ms buffers. Synthetic callback-level evidence only.",
+    "Fresh approved Skylab validation succeeded before A/B: decoded MP3, 48000Hz stereo.",
+    "Repeated live native callback A/B with the new buffer-ready metric: eight 30-second muted CPAL runs on system output, A/B/B/A twice. 200ms: buffer-ready mean 781.544ms, first-play mean 814.495ms; 500ms: buffer-ready mean 722.426ms, first-play mean 769.300ms. Every run reported zero underrun samples. Small one-feed sample; no audible conclusion or default change.",
+    "All six required workspace validation gates passed after the diagnostics implementation. The initial unprivileged default workspace test hit six loopback bind permission errors; the authorized network-enabled retry passed all tests. All-feature workspace tests passed with local sockets.",
+    "Earlier unprivileged WCRB and Skylab probes returned TransportUnavailable at NotChecked. A bounded authorized Skylab probe then decoded successfully and eight live A/B runs completed. GitHub PR #5 was open; latest observed prior head 82d07e1 had no combined statuses and Actions run 311 (40797143013) failed before job creation. This implementation increment is being committed/pushed now."
   ],
   "validation": {
-    "fmt": "passed on 19-station WFMU expansion",
-    "workspace_tests": "passed on 19-station WFMU expansion; loopback fixtures included; one manual native audio GUI test ignored",
-    "workspace_clippy_strict": "passed with -D warnings on 19-station WFMU expansion",
-    "all_features_tests": "passed on 19-station WFMU expansion; loopback fixtures included; one manual native output test ignored",
-    "all_features_clippy_strict": "passed with -D warnings on 19-station WFMU expansion",
-    "all_features_check": "passed on 19-station WFMU expansion",
-    "live_catalog_decode": "passed 25/25 decoded_audio, one attempt each; checked_at 2026-10-28T22:14:21Z; point-in-time network evidence only",
-    "live_history_write": "25 station records persisted in 6476 bytes with Unix mode 0600",
-    "saved_history_gui_import": "passed; freshness expiry, invalid evidence and live precedence covered",
-    "shared_cli_gui_history_contract": "passed; both consumers parse testdata/feed-health-v1.json",
-    "saved_history_schema_rejection": "passed; corrupt stage and future snapshot timestamp rejected; invalid source file preserved",
-    "transport_error_history": "passed; missing stage and per-station timestamp normalize to a valid not_checked failure record",
-    "repeatable_layout_ab": "passed: at 295px A full category 18/19, B names-only 19/19, C compact category 19/19; at 340px all 19/19; saves 128px; layout fit only",
-    "repository_sync": "merged remote checkpoint 626b446 with local docs-only commits; no user implementation changes discarded",
-    "workflow_yaml": "passed Ruby YAML parse; Windows job contains three Cargo checks, three strict Clippy runs, and three workspace test suites",
-    "shared_core_history_parser": "passed; versioned fixture, status/stage consistency and expiry covered",
-    "headless_host_history_contract": "passed; no egui feature or file/network/audio I/O required",
-    "implementation_commit": "bd48649; process-wide active playback lease and embedding contract update",
-    "latest_full_gate_run": "passed after live volume transition test: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked; git diff --check. Loopback fixtures needed local socket permission; physical audio test remains ignored.",
-    "latest_code_head_ci": "PR #5 source head 002c86fc835992f31ad170c18c91ab0af5ff6ef0 Actions run 40784862854 (run 259) startup_failure before job creation; combined statuses empty; native Windows MSVC job unverified. Evidence checkpoint 06e0ffd has no run/status observed.",
-    "live_catalog_revalidation": "2026-10-28T22:58:15Z: bounded validate-all decoded 25/25 stations in 25 attempts; no retry/recovery or failure; point-in-time codec evidence only.",
-    "arm64_headless_check": "passed after discovery lifecycle change: cargo check --locked -p rust-radio --no-default-features, with sdrconnect, and with nrsp-native; target aarch64-unknown-linux-gnu",
-    "layout_ab_recheck": "repeated 2026-10-28 23:04 UTC: A full category 24/25, B names-only 25/25, C compact category 25/25 at 295px; all variants fit at 340px; C saves 192px; layout fit only, not listener preference.",
-    "latest_gui_regression": "test guard commit 3b8cf74 passed station A/B/C regression and GUI crate suite (31 passed, 1 hardware test ignored); strict GUI Clippy passed",
-    "playback_callback_state_regression": "delayed callback progress promotes Buffering to Playing for IP and SDR; retry counter isolation and Stop tested; counter sharing is implemented for nRSP-native, SDRconnect and Soapy",
-    "process_wide_playback_admission": "passed; second engine start rejected before spawn/resource open; RAII slot releases after drop and unwind",
-    "public_playback_admission_regression": "passed; curated internet and direct stream public start paths reject while process-wide slot is occupied",
-    "latest_regression_commit": "176e169; native output setup errors map to output-selection guidance and retain original diagnostics",
-    "probe_time_output_failure_classification": "passed; CPAL-reported failure during Symphonia format probe maps to OutputUnavailable; ordinary probe I/O remains NetworkTransient",
-    "nrsp_active_stream_recovery": "passed; transport and inactivity timeout map to transient recovery, startup/activation and protocol failures remain terminal",
-    "nrsp_reconnect_settings": "passed; latest desired frequency/mode/bandwidth and FM settings retained for retry",
-    "nrsp_output_setup_classification": "native receiver PCM conversion/output configuration errors classify as OutputUnavailable",
-    "nrsp_reconnect_sequence_fixture": "passed; stream timeout produces one 1-second wait then one reconnect attempt with updated frequency/bandwidth/FM state and reconnecting=true; output attempt is cleared",
-    "nrsp_terminal_reconnect_fixture": "passed; permanent setup error on retry stops after one reconnect attempt; one backoff only; output progress cleared on both failed attempts",
-    "nrsp_disconnect_reason": "passed; Error::Disconnected(reason) stays terminal and preserves numeric reason in host error; reason mappings are undocumented so no retry inference is made",
-    "nrsp_handshake_cancellation": "passed; loopback peer completes WebSocket handshake but withholds Hello; explicit cancellation returns within 500ms and closes the socket",
-    "ip_output_loss_cleanup": "passed; synthetic Bluetooth output failure after a network retry uses a distinct callback-progress counter, detaches stale progress before backoff and stops without a second retry",
-    "gui_native_output_error_copy": "passed; unsupported native sample format, unsupported receiver output and CPAL stream configuration errors give output-selection guidance while setup retains exact error text",
-    "nrsp_initial_hello_contract": "passed; a non-Hello first message returns Protocol(\"Expected initial Hello\"), while an open WebSocket that withholds Hello returns Timeout within the 50 ms fixture deadline and 500 ms test bound",
-    "websocket_upgrade_deadline": "passed; TCP peer accepts connection but never responds to WebSocket HTTP upgrade; 50 ms deadline, completed within 500 ms",
-    "arm64_nrsp_native_check": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed after DNS resolver change; compile evidence only",
-    "npr_stream_identity": "Official NPR SmartAudio guide distinguishes the NPR One personalized news mix from live local member-station streams; no single national NPR News continuous stream or product redistribution grant established",
-    "dns_address_safety": "passed; rejects non-public/private/special-use DNS results for curated/public URLs; checked resolver address set is used by reqwest; explicit private IPv4 HTTP allows only private/loopback unicast targets",
-    "dns_address_safety_tests": "passed; IPv4/IPv6 range classification, localhost resolver rejection, explicit private-mode allowance, and non-public HTTPS redirect rejection",
-    "iana_address_range_regressions": "passed; IPv4-mapped IPv6, NAT64, discard-only, transition, documentation, benchmarking and reserved ranges; conservative aggregate blocks",
-    "https_literal_ip_safety": "passed; direct HTTPS private/loopback/shared/link-local/mapped IPv6 literals rejected; public IPv4 literal accepted",
-    "private_redirect_boundary": "passed; same-origin relative path works; loopback redirect and PLS target to another private port are rejected; localhost DNS answer rejected",
-    "npr_member_station_candidate": "WBUR official Ways to Listen and content licensing pages reviewed 2026-10-28; official live player/app access is documented but no stable direct endpoint or product-use permission was found; candidate excluded pending rights",
-    "private_network_policy_docs": "Literature Matrix corrected: exact selected private HTTP origin and port only; DNS resolution remains public-only",
-    "catalog_policy_contract": "passed; CLI mirror parity test asserts schema policy fields and all 25 JSON records match runtime metadata",
-    "catalog_validation_schedule": "updated station-validation.yml to run at 17 minutes every six hours, matching freshness_ttl_hours=6; workflow configuration change awaiting remote CI",
-    "catalog_validation_summary": "passed 4 Python tests for decoded/unavailable/unverified/check_error statuses, endpoint/error omission, Markdown label sanitization, invalid stages, malformed report rejection and strict schema version; actual 25-station CLI report formatted successfully after strict schema change; workflow YAML parsed and runs the tests before the live sweep",
-    "catalog_validation_summary_schema": "strict schema_version=1 and stage allowlist now match rust-radio-core validation enums; check_error rows no longer collapse to unknown",
-    "current_pr_state": "PR #5 open and mergeable at source commit 202db11; evidence checkpoint pending",
-    "scheduled_validation_activation": "station-validation.yml is not on default branch main, so GitHub reports workflow-not-found for run listing and the cron is not active until merge; PR checks are startup_failure and merge requirements are not met",
-    "catalog_rights_review": "SomaFM presets excluded pending written permission; five remaining entries have publisher third-party-player guidance; redistribution/relay not authorized",
-    "catalog_mirror_parity": "passed; ordered runtime/JSON station metadata and third-party-player policy parity including all 25 records",
-    "wrvo_streamtheworld_allowlist": "passed; numeric live-node host labels and exact per-stream path only; deceptive hostname and cross-stream path rejected",
-    "wfmu_exact_stream_allowlist": "passed; four publisher-listed fixed HTTPS stream paths; plaintext, wrong host and cross-channel paths rejected",
-    "kunc_colorado_kuaf_allowlist": "passed exact HTTPS host/path checks and cross-channel/path rejection for KUNC, Colorado Sound and KUAF1/2/3",
-    "kusc_streamtheworld_allowlist": "passed exact KUSCMP128 StreamTheWorld path checks with WRVO feeds and rejects cross-station paths",
-    "discovery_drop_cancellation": "passed focused test and both full workspace suites: dropping InputScan returns while worker is blocked, sets cancellation, and worker later observes cancellation",
-    "windows_gnu_cross_check": "passed locked cargo test --workspace --no-run targeting x86_64-pc-windows-gnu for default, rust-radio-cli/sdrconnect and rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native after probe cancellation changes; binaries compiled, not run.",
-    "interactive_cli_input_bound": "passed focused regression: rejects a 4097-byte line, accepts a 4096-byte line, handles CRLF and reads subsequent commands",
-    "interactive_cli_input_error_classification": "passed: oversized input is distinguished from stdin I/O failure; actual InvalidData reader errors stay classified as I/O and are printed once before the worker exits",
-    "native_audio_sample_formats": "passed callback conversion and gain regression for all eleven active CPAL 0.16 PCM formats (I8, I16, I24, I32, I64, U8, U16, U32, U64, F32, F64), testing -1.0, -0.5, 0, 0.75, 1.0 at 100%, 50%, and 0% volume plus played-sample accounting.",
-    "native_live_volume_changes": "passed for I8, I16, I24, I32, I64, U8, U16, U32, U64, F32 and F64; separate callback buffers picked up 100%, 50% and 0% volume and consumed-sample count reached three.",
-    "native_output_failure_diagnostics": "passed focused tests for recording asynchronous backend diagnostics and propagation into PlaybackFailure; no hardware used.",
-    "station_label_ab": "passed repeat: at 295px A full category 24/25; B names-only and C compact category 25/25; all variants fit at 340px; C saves 192px vs A. Layout fit only.",
-    "playback_stop_retry_race": "passed focused deterministic test: Stop during transient attempt failure performs no wait/retry and rejects stale ConnectionLost/Error events.",
-    "post_header_stream_cancellation": "passed loopback HTTP integration: server returns audio/mpeg headers and stalls before body; cancellation produces ConnectionAborted, releases NetworkGuard worker under 500ms, one request only.",
-    "playback_probe_cancellation": "passed tests proving a pre-canceled playback skips format probing and Stop during probe I/O error returns cancellation without reading output failure details or classifying transient network failure.",
-    "output_start_cancellation": "passed tests proving a pre-canceled startup skips resource factory and clears stale progress; cancellation during resource startup drops the acquired resource and clears the callback progress Arc.",
-    "host_policy_regression": "passed: rejects https://somafm.com./, uppercase absolute root form, and dotted subdomain; ordinary lookalike domain remains allowed",
-    "six_required_gates": "passed on implementation commit d019cbe: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked",
-    "manual_hardware_test": "not run; one native audio output test remains ignored and no physical output/receiver was used",
-    "dns_policy_classification": "passed reqwest-backed resolver fixtures: non-public-address marker maps to permanent TransportError; ordinary DNS timeout remains Network/transient",
-    "six_required_gates_latest": "passed on implementation commit 878c4ac: fmt, default tests, strict default Clippy, all-feature tests, strict all-feature Clippy, all-feature check",
-    "manual_hardware_test_latest": "not run; native audio hardware test remains ignored"
+    "fmt": "passed: cargo fmt --all -- --check",
+    "default_tests": "passed: cargo test --workspace; initial sandbox run failed only at six loopback binds, authorized local-network retry passed all tests",
+    "default_clippy": "passed: cargo clippy --workspace --all-targets -- -D warnings",
+    "all_feature_tests": "passed: cargo test --workspace --all-features with local loopback fixture permission",
+    "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets -- -D warnings",
+    "all_feature_check": "passed: cargo check --workspace --all-features",
+    "focused": "passed: rust-radio-audio all-feature library suite 54 passed / 1 ignored; rust-radio-cli all-feature suite 20 passed"
   },
   "a_b_test": {
     "variant_a": "full category plus station name",
@@ -402,40 +337,114 @@
     "interpretation": "One short sample each, measuring reqwest response-body chunks observed by the transport pump; not packet timing, decoded-buffer occupancy, callback underruns, audible acceptance, or proof a specific prebuffer prevents dropouts. Supports retaining 500ms IP prebuffer for further A/B against 200ms."
   },
   "live_prebuffer_ab_latest": {
-    "checked_at_utc": "2026-10-29T00:53:29Z",
+    "checked_at_utc": "2026-10-29T01:04Z-01:10Z",
     "station": "skylab",
-    "endpoint_validation": "decoded MP3, 48000Hz stereo before trials",
+    "endpoint_validation": "Decoded MP3 at 48000Hz stereo immediately before trials",
     "output": "system default output; available",
     "volume_percent": 0,
     "trial_seconds": 30,
-    "order": "A/B/B/A",
+    "order": "A/B/B/A repeated twice",
+    "variant_a": {
+      "profile": "low-latency",
+      "prebuffer_ms": 200,
+      "buffer_ready_latency_observed_ms": [
+        823.548458,
+        793.718,
+        748.176208,
+        760.732958
+      ],
+      "first_play_latency_observed_ms": [
+        847.891125,
+        845.760459,
+        788.942875,
+        775.387291
+      ],
+      "underrun_samples": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "mean_buffer_ready_latency_ms": 781.543906,
+      "mean_first_play_latency_ms": 814.495438
+    },
+    "variant_b": {
+      "profile": "resilient",
+      "prebuffer_ms": 500,
+      "buffer_ready_latency_observed_ms": [
+        709.116667,
+        640.956209,
+        947.0195,
+        592.612
+      ],
+      "first_play_latency_observed_ms": [
+        749.04475,
+        711.646209,
+        997.585084,
+        618.923167
+      ],
+      "underrun_samples": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "mean_buffer_ready_latency_ms": 722.426094,
+      "mean_first_play_latency_ms": 769.299803
+    },
+    "interpretation": "Muted native CPAL callback measurements, not listener preference. In this one 4-trial/profile block, 500ms averaged 59.118ms faster to buffer-ready and 45.196ms faster to first play, but sample ranges were broad and all windows reported zero callback underruns. This does not establish audible quality or a robust profile advantage; retain the existing 500ms default and repeat across sessions/feeds plus human audible comparison.",
+    "source_commit": "pending"
+  },
+  "buffer_ready_diagnostics_latest": {
+    "checked_at_utc": "2026-10-29T01:10:16Z",
+    "implementation": "Decoder-worker elapsed time at first PlaybackEvent::Buffered; first event only; timing/mutex use remains outside the CPAL callback.",
+    "cli_json_field": "buffer_ready_latency_observed_ms",
+    "verification": "All six workspace gates passed; all-feature audio library tests: 54 passed, 1 ignored; CLI: 20 passed.",
+    "live_ab": "Eight 30-second muted Skylab CPAL runs completed, A/B/B/A twice; values are in live_prebuffer_ab_latest."
+  },
+  "live_prebuffer_ab_previous": {
+    "checked_in_prior_run_utc": "2026-10-29 before 01:03 UTC (buffer-ready instrumentation not yet present)",
+    "station": "wcrb",
+    "endpoint_validation": "AAC 48000Hz stereo decoded before the prior muted trials; current rerun attempt returned TransportUnavailable at NotChecked",
+    "output": "system default output; available during prior trials",
+    "volume_percent": 0,
+    "trial_seconds": 30,
+    "order": "A/B/B/A repeated twice",
     "variant_a": {
       "profile": "low-latency",
       "prebuffer_ms": 200,
       "first_play_latency_observed_ms": [
-        674.615416,
-        827.60225
+        1294.6525,
+        1486.158959,
+        1567.60425,
+        1876.952542
       ],
       "underrun_samples": [
         0,
+        0,
+        0,
         0
       ],
-      "mean_latency_ms": 751.108833
+      "mean_latency_ms": 1556.342063
     },
     "variant_b": {
       "profile": "resilient",
       "prebuffer_ms": 500,
       "first_play_latency_observed_ms": [
-        992.15425,
-        738.498417
+        1553.545875,
+        1808.120041,
+        1503.6085,
+        1432.657
       ],
       "underrun_samples": [
         0,
+        0,
+        0,
         0
       ],
-      "mean_latency_ms": 865.3263335
+      "mean_latency_ms": 1574.482854
     },
-    "interpretation": "Muted real CPAL callback measurements, not listener preference. Two trials per profile are small; all four runs had zero callback underruns, and B mean latency was 114.218ms slower in this sample. Retain 500ms default pending more runs and human audible comparison.",
+    "interpretation": "Muted real CPAL callback measurements, not listener preference. Four trials/profile; the mean difference was 18.141ms (500ms profile slower), small relative to per-run variation. All eight WCRB windows had zero callback underrun samples. These trials predate buffer-ready instrumentation, so they do not contain buffer_ready_latency_observed_ms.",
     "implementation_commit": "7434ce9bd9e113d5773bc1a2c69b444992e7c60a"
   }
 }

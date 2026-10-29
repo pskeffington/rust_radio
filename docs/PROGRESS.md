@@ -2090,3 +2090,56 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   conflicts against the fetched `main`. Actions run 310
   (`40797089319`) failed before creating jobs (`startup_failure`, zero jobs);
   no combined statuses were reported for the checked checkpoint.
+
+## Buffer-ready diagnostics checkpoint (2026-10-29)
+
+- Added `NativePlaybackDiagnostics::buffer_ready_latency_observed` and the CLI
+  JSON field `buffer_ready_latency_observed_ms`. The playback worker records the
+  first threshold-crossing `PlaybackEvent::Buffered` elapsed time, when it
+  starts the output after the selected prebuffer is full. This happens outside
+  the CPAL callback. Existing first-play timing remains host-polled after PCM
+  consumption, so both stages can now be compared.
+- Focused validation passed: all-feature `rust-radio-audio` library tests
+  (54 passed, 1 ignored manual native-output check) and CLI tests (20 passed).
+  The worker timing test verifies only the first observation is retained, and
+  the CLI schema test verifies the new field.
+- The prior muted WCRB native CPAL A/B used four 30-second runs per profile in
+  alternating A/B/B/A blocks. At 200 ms, first-play observations were
+  1294.653/1486.159/1567.604/1876.953 ms (mean 1556.342 ms); at 500 ms they
+  were 1553.546/1808.120/1503.609/1432.657 ms (mean 1574.483 ms). The 500 ms
+  mean was 18.141 ms slower, small compared with per-run variation. All eight
+  windows reported zero callback underruns. Trials predate the new timing field
+  and do not establish audible quality or listener preference.
+- Fresh WCRB and Skylab validation attempts returned `TransportUnavailable` at
+  `NotChecked`; network access prevented repeating live trials with the new
+  field in this execution. No station catalog state was changed. The synthetic
+  production-renderer buffer A/B still passed: injected 100/300/800 ms stalls
+  yielded 0/100/600 vs 0/0/300 missing callback samples for 200/500 ms buffers.
+- Next: repeat live alternating runs when transport is reachable and compare
+  buffer-ready latency against first-play latency. Then repeat the full six
+  workspace gates, and keep physical audible/Pi/device-loss acceptance open.
+
+## Buffer-ready A/B with native output (2026-10-29)
+
+- Fresh approved Skylab validation decoded MP3 at 48 kHz stereo; system output
+  was present. Ran eight 30-second muted CPAL trials at 0% volume, in two
+  A/B/B/A blocks. All callbacks consumed audio and every trial reported zero
+  underrun samples.
+- A (200 ms) buffer-ready latency: 823.548/793.718/748.176/760.733 ms,
+  mean 781.544 ms; first-play latency: 847.891/845.760/788.943/775.387 ms,
+  mean 814.495 ms.
+- B (500 ms) buffer-ready latency: 709.117/640.956/947.020/592.612 ms,
+  mean 722.426 ms; first-play latency: 749.045/711.646/997.585/618.923 ms,
+  mean 769.300 ms. In this one small block, B averaged 59.118 ms faster to
+  buffer-ready and 45.196 ms faster to first play. Per-run ranges were broad,
+  with zero underruns for both variants; this is inconclusive, muted evidence,
+  not a robust latency win or listening preference. Keep the 500 ms default
+  provisional and collect more runs across feeds plus human audible evidence.
+- All six required gates passed after the diagnostics implementation: formatting,
+  default workspace tests, strict default Clippy, all-feature workspace tests,
+  strict all-feature Clippy and all-feature check. The first default test run
+  could not bind loopback fixtures under the sandbox; the authorized retry
+  passed, as did the all-feature test run with local fixture socket access.
+- No physical device, audible, Pi or receiver acceptance is implied by the muted
+  callback trials. A checked external probe now succeeds again, but network
+  availability was intermittent during the earlier unprivileged probes.

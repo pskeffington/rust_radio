@@ -98,9 +98,12 @@ cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 0 --output sy
 ```
 
 Save each `RUST RADIO DIAGNOSTICS` JSON line with the UTC time, commit, station,
-and output device. Compare `first_play_latency_observed_ms` and
-`underrun_samples`. The latency is measured when the CLI polls session status
-after callback PCM consumption, so it includes up to one polling interval plus
-stream/decode variance. Zero-volume callback measurements establish neither
-audible quality nor listener preference; perform a separate audible trial and
-record human listening observations before selecting a new default.
+and output device. Compare `buffer_ready_latency_observed_ms`,
+`first_play_latency_observed_ms`, and `underrun_samples`. Buffer-ready latency
+is recorded on the decoder worker when the selected prebuffer threshold is met
+and the output is started. First-play latency is measured when the CLI polls
+session status after callback PCM consumption, so it includes up to one polling
+interval plus stream/decode variance. Zero-volume callback measurements
+establish neither audible quality nor listener preference; perform a separate
+audible trial and record human listening observations before selecting a new
+default.
