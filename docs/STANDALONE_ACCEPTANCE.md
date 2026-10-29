@@ -260,3 +260,14 @@ volume 0% produced no callback underruns for either 350 ms or 500 ms. Mean
 buffer-ready latency was 753.643 ms vs 934.959 ms and first-play latency was
 802.896 ms vs 965.990 ms. This is one stable-feed, single-host result; it does
 not establish listener preference or broader network reliability.
+
+At 2026-10-29 03:31 UTC, WCRB Classical (GBH) decoded as AAC, 48 kHz stereo
+before playback. Eight muted 30-second native trials (A/B/B/A twice, balanced
+350 ms vs resilient 500 ms) all completed with zero callback underruns. Mean
+buffer-ready latency was 2227.812 ms vs 1427.275 ms; first-play was
+2266.739 ms vs 1462.261 ms. The balanced set included a 3541.560 ms startup
+outlier; medians were 1953.414/1428.868 ms (buffer-ready) and
+2002.450/1457.970 ms (first-play). This timing spread and zero underruns in
+both groups do not identify a reliability winner. Muted trials do not measure
+human preference. Raw trials are recorded in `docs/AGENT_PROGRESS.json` under
+`live_station_wcrb_balanced_resilient_ab`.

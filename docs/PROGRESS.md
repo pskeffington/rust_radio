@@ -1,5 +1,28 @@
 # Radio development progress
 
+## Curated WCRB live-feed 350/500 ms A/B (2026-10-29 03:31 UTC)
+
+- Before playback, validated curated station `wcrb`: GBH's approved endpoint
+  decoded as AAC, 48 kHz stereo, 1024 frames; validation opened no output.
+- Ran eight 30-second muted native-CPAL trials on macOS ARM64/system output,
+  350 ms balanced vs 500 ms resilient, A/B/B/A twice. All eight completed
+  without callback underruns. Buffer-ready means were 2227.812 ms vs
+  1427.275 ms; first-play means were 2266.739 ms vs 1462.261 ms. Medians
+  were 1953.414/1428.868 ms and 2002.450/1457.970 ms respectively. The
+  balanced set included a 3541.560 ms startup outlier; the broad spread and
+  zero underruns in both profiles make this inconclusive for reliability.
+  It shows no audible preference because playback was muted.
+- Raw measurements are retained at `/private/tmp/rust-radio-live-wcrb-balanced-resilient.json`
+  and in `docs/AGENT_PROGRESS.json` under `live_station_wcrb_balanced_resilient_ab`.
+  Together with the Skylab live block, both profiles had zero underruns on
+  these stable feeds. Keep the 500 ms engine default provisional; do not infer
+  a reliability advantage or listener preference from startup means alone.
+- PR #5 was open and mergeable at source head `7d7da97`; no combined statuses
+  were visible for that head. Earlier Actions run 340 failed before job
+  creation (`startup_failure`, zero jobs). This evidence-only update does not
+  change Rust source; next acceptance is blinded audible preference and
+  physical output-loss/recovery testing, plus runner CI startup recovery.
+
 ## Curated live-feed 350/500 ms A/B (2026-10-29 03:19 UTC)
 
 - Added a curated-station mode to `scripts/run_prebuffer_trace_ab.py`. It
