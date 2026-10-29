@@ -2373,3 +2373,36 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - PR #5 remained open/mergeable at `9d8181b`. Actions run 331
   (`40806730055`) failed with `startup_failure` before jobs; jobs/diagnostics
   returned no jobs, statuses, annotations or logs.
+
+## Captured transport-timing replay A/B (2026-10-29)
+
+- Added bounded response-body timing capture to the IP transport guard. Each
+  guard retains at most 256 samples (body size and interval); aggregate timing
+  counters remain unchanged. The samples describe `reqwest` body chunks
+  observed by the transport pump, including downstream backpressure, rather
+  than packet-arrival times.
+- Captured two approved-feed traces and committed sanitized size/interval-only
+  fixtures: WCRB has 76 samples/525,211 bytes over 6.402 seconds; Skylab has
+  206 samples/369,847 bytes over 8.051 seconds. No station URL or audio is in
+  these timing fixtures. Added a helper to extract future traces from the
+  ignored live timing test and extended the loopback server to replay the
+  measured intervals and response-body sizes into generated synthetic audio.
+- Replayed each trace against the same generated 40-second MP3 on this Mac at
+  0% volume using native CPAL system output. Each profile ran four 8-second
+  trials in A/B/B/A order twice (A=200 ms, B=500 ms). All 16 runs succeeded;
+  every run had zero callback underrun samples.
+- WCRB means A/B: decoded fill 212.010/215.908 ms, buffer-ready
+  532.599/409.206 ms, first-play 568.280/449.448 ms. Skylab means A/B: fill
+  213.190/218.439 ms, buffer-ready 482.740/433.046 ms, first-play
+  522.626/467.579 ms. B's lower startup means are not a causal buffer benefit:
+  there were no underruns to reduce and substantial run-to-run timing spread.
+  Keep the default provisional; this replay is neither audible preference nor
+  full-network or hardware acceptance. Per-run values are in
+  `docs/AGENT_PROGRESS.json` under `captured_trace_replay_prebuffer_ab`.
+- All six required locked workspace gates passed after the trace API/server
+  implementation: formatting, default tests, default strict Clippy,
+  all-feature tests, all-feature strict Clippy and all-feature check. The
+  ignored public-feed test and physical hardware tests are separate.
+- At source head `c6aac53`, PR #5 was open and GitHub reported mergeable. The
+  latest workflow run (332, `40807044594`) ended `startup_failure` before any
+  jobs; combined status remained empty. Remote CI is still unverified.

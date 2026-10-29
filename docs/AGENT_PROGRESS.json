@@ -632,7 +632,7 @@
       "first_play_mean": -53.096
     },
     "underruns": "0 samples reported in every trial on both feeds",
-    "interpretation": "B was about 45–59ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
+    "interpretation": "B was about 45\u201359ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
   },
   "buffer_fill_ab_latest": {
     "checked_at_utc": "2026-10-29T01:29:14Z",
@@ -1452,5 +1452,203 @@
       "missing_sample_share_relative_percent": -70.277
     },
     "interpretation": "With 11.1% average payload delivery headroom between scheduled gaps, the 500ms profile had a substantially lower missing-sample share in this eight-run synthetic block but required about 537ms more to buffer-ready. Compared with the 100ms exact-real-time delivery block, headroom allows more refill between gaps. This is one synthetic host/profile, not a broadcaster model or listener preference; keep the default provisional."
+  },
+  "captured_trace_replay_prebuffer_ab": {
+    "run_utc": "2026-10-29T02:45:55+00:00",
+    "source_commit": "36e2d083294477f253a34c2c5b48fdaf006fe657",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "protocol": "Each captured transport timing trace was replayed to the same generated 40-second stereo MP3 over the loopback-only server. Four 8-second muted native CPAL trials per profile in A/B/B/A order repeated twice; system output; A=200ms and B=500ms.",
+    "trace_capture": "2026-10-29T02:37Z from the ignored live_timing test; only body sizes/intervals were retained, with no URL or audio.",
+    "feeds": {
+      "wcrb": {
+        "trace_samples": 76,
+        "trace_body_bytes": 525211,
+        "trace_intervals_span_seconds": 6.402487,
+        "trace_fixture": "crates/rust-radio-audio/tests/fixtures/wcrb-body-timing.json",
+        "variant_a": {
+          "prebuffer_ms": 200,
+          "prebuffer_fill_latency_observed_ms": [
+            208.806458,
+            217.583833,
+            207.277958,
+            214.372708
+          ],
+          "buffer_ready_latency_observed_ms": [
+            543.2030410000001,
+            577.174709,
+            492.238125,
+            517.781417
+          ],
+          "first_play_latency_observed_ms": [
+            573.923333,
+            599.314625,
+            527.4979589999999,
+            572.3853340000001
+          ],
+          "output_samples_consumed_current_attempt": [
+            658432,
+            657408,
+            666624,
+            661504
+          ],
+          "underrun_samples": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "means": {
+            "prebuffer_fill_latency_observed_ms": 212.01023924999998,
+            "buffer_ready_latency_observed_ms": 532.599323,
+            "first_play_latency_observed_ms": 568.28031275,
+            "output_samples_consumed_current_attempt": 660992.0,
+            "underrun_samples": 0.0,
+            "missing_sample_share_percent": 0.0
+          }
+        },
+        "variant_b": {
+          "prebuffer_ms": 500,
+          "prebuffer_fill_latency_observed_ms": [
+            213.518167,
+            216.7415,
+            219.28145800000001,
+            214.090041
+          ],
+          "buffer_ready_latency_observed_ms": [
+            498.123417,
+            408.49,
+            389.097333,
+            341.113125
+          ],
+          "first_play_latency_observed_ms": [
+            563.0834169999999,
+            465.002209,
+            409.542625,
+            360.162875
+          ],
+          "output_samples_consumed_current_attempt": [
+            664576,
+            671744,
+            671744,
+            676864
+          ],
+          "underrun_samples": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "means": {
+            "prebuffer_fill_latency_observed_ms": 215.9077915,
+            "buffer_ready_latency_observed_ms": 409.20596875,
+            "first_play_latency_observed_ms": 449.44778149999996,
+            "output_samples_consumed_current_attempt": 671232.0,
+            "underrun_samples": 0.0,
+            "missing_sample_share_percent": 0.0
+          }
+        },
+        "delta_b_minus_a_means": {
+          "prebuffer_fill_latency_observed_ms": 3.897552250000018,
+          "buffer_ready_latency_observed_ms": -123.39335425000002,
+          "first_play_latency_observed_ms": -118.83253125000005,
+          "missing_sample_share_percentage_points": 0.0
+        }
+      },
+      "skylab": {
+        "trace_samples": 206,
+        "trace_body_bytes": 369847,
+        "trace_intervals_span_seconds": 8.050712,
+        "trace_fixture": "crates/rust-radio-audio/tests/fixtures/skylab-body-timing.json",
+        "variant_a": {
+          "prebuffer_ms": 200,
+          "prebuffer_fill_latency_observed_ms": [
+            203.085917,
+            216.403833,
+            212.65820799999997,
+            220.61191699999998
+          ],
+          "buffer_ready_latency_observed_ms": [
+            510.22808399999997,
+            531.176458,
+            429.920208,
+            459.63454199999995
+          ],
+          "first_play_latency_observed_ms": [
+            555.291334,
+            587.04475,
+            447.900167,
+            500.26629199999996
+          ],
+          "output_samples_consumed_current_attempt": [
+            661504,
+            662528,
+            667648,
+            666624
+          ],
+          "underrun_samples": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "means": {
+            "prebuffer_fill_latency_observed_ms": 213.18996875,
+            "buffer_ready_latency_observed_ms": 482.739823,
+            "first_play_latency_observed_ms": 522.62563575,
+            "output_samples_consumed_current_attempt": 664576.0,
+            "underrun_samples": 0.0,
+            "missing_sample_share_percent": 0.0
+          }
+        },
+        "variant_b": {
+          "prebuffer_ms": 500,
+          "prebuffer_fill_latency_observed_ms": [
+            216.313041,
+            221.370583,
+            215.418416,
+            220.652459
+          ],
+          "buffer_ready_latency_observed_ms": [
+            451.027167,
+            362.712125,
+            372.59645800000004,
+            545.8482919999999
+          ],
+          "first_play_latency_observed_ms": [
+            506.08870900000005,
+            405.062916,
+            400.173208,
+            558.989459
+          ],
+          "output_samples_consumed_current_attempt": [
+            668672,
+            675840,
+            674816,
+            660480
+          ],
+          "underrun_samples": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "means": {
+            "prebuffer_fill_latency_observed_ms": 218.43862475,
+            "buffer_ready_latency_observed_ms": 433.04601049999997,
+            "first_play_latency_observed_ms": 467.578573,
+            "output_samples_consumed_current_attempt": 669952.0,
+            "underrun_samples": 0.0,
+            "missing_sample_share_percent": 0.0
+          }
+        },
+        "delta_b_minus_a_means": {
+          "prebuffer_fill_latency_observed_ms": 5.248656000000011,
+          "buffer_ready_latency_observed_ms": -49.693812500000035,
+          "first_play_latency_observed_ms": -55.04706275000001,
+          "missing_sample_share_percentage_points": 0.0
+        }
+      }
+    },
+    "interpretation": "Both profiles had zero callback underrun samples for both captured traces. The 500ms profile showed lower mean startup latency in these blocks, but run-to-run variation was large and there was no measured dropout difference. Response-body transport timing replay uses synthetic audio and is not a full network replay, audible preference result, current station health claim, or physical device-loss acceptance. Keep the buffering default provisional."
   }
 }

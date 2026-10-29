@@ -158,3 +158,41 @@ fixture with `--interval-ms 90`. The 1600-byte chunk carries roughly 100 ms of
 encoded audio, so 90 ms pacing provides about 11.1% average delivery headroom.
 Run the same A/B/B/A sequence; this deterministic delivery schedule still is
 not a measured broadcaster network trace.
+
+### Captured response-body timing replay
+
+The ignored live test captures at most 256 response-body chunk intervals and
+sizes per approved feed. These are observations from the transport pump,
+including downstream backpressure; they are not packet arrival times. Two
+bounded sanitized samples are stored in
+`crates/rust-radio-audio/tests/fixtures/` for repeatable replay. To refresh a
+trace when network access is available:
+
+```sh
+cargo test --locked -p rust-radio-ip --test live_timing -- --ignored --nocapture > /tmp/rust-radio-live-timing.log 2>&1
+python3 scripts/extract_live_timing_trace.py /tmp/rust-radio-live-timing.log --station wcrb --output /tmp/rust-radio-wcrb-trace.json
+```
+
+Start the loopback server with a captured or refreshed timing file and the
+generated MP3 data, then run the A/B/B/A procedure above against `/live`:
+
+```sh
+python3 scripts/prebuffer_fixture_server.py --timing-trace-file crates/rust-radio-audio/tests/fixtures/wcrb-body-timing.json --fixture crates/rust-radio-audio/tests/fixtures/prebuffer-trace.mp3
+```
+
+The server replays observed intervals and response-body sizes for the captured
+samples, then resumes default pacing until the fixture or client ends. This
+preserves a measured transport timing pattern while keeping the audio payload
+synthetic. It does not reproduce the broadcaster's compressed audio, the full
+network path, decoded-buffer state, or an audible dropout. Keep this separate
+from live-feed and physical-device acceptance.
+
+On 2026-10-29, each checked-in trace was replayed for four 8-second muted
+native CPAL runs per profile in A/B/B/A order twice (A=200 ms, B=500 ms).
+All 16 runs reported zero callback underrun samples. WCRB-trace buffer-ready
+means were 532.599 ms (A) and 409.206 ms (B); Skylab-trace means were
+482.740 ms (A) and 433.046 ms (B). The run-to-run spread was substantial and
+neither trace produced underruns, so these startup means do not identify a
+reliability winner or listener preference. Keep the default provisional. Raw
+trials and capture metadata are in `docs/AGENT_PROGRESS.json` under
+`captured_trace_replay_prebuffer_ab`.
