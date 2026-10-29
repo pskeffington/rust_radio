@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:40:00Z",
+  "updated_at_utc": "2026-10-29T01:40:04Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -315,7 +315,7 @@
     "latest_pr_head": "c24bd5dc23497c3071565cfc74cef517ca02b713",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "At 2026-10-29T01:39:40Z PR #5 was open and mergeable at 4f5b3b7c9b7b1e30ecc47ee6024e21087d2ecb92; GitHub reported no workflow run or combined status for this current head. Latest observed historical run 313 (40798920739) on c24bd5d failed before job creation (startup_failure, zero jobs). Native Windows MSVC CI remains unverified."
+    "details": "At 2026-10-29T01:39:57Z PR #5 was open and mergeable at bae21d60673480fcf79f2ab8010d2c177a638766; GitHub reported no workflow run or combined status for this current head. Latest observed historical run 313 (40798920739) on c24bd5d failed before job creation (startup_failure, zero jobs). Native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -327,7 +327,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Repeat controlled live A/B under measured jitter without muting listener evaluation; investigate Actions startup_failure and continue physical device-loss/Pi/receiver acceptance, Windows MSVC, publisher rights and Rust-Boy integration gates.",
-  "current_pr_state": "PR #5 open and mergeable at pushed head 4f5b3b7c9b7b1e30ecc47ee6024e21087d2ecb92. No Actions run or combined status visible for this head as of 2026-10-29T01:39:40Z. Older run 313 (40798920739) on c24bd5d failed before job creation (startup_failure, zero jobs).",
+  "current_pr_state": "PR #5 open and mergeable at pushed head bae21d60673480fcf79f2ab8010d2c177a638766. No Actions run or combined status visible for this head as of 2026-10-29T01:39:57Z. Older run 313 (40798920739) on c24bd5d failed before job creation (startup_failure, zero jobs).",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
