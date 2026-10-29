@@ -29,13 +29,13 @@ struct ListenArgs<'a> {
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|resilient]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
     eprintln!(
-        "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|resilient]"
+        "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]"
     );
     eprintln!("Input discovery: inputs (enable nrsp-native and/or soapy-sdr for receiver scans)");
     eprintln!("Interactive listen commands: status | volume N | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
-    eprintln!("IP buffering profiles: low-latency=200ms | resilient=500ms; run with --volume 0 for muted callback A/B measurements");
+    eprintln!("IP buffering profiles: low-latency=200ms | balanced=350ms | resilient=500ms; run with --volume 0 for muted callback A/B measurements");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
     eprintln!("Direct nRSP-ST control/audio: nrsp-native-status IP:9001 | nrsp-listen IP:9001 FREQ_HZ MODE [--seconds N] [--volume N] [--output ID] (enable nrsp-native)");
@@ -264,8 +264,9 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
             "--buffering" if !used_buffering => {
                 parsed.buffering = match args[i + 1].as_str() {
                     "low-latency" => IpBufferingProfile::LowLatency,
+                    "balanced" => IpBufferingProfile::Balanced,
                     "resilient" => IpBufferingProfile::Resilient,
-                    _ => return Err("buffering must be low-latency or resilient"),
+                    _ => return Err("buffering must be low-latency, balanced, or resilient"),
                 };
                 used_buffering = true;
             }
@@ -802,12 +803,19 @@ mod tests {
             .buffering,
             IpBufferingProfile::LowLatency
         );
+        assert_eq!(
+            parse_listen(&options(&["listen", "skylab", "--buffering", "balanced"]))
+                .unwrap()
+                .buffering,
+            IpBufferingProfile::Balanced
+        );
         assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
     }
 
     #[test]
     fn buffering_profiles_are_bounded_and_report_their_configured_duration() {
         assert_eq!(IpBufferingProfile::LowLatency.prebuffer_ms(), 200);
+        assert_eq!(IpBufferingProfile::Balanced.prebuffer_ms(), 350);
         assert_eq!(IpBufferingProfile::Resilient.prebuffer_ms(), 500);
         let diagnostics: serde_json::Value = serde_json::from_str(&diagnostics_json(
             200,

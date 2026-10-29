@@ -84,11 +84,12 @@ These CLI additions have **not** been re-tested on hardware in this pass. The ea
 
 ## Native buffering A/B measurements
 
-The CLI exposes two bounded IP-radio profiles and prints one JSON diagnostic
-record at the end of timed playback. Both variants use the same station,
-device, volume and duration; `--volume 0` keeps the CPAL callback active while
-avoiding audible output. Repeat an alternating order (A/B/B/A) to reduce warm
-connection and device-start bias:
+The CLI exposes three bounded IP-radio profiles: `low-latency` (200 ms),
+`balanced` (350 ms) and `resilient` (500 ms). Existing engine start methods
+continue to default to `resilient`. Timed playback prints one JSON diagnostic
+record. Keep station, device, volume and duration fixed; `--volume 0` keeps the
+CPAL callback active while avoiding audible output. Repeat an alternating
+order (A/B/B/A) to reduce warm connection and device-start bias:
 
 ```sh
 cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 0 --output system --buffering low-latency
@@ -153,11 +154,26 @@ underrun totals when startup times differ. After recovery, the consumed count
 resets per output attempt while underruns remain session-cumulative, so do not
 combine them into a ratio for a session that retried.
 
+For repeatable loopback trials, `scripts/run_prebuffer_trace_ab.py` runs two
+profiles in A/B/B/A order twice and stores per-trial JSON. The default compares
+200 ms against 350 ms. Pass `--profile-a balanced --profile-b resilient` to
+compare 350 ms against 500 ms, or choose any two distinct supported profiles.
+
 For a repeat with average payload headroom between the same gaps, restart the
 fixture with `--interval-ms 90`. The 1600-byte chunk carries roughly 100 ms of
 encoded audio, so 90 ms pacing provides about 11.1% average delivery headroom.
 Run the same A/B/B/A sequence; this deterministic delivery schedule still is
 not a measured broadcaster network trace.
+
+On 2026-10-29, eight muted native trials compared 200 ms vs 350 ms and then
+350 ms vs 500 ms under the 90 ms pacing condition. Aggregate missing-sample
+shares were 8.020%, 6.142%, and 5.834%, with mean buffer-ready latencies of
+533.010, 653.123, and 674.922 ms respectively. The second block's 500 ms
+profile reached 2.348% missing share at 979.370 ms mean buffer-ready latency.
+Each comparison had four trials per profile, and all trials had underruns.
+These are synthetic single-host measurements; the balanced option offers a
+measured middle point but does not prove listener preference or justify
+changing the engine's 500 ms default.
 
 ### Captured response-body timing replay
 

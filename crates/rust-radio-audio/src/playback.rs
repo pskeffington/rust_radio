@@ -110,11 +110,12 @@ pub(super) struct PlaybackContext<'a> {
     output_progress: &'a OutputProgress,
 }
 
-/// The two bounded IP-radio buffering profiles used for repeatable latency
-/// and underrun comparisons. Existing start methods retain the resilient profile.
+/// Bounded IP-radio buffering profiles used for repeatable latency and underrun
+/// comparisons. Existing start methods retain the resilient profile.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum IpBufferingProfile {
     LowLatency,
+    Balanced,
     #[default]
     Resilient,
 }
@@ -123,6 +124,7 @@ impl IpBufferingProfile {
     pub const fn prebuffer_ms(self) -> u16 {
         match self {
             Self::LowLatency => 200,
+            Self::Balanced => 350,
             Self::Resilient => 500,
         }
     }

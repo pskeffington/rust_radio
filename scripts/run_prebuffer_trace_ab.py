@@ -11,8 +11,9 @@ from urllib.parse import urlsplit
 
 
 PROFILES = {
-    "A": ("low-latency", 200),
-    "B": ("resilient", 500),
+    "low-latency": 200,
+    "balanced": 350,
+    "resilient": 500,
 }
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -25,6 +26,8 @@ def parse_args():
     parser.add_argument("--volume", type=int, default=0)
     parser.add_argument("--output", default="system")
     parser.add_argument("--repetitions", type=int, default=2)
+    parser.add_argument("--profile-a", choices=PROFILES, default="low-latency")
+    parser.add_argument("--profile-b", choices=PROFILES, default="balanced")
     parser.add_argument("--output-file", type=Path)
     args = parser.parse_args()
 
@@ -45,13 +48,15 @@ def parse_args():
         parser.error("volume must be in 0..100 (default 0 keeps trials muted)")
     if not 1 <= args.repetitions <= 10:
         parser.error("repetitions must be in 1..10")
+    if args.profile_a == args.profile_b:
+        parser.error("profile-a and profile-b must name different profiles")
     if not args.cli.is_file():
         parser.error(f"CLI binary does not exist: {args.cli}")
     return args
 
 
-def run_trial(args, trial, variant):
-    profile, expected_prebuffer_ms = PROFILES[variant]
+def run_trial(args, trial, variant, profile):
+    expected_prebuffer_ms = PROFILES[profile]
     command = [
         str(args.cli),
         "stream-listen",
@@ -113,9 +118,9 @@ def run_trial(args, trial, variant):
     }
 
 
-def summarize(records):
+def summarize(records, profiles):
     summaries = {}
-    for variant in PROFILES:
+    for variant, profile in zip(("A", "B"), profiles):
         group = [record for record in records if record["variant"] == variant]
         totals = {
             "output_samples_consumed_current_attempt": sum(
@@ -126,7 +131,8 @@ def summarize(records):
         missing = totals["underrun_samples"]
         consumed = totals["output_samples_consumed_current_attempt"]
         summaries[variant] = {
-            "prebuffer_ms": PROFILES[variant][1],
+            "profile": profile,
+            "prebuffer_ms": PROFILES[profile],
             "trials": len(group),
             "mean_buffer_ready_latency_observed_ms": sum(
                 record["buffer_ready_latency_observed_ms"] for record in group
@@ -152,10 +158,17 @@ def main():
     args = parse_args()
     started_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
     records = []
+    selected_profiles = (args.profile_a, args.profile_b)
     for repetition in range(args.repetitions):
-        for variant in ("A", "B", "B", "A"):
+        order = (
+            ("A", args.profile_a),
+            ("B", args.profile_b),
+            ("B", args.profile_b),
+            ("A", args.profile_a),
+        )
+        for variant, profile in order:
             trial = len(records) + 1
-            record = run_trial(args, trial, variant)
+            record = run_trial(args, trial, variant, profile)
             records.append(record)
             print(json.dumps(record), flush=True)
 
@@ -167,9 +180,10 @@ def main():
         "volume": args.volume,
         "output": args.output,
         "repetitions": args.repetitions,
+        "profiles": {"A": args.profile_a, "B": args.profile_b},
         "trial_order": [record["variant"] for record in records],
         "records": records,
-        "summary": summarize(records),
+        "summary": summarize(records, selected_profiles),
     }
     serialized = json.dumps(result, indent=2) + "\n"
     if args.output_file:
