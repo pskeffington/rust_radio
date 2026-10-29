@@ -128,6 +128,70 @@ pub struct RadioInput {
 pub struct NetworkGuard {
     worker: Option<JoinHandle<()>>,
     stopped: Arc<AtomicBool>,
+    timing: Arc<StreamTimingStats>,
+}
+
+/// Aggregate timing for audio response body chunks observed by the HTTP pump.
+/// This is transport delivery evidence, not packet timing or audio underruns.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StreamTimingSnapshot {
+    pub chunk_count: u64,
+    pub interval_count: u64,
+    pub mean_interval_us: u64,
+    pub max_interval_us: u64,
+    pub gaps_over_200ms: u64,
+    pub gaps_over_500ms: u64,
+}
+
+#[derive(Default)]
+struct StreamTimingStats {
+    state: Mutex<StreamTimingState>,
+}
+
+#[derive(Default)]
+struct StreamTimingState {
+    last_chunk_at: Option<Instant>,
+    snapshot: StreamTimingSnapshot,
+    interval_total_us: u128,
+}
+
+impl StreamTimingStats {
+    fn record_at(&self, now: Instant) {
+        let mut state = self.state.lock().expect("Radio timing mutex poisoned");
+        state.snapshot.chunk_count = state.snapshot.chunk_count.saturating_add(1);
+        if let Some(previous) = state.last_chunk_at {
+            let interval = now.saturating_duration_since(previous);
+            let micros = interval.as_micros();
+            let micros_u64 = micros.min(u64::MAX as u128) as u64;
+            state.snapshot.interval_count = state.snapshot.interval_count.saturating_add(1);
+            state.interval_total_us = state.interval_total_us.saturating_add(micros);
+            state.snapshot.mean_interval_us = (state.interval_total_us
+                / state.snapshot.interval_count as u128)
+                .min(u64::MAX as u128) as u64;
+            state.snapshot.max_interval_us = state.snapshot.max_interval_us.max(micros_u64);
+            if interval >= Duration::from_millis(200) {
+                state.snapshot.gaps_over_200ms = state.snapshot.gaps_over_200ms.saturating_add(1);
+            }
+            if interval >= Duration::from_millis(500) {
+                state.snapshot.gaps_over_500ms = state.snapshot.gaps_over_500ms.saturating_add(1);
+            }
+        }
+        state.last_chunk_at = Some(now);
+    }
+
+    fn snapshot(&self) -> StreamTimingSnapshot {
+        self.state
+            .lock()
+            .expect("Radio timing mutex poisoned")
+            .snapshot
+    }
+}
+
+impl NetworkGuard {
+    /// Return timing for response-body chunks observed while this connection ran.
+    pub fn timing_snapshot(&self) -> StreamTimingSnapshot {
+        self.timing.snapshot()
+    }
 }
 
 impl Drop for NetworkGuard {
@@ -277,6 +341,8 @@ fn open_input(
     let worker_cancel = Arc::clone(&cancelled);
     let stopped = Arc::new(AtomicBool::new(false));
     let worker_stopped = Arc::clone(&stopped);
+    let timing = Arc::new(StreamTimingStats::default());
+    let worker_timing = Arc::clone(&timing);
     let worker = thread::Builder::new()
         .name("rust-radio-http".into())
         .spawn(move || {
@@ -288,7 +354,14 @@ fn open_input(
                 })
                 .and_then(|runtime| {
                     runtime.block_on(until_cancelled(
-                        pump_input(&id, direct, &worker_cancel, &startup_tx, &audio_tx),
+                        pump_input(
+                            &id,
+                            direct,
+                            &worker_cancel,
+                            &startup_tx,
+                            &audio_tx,
+                            &worker_timing,
+                        ),
                         &worker_cancel,
                         &worker_stopped,
                     ))
@@ -306,6 +379,7 @@ fn open_input(
     let guard = NetworkGuard {
         worker: Some(worker),
         stopped: Arc::clone(&stopped),
+        timing,
     };
 
     let start = Instant::now();
@@ -360,6 +434,7 @@ async fn pump_input(
     cancelled: &AtomicBool,
     startup: &SyncSender<Result<StreamHeaders, TransportError>>,
     audio: &SyncSender<Vec<u8>>,
+    timing: &StreamTimingStats,
 ) -> Result<(), TransportError> {
     let initial = if direct {
         station_id
@@ -475,7 +550,7 @@ async fn pump_input(
                 "Server did not return an audio stream: {mime}"
             )));
         }
-        return pump_audio(response, content_type, cancelled, startup, audio).await;
+        return pump_audio(response, content_type, cancelled, startup, audio, timing).await;
     }
     Err("Radio exceeded redirect/playlist hop limit".into())
 }
@@ -552,6 +627,7 @@ async fn pump_audio(
     cancelled: &AtomicBool,
     startup: &SyncSender<Result<StreamHeaders, TransportError>>,
     audio: &SyncSender<Vec<u8>>,
+    timing: &StreamTimingStats,
 ) -> Result<(), TransportError> {
     let icy_header = response
         .headers()
@@ -579,6 +655,7 @@ async fn pump_audio(
         let Some(piece) = piece else {
             return Err(TransportError::Network("Radio stream ended".into()));
         };
+        timing.record_at(Instant::now());
         for fragment in piece.chunks(CHUNK_SIZE) {
             if !send_fragment(audio, fragment.to_vec(), cancelled).await {
                 return Ok(());
@@ -591,6 +668,27 @@ async fn pump_audio(
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn stream_timing_snapshot_aggregates_chunk_intervals_and_threshold_gaps() {
+        let stats = StreamTimingStats::default();
+        let start = Instant::now();
+        stats.record_at(start);
+        stats.record_at(start + Duration::from_millis(100));
+        stats.record_at(start + Duration::from_millis(700));
+
+        assert_eq!(
+            stats.snapshot(),
+            StreamTimingSnapshot {
+                chunk_count: 3,
+                interval_count: 2,
+                mean_interval_us: 350_000,
+                max_interval_us: 600_000,
+                gaps_over_200ms: 1,
+                gaps_over_500ms: 1,
+            }
+        );
+    }
 
     struct FailingResolver {
         non_public: bool,
@@ -782,6 +880,7 @@ mod tests {
             NetworkGuard {
                 worker: Some(worker),
                 stopped,
+                timing: Arc::new(StreamTimingStats::default()),
             },
             dropped_rx,
         )

@@ -1902,3 +1902,36 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   variant surfaced; no new source code changed in this revalidation.
 - Next: collect actual inter-chunk timing for approved feeds and do audible and
   target-device acceptance before claiming field benefit from the prebuffer.
+
+
+## Approved live response-chunk timing (2026-10-29 00:23 UTC)
+
+- Added a bounded aggregate timing snapshot to the native HTTP transport.
+  `NetworkGuard::timing_snapshot()` reports body chunks, mean and maximum
+  intervals, and counts at or above 200 ms and 500 ms. The timing point is when
+  reqwest yields an audio response-body chunk to the transport pump; it is not
+  raw packet timing, decoded-buffer occupancy, callback underruns, or audible
+  acceptance. Playlist chunks are excluded.
+- Deterministic unit coverage checked three samples at 100 ms and 600 ms,
+  producing a 350 ms mean, 600 ms maximum, one gap at each threshold.
+- The ignored bounded live timing test ran for Skylab and WCRB using the
+  publisher-approved catalog transport. Skylab: 182 chunks / 181 intervals in
+  8.02 s, 44 ms mean, 653 ms max, 15 intervals >=200 ms and 7 >=500 ms;
+  370,944 audio bytes. WCRB: 76 chunks / 75 intervals in 6.78 s, 85 ms mean,
+  406 ms max, 16 intervals >=200 ms and none >=500 ms; 524,288 audio bytes.
+  Each station had one short sample. The counts support retaining the 500 ms
+  IP prebuffer as a candidate but cannot establish that it prevents audible
+  dropouts; 300 ms more startup latency remains the known cost.
+- Repeated the deterministic buffer A/B in the full default and all-feature
+  suites: 200 ms gives modeled silence 0/100/600 ms and 500 ms gives 0/0/300 ms
+  for 100/300/800 ms injected stalls. No end-user preference or actual
+  playout-underrun comparison was performed.
+- All six required gates passed on the implementation: format, default
+  workspace tests, strict default Clippy, all-feature workspace tests, strict
+  all-feature Clippy, and all-feature workspace check. The live timing test
+  remains ignored in normal CI and passed when explicitly run.
+- PR #5 is open and mergeable; this commit's workflow state is to be checked
+  after push. No physical playback, target-device, or device-loss acceptance
+  was performed. Next: compare callback underruns and startup latency during
+  repeated audible A/B playback on Mac, then repeat on Raspberry Pi if
+  available.

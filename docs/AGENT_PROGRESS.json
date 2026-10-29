@@ -1,10 +1,12 @@
 {
-  "updated_at_utc": "2026-10-29T00:18:13Z",
+  "updated_at_utc": "2026-10-29T00:23:22Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
+    "Added NetworkGuard::timing_snapshot() for bounded response-body chunk interval diagnostics and deterministic threshold coverage; an explicit live sample measured Skylab (182 chunks, 44ms mean, 653ms max, 15 gaps >=200ms, 7 >=500ms) and WCRB (76 chunks, 85ms mean, 406ms max, 16 >=200ms, 0 >=500ms). This is one short transport sample per station, not packet or audible-underrun evidence.",
+    "All six required gates passed: format, default tests, strict default Clippy, all-feature tests, strict all-feature Clippy, and all-feature check. Explicit ignored live_timing test passed.",
     "Preserved the SafeResolver non-public-address marker through reqwest so unsafe DNS answers are terminal instead of consuming bounded retries; ordinary resolver timeouts remain transient.",
     "Focused reqwest resolver-classification test and all six local gates passed.",
     "Repeated A/B/C at 295px: full category 24/25, names-only/compact 25/25; all variants 25/25 at 340px; compact saves 192px and full category overflows wcrb. Fit only.",
@@ -288,10 +290,10 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Instrument actual inter-chunk arrival timing on approved live feeds, and run audible/target-device acceptance to evaluate the IP prebuffer; measure Pi startup/CPU/memory and continue Bluetooth/USB, receiver, rights, Windows MSVC/AArch64 and actionable CI gates.",
+  "next_priority": "Repeat audible 200ms vs 500ms playback A/B while recording callback underruns and startup latency; then validate on Raspberry Pi and continue physical output-loss, receiver, rights, and Windows MSVC gates.",
   "current_pr_state": "PR #5 open and mergeable at evidence head 577dc21 when checked at 00:18Z; no reviews, no workflow run or combined status visible. Last observed run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses).",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on source commit 3a121df as of 2026-10-29T00:15Z: cargo fmt --all -- --check; cargo test --workspace --locked (with loopback fixture access); cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked (with loopback fixture access); cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked.",
+  "six_required_gates_latest": "passed on current implementation before commit: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
   "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed.",
@@ -317,5 +319,30 @@
     "selected": "500ms for Internet IP streams",
     "interpretation": "Deterministic steady-state jitter model only; not live network or hardware measurement."
   },
-  "muted_native_integration_latest": "Passed 2026-10-29 with the 500ms IP prebuffer: ignored native_ip_playback_switching_failure_and_responsiveness on host CPAL at 0% volume with loopback MP3/AAC; callback Playing, redirect/playlist, switching, failure, retry, responsive rendering and Stop. Not audible/device-loss acceptance."
+  "muted_native_integration_latest": "Passed 2026-10-29 with the 500ms IP prebuffer: ignored native_ip_playback_switching_failure_and_responsiveness on host CPAL at 0% volume with loopback MP3/AAC; callback Playing, redirect/playlist, switching, failure, retry, responsive rendering and Stop. Not audible/device-loss acceptance.",
+  "live_chunk_timing_latest": {
+    "test": "cargo test -p rust-radio-ip --test live_timing -- --ignored --nocapture",
+    "timestamp_utc": "2026-10-29T00:22Z",
+    "skylab": {
+      "elapsed_s": 8.02,
+      "audio_bytes": 370944,
+      "chunks": 182,
+      "intervals": 181,
+      "mean_interval_ms": 44.312,
+      "max_interval_ms": 652.994,
+      "gaps_at_or_over_200ms": 15,
+      "gaps_at_or_over_500ms": 7
+    },
+    "wcrb": {
+      "elapsed_s": 6.78,
+      "audio_bytes": 524288,
+      "chunks": 76,
+      "intervals": 75,
+      "mean_interval_ms": 85.26,
+      "max_interval_ms": 405.771,
+      "gaps_at_or_over_200ms": 16,
+      "gaps_at_or_over_500ms": 0
+    },
+    "interpretation": "One short sample each, measuring reqwest response-body chunks observed by the transport pump; not packet timing, decoded-buffer occupancy, callback underruns, audible acceptance, or proof a specific prebuffer prevents dropouts. Supports retaining 500ms IP prebuffer for further A/B against 200ms."
+  }
 }
