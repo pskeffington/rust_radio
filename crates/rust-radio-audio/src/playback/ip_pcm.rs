@@ -219,6 +219,142 @@ mod tests {
         );
     }
 
+    struct PacedSink {
+        buffered: usize,
+        played: u64,
+        underruns: u64,
+        prebuffer_samples: usize,
+        started: Cell<bool>,
+    }
+
+    impl Sink for PacedSink {
+        fn push(&mut self, frame: &[f32], cancelled: &AtomicBool) -> bool {
+            if cancelled.load(Ordering::Acquire) {
+                return false;
+            }
+            self.buffered += frame.len();
+            true
+        }
+
+        fn buffered(&self) -> usize {
+            self.buffered
+        }
+
+        fn prebuffer(&self) -> usize {
+            self.prebuffer_samples
+        }
+
+        fn played(&self) -> u64 {
+            self.played
+        }
+
+        fn start(&self) -> Result<(), String> {
+            // `Sink::start` takes `&self`, so mutate the test flag through Cell.
+            self.started.set(true);
+            Ok(())
+        }
+    }
+
+    impl PacedSink {
+        fn consume_during_stall(&mut self, samples: usize) {
+            if !self.started.get() {
+                return;
+            }
+            let consumed = self.buffered.min(samples);
+            self.buffered -= consumed;
+            self.played += consumed as u64;
+            self.underruns += (samples - consumed) as u64;
+        }
+    }
+
+    #[test]
+    fn prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls() {
+        fn run(prebuffer_ms: usize, stall_ms: usize) -> (Duration, u64, usize) {
+            // Test scale: one interleaved sample represents one ms of queued
+            // audio. Each decoded packet contributes 100ms; the callback
+            // consumes at the same scale during the injected network gaps.
+            let mut converter = PcmConverter::new(48_000, 48_000, 2, 2).unwrap();
+            let mut output = PacedSink {
+                buffered: 0,
+                played: 0,
+                underruns: 0,
+                prebuffer_samples: prebuffer_ms,
+                started: Cell::new(false),
+            };
+            let mut state = SinkState::default();
+            let first_decoded_audio_at = Instant::now();
+            let observed = Mutex::new(None);
+            let cancelled = AtomicBool::new(false);
+            let mut packet_count_at_start = None;
+
+            for packet_index in 0..5 {
+                let gap_ms = match packet_index {
+                    2 => stall_ms,
+                    3 | 4 => 100,
+                    _ => 0,
+                };
+                if gap_ms > 0 {
+                    thread::sleep(Duration::from_millis(gap_ms as u64));
+                    output.consume_during_stall(gap_ms);
+                }
+
+                state
+                    .feed(
+                        &mut converter,
+                        &[0.25; 100],
+                        &mut output,
+                        &cancelled,
+                        |event| {
+                            if event == PlaybackEvent::Buffered {
+                                super::super::record_prebuffer_fill_latency(
+                                    &observed,
+                                    first_decoded_audio_at,
+                                );
+                                packet_count_at_start = Some(packet_index + 1);
+                            }
+                        },
+                    )
+                    .unwrap();
+            }
+
+            let fill_latency = observed
+                .lock()
+                .unwrap()
+                .expect("output never reached the prebuffer threshold");
+            (
+                fill_latency,
+                output.underruns,
+                packet_count_at_start.expect("prebuffer event did not record its packet"),
+            )
+        }
+
+        let stalls_ms = [100, 300, 800];
+        let mut low_latency_fill_ms = Vec::new();
+        let mut resilient_fill_ms = Vec::new();
+        let mut low_latency_underruns = Vec::new();
+        let mut resilient_underruns = Vec::new();
+        for stall_ms in stalls_ms {
+            let (low_latency_fill, low_latency_missing, low_latency_packet) = run(200, stall_ms);
+            let (resilient_fill, resilient_missing, resilient_packet) = run(500, stall_ms);
+            assert!(
+                resilient_fill >= Duration::from_millis(stall_ms as u64 + 150),
+                "500ms threshold should include the injected stall and later packets: {resilient_fill:?} under {stall_ms}ms gap"
+            );
+            assert_eq!(low_latency_packet, 2);
+            assert_eq!(resilient_packet, 5);
+            low_latency_fill_ms.push(low_latency_fill.as_secs_f64() * 1000.0);
+            resilient_fill_ms.push(resilient_fill.as_secs_f64() * 1000.0);
+            low_latency_underruns.push(low_latency_missing);
+            resilient_underruns.push(resilient_missing);
+        }
+
+        assert_eq!(low_latency_underruns, [0, 100, 600]);
+        assert_eq!(resilient_underruns, [0, 0, 0]);
+        println!(
+            "Paced IP prebuffer A/B (stall_ms={stalls_ms:?}): A 200ms fill={low_latency_fill_ms:?}, missing={low_latency_underruns:?}; B 500ms fill={resilient_fill_ms:?}, missing={resilient_underruns:?}"
+        );
+    }
+
     #[test]
     fn start_failure_and_cancellation_never_announce_playing() {
         let mut converter = PcmConverter::new(48_000, 48_000, 2, 2).unwrap();
