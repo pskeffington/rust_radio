@@ -282,6 +282,20 @@ it does not establish live-feed behavior or listener preference. Per-trial
 records are in `docs/AGENT_PROGRESS.json` under
 `loopback_multi_gap_ab_90ms_followup`.
 
+Curated-station runs now validate the selected station before starting the
+A/B trials. The runner calls `rust-radio-cli validate STATION --json`, requires
+exactly one decoded-audio result matching the selected ID, and stores the version-1
+validation envelope beside the playback measurements. The result excludes
+resolved URLs and free-form diagnostics to avoid retaining sensitive endpoint
+values. A failed or malformed preflight aborts before opening audio output.
+
+On 2026-10-29, the WPR News preflight decoded MP3 at 44.1 kHz mono. The updated
+runner then completed eight 8-second muted native trials (350 ms vs 500 ms), all
+without callback underruns. Paired A-minus-B buffer-ready median was +225.357 ms
+with range -323.771 to +626.593 ms. This wide range crosses zero; startup and
+reliability remain inconclusive. Raw preflight and trials are recorded under
+`single_station_json_preflight_wpr_ab` in `docs/AGENT_PROGRESS.json`.
+
 For a live but still muted comparison, pass a curated station ID instead of a
 fixture URL, for example:
 

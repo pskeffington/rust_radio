@@ -131,6 +131,88 @@ def run_trial(args, trial, variant, profile):
     }
 
 
+def validate_curated_station(args):
+    command = [str(args.cli), "validate", args.station, "--json"]
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError("curated station preflight timed out") from error
+
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("curated station preflight returned invalid JSON") from error
+    if not isinstance(report, dict):
+        raise RuntimeError("curated station preflight returned an invalid report")
+    if (
+        type(report.get("schema_version")) is not int
+        or report["schema_version"] != 1
+        or set(report) != {"schema_version", "checked_at_unix", "results"}
+        or not isinstance(report.get("results"), list)
+        or len(report["results"]) != 1
+    ):
+        raise RuntimeError("curated station preflight returned an invalid report")
+    validation = report["results"][0]
+    validation_fields = {
+        "station_id",
+        "attempts",
+        "recovered",
+        "status",
+        "stage",
+        "checked_at_unix",
+        "content_type",
+        "codec",
+        "sample_rate",
+        "channels",
+        "decoded_frames",
+        "decoded",
+    }
+    if not isinstance(validation, dict) or set(validation) != validation_fields:
+        raise RuntimeError("curated station preflight returned invalid station fields")
+    if (
+        result.returncode != 0
+        or validation["station_id"] != args.station
+        or validation["status"] != "decoded"
+        or validation["stage"] != "decoded_audio"
+        or validation["decoded"] is not True
+    ):
+        raise RuntimeError(
+            "curated station preflight did not verify decoded audio "
+            f"(status={validation.get('status')!r}, "
+            f"stage={validation.get('stage')!r})"
+        )
+    numeric_fields = (
+        "checked_at_unix",
+        "attempts",
+        "sample_rate",
+        "channels",
+        "decoded_frames",
+    )
+    if any(
+        not isinstance(validation[field], int)
+        or isinstance(validation[field], bool)
+        or validation[field] <= 0
+        for field in numeric_fields
+    ):
+        raise RuntimeError("curated station preflight returned invalid metadata")
+    if (
+        type(report["checked_at_unix"]) is not int
+        or report["checked_at_unix"] != validation["checked_at_unix"]
+    ):
+        raise RuntimeError("curated station preflight returned invalid timestamps")
+    if not isinstance(validation["codec"], str) or not validation["codec"]:
+        raise RuntimeError("curated station preflight returned invalid codec metadata")
+    if validation["attempts"] != 1 or validation["recovered"] is not False:
+        raise RuntimeError("curated station preflight returned invalid attempt metadata")
+    return report
+
+
 def summarize(records, profiles):
     latency_metrics = {
         "buffer_ready": "buffer_ready_latency_observed_ms",
@@ -215,6 +297,9 @@ def repetition_order(repetition, profile_a, profile_b):
 
 def main():
     args = parse_args()
+    station_validation = (
+        validate_curated_station(args) if args.station is not None else None
+    )
     started_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
     records = []
     selected_profiles = (args.profile_a, args.profile_b)
@@ -232,6 +317,7 @@ def main():
         "environment": platform.platform(),
         "url": args.url,
         "station": args.station,
+        "station_validation": station_validation,
         "seconds": args.seconds,
         "volume": args.volume,
         "output": args.output,

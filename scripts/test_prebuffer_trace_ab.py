@@ -7,7 +7,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from run_prebuffer_trace_ab import parse_args, repetition_order, run_trial, summarize
+from run_prebuffer_trace_ab import (
+    parse_args,
+    main,
+    repetition_order,
+    run_trial,
+    summarize,
+    validate_curated_station,
+)
 
 
 class PrebufferTraceAbTests(unittest.TestCase):
@@ -57,6 +64,107 @@ class PrebufferTraceAbTests(unittest.TestCase):
         self.assertEqual(command[1:3], ["listen", "skylab"])
         self.assertEqual(record["profile"], "balanced")
         self.assertEqual(record["output_prebuffer_ms"], 350)
+
+    def test_curated_station_preflight_requires_decoded_json(self):
+        validation = {
+            "station_id": "wpr-news",
+            "attempts": 1,
+            "recovered": False,
+            "status": "decoded",
+            "stage": "decoded_audio",
+            "checked_at_unix": 1234,
+            "content_type": "audio/mpeg",
+            "codec": "MP3",
+            "sample_rate": 44100,
+            "channels": 1,
+            "decoded_frames": 1152,
+            "decoded": True,
+        }
+        report = {
+            "schema_version": 1,
+            "checked_at_unix": 1234,
+            "results": [validation],
+        }
+        args = self.parse_with_temporary_cli("--station", "wpr-news")
+        with patch("run_prebuffer_trace_ab.subprocess.run") as run:
+            run.return_value.returncode = 0
+            run.return_value.stdout = json.dumps(report)
+            run.return_value.stderr = ""
+
+            validation = validate_curated_station(args)
+
+        self.assertEqual(validation, report)
+        self.assertEqual(
+            run.call_args.args[0][1:],
+            ["validate", "wpr-news", "--json"],
+        )
+        self.assertEqual(run.call_args.kwargs["timeout"], 60)
+
+    def test_curated_station_preflight_rejects_non_decoded_or_wrong_station(self):
+        args = self.parse_with_temporary_cli("--station", "wpr-news")
+        base = {
+            "station_id": "wpr-news",
+            "attempts": 1,
+            "recovered": False,
+            "status": "unavailable",
+            "stage": "endpoint_reached",
+            "checked_at_unix": 1234,
+            "content_type": None,
+            "codec": None,
+            "sample_rate": None,
+            "channels": None,
+            "decoded_frames": 0,
+            "decoded": False,
+        }
+        wrong_station = {
+            **base,
+            "status": "decoded",
+            "stage": "decoded_audio",
+            "decoded": True,
+            "decoded_frames": 1152,
+            "station_id": "skylab",
+        }
+        sensitive = {
+            **wrong_station,
+            "station_id": "wpr-news",
+            "resolved_url": "https://example.test/live?token=secret",
+        }
+        reports = (
+            {"schema_version": 1, "checked_at_unix": 1234, "results": [base]},
+            {"schema_version": 1, "checked_at_unix": 1234, "results": [wrong_station]},
+            {"schema_version": True, "checked_at_unix": 1234, "results": [base]},
+            {"schema_version": 1, "checked_at_unix": 1234, "results": [sensitive]},
+            {"schema_version": 1, "checked_at_unix": 1234, "results": []},
+            {
+                "schema_version": 1,
+                "checked_at_unix": 1234,
+                "resolved_url": "https://example.test/live?token=secret",
+                "results": [base],
+            },
+        )
+        for report in reports:
+            with self.subTest(report=report):
+                with patch("run_prebuffer_trace_ab.subprocess.run") as run:
+                    run.return_value.returncode = 0
+                    run.return_value.stdout = json.dumps(report)
+                    run.return_value.stderr = ""
+                    with self.assertRaisesRegex(RuntimeError, "preflight"):
+                        validate_curated_station(args)
+
+    def test_main_aborts_before_playback_when_station_preflight_fails(self):
+        args = self.parse_with_temporary_cli("--station", "wpr-news")
+        with (
+            patch("run_prebuffer_trace_ab.parse_args", return_value=args),
+            patch(
+                "run_prebuffer_trace_ab.validate_curated_station",
+                side_effect=RuntimeError("station did not decode"),
+            ),
+            patch("run_prebuffer_trace_ab.run_trial") as run_trial,
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "did not decode"):
+                main()
+        run_trial.assert_not_called()
 
     def test_repetition_order_counterbalances_first_profile(self):
         first = repetition_order(0, "balanced", "resilient")

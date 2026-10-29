@@ -1,5 +1,32 @@
 # Radio development progress
 
+## Curated A/B validation preflight (2026-10-29 04:16 UTC)
+
+- Added `rust-radio-cli validate STATION --json` as a version-1 report using the
+  existing `validate-all --json` envelope with one station result. The record
+  includes decode status/stage, timestamp, codec, format and sample facts, but
+  omits resolved URLs and free-form details.
+- Curated mode in `scripts/run_prebuffer_trace_ab.py` now runs that bounded
+  silent decode check before playback, requires one decoded PCM result for the
+  requested station, and stores the validation envelope in the A/B artifact.
+  Invalid, failed, malformed or sensitive-field preflights abort before any
+  native output trial. Loopback URL mode remains a synthetic fixture path.
+- End-to-end WPR News preflight decoded MP3, 44.1 kHz mono, 1152 frames. Eight
+  muted 8-second trials compared balanced 350 ms (A) and resilient 500 ms (B);
+  all eight had zero underruns. Buffer-ready means/medians were
+  1557.398/1603.513 ms vs 1369.014/1389.799 ms. Paired A-minus-B median was
+  +225.357 ms with a wide -323.771 to +626.593 ms range; first-play median
+  +208.675 ms (-382.985 to +603.337 ms). This is inconclusive startup evidence
+  and does not establish a reliability advantage or listener preference. Full
+  machine record is under `single_station_json_preflight_wpr_ab` in
+  `docs/AGENT_PROGRESS.json`.
+- All six locked Rust workspace gates passed. CLI JSON/privacy regressions passed;
+  Python runner suite passed 9/9, along with compile/help, workflow YAML, JSON and
+  diff checks. Actions run 354 (`40816126511`) on current pushed head `288c81b`
+  failed before job creation with zero jobs and no combined statuses.
+- Next: physical Bluetooth/USB output-loss and reconnect tests, blinded audible
+  comparison, native Windows MSVC and Raspberry Pi runtime acceptance.
+
 ## WPR News live-feed buffering A/B (2026-10-29 04:05 UTC)
 
 - Silent CLI validation decoded Wisconsin Public Radio News at

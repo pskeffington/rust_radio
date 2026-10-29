@@ -29,7 +29,7 @@ struct ListenArgs<'a> {
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION [--json] | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]"
     );
@@ -152,6 +152,32 @@ fn batch_validation_json(results: CatalogValidationResults) -> Result<String, St
     .map_err(|error| format!("Unable to encode catalog validation report: {error}"))
 }
 
+fn station_validation_json(report: &StationValidation) -> Result<String, String> {
+    let checked_at = report
+        .checked_at
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|time| time.as_secs());
+    serde_json::to_string_pretty(&serde_json::json!({
+        "schema_version": 1,
+        "checked_at_unix": checked_at,
+        "results": [{
+            "station_id": report.station_id,
+            "attempts": 1,
+            "recovered": false,
+            "status": validation_status_name(report.status),
+            "stage": validation_stage_name(report.stage),
+            "checked_at_unix": checked_at,
+            "content_type": report.content_type,
+            "codec": report.codec,
+            "sample_rate": report.sample_rate,
+            "channels": report.channels,
+            "decoded_frames": report.decoded_frames,
+            "decoded": report.is_decoded(),
+        }],
+    }))
+    .map_err(|error| format!("Unable to encode station validation report: {error}"))
+}
+
 fn validation_status_name(status: ValidationStatus) -> &'static str {
     match status {
         ValidationStatus::Unverified => "unverified",
@@ -176,6 +202,10 @@ fn validation_stage_name(stage: ValidationStage) -> &'static str {
 fn valid_validate_all_args(args: &[String]) -> bool {
     (args.len() == 2 && args[1] == "--json")
         || (args.len() == 4 && args[1] == "--json" && args[2] == "--history" && !args[3].is_empty())
+}
+
+fn valid_validate_args(args: &[String]) -> bool {
+    args.len() == 2 || (args.len() == 3 && args[2] == "--json")
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -632,9 +662,13 @@ fn run(args: &[String]) -> Result<(), String> {
             }
             Ok(())
         }
-        Some("validate") if args.len() == 2 => {
+        Some("validate") if valid_validate_args(args) => {
             let report = validate_station(&args[1])?;
-            println!("{}", validation_summary(&report));
+            if args.len() == 3 {
+                println!("{}", station_validation_json(&report)?);
+            } else {
+                println!("{}", validation_summary(&report));
+            }
             if report.is_decoded() {
                 Ok(())
             } else {
@@ -921,6 +955,44 @@ mod tests {
     }
 
     #[test]
+    fn single_station_validation_json_is_machine_readable_and_omits_urls() {
+        let mut report = StationValidation::unverified("wpr-news");
+        report.checked_at = Some(UNIX_EPOCH + Duration::from_secs(1234));
+        report.status = ValidationStatus::Decoded;
+        report.stage = ValidationStage::DecodedAudio;
+        report.resolved_url = Some("https://example.invalid/live?token=secret".into());
+        report.content_type = Some("audio/mpeg".into());
+        report.codec = Some("MP3".into());
+        report.sample_rate = Some(44_100);
+        report.channels = Some(1);
+        report.decoded_frames = 1152;
+        report.detail = "private response detail".into();
+
+        let serialized = station_validation_json(&report).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let results = json["results"].as_array().unwrap();
+        assert_eq!(results.len(), 1);
+        let result = &results[0];
+
+        assert_eq!(json["schema_version"].as_u64(), Some(1));
+        assert_eq!(result["station_id"].as_str(), Some("wpr-news"));
+        assert_eq!(result["status"].as_str(), Some("decoded"));
+        assert_eq!(result["stage"].as_str(), Some("decoded_audio"));
+        assert_eq!(json["checked_at_unix"].as_u64(), Some(1234));
+        assert_eq!(result["codec"].as_str(), Some("MP3"));
+        assert_eq!(result["sample_rate"].as_u64(), Some(44_100));
+        assert_eq!(result["channels"].as_u64(), Some(1));
+        assert_eq!(result["decoded_frames"].as_u64(), Some(1152));
+        assert_eq!(result["decoded"].as_bool(), Some(true));
+        assert_eq!(result["attempts"].as_u64(), Some(1));
+        assert_eq!(result["recovered"].as_bool(), Some(false));
+        assert!(result.get("resolved_url").is_none());
+        assert!(result.get("detail").is_none());
+        assert!(!serialized.contains("secret"));
+        assert!(!serialized.contains("private response detail"));
+    }
+
+    #[test]
     fn catalog_validation_retries_only_transient_failures_once() {
         RECOVERY_CHECKS.store(0, Ordering::SeqCst);
         let results =
@@ -1031,6 +1103,16 @@ mod tests {
             "--json",
             "--history",
             "health.json"
+        ])));
+        assert!(valid_validate_args(&options(&["validate", "skylab"])));
+        assert!(valid_validate_args(&options(&[
+            "validate", "skylab", "--json"
+        ])));
+        assert!(!valid_validate_args(&options(&[
+            "validate",
+            "skylab",
+            "--json",
+            "unexpected"
         ])));
     }
 }
