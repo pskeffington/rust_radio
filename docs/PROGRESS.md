@@ -2148,3 +2148,28 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   PR #5 remains open. Actions run 312 (`40798866432`) for the evidence head
   failed before creating jobs (`startup_failure`); no combined status checks
   were reported. All local required gates passed on the pushed code.
+
+## Second-feed buffer-ready A/B (2026-10-29)
+
+- After refreshing the pushed branch and PR state, bounded validation decoded
+  WCRB Classical as AAC, 48 kHz stereo. Ran eight 30-second muted native CPAL
+  trials on system output at 0% volume in two A/B/B/A blocks. All eight
+  completed and reported zero callback underrun samples.
+- A (200 ms) buffer-ready latency: 1411.588/1692.799/1641.195/1647.477 ms,
+  mean 1598.265 ms; first-play latency: 1452.390/1714.706/1698.628/1661.843
+  ms, mean 1631.892 ms.
+- B (500 ms) buffer-ready latency: 1345.564/1793.285/1566.869/1485.453 ms,
+  mean 1547.793 ms; first-play latency: 1366.842/1824.567/1625.744/1498.031
+  ms, mean 1578.796 ms. B averaged 50.472 ms faster to buffer-ready and
+  53.096 ms faster to first play. Per-trial latency varied by hundreds of
+  milliseconds, so this is a small muted sample, not proof of a 500 ms profile
+  advantage or evidence about audibility.
+- Across Skylab and WCRB, B averaged 45–59 ms faster on these measurements and
+  all 16 trials had zero callback underruns. The direction repeats across two
+  feeds, but both are single eight-run blocks and the sample remains too small
+  to change defaults. Keep 500 ms provisional; repeat on separate days and
+  gather a human audible comparison.
+- GitHub Actions run 313 (`40798920739`) for pushed checkpoint `c24bd5d` failed
+  before job creation (`startup_failure`); no combined statuses were present.
+  The PR is open with no reviews. This checkpoint records the second-feed
+  measurements and retains the hardware, audible and CI gates.

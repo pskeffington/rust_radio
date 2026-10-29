@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-29T01:11:35Z",
+  "updated_at_utc": "2026-10-29T01:16:51Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1: worker-measured IP buffer-ready latency; latest evidence checkpoint d12782975f4dec32c4fed3c3f65231d219bdbca0",
+  "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1: worker-measured IP buffer-ready latency and CLI diagnostic",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -206,7 +206,9 @@
     "Fresh approved Skylab validation succeeded before A/B: decoded MP3, 48000Hz stereo.",
     "Repeated live native callback A/B with the new buffer-ready metric: eight 30-second muted CPAL runs on system output, A/B/B/A twice. 200ms: buffer-ready mean 781.544ms, first-play mean 814.495ms; 500ms: buffer-ready mean 722.426ms, first-play mean 769.300ms. Every run reported zero underrun samples. Small one-feed sample; no audible conclusion or default change.",
     "All six required workspace validation gates passed after the diagnostics implementation. The initial unprivileged default workspace test hit six loopback bind permission errors; the authorized network-enabled retry passed all tests. All-feature workspace tests passed with local sockets.",
-    "Pushed source commit 7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1 and evidence checkpoint d12782975f4dec32c4fed3c3f65231d219bdbca0 to the existing PR branch. PR #5 remains open with no reviews. Actions run 312 (40798866432) for d127829 failed before job creation (startup_failure); combined status checks are empty. All local required gates passed."
+    "Pushed source commit 7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1 and evidence checkpoint d12782975f4dec32c4fed3c3f65231d219bdbca0 to the existing PR branch. PR #5 remains open with no reviews. Actions run 312 (40798866432) for d127829 failed before job creation (startup_failure); combined status checks are empty. All local required gates passed.",
+    "Cross-feed live A/B on WCRB after successful AAC 48kHz stereo validation: eight 30-second muted native CPAL trials in A/B/B/A twice. A=200ms buffer-ready mean 1598.265ms and first-play mean 1631.892ms; B=500ms 1547.793ms and 1578.796ms. Every run had zero callback underrun samples. B was 50.472ms / 53.096ms faster in these small samples, matching Skylab direction but with broad run variation; no audible conclusion.",
+    "Refreshed origin and rechecked PR #5: open, no reviews. Actions run 313 (40798920739) on c24bd5d failed at startup before jobs; combined status list empty. Source/evidence tree remained clean and matched origin before this turn's documentation update."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -409,6 +411,72 @@
     "interpretation": "One short sample each, measuring reqwest response-body chunks observed by the transport pump; not packet timing, decoded-buffer occupancy, callback underruns, audible acceptance, or proof a specific prebuffer prevents dropouts. Supports retaining 500ms IP prebuffer for further A/B against 200ms."
   },
   "live_prebuffer_ab_latest": {
+    "checked_at_utc": "2026-10-29T01:16:51Z",
+    "station": "wcrb",
+    "endpoint_validation": "Decoded AAC at 48000Hz stereo immediately before trials",
+    "output": "system default output; available",
+    "volume_percent": 0,
+    "trial_seconds": 30,
+    "order": "A/B/B/A repeated twice",
+    "variant_a": {
+      "profile": "low-latency",
+      "prebuffer_ms": 200,
+      "buffer_ready_latency_observed_ms": [
+        1411.588416,
+        1692.798667,
+        1641.195333,
+        1647.477333
+      ],
+      "first_play_latency_observed_ms": [
+        1452.389583,
+        1714.70575,
+        1698.628292,
+        1661.843458
+      ],
+      "underrun_samples": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "mean_buffer_ready_latency_ms": 1598.264937,
+      "mean_first_play_latency_ms": 1631.891771
+    },
+    "variant_b": {
+      "profile": "resilient",
+      "prebuffer_ms": 500,
+      "buffer_ready_latency_observed_ms": [
+        1345.564292,
+        1793.285083,
+        1566.868833,
+        1485.453417
+      ],
+      "first_play_latency_observed_ms": [
+        1366.842167,
+        1824.567125,
+        1625.743625,
+        1498.030708
+      ],
+      "underrun_samples": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "mean_buffer_ready_latency_ms": 1547.792906,
+      "mean_first_play_latency_ms": 1578.795906
+    },
+    "interpretation": "Muted native CPAL callback measurements, not listener preference. In this one 4-trial/profile block, 500ms averaged 50.472ms faster to buffer-ready and 53.096ms faster to first play, but each profile varied by hundreds of milliseconds. All eight runs had zero callback underrun samples. The result repeats the small Skylab direction but is not sufficient to establish a robust profile advantage or audible quality; retain the 500ms default pending broader and human listening evidence.",
+    "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1"
+  },
+  "buffer_ready_diagnostics_latest": {
+    "checked_at_utc": "2026-10-29T01:10:16Z",
+    "implementation": "Decoder-worker elapsed time at first PlaybackEvent::Buffered; first event only; timing/mutex use remains outside the CPAL callback.",
+    "cli_json_field": "buffer_ready_latency_observed_ms",
+    "verification": "All six workspace gates passed; all-feature audio library tests: 54 passed, 1 ignored; CLI: 20 passed.",
+    "live_ab": "Eight 30-second muted Skylab CPAL runs completed, A/B/B/A twice; values are in live_prebuffer_ab_latest."
+  },
+  "live_prebuffer_ab_previous": {
     "checked_at_utc": "2026-10-29T01:10:16Z",
     "station": "skylab",
     "endpoint_validation": "Decoded MP3 at 48000Hz stereo immediately before trials",
@@ -468,14 +536,16 @@
     "measurement_window_note": "Eight trials completed immediately before this checkpoint; system clock recorded at 01:10:16 UTC.",
     "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1"
   },
-  "buffer_ready_diagnostics_latest": {
-    "checked_at_utc": "2026-10-29T01:10:16Z",
-    "implementation": "Decoder-worker elapsed time at first PlaybackEvent::Buffered; first event only; timing/mutex use remains outside the CPAL callback.",
-    "cli_json_field": "buffer_ready_latency_observed_ms",
-    "verification": "All six workspace gates passed; all-feature audio library tests: 54 passed, 1 ignored; CLI: 20 passed.",
-    "live_ab": "Eight 30-second muted Skylab CPAL runs completed, A/B/B/A twice; values are in live_prebuffer_ab_latest."
+  "validation_latest": {
+    "fmt": "passed: cargo fmt --all -- --check",
+    "default_tests": "passed: cargo test --workspace; initial sandbox run failed only at six loopback binds, authorized local-network retry passed all tests",
+    "default_clippy": "passed: cargo clippy --workspace --all-targets -- -D warnings",
+    "all_feature_tests": "passed: cargo test --workspace --all-features with local loopback fixture permission",
+    "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets -- -D warnings",
+    "all_feature_check": "passed: cargo check --workspace --all-features",
+    "focused": "passed: rust-radio-audio all-feature library suite 54 passed / 1 ignored; rust-radio-cli all-feature suite 20 passed"
   },
-  "live_prebuffer_ab_previous": {
+  "live_prebuffer_ab_prior_wcrb": {
     "checked_in_prior_run_utc": "2026-10-29 before 01:03 UTC (buffer-ready instrumentation not yet present)",
     "station": "wcrb",
     "endpoint_validation": "AAC 48000Hz stereo decoded before the prior muted trials; current rerun attempt returned TransportUnavailable at NotChecked",
@@ -520,13 +590,22 @@
     "interpretation": "Muted real CPAL callback measurements, not listener preference. Four trials/profile; the mean difference was 18.141ms (500ms profile slower), small relative to per-run variation. All eight WCRB windows had zero callback underrun samples. These trials predate buffer-ready instrumentation, so they do not contain buffer_ready_latency_observed_ms.",
     "implementation_commit": "7434ce9bd9e113d5773bc1a2c69b444992e7c60a"
   },
-  "validation_latest": {
-    "fmt": "passed: cargo fmt --all -- --check",
-    "default_tests": "passed: cargo test --workspace; initial sandbox run failed only at six loopback binds, authorized local-network retry passed all tests",
-    "default_clippy": "passed: cargo clippy --workspace --all-targets -- -D warnings",
-    "all_feature_tests": "passed: cargo test --workspace --all-features with local loopback fixture permission",
-    "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets -- -D warnings",
-    "all_feature_check": "passed: cargo check --workspace --all-features",
-    "focused": "passed: rust-radio-audio all-feature library suite 54 passed / 1 ignored; rust-radio-cli all-feature suite 20 passed"
+  "cross_feed_buffer_ab": {
+    "checked_at_utc": "2026-10-29T01:16:51Z",
+    "feeds": [
+      "skylab",
+      "wcrb"
+    ],
+    "trial_design": "Each feed: eight 30-second muted native CPAL runs, system output, A/B/B/A twice. A=200ms, B=500ms.",
+    "skylab_delta_b_minus_a_ms": {
+      "buffer_ready_mean": -59.118,
+      "first_play_mean": -45.196
+    },
+    "wcrb_delta_b_minus_a_ms": {
+      "buffer_ready_mean": -50.472,
+      "first_play_mean": -53.096
+    },
+    "underruns": "0 samples reported in every trial on both feeds",
+    "interpretation": "B was about 45\u201359ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
   }
 }
