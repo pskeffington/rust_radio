@@ -166,19 +166,22 @@ def summarize(records, profiles):
     return summaries
 
 
+def repetition_order(repetition, profile_a, profile_b):
+    """Alternate ABBA/BAAB so the first trial is counterbalanced."""
+    variants = ("A", "B", "B", "A") if repetition % 2 == 0 else ("B", "A", "A", "B")
+    profiles = {"A": profile_a, "B": profile_b}
+    return tuple((variant, profiles[variant]) for variant in variants)
+
+
 def main():
     args = parse_args()
     started_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
     records = []
     selected_profiles = (args.profile_a, args.profile_b)
     for repetition in range(args.repetitions):
-        order = (
-            ("A", args.profile_a),
-            ("B", args.profile_b),
-            ("B", args.profile_b),
-            ("A", args.profile_a),
-        )
-        for variant, profile in order:
+        for variant, profile in repetition_order(
+            repetition, args.profile_a, args.profile_b
+        ):
             trial = len(records) + 1
             record = run_trial(args, trial, variant, profile)
             records.append(record)
@@ -193,6 +196,7 @@ def main():
         "volume": args.volume,
         "output": args.output,
         "repetitions": args.repetitions,
+        "order_scheme": "alternating_abba_baab",
         "profiles": {"A": args.profile_a, "B": args.profile_b},
         "trial_order": [record["variant"] for record in records],
         "records": records,

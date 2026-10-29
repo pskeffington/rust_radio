@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from run_prebuffer_trace_ab import parse_args, run_trial
+from run_prebuffer_trace_ab import parse_args, repetition_order, run_trial
 
 
 class PrebufferTraceAbTests(unittest.TestCase):
@@ -57,6 +57,15 @@ class PrebufferTraceAbTests(unittest.TestCase):
         self.assertEqual(command[1:3], ["listen", "skylab"])
         self.assertEqual(record["profile"], "balanced")
         self.assertEqual(record["output_prebuffer_ms"], 350)
+
+    def test_repetition_order_counterbalances_first_profile(self):
+        first = repetition_order(0, "balanced", "resilient")
+        second = repetition_order(1, "balanced", "resilient")
+
+        self.assertEqual([variant for variant, _ in first], ["A", "B", "B", "A"])
+        self.assertEqual([variant for variant, _ in second], ["B", "A", "A", "B"])
+        self.assertEqual(first[0][1], "balanced")
+        self.assertEqual(second[0][1], "resilient")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,33 @@
 # Radio development progress
 
+## Counterbalanced WCRB buffering A/B (2026-10-29 03:44 UTC)
+
+- Repeated the muted native WCRB 350/500 ms comparison after two consecutive
+  fixed-order A/B/B/A/A/B/B/A blocks both placed a 3.5 s outlier in their first
+  A trial. The new harness alternates A/B/B/A and B/A/A/B blocks, balancing
+  which profile runs first; regression coverage verifies both sequences.
+- Revalidated WCRB as AAC, 48 kHz stereo, 1024 decoded frames before playback.
+  Eight 30-second trials on macOS ARM64/system output had zero callback
+  underruns. Buffer-ready means were 1607.326 ms (350 ms) and 1549.155 ms
+  (500 ms); first-play means were 1648.815 ms and 1573.061 ms. This closer
+  58 ms/76 ms timing gap is still startup-only evidence, with no dropout or
+  listener-preference difference. The 500 ms default remains provisional.
+- All four Python harness regressions passed; Python byte-compilation, CLI
+  help, workflow YAML parsing and `git diff --check` passed. All six local
+  Rust gates passed on the unchanged Rust source at `317a16f` this run.
+- PR #5 remains open and mergeable. Actions run 343 (`40812675091`) for
+  `317a16f` again failed with `startup_failure` before job creation; the job
+  list is empty and combined statuses are empty. Cross-target Windows GNU
+  check, strict Clippy and test-binary compilation passed for default,
+  SDRconnect and direct nRSP-native; headless AArch64 Linux/macOS checks passed.
+- Raw data: `docs/AGENT_PROGRESS.json` keys
+  `live_station_wcrb_balanced_resilient_ab_repeat2` and
+  `live_station_wcrb_balanced_resilient_ab_counterbalanced`. The fixed-order
+  first-trial delay appeared twice but disappeared in the counterbalanced
+  block, consistent with an order effect without identifying its mechanism.
+  Next: use the counterbalanced runner for intermittent trace/feed tests and
+  obtain audible preference and physical output-loss evidence.
+
 ## Curated WCRB live-feed 350/500 ms A/B (2026-10-29 03:31 UTC)
 
 - Before playback, validated curated station `wcrb`: GBH's approved endpoint

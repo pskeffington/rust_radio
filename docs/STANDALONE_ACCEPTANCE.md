@@ -271,3 +271,15 @@ outlier; medians were 1953.414/1428.868 ms (buffer-ready) and
 both groups do not identify a reliability winner. Muted trials do not measure
 human preference. Raw trials are recorded in `docs/AGENT_PROGRESS.json` under
 `live_station_wcrb_balanced_resilient_ab`.
+
+The A/B runner now counterbalances trial starts: two repetitions use A/B/B/A
+followed by B/A/A/B, so both profiles take the first-trial position equally.
+On 2026-10-29, a repeated WCRB comparison completed eight muted 30-second
+trials with zero callback underruns. Balanced 350 ms vs resilient 500 ms mean
+buffer-ready latency was 1607.326 ms vs 1549.155 ms; first-play latency was
+1648.815 ms vs 1573.061 ms. Two earlier fixed-order blocks each showed a
+roughly 3.5-second delay on the first A trial; that outlier did not recur when
+the starting profile was counterbalanced. This suggests an order/cold-start
+effect but does not establish its cause or a reliability advantage. Detailed
+measurements are in `docs/AGENT_PROGRESS.json` under
+`live_station_wcrb_balanced_resilient_ab_counterbalanced`.
