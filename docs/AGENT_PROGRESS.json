@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-28T23:59:30Z",
+  "updated_at_utc": "2026-10-29T00:01:02Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
@@ -154,7 +154,9 @@
     "Observed Actions run 288 (40790726207) for current head fdefa21: startup_failure before jobs; run jobs and combined statuses are empty.",
     "Repeated station label A/B/C: at 295px full category 24/25; names-only and compact category 25/25; at 340px all variants fit 25/25; compact saves 192px and full category clips wcrb. Fit measurement only, not listener preference.",
     "Bounded live validate-all at 2026-10-28T23:59:21Z decoded all 25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-    "PR #5 run 289 (40790897058) for fe9fbbd failed before job creation with startup_failure, zero jobs and no combined statuses. No source defect was identified by the current checks."
+    "PR #5 run 289 (40790897058) for fe9fbbd failed before job creation with startup_failure, zero jobs and no combined statuses. No source defect was identified by the current checks.",
+    "Validation on current source: fmt, strict default/all-feature Clippy, all-feature check passed. Both initial workspace test commands were blocked by sandbox PermissionDenied on loopback binds in the stream_inputs fixture; both full test suites passed after rerunning with local fixture networking enabled. No source changes required.",
+    "No PR workflow run was visible yet for docs checkpoint 3ad18a8; previous head fe9fbbd run 289 failed before job creation (startup_failure, zero jobs, no combined statuses)."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -254,7 +256,7 @@
     "latest_pr_head": "fe9fbbdf39dbbc5e2e8b54a8be784e0f6a9b95ee",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at fe9fbbd. Actions run 289 (40790897058) failed before job creation with startup_failure; zero jobs and no combined statuses. Remote CI remains unverified; native Windows MSVC and physical hardware acceptance remain open."
+    "details": "PR #5 open and mergeable at docs checkpoint 3ad18a8. No PR run was visible yet for that head. Previous head fe9fbbd run 289 (40790897058) failed before job creation with startup_failure; zero jobs and no combined statuses. Remote CI remains unverified; native Windows MSVC and physical hardware acceptance remain open."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -266,9 +268,9 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Continue source-aware playback recovery and cancellation. Pursue audible/device-loss, Bluetooth/USB, Raspberry Pi and receiver acceptance; native Windows MSVC CI; publisher rights and national NPR source/rights; restore AArch64 cross-check with an available C toolchain.",
-  "current_pr_state": "PR #5 open and mergeable at fe9fbbd; run 289 failed before job creation with startup_failure, no jobs/statuses.",
+  "current_pr_state": "PR #5 open and mergeable at docs checkpoint 3ad18a8; no workflow run visible yet for that head. Previous run 289 failed before job creation with startup_failure, no jobs/statuses.",
   "live_catalog_revalidation": "2026-10-28T23:59:21Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on implementation commit f92f0fc: cargo fmt --all -- --check; cargo test --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked; cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked",
+  "six_required_gates_latest": "passed on current source as of 2026-10-29T00:01Z: cargo fmt --all -- --check; cargo test --workspace --locked (after allowing loopback fixtures); cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked (after allowing loopback fixtures); cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
   "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed."

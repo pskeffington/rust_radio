@@ -1768,3 +1768,16 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - No source-code change was warranted by these checks. Hardware acceptance,
   publisher-rights verification, Windows MSVC and AArch64 toolchain gates remain
   open.
+
+
+## Workspace regression gates (2026-10-29 00:01 UTC)
+
+- Re-ran all six required gates on the current source. Format, both strict Clippy
+  configurations and all-feature check passed. The first default and all-feature
+  test runs hit sandbox `PermissionDenied` while binding local loopback fixtures;
+  focused output localized the failure to test setup at `stream_inputs.rs:21`.
+- Re-ran both complete workspace test suites with local test-fixture networking
+  enabled; both passed. No source or test changes were needed.
+- The current docs head `3ad18a8` had no PR workflow run visible when checked;
+  prior head `fe9fbbd` run 289 failed before jobs with `startup_failure` (zero
+  jobs, no combined statuses). Remote CI remains unverified.
