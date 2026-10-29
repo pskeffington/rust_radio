@@ -2008,3 +2008,37 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   repeated live-feed runs to compare actual initial-play latency and underruns
   for both prebuffer variants. Keep the 500 ms choice provisional pending
   audible Mac and target-device acceptance.
+
+
+## Session output diagnostics and validation (2026-10-29 00:44 UTC)
+
+- Wired the callback underrun sample counter through internet, direct nRSP-ST,
+  SDRconnect and Soapy playback into one session-scoped atomic.
+  `NativeRadioEngine::diagnostics()` returns the accumulated missing output
+  samples and first-play latency observed at the first host status poll after
+  callback PCM consumption. The latency is a polling-time upper estimate, not
+  a precise device timestamp.
+- Re-exported `NativePlaybackDiagnostics` from the stable `rust_radio` facade.
+  The regression checks no latency before callback progress, then checks the
+  observed latency and a known underrun count.
+- Re-ran production-renderer 200 ms vs 500 ms prebuffer A/B in the
+  all-feature audio unit suite: modeled callback underruns for 100/300/800 ms
+  stalls remain 0/100/600 vs 0/0/300 samples; B adds 300 ms initial fill. This
+  is synthetic scheduling evidence, not a live output A/B or listener trial.
+- Passed: `cargo fmt --all -- --check`; default `cargo test --workspace` (after
+  the sandbox initially denied fixture TCP binds, a permission retry passed);
+  strict default Clippy; strict all-feature Clippy; all-feature workspace
+  check; all-feature rust-radio-audio library tests (53 passed, 1 ignored); and
+  the focused diagnostics test.
+- The full `cargo test --workspace --all-features` reached test bodies but
+  loopback TCP fixture binds were denied (`Operation not permitted`) in six IP
+  integration tests and socket-driven SDR unit tests. The same occurred on the
+  permission retry; those checks are environment-blocked, not code assertion
+  failures. Default feature loopback tests did pass on retry.
+- PR #5 remains open and mergeable at `447bf8c`; GitHub reports no workflow run
+  or combined status for that head. No physical playback, listener comparison,
+  Pi runtime, Bluetooth, USB or Windows MSVC acceptance was performed.
+- Next: expose a bounded operator-facing diagnostic snapshot during actual
+  playback and collect repeatable audible 200 ms/500 ms A/B measurements on
+  Mac; repeat on Pi when available. Keep modeled A/B results separate from
+  hardware evidence.

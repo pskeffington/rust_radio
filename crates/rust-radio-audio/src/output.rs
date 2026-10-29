@@ -142,29 +142,49 @@ impl OutputFailure {
 
 impl NativeAudioOutput {
     pub fn open(volume: Arc<AtomicU8>, output_id: &str) -> Result<Self, String> {
-        Self::open_with_progress(volume, output_id, Arc::new(AtomicU64::new(0)))
+        Self::open_with_progress(
+            volume,
+            output_id,
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(AtomicU64::new(0)),
+        )
     }
 
     pub(crate) fn open_with_progress(
         volume: Arc<AtomicU8>,
         output_id: &str,
         played_samples: Arc<AtomicU64>,
+        underrun_samples: Arc<AtomicU64>,
     ) -> Result<Self, String> {
-        Self::open_with_prebuffer(volume, output_id, played_samples, DEFAULT_PREBUFFER)
+        Self::open_with_prebuffer(
+            volume,
+            output_id,
+            played_samples,
+            underrun_samples,
+            DEFAULT_PREBUFFER,
+        )
     }
 
     pub(crate) fn open_ip_with_progress(
         volume: Arc<AtomicU8>,
         output_id: &str,
         played_samples: Arc<AtomicU64>,
+        underrun_samples: Arc<AtomicU64>,
     ) -> Result<Self, String> {
-        Self::open_with_prebuffer(volume, output_id, played_samples, IP_RADIO_PREBUFFER)
+        Self::open_with_prebuffer(
+            volume,
+            output_id,
+            played_samples,
+            underrun_samples,
+            IP_RADIO_PREBUFFER,
+        )
     }
 
     fn open_with_prebuffer(
         volume: Arc<AtomicU8>,
         output_id: &str,
         played_samples: Arc<AtomicU64>,
+        underrun_samples: Arc<AtomicU64>,
         prebuffer: Duration,
     ) -> Result<Self, String> {
         let host = cpal::default_host();
@@ -184,7 +204,6 @@ impl NativeAudioOutput {
         let ring = HeapRb::<f32>::new(sample_rate as usize * channels * 2);
         let (producer, consumer) = ring.split();
         let failed = Arc::new(OutputFailure::default());
-        let underrun_samples = Arc::new(AtomicU64::new(0));
         let stream = match sample_format {
             SampleFormat::I8 => build_stream::<i8>(
                 &device,
