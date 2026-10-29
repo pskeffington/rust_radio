@@ -1650,5 +1650,143 @@
       }
     },
     "interpretation": "Both profiles had zero callback underrun samples for both captured traces. The 500ms profile showed lower mean startup latency in these blocks, but run-to-run variation was large and there was no measured dropout difference. Response-body transport timing replay uses synthetic audio and is not a full network replay, audible preference result, current station health claim, or physical device-loss acceptance. Keep the buffering default provisional."
+  },
+  "captured_trace_ab_runner_followup": {
+    "run_utc": "2026-10-29T02:49:29+00:00",
+    "source_commit": "fb77c1eec2ef0f40b671177d14f45678a3ff92af",
+    "trace_fixture": "crates/rust-radio-audio/tests/fixtures/wcrb-body-timing.json",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "protocol": {
+      "url": "http://127.0.0.1:18743/live",
+      "fixture": "Generated 40-second stereo MP3 replayed through the loopback WCRB response-body timing trace.",
+      "seconds_per_trial": 8,
+      "volume": 0,
+      "output": "system",
+      "variant_a": "low-latency, 200 ms prebuffer",
+      "variant_b": "resilient, 500 ms prebuffer",
+      "trial_order": [
+        "A",
+        "B",
+        "B",
+        "A",
+        "A",
+        "B",
+        "B",
+        "A"
+      ]
+    },
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 351.94075000000004,
+        "first_play_latency_observed_ms": 394.16212499999995,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 676864,
+        "prebuffer_fill_latency_observed_ms": 201.208542,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 517.710375,
+        "first_play_latency_observed_ms": 585.761666,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 663552,
+        "prebuffer_fill_latency_observed_ms": 215.23420900000002,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 430.711209,
+        "first_play_latency_observed_ms": 467.97625,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 670720,
+        "prebuffer_fill_latency_observed_ms": 212.358334,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 353.245625,
+        "first_play_latency_observed_ms": 403.297916,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 676864,
+        "prebuffer_fill_latency_observed_ms": 215.875417,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 5,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 527.563167,
+        "first_play_latency_observed_ms": 593.514792,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 661504,
+        "prebuffer_fill_latency_observed_ms": 211.68404199999998,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 6,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 455.77441699999997,
+        "first_play_latency_observed_ms": 465.892084,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 667648,
+        "prebuffer_fill_latency_observed_ms": 221.57125,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 7,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 381.407083,
+        "first_play_latency_observed_ms": 391.48654100000005,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 676864,
+        "prebuffer_fill_latency_observed_ms": 216.945708,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 8,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 512.623709,
+        "first_play_latency_observed_ms": 566.447209,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 664576,
+        "prebuffer_fill_latency_observed_ms": 211.30295900000002,
+        "underrun_samples": 0
+      }
+    ],
+    "summary": {
+      "A": {
+        "prebuffer_ms": 200,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 436.34331275,
+        "mean_first_play_latency_observed_ms": 489.35551050000004,
+        "mean_prebuffer_fill_latency_observed_ms": 210.01774,
+        "output_samples_consumed_current_attempt": 2679808,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      },
+      "B": {
+        "prebuffer_ms": 500,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 446.40077099999996,
+        "mean_first_play_latency_observed_ms": 477.77913525,
+        "mean_prebuffer_fill_latency_observed_ms": 216.52737525,
+        "output_samples_consumed_current_attempt": 2678784,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      }
+    },
+    "interpretation": "Automated A/B/B/A replay completed with zero callback underruns in all eight trials. A and B startup metrics were mixed and close relative to run-to-run spread. This run does not show a dropout benefit, does not justify changing the default, and does not establish audibility or full network behavior."
   }
 }

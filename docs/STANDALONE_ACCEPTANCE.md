@@ -180,6 +180,18 @@ generated MP3 data, then run the A/B/B/A procedure above against `/live`:
 python3 scripts/prebuffer_fixture_server.py --timing-trace-file crates/rust-radio-audio/tests/fixtures/wcrb-body-timing.json --fixture crates/rust-radio-audio/tests/fixtures/prebuffer-trace.mp3
 ```
 
+In another terminal, automate the two A/B/B/A blocks and save every native
+diagnostic plus profile summaries as JSON:
+
+```sh
+python3 scripts/run_prebuffer_trace_ab.py --output-file /tmp/rust-radio-trace-ab.json
+```
+
+The runner is loopback-only by default, verifies that each diagnostic reports
+the intended prebuffer, and prints each trial followed by the complete result.
+Use `--seconds`, `--output` or `--repetitions` to adjust a run; the default
+keeps output muted and runs eight 8-second trials.
+
 The server replays observed intervals and response-body sizes for the captured
 samples, then resumes default pacing until the fixture or client ends. This
 preserves a measured transport timing pattern while keeping the audio payload
@@ -196,3 +208,9 @@ neither trace produced underruns, so these startup means do not identify a
 reliability winner or listener preference. Keep the default provisional. Raw
 trials and capture metadata are in `docs/AGENT_PROGRESS.json` under
 `captured_trace_replay_prebuffer_ab`.
+
+The automated WCRB-trace runner was repeated on the same host: A/B buffer-ready
+means were 436.343/446.401 ms and first-play means were 489.356/477.779 ms.
+All eight trials again had zero callback underruns. The mixed startup result
+and absent dropout separation do not justify a default change; per-run data is
+in `docs/AGENT_PROGRESS.json` under `captured_trace_ab_runner_followup`.

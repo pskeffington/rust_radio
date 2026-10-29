@@ -2406,3 +2406,28 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - At source head `c6aac53`, PR #5 was open and GitHub reported mergeable. The
   latest workflow run (332, `40807044594`) ended `startup_failure` before any
   jobs; combined status remained empty. Remote CI is still unverified.
+
+## Automated captured-trace A/B runner (2026-10-29)
+
+- Added `scripts/run_prebuffer_trace_ab.py` to automate the eight-trial
+  A/B/B/A-twice loop, validate that the CLI reports the intended 200/500 ms
+  profiles, and save all diagnostics and aggregate missing-sample share as
+  JSON. It accepts only HTTP URLs on `127.0.0.1` and defaults to 0% volume.
+- Ran it against the committed WCRB body-timing replay on the Mac system
+  output. All eight 8-second runs succeeded with zero callback underruns.
+  A=200 ms means: fill 210.018 ms, buffer-ready 436.343 ms, first-play
+  489.356 ms. B=500 ms: fill 216.527 ms, buffer-ready 446.401 ms, first-play
+  477.779 ms. The startup measures are mixed and close relative to run spread;
+  no reliability difference was measured. Keep the default provisional.
+- The machine-readable run, including all individual measurements, is in
+  `docs/AGENT_PROGRESS.json` under `captured_trace_ab_runner_followup`.
+  Python syntax/help checks and rejected-URL checks passed. The full Cargo gate
+  run from the prior checkpoint still applies to the unchanged Rust sources;
+  no Rust code changed in this runner-only increment.
+- Exact pushed head `f40c0b5` remains open/mergeable on PR #5. Actions run 333
+  (`40808442029`) failed before job creation; the jobs endpoint and PR
+  diagnostics returned no jobs, checks, statuses, annotations or logs. The
+  recurring remote CI issue remains without actionable root-cause evidence.
+- Next: use the saved runner output for repeat comparisons and move to
+  cross-target compilation plus physical audio/device-loss acceptance when
+  hardware is available. Human audible preference remains untested.
