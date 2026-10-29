@@ -19,7 +19,8 @@
   `wpr_news_live_balanced_resilient_ab`.
 - Actions run 352 (`40815715224`) on the then-current head `69ed85a` also
   ended `startup_failure` before job creation; there were zero jobs and no
-  combined statuses.
+  combined statuses. The follow-up evidence commit `184742c` is pushed; GitHub
+  has not exposed a run or combined status for that exact head yet.
 - Next: prioritize physical output-loss/reconnect and audible listening tests,
   followed by native Windows MSVC and Raspberry Pi runtime acceptance.
 
