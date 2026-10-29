@@ -20,9 +20,9 @@
   rejection, workflow YAML parsing and `git diff --check` passed. The six
   workspace gates remain passing on the unchanged Rust source from the prior
   checkpoint; this turn changed the Python harness and its workflow test step.
-- PR #5 remains open/mergeable at `5d11d08`. Actions run 340
-  (`40811389507`) failed before job creation (`startup_failure`); the jobs
-  endpoint returned zero jobs and combined statuses were empty.
+- PR #5 remains open and mergeable at `28af928`; exact-head workflow runs
+  and combined statuses were empty at 03:25 UTC. Previous docs head `5d11d08`
+  had Actions run 340 (`40811389507`) fail at startup with zero jobs.
 - Next: repeat 350/500 ms on another curated feed, then obtain audible and
   physical output-loss acceptance before considering a default change.
 
@@ -49,7 +49,8 @@
   playback/device-loss acceptance was performed. PR #5 remains open and mergeable at head `67e35f1`. Actions run 339
   (`40811281044`) on that head failed before job creation (`startup_failure`);
   the jobs endpoint returned zero jobs and combined statuses were empty. The
-  PR body now summarizes the balanced-profile implementation and A/B evidence.
+  PR body now summarizes the balanced-profile implementation and both A/B
+  blocks.
 - Code commit `98235f5` adds the profile and flexible runner; `2fa930a` keeps
   the original public enum source-compatible. Next: obtain blinded audible
   preference and physical output-loss evidence, then repeat on another host or
