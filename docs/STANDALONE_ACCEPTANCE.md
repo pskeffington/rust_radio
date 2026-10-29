@@ -406,3 +406,10 @@ Raw data is under `wpr_news_live_ab_30s_overnight_followup` in
 - Buffer-ready means/medians were 574.294/567.796 ms vs 569.996/558.109 ms. Paired A-minus-B median was -14.088 ms (range -47.260 to +92.626 ms); first-play median was -18.951 ms (range -58.663 to +66.713 ms). Both ranges cross zero, so this second-feed comparison does not establish a latency or reliability winner, and muted trials measure no listener preference. Keep the 500 ms default.
 - Full decoded preflight and individual measurements are in `docs/AGENT_PROGRESS.json` under `live_station_wfmu_balanced_resilient_ab`; the original harness artifact is `/private/tmp/rust-radio-wfmu-balanced-resilient-ab-2026-10-29.json`.
 - The A/B runner regression suite passed 12/12 and the CLI built successfully.
+
+
+## Curated station silent-validation sweep (2026-10-29 23:50 UTC)
+
+- `validate-all --json` checked all 25 curated feeds without opening an audio output. Twenty-four decoded successfully: 19 MP3 and 5 AAC. Skylab was the only unavailable result; it had no decoded format evidence and returned `TransportUnavailable` before endpoint/header validation. An immediate single-station check returned the same unavailable stage with one attempt and endpoint unknown.
+- This is a point-in-time transport failure, not evidence that the publisher removed or permanently changed the feed. The catalog entry is preserved; retry in a later validation window before any endpoint or availability decision.
+- The full sanitized JSON results and recheck are in `docs/AGENT_PROGRESS.json` under `live_catalog_sweep_2026_10_29`. The sweep artifact is also saved at `/private/tmp/rust-radio-catalog-validation-2026-10-29.json`.

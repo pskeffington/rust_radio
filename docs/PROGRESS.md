@@ -2871,3 +2871,10 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The A/B runner regression suite passed 12/12 and the CLI built successfully.
 
 PR/CI refresh at 2026-10-29 23:49 UTC: PR #5 is open at `52e3bb4`. GitHub returned `mergeable: false`, while a fresh local merge-tree against `origin/main` was clean. No exact-head Actions run or combined status was visible. Treat GitHub’s mergeability field as an unresolved snapshot, not a confirmed conflict.
+
+
+## Curated station silent-validation sweep (2026-10-29 23:50 UTC)
+
+- `validate-all --json` checked all 25 curated feeds without opening an audio output. Twenty-four decoded successfully: 19 MP3 and 5 AAC. Skylab was the only unavailable result; it had no decoded format evidence and returned `TransportUnavailable` before endpoint/header validation. An immediate single-station check returned the same unavailable stage with one attempt and endpoint unknown.
+- This is a point-in-time transport failure, not evidence that the publisher removed or permanently changed the feed. The catalog entry is preserved; retry in a later validation window before any endpoint or availability decision.
+- The full sanitized JSON results and recheck are in `docs/AGENT_PROGRESS.json` under `live_catalog_sweep_2026_10_29`. The sweep artifact is also saved at `/private/tmp/rust-radio-catalog-validation-2026-10-29.json`.
