@@ -1,5 +1,24 @@
 # Radio development progress
 
+## Combined captured Skylab pacing and stall A/B (2026-10-29 03:57 UTC)
+
+- Replayed the captured Skylab response-body sizes/intervals with bundled synthetic
+  MP3 audio, adding 350/500/250 ms stalls after chunks 20/38/54. Eight
+  counterbalanced muted native CPAL trials completed on macOS ARM64/system output.
+- Both profiles had zero callback underruns. Mean buffer-ready/first-play was
+  491.986/522.645 ms at balanced 350 ms and 432.237/471.774 ms at resilient
+  500 ms. This direction opposes the combined WCRB replay; trial-to-trial spread
+  is material, so neither replay establishes a consistent startup winner or
+  reliability difference. Synthetic audio does not establish live-feed or human
+  listening acceptance. Raw measurements are under
+  `combined_skylab_trace_and_stalls_ab` in `docs/AGENT_PROGRESS.json`.
+- Runner tests passed 4/4 and fixture-server regression passed 1/1; YAML parsed.
+  Rust source is unchanged from the latest six-gate pass on `317a16f`. PR #5 is
+  open. Actions run 347 (`40814722306`) on base head `0ab73bc` ended
+  `startup_failure` before jobs; the jobs list and commit statuses were empty.
+- Next: continue cross-feed measurements and complete physical output-loss and
+  audible acceptance; investigate remote Actions startup, Windows MSVC and Pi.
+
 ## Combined captured pacing and stall A/B (2026-10-29 03:52 UTC)
 
 - Updated `scripts/prebuffer_fixture_server.py` to allow a captured timing trace

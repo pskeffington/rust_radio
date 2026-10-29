@@ -175,6 +175,14 @@ These are synthetic single-host measurements; the balanced option offers a
 measured middle point but does not prove listener preference or justify
 changing the engine's 500 ms default.
 
+On 2026-10-29, the combined captured-Skylab timing plus 350/500/250 ms
+post-start stall replay completed eight counterbalanced muted native trials.
+Balanced 350 ms and resilient 500 ms both had zero callback underruns; mean
+buffer-ready/first-play was 491.986/522.645 ms and 432.237/471.774 ms
+respectively. This startup direction opposes the combined WCRB replay, and neither
+block demonstrates a consistent profile advantage. Audio was synthetic; live
+stream, audible preference and physical output-loss gates remain open.
+
 ### Captured response-body timing replay
 
 The ignored live test captures at most 256 response-body chunk intervals and

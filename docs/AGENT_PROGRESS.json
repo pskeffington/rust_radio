@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T03:52:45Z",
+  "updated_at_utc": "2026-10-29T03:57:16Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "98235f5528aef8f028d16c8518c5b788baed4764 + 2fa930aefe7b1aef46d1dda91e94a09a4c647033: additive balanced buffering preset API and profile-selectable A/B runner; original public buffering enum retained unchanged",
@@ -248,7 +248,8 @@
     "Repeated WCRB A/B twice: two fixed-order blocks repeated a 3.5s first-A startup outlier. Changed the runner to alternate A/B/B/A and B/A/A/B blocks and added an ordering regression. Counterbalanced eight-trial WCRB run had zero underruns, means 1607.326/1549.155ms buffer-ready and 1648.815/1573.061ms first-play. No reliability or listening preference difference. All six Rust gates and Windows GNU/AArch64 checks passed before the Python-only runner change; four Python tests and runner checks passed afterward.",
     "GitHub Actions run 344 for pushed head fa4bce7 ended startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses were empty. PR #5 remains open and mergeable.",
     "Applied the counterbalanced runner to a captured WCRB timing trace and a repeatable 90ms multi-gap stress profile, comparing balanced 350ms with resilient 500ms (8 muted 8s native trials each). The trace replay had zero underruns and 350ms started 113.586ms faster on average. Under injected gaps, 350ms had 4.246% missing samples vs 0.735% for 500ms; 500ms cost 205.858ms buffer-ready and 183.442ms first-play. Kept the 500ms engine default. Recorded raw trial data and run-345 CI failure.",
-    "Extended the loopback fixture server to combine captured WCRB body timing with deterministic extra stalls and added a server-start regression plus a portable-core workflow step. The combined counterbalanced 350/500ms run had zero underruns in all eight trials; means were 480.865/420.987ms buffer-ready and 527.455/469.475ms first-play. Separate paced multi-gap stress still favors 500ms on missing-sample share. Python runner tests 4/4 and fixture-server test 1/1 passed; YAML parse and diff check passed."
+    "Extended the loopback fixture server to combine captured WCRB body timing with deterministic extra stalls and added a server-start regression plus a portable-core workflow step. The combined counterbalanced 350/500ms run had zero underruns in all eight trials; means were 480.865/420.987ms buffer-ready and 527.455/469.475ms first-play. Separate paced multi-gap stress still favors 500ms on missing-sample share. Python runner tests 4/4 and fixture-server test 1/1 passed; YAML parse and diff check passed.",
+    "Ran the eight-trial counterbalanced 350/500ms native A/B against the captured Skylab timing trace with added multi-gap stalls; zero underruns in both profiles. The startup direction opposed the WCRB combined replay, so the evidence supports no profile winner."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -344,13 +345,13 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40806730055,
-    "latest_pr_head": "9d8181b9ca3c7d531165b3e2aacfa6d58e79f25e",
-    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; diagnostics empty",
+    "latest_pr_run": 40814722306,
+    "latest_pr_head": "0ab73bc1459c004a6ee7c06d8f1dcdbb63d90723",
+    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no combined statuses",
     "latest_pr_jobs": 0,
-    "details": "At 2026-10-29T01:58:38Z PR #5 was open at 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true; latest returned false. No Actions run or combined status is visible for this head. A fresh merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; no jobs/logs exist. Native Windows MSVC CI remains unverified.",
-    "latest_pr_run_number": 331,
-    "latest_pr_status_checks": 0
+    "latest_pr_run_number": 347,
+    "latest_pr_status_checks": 0,
+    "details": "At 2026-10-29T03:57:16Z PR #5 is open. Workflow run 347 (40814722306) for head 0ab73bc1459c004a6ee7c06d8f1dcdbb63d90723 completed with startup_failure before job creation. GitHub returned zero jobs and no commit combined statuses; this does not indicate a code-test failure."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -361,8 +362,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Repeat combined captured trace plus additive stalls using the Skylab captured pattern, and validate whether 500ms continues to reduce missing samples across feed patterns. Obtain physical output-loss/recovery and blinded audible acceptance; native Windows MSVC, Pi runtime, and remote Actions startup remain open.",
-  "current_pr_state": "PR #5 remains open and mergeable at pushed head d84ed5e312ff182cff42851991008c7355a01eac. Actions run 345 (40814017194) for this head ended startup_failure before job creation; jobs endpoint returned zero and combined statuses are empty.",
+  "next_priority": "Continue controlled 350/500ms comparisons with additional captured traces or bounded live feeds, without treating startup latency as reliability. Obtain physical output-loss/recovery and blinded audible acceptance. Resolve repeated GitHub Actions startup_failure, and complete native Windows MSVC and Raspberry Pi runtime checks.",
+  "current_pr_state": "PR #5 remains open at base head 0ab73bc1459c004a6ee7c06d8f1dcdbb63d90723. Actions run 347 (40814722306) ended startup_failure before job creation; jobs endpoint returned zero and combined statuses are empty.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -578,7 +579,7 @@
     "measurement_window_note": "Eight trials completed immediately before this checkpoint; system clock recorded at 01:10:16 UTC.",
     "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1"
   },
-  "validation_latest": "Latest six Rust gates and Windows GNU/AArch64 cross-target validation passed on unchanged Rust source at 317a16f. After Python fixture-server/workflow edits, both Python test suites passed (4+1), YAML parse, JSON parse and git diff --check passed. Combined captured-WCRB-trace plus injected-stall native A/B completed eight counterbalanced trials with zero underruns.",
+  "validation_latest": "Latest six Rust gates and Windows GNU/AArch64 cross-target validation passed on unchanged Rust source at 317a16f. On the documentation/evidence checkpoint, counterbalanced A/B runner tests passed 4/4, fixture-server process regression passed 1/1, workflow YAML parsed, and the Skylab trace-plus-stalls A/B completed 8/8 with zero underruns. Run 347 on base head 0ab73bc failed before job creation (startup_failure), with zero jobs and no combined statuses.",
   "live_prebuffer_ab_prior_wcrb": {
     "checked_in_prior_run_utc": "2026-10-29 before 01:03 UTC (buffer-ready instrumentation not yet present)",
     "station": "wcrb",
@@ -640,7 +641,7 @@
       "first_play_mean": -53.096
     },
     "underruns": "0 samples reported in every trial on both feeds",
-    "interpretation": "B was about 45\u201359ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
+    "interpretation": "B was about 45–59ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
   },
   "buffer_fill_ab_latest": {
     "checked_at_utc": "2026-10-29T01:29:14Z",
@@ -1194,7 +1195,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T03:50:20Z",
+  "current_pr_state_checked_at_utc": "2026-10-29T03:57:16Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -2527,7 +2528,7 @@
     },
     "interpretation": "All four 350ms and four 500ms trials completed with zero callback underruns. The 350ms profile reached buffer-ready 181.316ms sooner on average and first-play 163.094ms sooner. This stable single-feed block shows no dropout difference and no listener preference; it does not override the synthetic jitter tradeoff or justify a default change."
   },
-  "python_runner_validation_latest": "Counterbalanced A/B runner tests passed 4/4; new fixture-server process regression passed 1/1, confirming captured timing trace plus scheduled stalls are accepted together; workflow YAML parses; combined trace/stall 350/500ms A/B completed 8/8 with zero underruns.",
+  "python_runner_validation_latest": "Counterbalanced A/B runner tests passed 4/4; fixture-server process regression passed 1/1; workflow YAML parses. Skylab captured timing plus scheduled stalls native A/B completed eight counterbalanced trials with zero underruns in both 350ms and 500ms profiles.",
   "live_station_wcrb_balanced_resilient_ab": {
     "started_at_utc": "2026-10-29T03:27:15+00:00",
     "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
@@ -3423,5 +3424,147 @@
       "a_b_order": "A/B/B/A then B/A/A/B"
     },
     "interpretation": "All eight muted native trials had zero callback underruns for 350ms and 500ms. Balanced/resilient means: buffer-ready 480.865ms/420.987ms and first-play 527.455ms/469.475ms. Startup timing direction varied across order; this combined replay produced no reliability separation. Audio is synthetic, so it is not live or audible acceptance."
+  },
+  "combined_skylab_trace_and_stalls_ab": {
+    "started_at_utc": "2026-10-29T03:54:58+00:00",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "url": "http://127.0.0.1:18743/live",
+    "station": null,
+    "seconds": 11,
+    "volume": 0,
+    "output": "system",
+    "repetitions": 2,
+    "order_scheme": "alternating_abba_baab",
+    "profiles": {
+      "A": "balanced",
+      "B": "resilient"
+    },
+    "trial_order": [
+      "A",
+      "B",
+      "B",
+      "A",
+      "B",
+      "A",
+      "A",
+      "B"
+    ],
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 440.905583,
+        "first_play_latency_observed_ms": 481.76124999999996,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 931840,
+        "prebuffer_fill_latency_observed_ms": 205.07945899999999,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 381.034333,
+        "first_play_latency_observed_ms": 428.021333,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 937984,
+        "prebuffer_fill_latency_observed_ms": 221.53779200000002,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 542.3073750000001,
+        "first_play_latency_observed_ms": 590.761292,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 926720,
+        "prebuffer_fill_latency_observed_ms": 221.790084,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 463.901542,
+        "first_play_latency_observed_ms": 479.03412499999996,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 929792,
+        "prebuffer_fill_latency_observed_ms": 231.69737500000002,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 5,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 390.705584,
+        "first_play_latency_observed_ms": 433.06620899999996,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 937984,
+        "prebuffer_fill_latency_observed_ms": 217.531875,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 6,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 570.408375,
+        "first_play_latency_observed_ms": 594.179209,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 921600,
+        "prebuffer_fill_latency_observed_ms": 215.912542,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 7,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 492.72954200000004,
+        "first_play_latency_observed_ms": 535.607042,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 928768,
+        "prebuffer_fill_latency_observed_ms": 220.34324999999998,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 8,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 414.901709,
+        "first_play_latency_observed_ms": 435.248792,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 934912,
+        "prebuffer_fill_latency_observed_ms": 216.649125,
+        "underrun_samples": 0
+      }
+    ],
+    "summary": {
+      "A": {
+        "profile": "balanced",
+        "prebuffer_ms": 350,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 491.9862605,
+        "mean_first_play_latency_observed_ms": 522.6454065,
+        "mean_prebuffer_fill_latency_observed_ms": 218.25815649999998,
+        "output_samples_consumed_current_attempt": 3712000,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      },
+      "B": {
+        "profile": "resilient",
+        "prebuffer_ms": 500,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 432.23725025,
+        "mean_first_play_latency_observed_ms": 471.7744065,
+        "mean_prebuffer_fill_latency_observed_ms": 219.37721900000003,
+        "output_samples_consumed_current_attempt": 3737600,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      }
+    },
+    "base_commit": "0ab73bc1459c004a6ee7c06d8f1dcdbb63d90723",
+    "condition": "Captured Skylab response-body chunk sizes and intervals plus deterministic 350/500/250ms stalls after chunks 20/38/54; bundled synthetic MP3; muted native CPAL callback on macOS ARM64 system output.",
+    "interpretation": "All eight counterbalanced trials had zero underruns. Mean buffer-ready/first-play was 491.986/522.645ms at balanced 350ms and 432.237/471.774ms at resilient 500ms. Startup direction is opposite the combined WCRB replay; with substantial trial spread and zero underruns in both, this does not establish a profile reliability advantage or a causal startup advantage. Synthetic replay does not establish live feed behavior, audible quality or listener preference."
   }
 }
