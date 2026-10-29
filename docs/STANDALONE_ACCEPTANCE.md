@@ -283,3 +283,20 @@ the starting profile was counterbalanced. This suggests an order/cold-start
 effect but does not establish its cause or a reliability advantage. Detailed
 measurements are in `docs/AGENT_PROGRESS.json` under
 `live_station_wcrb_balanced_resilient_ab_counterbalanced`.
+
+For reliability under paced stalls, a second counterbalanced comparison used
+90 ms chunks with 350/500/250 ms gaps after chunks 20/38/54. In eight muted
+8-second native trials, balanced 350 ms had a 4.246% aggregate missing-sample
+share (109568 missing samples); resilient 500 ms had 0.735% (18432 missing).
+Both profiles had underruns, but 500 ms reduced the missing share by 82.7% and
+added about 206 ms buffer-ready / 183 ms first-play latency. This favors 500 ms
+for the engine default when stream gaps are expected.
+
+A counterbalanced replay of the captured WCRB response-body timing trace used
+the same synthetic MP3 payload and observed chunk sizes/intervals. No trial
+underran; 350/500 ms buffer-ready means were 437.115/550.701 ms and first-play
+means were 471.148/589.770 ms. This trace shows the startup cost of additional
+buffering under that captured pattern but cannot verify real broadcaster audio
+or audible preference. Per-trial data for both tests is in
+`docs/AGENT_PROGRESS.json` under `counterbalanced_wcrb_timing_trace_ab` and
+`counterbalanced_90ms_multi_gap_ab`.

@@ -1,5 +1,33 @@
 # Radio development progress
 
+## Counterbalanced WCRB trace and stall A/B (2026-10-29 03:50 UTC)
+
+- Applied the updated A/B/B/A then B/A/A/B runner to two replay conditions,
+  comparing 350 ms balanced with 500 ms resilient. Both used eight muted,
+  8-second native CPAL trials on macOS ARM64/system output.
+- Captured WCRB body-timing trace replay used only observed response chunk sizes
+  and intervals with the bundled synthetic MP3. All trials had zero underruns.
+  Mean buffer-ready/first-play: 437.115/471.148 ms at 350 ms and
+  550.701/589.770 ms at 500 ms. This favors 350 ms for startup on that replay
+  and shows no dropout difference.
+- A separate loopback stream paced chunks every 90 ms and inserted stalls of
+  350/500/250 ms after chunks 20/38/54. All trials had callback underruns.
+  The 350 ms profile averaged 710.625 ms buffer-ready, 763.567 ms first-play
+  and 4.246% missing samples; 500 ms averaged 916.482 ms, 947.009 ms and
+  0.735%. Thus 500 ms reduced missing-sample share by 82.7% at a cost of
+  205.858 ms buffer-ready and 183.442 ms first-play latency. Keep 500 ms as
+  default for reliability; expose 350 ms only as the opt-in startup choice.
+- Raw trials are under `counterbalanced_wcrb_timing_trace_ab` and
+  `counterbalanced_90ms_multi_gap_ab` in `docs/AGENT_PROGRESS.json`.
+  The trace replay is synthetic audio paced by a captured timing pattern; the
+  multi-gap replay is fully synthetic. Neither establishes live-stream or
+  listener acceptance.
+- All six Rust gates were passing on source commit `317a16f`; the latest changes
+  are evidence only. PR #5 is open/mergeable. Actions run 345 (`40814017194`)
+  on `d84ed5e` failed before job creation (`startup_failure`, zero jobs and no
+  combined statuses). Next: repeat using another captured feed trace and get
+  physical audio/output-loss acceptance.
+
 ## Counterbalanced WCRB buffering A/B (2026-10-29 03:44 UTC)
 
 - Repeated the muted native WCRB 350/500 ms comparison after two consecutive
