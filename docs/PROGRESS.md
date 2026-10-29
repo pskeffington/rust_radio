@@ -2223,3 +2223,11 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Test commit: `e60f6e8e427a7d13f01cb364f5d69db89c3deb0d`; measured A/B values
   and interpretation remain in the preceding `Decoded-audio buffer-fill
   comparison` section and machine-readable `buffer_fill_ab_latest` record.
+
+## Paced packet-stall prebuffer A/B (2026-10-29)
+
+- Added `prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls` in `crates/rust-radio-audio/src/playback/ip_pcm.rs`. It feeds five paced 100ms decoded PCM packets through production `SinkState`, records the actual `Buffered` fill event, and injects 100/300/800ms delays after packet 2. A=200ms starts after packet 2; B=500ms starts after packet 5.
+- Measured fill latency for A was 0.372/0.023/0.065ms; B was 317.574/523.663/1006.891ms. The synthetic mock callback modeled missing samples A=0/100/600 and B=0/0/0 across the 100/300/800ms stall profiles. The injected delay occurs before B reaches its start threshold, so B has not started callback consumption during that gap.
+- This fixture models callback consumption and is not a physical CPAL callback or audible acceptance. The separate production `render_samples` regression continues to report missing samples A=0/100/600 and B=0/0/300 for those same stall durations.
+- Focused regression passed. All six required gates passed: format, default workspace tests, strict default Clippy, all-feature workspace tests, strict all-feature Clippy, and all-feature check. All-feature audio suite: 57 passed, 1 ignored manual hardware test; CLI suite: 20 passed. Local loopback fixture access was granted for workspace test runs.
+- Test commit `f56f8c680b5278ab6297554825a5d0b6c63cdb83`; documentation checkpoint follows. PR #5 remains open. The prior pushed head had no visible current Actions run/status; older run 313 failed before job creation with `startup_failure`. Hardware and listener A/B evidence remain outstanding.

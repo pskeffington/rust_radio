@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:32:52Z",
+  "updated_at_utc": "2026-10-29T01:39:03Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -326,7 +326,7 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Run more repeated 200ms/500ms muted native A/B samples across at least two approved live stations, capture the human audible A/B separately, then decide whether evidence supports changing the 500ms default.",
+  "next_priority": "Repeat controlled live A/B under measured jitter without muting listener evaluation; investigate Actions startup_failure and continue physical device-loss/Pi/receiver acceptance, Windows MSVC, publisher rights and Rust-Boy integration gates.",
   "current_pr_state": "PR #5 open and mergeable at checked checkpoint 6ba13a8; GitHub Actions run 310 (40797089319) failed before job creation (startup_failure, zero jobs) and no combined status was reported. A temporary non-mergeable snapshot was followed by mergeable=true; local merge-tree against fetched main found no conflicts.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
@@ -550,7 +550,7 @@
     "all_feature_tests": "passed: cargo test --workspace --all-features with local loopback fixture access",
     "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets -- -D warnings",
     "all_feature_check": "passed: cargo check --workspace --all-features",
-    "focused": "passed: rust-radio-audio all-feature library suite 56 passed / 1 ignored manual hardware check; rust-radio-cli all-feature suite 20 passed"
+    "focused": "passed: prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls; all-feature audio suite 57 passed / 1 ignored manual hardware test; CLI suite 20 passed"
   },
   "live_prebuffer_ab_prior_wcrb": {
     "checked_in_prior_run_utc": "2026-10-29 before 01:03 UTC (buffer-ready instrumentation not yet present)",
@@ -613,7 +613,7 @@
       "first_play_mean": -53.096
     },
     "underruns": "0 samples reported in every trial on both feeds",
-    "interpretation": "B was about 45\u201359ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
+    "interpretation": "B was about 45–59ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
   },
   "buffer_fill_ab_latest": {
     "checked_at_utc": "2026-10-29T01:29:14Z",
@@ -753,5 +753,44 @@
     "assertion": "The larger threshold crosses after additional paced packets, so its measured fill duration is strictly greater.",
     "result": "passed in focused all-feature test and full default/all-feature workspace suites",
     "test_commit": "e60f6e8e427a7d13f01cb364f5d69db89c3deb0d"
+  },
+  "paced_prebuffer_stall_ab_latest": {
+    "checked_at_utc": "2026-10-29T01:37Z",
+    "test": "playback::ip_pcm::tests::prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls",
+    "design": "A=200ms low-latency and B=500ms resilient. Feed five 100ms decoded PCM packets. After packet 2 inject a 100ms, 300ms, or 800ms delay before packet 3; then 100ms intervals between packets 3-5. Record fill at the actual SinkState Buffered event.",
+    "packet_start": "A starts after packet 2; B starts after packet 5.",
+    "variant_a": {
+      "prebuffer_ms": 200,
+      "fill_latency_ms": [
+        0.372,
+        0.023,
+        0.065
+      ],
+      "modeled_missing_samples": [
+        0,
+        100,
+        600
+      ]
+    },
+    "variant_b": {
+      "prebuffer_ms": 500,
+      "fill_latency_ms": [
+        317.574,
+        523.663,
+        1006.891
+      ],
+      "modeled_missing_samples": [
+        0,
+        0,
+        0
+      ]
+    },
+    "stall_profiles_ms": [
+      100,
+      300,
+      800
+    ],
+    "interpretation": "Synthetic paced test. Mock callback consumption/underrun model demonstrates the startup/fill tradeoff with stalls injected before profile B begins playback; it is not a physical CPAL callback or audible acceptance. Existing production render_samples A/B separately reports missing samples A=[0,100,600], B=[0,0,300] for these stall durations.",
+    "commit": "f56f8c680b5278ab6297554825a5d0b6c63cdb83"
   }
 }
