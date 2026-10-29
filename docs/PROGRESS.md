@@ -2002,6 +2002,8 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   (`40794577869`) failed before creating jobs (`startup_failure`, zero jobs);
   there were no combined status checks. Remote CI remains unavailable as code
   validation.
+- After pushing these commits, GitHub reported PR #5 open and mergeable at
+  `bcfadde`. No workflow run or combined status is visible for that head.
 - Next: wire callback counters into per-session diagnostic telemetry and use
   repeated live-feed runs to compare actual initial-play latency and underruns
   for both prebuffer variants. Keep the 500 ms choice provisional pending

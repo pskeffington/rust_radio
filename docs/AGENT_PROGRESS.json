@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T00:38:37Z",
+  "updated_at_utc": "2026-10-29T00:39:26Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "10eea53; CPAL callback now counts missing output samples in a relaxed atomic counter, and the 200ms/500ms prebuffer A/B exercises the production callback renderer.",
@@ -286,7 +286,7 @@
     "latest_pr_head": "604dd42f4872a8e0f7f84bba6de4c964e3708b7e",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at pre-change head 604dd42. Actions run 304 (40794577869) failed with startup_failure before jobs, with zero jobs and no combined statuses. Native Windows MSVC CI remains unverified."
+    "details": "PR #5 open and mergeable at pushed head bcfadde; no workflow run or combined status visible for that head. Latest observed run 304 (40794577869) on older head 604dd42 failed before jobs (startup_failure, zero jobs). Native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -298,7 +298,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Expose per-session native callback underrun counts and initial playback latency for diagnostics, then run repeated live-feed 200ms vs 500ms A/B on audible Mac and target device; retain hardware, receiver, rights and Windows CI gates.",
-  "current_pr_state": "PR #5 open and mergeable at pre-change head 604dd42 when checked at 2026-10-29T00:39Z. Actions run 304 (40794577869) failed before jobs (startup_failure, zero jobs); no combined statuses.",
+  "current_pr_state": "PR #5 open and mergeable at pushed head bcfadde when checked at 2026-10-29T00:39Z; no workflow run or combined status visible. Latest observed run 304 (40794577869) for older head 604dd42 failed before jobs (startup_failure, zero jobs).",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "passed on source commit 10eea53: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
