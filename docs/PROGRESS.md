@@ -19,7 +19,9 @@
 - All six workspace gates passed. Windows GNU workspace check and strict
   Clippy passed, as did the headless AArch64 macOS IP check. CLI focused tests,
   runner byte-compilation/help, JSON and diff checks passed. No physical
-  playback/device-loss acceptance was performed.
+  playback/device-loss acceptance was performed. PR #5 remains open and
+  mergeable at pushed head `e94439e`; exact-head workflow runs and combined
+  statuses were empty at 03:16 UTC.
 - Code commit `98235f5` adds the profile and flexible runner; `2fa930a` keeps
   the original public enum source-compatible. Next: obtain blinded audible
   preference and physical output-loss evidence, then repeat on another host or
