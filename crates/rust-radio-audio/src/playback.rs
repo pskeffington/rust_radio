@@ -878,7 +878,7 @@ fn decode_and_play(
         context.cancelled,
         || {
             let played_samples = begin_output_attempt(context.output_progress);
-            NativeAudioOutput::open_with_progress(
+            NativeAudioOutput::open_ip_with_progress(
                 Arc::clone(&context.volume),
                 context.output_id,
                 played_samples,

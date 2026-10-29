@@ -11,6 +11,9 @@ use std::sync::{
 use std::thread;
 use std::time::{Duration, Instant};
 
+const DEFAULT_PREBUFFER: Duration = Duration::from_millis(200);
+const IP_RADIO_PREBUFFER: Duration = Duration::from_millis(500);
+
 /// CPAL exposes OS-managed audio endpoints. Connected Bluetooth speakers
 /// and headsets appear here after pairing in macOS/Windows/Linux settings.
 #[derive(Clone, Debug)]
@@ -97,8 +100,14 @@ pub struct NativeAudioOutput {
     stream: cpal::Stream,
     pub sample_rate: u32,
     pub channels: usize,
+    prebuffer_samples: usize,
     played_samples: Arc<AtomicU64>,
     failed: Arc<OutputFailure>,
+}
+
+fn prebuffer_sample_count(sample_rate: u32, channels: usize, duration: Duration) -> usize {
+    let frames = u64::from(sample_rate) * duration.as_millis() as u64 / 1_000;
+    frames as usize * channels
 }
 
 #[derive(Default)]
@@ -140,6 +149,23 @@ impl NativeAudioOutput {
         output_id: &str,
         played_samples: Arc<AtomicU64>,
     ) -> Result<Self, String> {
+        Self::open_with_prebuffer(volume, output_id, played_samples, DEFAULT_PREBUFFER)
+    }
+
+    pub(crate) fn open_ip_with_progress(
+        volume: Arc<AtomicU8>,
+        output_id: &str,
+        played_samples: Arc<AtomicU64>,
+    ) -> Result<Self, String> {
+        Self::open_with_prebuffer(volume, output_id, played_samples, IP_RADIO_PREBUFFER)
+    }
+
+    fn open_with_prebuffer(
+        volume: Arc<AtomicU8>,
+        output_id: &str,
+        played_samples: Arc<AtomicU64>,
+        prebuffer: Duration,
+    ) -> Result<Self, String> {
         let host = cpal::default_host();
         let device = resolve_output(&host, output_id)?;
         let supported = device
@@ -152,6 +178,7 @@ impl NativeAudioOutput {
         if !(8_000..=192_000).contains(&sample_rate) || !(1..=8).contains(&channels) {
             return Err("Unsupported audio output rate or channel configuration".into());
         }
+        let prebuffer_samples = prebuffer_sample_count(sample_rate, channels, prebuffer);
         // Two seconds of interleaved device-rate PCM; bounded to at most ~12 MiB.
         let ring = HeapRb::<f32>::new(sample_rate as usize * channels * 2);
         let (producer, consumer) = ring.split();
@@ -259,13 +286,14 @@ impl NativeAudioOutput {
             stream,
             sample_rate,
             channels,
+            prebuffer_samples,
             played_samples,
             failed,
         })
     }
 
     pub fn minimum_prebuffer_samples(&self) -> usize {
-        self.sample_rate as usize * self.channels / 5
+        self.prebuffer_samples
     }
 
     pub fn buffered_samples(&self) -> usize {
@@ -393,6 +421,51 @@ fn render_samples<T>(
 mod output_identity_tests {
     use super::*;
     use cpal::Sample;
+
+    #[test]
+    fn ip_prebuffer_ab_compares_200ms_and_500ms_under_stream_stalls() {
+        fn silence_during_stall(prebuffer_ms: u64, stall_ms: u64) -> u64 {
+            let mut buffered_ms = prebuffer_ms;
+            let mut silence_ms = 0;
+            for _ in 0..stall_ms {
+                if buffered_ms == 0 {
+                    silence_ms += 1;
+                } else {
+                    buffered_ms -= 1;
+                }
+            }
+            silence_ms
+        }
+
+        let current_ms = DEFAULT_PREBUFFER.as_millis() as u64;
+        let candidate_ms = IP_RADIO_PREBUFFER.as_millis() as u64;
+        let stall_profiles = [100, 300, 800];
+        let current_silence: Vec<_> = stall_profiles
+            .iter()
+            .map(|stall| silence_during_stall(current_ms, *stall))
+            .collect();
+        let candidate_silence: Vec<_> = stall_profiles
+            .iter()
+            .map(|stall| silence_during_stall(candidate_ms, *stall))
+            .collect();
+
+        assert_eq!(prebuffer_sample_count(48_000, 2, DEFAULT_PREBUFFER), 19_200);
+        assert_eq!(
+            prebuffer_sample_count(48_000, 2, IP_RADIO_PREBUFFER),
+            48_000
+        );
+        assert_eq!(current_silence, [0, 100, 600]);
+        assert_eq!(candidate_silence, [0, 0, 300]);
+        println!(
+            "IP prebuffer A/B (steady-state buffer; injected stream stalls {:?}ms): A={}ms -> {:?}ms silence; B={}ms -> {:?}ms silence; B adds {}ms startup",
+            stall_profiles,
+            current_ms,
+            current_silence,
+            candidate_ms,
+            candidate_silence,
+            candidate_ms - current_ms
+        );
+    }
 
     #[test]
     fn asynchronous_device_error_retains_backend_diagnostic() {
