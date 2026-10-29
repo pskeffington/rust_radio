@@ -2832,7 +2832,7 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Next: pursue native MSVC CI and physical output/device-loss and SDR hardware
   acceptance; keep the A/B profile default provisional until audible and
   dropout evidence supports a change.
-# Portability validation checkpoint (2026-10-30)
+# Portability validation checkpoint (2026-10-29)
 
 - On source head `93cf016`, the six required locked workspace gates passed
   after rerunning with local loopback socket access: format, default workspace
@@ -2850,8 +2850,10 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   are toolchain gaps, not Rust diagnostics. Windows MSVC remains the required
   native CI target.
 - PR #5 remains open and mergeable at `93cf016`. Actions run 365
-  (`40974691523`) ended `startup_failure` before job creation; GitHub returned
-  no jobs or combined statuses. No source code changed in this checkpoint.
+  (`40974691523`) on parent `93cf016` ended `startup_failure` before job
+  creation; GitHub returned no jobs or combined statuses. No Actions run or
+  combined status is visible yet for checkpoint `60925e4`. No source code
+  changed in this checkpoint.
 - The WPR 350/500 ms A/B from the prior checkpoint remains inconclusive, with
   paired latency ranges crossing zero. Keep the 500 ms default; no new live A/B
   was run because no distinct experimental condition was identified.

@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-30T00:15:00Z",
+  "updated_at_utc": "2026-10-29T23:43:46Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "93cf016f926701dc091e853cc951fe7b63687778",
@@ -4957,7 +4957,7 @@
     },
     "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
     "result": "passed",
-    "timestamp_utc": "2026-10-30T00:15:00Z",
-    "context": "Initial restricted test attempt could not bind six loopback fixtures; rerun with permitted socket access passed. No source code changes."
+    "timestamp_utc": "2026-10-29T23:43:46Z",
+    "context": "Initial restricted test attempt could not bind six loopback fixtures; rerun with permitted socket access passed. No source code changes. PR #5 is open/mergeable at documentation checkpoint 60925e4; no exact-head Actions run/status was visible."
   }
 }
