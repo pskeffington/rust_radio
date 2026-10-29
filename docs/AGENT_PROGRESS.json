@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:58:50Z",
+  "updated_at_utc": "2026-10-29T02:07:17Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -215,7 +215,11 @@
     "Prior pushed head c24bd5d had PR #5 open/no reviews; Actions run 313 failed before jobs (startup_failure) with empty combined statuses. New source commit f203e23cbcd640e5613c70b0e21898ad0958a05c is validated; goal remains active.",
     "Added a paced SinkState regression: one decoded stereo packet every 10ms, 4-sample versus 8-sample thresholds, and the same prebuffer_fill_latency recorder invoked on the actual Buffered event. The larger threshold records a greater fill time. Focused test and both full workspace suites passed.",
     "Repeated all six required gates after adding the paced fixture; all passed. All-feature audio suite now 56 passed / 1 ignored manual hardware check; CLI suite 20 passed.",
-    "Latest local commit e60f6e8e427a7d13f01cb364f5d69db89c3deb0d adds the paced regression. It is local only at this checkpoint and will be pushed with the accompanying docs update."
+    "Latest local commit e60f6e8e427a7d13f01cb364f5d69db89c3deb0d adds the paced regression. It is local only at this checkpoint and will be pushed with the accompanying docs update.",
+    "Added scripts/prebuffer_fixture_server.py and a generated 12-second stereo MP3 fixture for a loopback-only, paced 500ms chunk-gap native playback A/B.",
+    "Ran eight muted native CPAL A/B/B/A trials on macOS ARM64 with a 500ms gap after chunk 20: A=200ms averaged 35,840 missing callback samples; B=500ms averaged 7,168 (80% lower). B increased mean buffer-ready latency by 291ms and first-play latency by 300ms.",
+    "Recorded corrected schedule and caveats: an earlier chunk-10 stall could land before playback started, so those trials were excluded. The checked procedure checks the measured buffer-ready timestamp against the post-start stall position.",
+    "Validated fixture script syntax/help, JSON parsing, ffprobe duration (12.042438 seconds), and git diff whitespace; no Rust source changed, so workspace gates were not rerun."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -311,11 +315,13 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40798920739,
-    "latest_pr_head": "757f768fbb0d2861d60b73fbe55654c83f423a31",
-    "latest_pr_conclusion": "no run visible",
-    "latest_pr_jobs": null,
-    "details": "At 2026-10-29T01:58:38Z PR #5 was open at 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true; latest returned false. No Actions run or combined status is visible for this head. A fresh merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; no jobs/logs exist. Native Windows MSVC CI remains unverified."
+    "latest_pr_run": 40803639508,
+    "latest_pr_head": "e6818efeb4607f63ccdf60294f5cad80fbc777e0",
+    "latest_pr_conclusion": "startup_failure before job creation",
+    "latest_pr_jobs": 0,
+    "details": "At 2026-10-29T01:58:38Z PR #5 was open at 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true; latest returned false. No Actions run or combined status is visible for this head. A fresh merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; no jobs/logs exist. Native Windows MSVC CI remains unverified.",
+    "latest_pr_run_number": 326,
+    "latest_pr_status_checks": 0
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -326,8 +332,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Run live 200/500ms comparison under measured stream jitter and a separate human audible A/B before changing the default; investigate Actions startup_failure; complete physical output/Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy integration gates.",
-  "current_pr_state": "PR #5 open at head 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true across reads; latest lookup at 01:58:38Z returned false. No combined status or workflow run is visible. A fresh read-only merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420).",
+  "next_priority": "Repeat the loopback comparison on a second host and with measured live-stream jitter; obtain separate human audible evidence. Investigate the recurring GitHub Actions startup_failure. Physical Bluetooth/USB output recovery, Pi audio/display/touch, nRSP/Soapy hardware, Windows MSVC, publisher-rights review and Rust-Boy adoption remain open.",
+  "current_pr_state": "PR #5 open and GitHub reports mergeable at checked head e6818efeb4607f63ccdf60294f5cad80fbc777e0; latest run 326 (40803639508) failed before jobs with startup_failure; no combined statuses. This run adds documentation/script/fixture evidence and will push a follow-up checkpoint.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -995,5 +1001,82 @@
     "result": "passed; asserts prebuffer starts at packet 2 for A and packet 5 for B, prebuffer-gap misses, and production-renderer missing-sample counts after playback starts.",
     "interpretation": "Stronger synthetic algorithm-level evidence: actual production render_samples consumes the actual test ring. It remains a simulated cadence and callback invocation, not a physical CPAL device, real-time scheduling, live-station interruption, or audible acceptance.",
     "test_commit": "e55cbca59b7d95cf56266c8bb982edae80213e5b"
+  },
+  "loopback_prebuffer_ab_latest": {
+    "checked_at_utc": "2026-10-29T02:07:17Z",
+    "fixture": "Generated 440Hz, 44.1kHz stereo MP3, 12.042438 seconds, 128kbps; scripts/prebuffer_fixture_server.py binds only to 127.0.0.1 and sends 1600-byte chunks every 100ms, pausing 500ms after chunk 20.",
+    "environment": "macOS 26.5.2, Darwin ARM64; native CLI/CPAL system output, volume 0%, 6 seconds per trial; actual MP3 decoder, ring buffer and native callback; not a broadcaster stream or human listening test.",
+    "trial_design": "Eight runs in two A/B/B/A blocks; A=low-latency 200ms, B=resilient 500ms. The stall was set to occur after playback had started on this host. One earlier chunk-10 schedule was excluded because one A run had no underruns and the stall occurred before playback; the acceptance instructions now call out this timing check.",
+    "variant_a": {
+      "buffer_fill_latency_observed_ms": [
+        445.277334,
+        221.272417,
+        461.111,
+        467.832625
+      ],
+      "buffer_ready_latency_observed_ms": [
+        742.5385,
+        537.725292,
+        694.512375,
+        718.213833
+      ],
+      "first_play_latency_observed_ms": [
+        786.644875,
+        564.010209,
+        726.232333,
+        739.942875
+      ],
+      "underrun_samples": [
+        34048,
+        48384,
+        32000,
+        28928
+      ],
+      "means": {
+        "buffer_fill_latency_observed_ms": 398.873344,
+        "buffer_ready_latency_observed_ms": 673.2475,
+        "first_play_latency_observed_ms": 704.207573,
+        "underrun_samples": 35840
+      }
+    },
+    "variant_b": {
+      "buffer_fill_latency_observed_ms": [
+        718.783083,
+        717.549958,
+        714.7755,
+        720.089584
+      ],
+      "buffer_ready_latency_observed_ms": [
+        962.992834,
+        952.206292,
+        1038.699875,
+        902.708833
+      ],
+      "first_play_latency_observed_ms": [
+        994.363,
+        1011.830583,
+        1091.330458,
+        918.995583
+      ],
+      "underrun_samples": [
+        4352,
+        9472,
+        8448,
+        6400
+      ],
+      "means": {
+        "buffer_fill_latency_observed_ms": 717.799531,
+        "buffer_ready_latency_observed_ms": 964.151958,
+        "first_play_latency_observed_ms": 1004.13,
+        "underrun_samples": 7168
+      }
+    },
+    "delta_b_minus_a_means": {
+      "buffer_fill_latency_observed_ms": 318.926187,
+      "buffer_ready_latency_observed_ms": 290.904458,
+      "first_play_latency_observed_ms": 299.922427,
+      "underrun_samples": -28672
+    },
+    "interpretation": "In this single eight-run synthetic block, the 500ms profile reduced reported missing samples by 80% but added about 291ms to buffer-ready and 300ms to first-play means. B still reported misses in every run. This demonstrates a synthetic resilience/startup tradeoff on one macOS host, not audible quality, broadcaster jitter tolerance, or hardware acceptance. Keep defaults provisional and compare under controlled measured live jitter plus human listening."
   }
 }

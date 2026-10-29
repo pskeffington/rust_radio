@@ -2254,3 +2254,32 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - PR #5 was open/mergeable at prior pushed head `05f3512`; GitHub showed no workflow run or combined status there. Historical run 313 (`40798920739`) ended `startup_failure` with zero jobs; an API detail lookup and jobs query confirmed no job logs exist. No root cause can be derived from this run.
 - Regression commit `e55cbca59b7d95cf56266c8bb982edae80213e5b` was pushed. At 01:58:04 UTC GitHub reported PR #5 open and mergeable at this head, with no workflow run or combined status. A fresh merge-tree against `origin/main` completed cleanly. This following evidence commit records that status.
 - Final PR refresh at 01:58:38 UTC: PR #5 remains open at `757f768`; GitHub's mergeability field again returned false after a true result on the same head. No current workflow run/status was visible. A fresh `git merge-tree` against refreshed `origin/main` completed cleanly, so there is no textual merge conflict in the local merge computation.
+
+## Controlled loopback native prebuffer A/B (2026-10-29)
+
+- Added `scripts/prebuffer_fixture_server.py`, bound only to `127.0.0.1`, and
+  a generated 12-second, 44.1 kHz stereo 440 Hz MP3. The server paces 1600-byte
+  chunks every 100 ms and injects one 500 ms gap after chunk 20. The test uses
+  the real MP3 decoder, ring buffer and native CPAL callback at 0% volume; it
+  does not contact a broadcaster or use a physical network.
+- On macOS 26.5.2 ARM64, ran eight six-second trials on system output in two
+  A/B/B/A blocks: A=200 ms low-latency and B=500 ms resilient. A underrun
+  samples were 34048/48384/32000/28928 (mean 35840); B were
+  4352/9472/8448/6400 (mean 7168), an 80% lower mean. B still missed samples
+  in all four runs.
+- A buffer-fill, buffer-ready and first-play means were 398.873, 673.248 and
+  704.208 ms; B means were 717.800, 964.152 and 1004.130 ms. In this sample B
+  added 318.926 ms to fill, 290.904 ms to buffer-ready and 299.922 ms to first
+  play. This is a measurable synthetic resilience/startup tradeoff, not a
+  default decision, broadcaster jitter result, audible comparison or hardware
+  acceptance.
+- An earlier schedule placed the pause after chunk 10, while probing could
+  still be buffering; one A trial had zero misses. Those results were excluded.
+  The procedure now places the pause after chunk 20 and directs operators to
+  compare the measured buffer-ready time with the pause position on each host.
+- Python syntax/help, fixture duration (12.042438 s), JSON parsing and
+  `git diff --check` passed. No Rust source changed, so Cargo gates were not
+  rerun; the last six-gate evidence remains on the preceding code commit.
+- PR #5 was open and reported mergeable at head `e6818ef`. Latest Actions run
+  326 (`40803639508`) failed with `startup_failure` before job creation; no jobs
+  or combined status checks were present. Remote CI remains unverified.
