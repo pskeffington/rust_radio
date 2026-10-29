@@ -143,6 +143,16 @@ pub struct StreamTimingSnapshot {
     pub gaps_at_or_over_500ms: u64,
 }
 
+/// One bounded response-body chunk timing sample for an optional loopback replay.
+/// The first observed body chunk has no preceding interval.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StreamTimingSample {
+    pub interval_us: Option<u64>,
+    pub body_bytes: usize,
+}
+
+const MAX_TIMING_TRACE_SAMPLES: usize = 256;
+
 #[derive(Default)]
 struct StreamTimingStats {
     state: Mutex<StreamTimingState>,
@@ -153,13 +163,14 @@ struct StreamTimingState {
     last_chunk_at: Option<Instant>,
     snapshot: StreamTimingSnapshot,
     interval_total_us: u128,
+    trace_samples: Vec<StreamTimingSample>,
 }
 
 impl StreamTimingStats {
-    fn record_at(&self, now: Instant) {
+    fn record_at(&self, now: Instant, body_bytes: usize) {
         let mut state = self.state.lock().expect("Radio timing mutex poisoned");
         state.snapshot.chunk_count = state.snapshot.chunk_count.saturating_add(1);
-        if let Some(previous) = state.last_chunk_at {
+        let interval_us = if let Some(previous) = state.last_chunk_at {
             let interval = now.saturating_duration_since(previous);
             let micros = interval.as_micros();
             let micros_u64 = micros.min(u64::MAX as u128) as u64;
@@ -177,6 +188,15 @@ impl StreamTimingStats {
                 state.snapshot.gaps_at_or_over_500ms =
                     state.snapshot.gaps_at_or_over_500ms.saturating_add(1);
             }
+            Some(micros_u64)
+        } else {
+            None
+        };
+        if state.trace_samples.len() < MAX_TIMING_TRACE_SAMPLES {
+            state.trace_samples.push(StreamTimingSample {
+                interval_us,
+                body_bytes,
+            });
         }
         state.last_chunk_at = Some(now);
     }
@@ -187,12 +207,27 @@ impl StreamTimingStats {
             .expect("Radio timing mutex poisoned")
             .snapshot
     }
+
+    fn trace_samples(&self) -> Vec<StreamTimingSample> {
+        self.state
+            .lock()
+            .expect("Radio timing mutex poisoned")
+            .trace_samples
+            .clone()
+    }
 }
 
 impl NetworkGuard {
     /// Return timing for response-body chunks observed while this connection ran.
     pub fn timing_snapshot(&self) -> StreamTimingSnapshot {
         self.timing.snapshot()
+    }
+
+    /// Return at most 256 response-body chunk size/interval samples for
+    /// controlled loopback replay. These are transport-pump observations, not
+    /// packet arrival times or decoded-buffer underrun evidence.
+    pub fn timing_trace(&self) -> Vec<StreamTimingSample> {
+        self.timing.trace_samples()
     }
 }
 
@@ -657,7 +692,7 @@ async fn pump_audio(
         let Some(piece) = piece else {
             return Err(TransportError::Network("Radio stream ended".into()));
         };
-        timing.record_at(Instant::now());
+        timing.record_at(Instant::now(), piece.len());
         for fragment in piece.chunks(CHUNK_SIZE) {
             if !send_fragment(audio, fragment.to_vec(), cancelled).await {
                 return Ok(());
@@ -675,9 +710,9 @@ mod tests {
     fn stream_timing_snapshot_aggregates_chunk_intervals_and_threshold_gaps() {
         let stats = StreamTimingStats::default();
         let start = Instant::now();
-        stats.record_at(start);
-        stats.record_at(start + Duration::from_millis(100));
-        stats.record_at(start + Duration::from_millis(700));
+        stats.record_at(start, 1024);
+        stats.record_at(start + Duration::from_millis(100), 2048);
+        stats.record_at(start + Duration::from_millis(700), 4096);
 
         assert_eq!(
             stats.snapshot(),
@@ -690,6 +725,36 @@ mod tests {
                 gaps_at_or_over_500ms: 1,
             }
         );
+        assert_eq!(
+            stats.trace_samples(),
+            vec![
+                StreamTimingSample {
+                    interval_us: None,
+                    body_bytes: 1024,
+                },
+                StreamTimingSample {
+                    interval_us: Some(100_000),
+                    body_bytes: 2048,
+                },
+                StreamTimingSample {
+                    interval_us: Some(600_000),
+                    body_bytes: 4096,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn stream_timing_trace_is_bounded_at_256_samples() {
+        let stats = StreamTimingStats::default();
+        let start = Instant::now();
+        for index in 0..MAX_TIMING_TRACE_SAMPLES + 50 {
+            stats.record_at(start + Duration::from_millis(index as u64), index + 1);
+        }
+        let samples = stats.trace_samples();
+        assert_eq!(samples.len(), MAX_TIMING_TRACE_SAMPLES);
+        assert_eq!(samples.first().unwrap().body_bytes, 1);
+        assert_eq!(samples.last().unwrap().body_bytes, MAX_TIMING_TRACE_SAMPLES);
     }
 
     struct FailingResolver {

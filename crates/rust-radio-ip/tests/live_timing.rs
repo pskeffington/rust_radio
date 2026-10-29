@@ -32,6 +32,21 @@ fn approved_live_stream_chunk_timing_samples() {
         cancelled.store(true, Ordering::Release);
         let timing = guard.timing_snapshot();
         println!("{station}: elapsed={elapsed:?} bytes={total_bytes} timing={timing:?}");
+        let trace_json = guard
+            .timing_trace()
+            .iter()
+            .map(|sample| {
+                let interval = sample
+                    .interval_us
+                    .map_or_else(|| "null".to_owned(), |value| value.to_string());
+                format!(
+                    "{{\"interval_us\":{interval},\"body_bytes\":{}}}",
+                    sample.body_bytes
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        println!("RUST RADIO TIMING TRACE {station} [{trace_json}]");
         drop(input);
         drop(guard);
         assert!(total_bytes > 0, "{station}: no audio bytes observed");
