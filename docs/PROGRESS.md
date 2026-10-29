@@ -2431,3 +2431,34 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Next: use the saved runner output for repeat comparisons and move to
   cross-target compilation plus physical audio/device-loss acceptance when
   hardware is available. Human audible preference remains untested.
+
+## Cross-target validation and Skylab trace A/B (2026-10-29)
+
+- On source head `e1bb54d`, Windows GNU cross-target validation passed for the
+  default, SDRconnect and direct nRSP-native workspace configurations:
+  `cargo check`, strict all-target Clippy and `cargo test --no-run` passed for
+  all three. The Windows test binaries were compiled but not run; GNU
+  cross-compilation does not replace the Windows MSVC CI job.
+- Headless `aarch64-unknown-linux-gnu` checks passed for direct nRSP-native and
+  SDRconnect. The `aarch64-apple-darwin` IP-radio check also passed. SoapySDR
+  host-feature check and strict Clippy passed; the feature test suite passed
+  all 15 tests after rerunning with local TCP permission (the first attempt was
+  denied loopback sockets by the sandbox).
+- Repeated the muted native A/B using the captured Skylab timing trace: four
+  eight-second trials per profile, A/B/B/A twice. All eight runs completed
+  with zero callback underruns. A=200 ms means: fill 210.626 ms, buffer-ready
+  497.759 ms, first-play 527.580 ms. B=500 ms: 213.526 ms, 433.065 ms,
+  454.368 ms. B started faster on average in this block, while the prior WCRB
+  block was mixed. With zero underruns on both, neither block establishes a
+  reliability win or human preference; keep the default provisional.
+- Raw cross-target commands, per-trial values and caveats are in
+  `docs/AGENT_PROGRESS.json` under `cross_target_validation_2026_10_29` and
+  `skylab_trace_ab_cross_target_followup`.
+- PR #5 remained open/mergeable at `e1bb54d`. Actions run 334
+  (`40808863100`) failed with `startup_failure` before jobs. The job endpoint
+  returned zero jobs and PR diagnostics contained no checks, statuses,
+  annotations or logs. The current remote CI failure still has no actionable
+  root cause; no physical hardware was exercised.
+- Next: pursue native MSVC CI and physical output/device-loss and SDR hardware
+  acceptance; keep the A/B profile default provisional until audible and
+  dropout evidence supports a change.

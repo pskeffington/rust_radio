@@ -214,3 +214,9 @@ means were 436.343/446.401 ms and first-play means were 489.356/477.779 ms.
 All eight trials again had zero callback underruns. The mixed startup result
 and absent dropout separation do not justify a default change; per-run data is
 in `docs/AGENT_PROGRESS.json` under `captured_trace_ab_runner_followup`.
+
+A subsequent Skylab-trace block produced A/B buffer-ready means of
+497.759/433.065 ms and first-play means of 527.580/454.368 ms, again with zero
+underruns in all eight trials. The opposite WCRB/Skylab startup direction and
+zero misses in both profiles make the mean differences inconclusive for a
+buffering reliability decision.

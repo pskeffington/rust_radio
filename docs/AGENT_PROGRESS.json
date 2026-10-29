@@ -1788,5 +1788,175 @@
       }
     },
     "interpretation": "Automated A/B/B/A replay completed with zero callback underruns in all eight trials. A and B startup metrics were mixed and close relative to run-to-run spread. This run does not show a dropout benefit, does not justify changing the default, and does not establish audibility or full network behavior."
+  },
+  "skylab_trace_ab_cross_target_followup": {
+    "run_utc": "2026-10-29T02:55:27+00:00",
+    "source_commit": "e1bb54d39923208afb6d0d6f35dcc54dce046a62",
+    "trace_fixture": "crates/rust-radio-audio/tests/fixtures/skylab-body-timing.json",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "protocol": {
+      "seconds_per_trial": 8,
+      "volume": 0,
+      "output": "system",
+      "variant_a": "low-latency, 200 ms prebuffer",
+      "variant_b": "resilient, 500 ms prebuffer",
+      "trial_order": [
+        "A",
+        "B",
+        "B",
+        "A",
+        "A",
+        "B",
+        "B",
+        "A"
+      ]
+    },
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 508.93083400000006,
+        "first_play_latency_observed_ms": 530.328709,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 662528,
+        "prebuffer_fill_latency_observed_ms": 199.55624999999998,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 442.104292,
+        "first_play_latency_observed_ms": 454.30949999999996,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 668672,
+        "prebuffer_fill_latency_observed_ms": 214.54612500000002,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 370.830708,
+        "first_play_latency_observed_ms": 404.57575,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 675840,
+        "prebuffer_fill_latency_observed_ms": 213.234167,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 535.055375,
+        "first_play_latency_observed_ms": 573.992958,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 661504,
+        "prebuffer_fill_latency_observed_ms": 210.312292,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 5,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 451.922875,
+        "first_play_latency_observed_ms": 495.14475000000004,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 668672,
+        "prebuffer_fill_latency_observed_ms": 222.47204200000002,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 6,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 364.101584,
+        "first_play_latency_observed_ms": 385.08054200000004,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 673792,
+        "prebuffer_fill_latency_observed_ms": 214.549708,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 7,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 555.224875,
+        "first_play_latency_observed_ms": 573.505708,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 657408,
+        "prebuffer_fill_latency_observed_ms": 211.775875,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 8,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 495.12629200000003,
+        "first_play_latency_observed_ms": 510.85504199999997,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 666624,
+        "prebuffer_fill_latency_observed_ms": 210.161583,
+        "underrun_samples": 0
+      }
+    ],
+    "summary": {
+      "A": {
+        "prebuffer_ms": 200,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 497.758844,
+        "mean_first_play_latency_observed_ms": 527.5803647500001,
+        "mean_prebuffer_fill_latency_observed_ms": 210.62554175,
+        "output_samples_consumed_current_attempt": 2659328,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      },
+      "B": {
+        "prebuffer_ms": 500,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 433.06536475,
+        "mean_first_play_latency_observed_ms": 454.367875,
+        "mean_prebuffer_fill_latency_observed_ms": 213.52646875000002,
+        "output_samples_consumed_current_attempt": 2675712,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      }
+    },
+    "interpretation": "All eight muted native CPAL trials completed with zero callback underruns. B had lower mean buffer-ready and first-play times in this block, but the prior WCRB-trace block had mixed startup results and no underruns. This does not demonstrate a reliability advantage or listener preference; keep the default provisional."
+  },
+  "cross_target_validation_2026_10_29": {
+    "run_utc": "2026-10-29T02:53Z",
+    "source_commit": "e1bb54d39923208afb6d0d6f35dcc54dce046a62",
+    "windows_target": "x86_64-pc-windows-gnu",
+    "windows_configurations": {
+      "default": [
+        "cargo check --workspace --locked",
+        "cargo clippy --workspace --all-targets --locked -- -D warnings",
+        "cargo test --workspace --locked --no-run"
+      ],
+      "sdrconnect": [
+        "cargo check --workspace --locked --features rust-radio-cli/sdrconnect",
+        "cargo clippy --workspace --all-targets --locked --features rust-radio-cli/sdrconnect -- -D warnings",
+        "cargo test --workspace --locked --no-run --features rust-radio-cli/sdrconnect"
+      ],
+      "nrsp_native": [
+        "cargo check --workspace --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native",
+        "cargo clippy --workspace --all-targets --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native -- -D warnings",
+        "cargo test --workspace --locked --no-run --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native"
+      ]
+    },
+    "windows_results": "All nine cross-target check, strict Clippy and test-executable compilation commands passed. Windows executables were compiled, not run; this is MinGW GNU evidence and does not replace native MSVC CI.",
+    "aarch64_linux": {
+      "nrsp_native": "cargo check --locked -p rust-radio --no-default-features --features nrsp-native --target aarch64-unknown-linux-gnu passed",
+      "sdrconnect": "cargo check --locked -p rust-radio --no-default-features --features sdrconnect --target aarch64-unknown-linux-gnu passed"
+    },
+    "aarch64_macos": "cargo check --locked -p rust-radio --no-default-features --features ip-radio --target aarch64-apple-darwin passed",
+    "soapy_host": {
+      "check": "cargo check --locked -p rust-radio --no-default-features --features soapy-sdr passed",
+      "tests": "cargo test --locked -p rust-radio-sdr --features soapy passed 15/15 after rerunning with local TCP permission; initial sandbox run denied two loopback nRSP tests",
+      "clippy": "cargo clippy --locked -p rust-radio-sdr --all-targets --features soapy -- -D warnings passed"
+    },
+    "hardware": "No Windows, Pi, USB SDR or nRSP physical hardware was exercised."
   }
 }
