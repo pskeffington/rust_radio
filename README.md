@@ -98,7 +98,14 @@ cargo run -p rust-radio-cli -- stream-listen 'https://example.org/live.mp3' --se
 # Repeatable muted native callback buffering comparison (200 ms vs 500 ms):
 cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 0 --buffering low-latency
 cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 0 --buffering resilient
+# Intermediate 350 ms option:
+cargo run -p rust-radio-cli -- listen skylab --seconds 30 --buffering balanced
 ```
+
+IP buffering options are `low-latency` (200 ms), `balanced` (350 ms) and
+`resilient` (500 ms). The engine default remains `resilient`; see the
+[acceptance measurements](docs/STANDALONE_ACCEPTANCE.md#native-buffering-ab-measurements)
+before selecting another profile.
 
 Curated transport resolves bounded M3U and PLS playlists using publisher-directed URLs. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Connection/read failures and HTTP 408, 425, 429, 500, 502, 503 and 504 share a maximum of three retries with 1/2/4-second delays. Other HTTP responses, including unsupported or configuration-related 5xx statuses, fail without retry.
 

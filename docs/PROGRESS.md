@@ -1,5 +1,30 @@
 # Radio development progress
 
+## Balanced 350 ms profile and three-setting A/B (2026-10-29 03:07 UTC)
+
+- Added `IpBufferingPreset::Balanced` (350 ms), CLI `--buffering balanced`,
+  and selectable A/B profiles in `scripts/run_prebuffer_trace_ab.py`. Existing
+  200 ms and 500 ms profiles remain available; the engine default remains
+  resilient at 500 ms. Added CLI parsing/duration coverage and updated README,
+  native playback contract, and acceptance procedure.
+- Repeated the same loopback MP3 fixture at 90 ms chunk pacing with post-start
+  350/500/250 ms gaps. Both muted native-CPAL blocks used A/B/B/A twice,
+  eight trials total per comparison, on macOS 26.5.2 ARM64/system output.
+  Against 200 ms, 350 ms reduced missing-sample share 8.020% → 6.142%
+  (23.4% relative) and added 120.113 ms mean buffer-ready latency. Against
+  350 ms, 500 ms reduced share 5.834% → 2.348% (59.8% relative) and added
+  304.447 ms. All 24 trials across the three profile blocks had underruns.
+  These are synthetic one-host tradeoff measurements, not listener preference
+  or live-broadcaster reliability evidence; no default change is justified.
+- All six workspace gates passed. Windows GNU workspace check and strict
+  Clippy passed, as did the headless AArch64 macOS IP check. CLI focused tests,
+  runner byte-compilation/help, JSON and diff checks passed. No physical
+  playback/device-loss acceptance was performed.
+- Code commit `98235f5` adds the profile and flexible runner; `2fa930a` keeps
+  the original public enum source-compatible. Next: obtain blinded audible
+  preference and physical output-loss evidence, then repeat on another host or
+  a measured live trace before selecting a default.
+
 ## 90 ms pacing multi-gap buffering A/B (2026-10-29 03:01 UTC)
 
 - Repeated the loopback A/B on `dde25b6` with the generated 12-second MP3,
