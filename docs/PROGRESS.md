@@ -18,7 +18,9 @@
 - All six locked Rust workspace gates passed. Python harness tests passed 6/6,
   fixture-server process test 1/1, Python compilation/help, workflow YAML, JSON
   parse and `git diff --check` passed. Actions run 350 (`40815638352`) on the pushed head `55883c9` also failed
-  before job creation; GitHub returned zero jobs and no combined statuses.
+  before job creation; GitHub returned zero jobs and no combined statuses. The
+  follow-up evidence commit `a86ccac` is pushed; GitHub has not yet exposed a
+  run or combined status for that exact documentation head.
 - Next: complete physical output-loss/reconnect and blinded audible acceptance;
   native Windows MSVC and Raspberry Pi runtime gates remain open.
 
