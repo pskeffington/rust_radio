@@ -2832,3 +2832,29 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Next: pursue native MSVC CI and physical output/device-loss and SDR hardware
   acceptance; keep the A/B profile default provisional until audible and
   dropout evidence supports a change.
+# Portability validation checkpoint (2026-10-30)
+
+- On source head `93cf016`, the six required locked workspace gates passed
+  after rerunning with local loopback socket access: format, default workspace
+  tests, default strict Clippy, all-feature workspace tests, all-feature strict
+  Clippy and all-feature check. The first restricted test attempt was denied
+  socket binds for six existing local HTTP fixture cases; all six passed in the
+  permitted rerun. One public-network timing test remains intentionally
+  ignored by the normal suite.
+- Headless/IP/audio/CLI `cargo check` passed on both installed cross targets:
+  `aarch64-apple-darwin` and `x86_64-pc-windows-gnu`.
+- Broader cross-target requests were limited by missing native toolchains:
+  all-feature AArch64 Linux stopped in `ring` because
+  `aarch64-linux-gnu-gcc` is absent; all-feature Windows GNU stopped in
+  `soapysdr-sys` because no Windows pkg-config/sysroot is configured. These
+  are toolchain gaps, not Rust diagnostics. Windows MSVC remains the required
+  native CI target.
+- PR #5 remains open and mergeable at `93cf016`. Actions run 365
+  (`40974691523`) ended `startup_failure` before job creation; GitHub returned
+  no jobs or combined statuses. No source code changed in this checkpoint.
+- The WPR 350/500 ms A/B from the prior checkpoint remains inconclusive, with
+  paired latency ranges crossing zero. Keep the 500 ms default; no new live A/B
+  was run because no distinct experimental condition was identified.
+- Next: restore actionable Windows MSVC CI, then use physical Bluetooth/USB,
+  Pi and receiver acceptance; publisher distribution review and Rust-Boy
+  adoption also remain open.
