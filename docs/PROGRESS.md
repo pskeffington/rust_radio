@@ -16,6 +16,8 @@
   Rust source is unchanged from the latest six-gate pass on `317a16f`. PR #5 is
   open. Actions run 347 (`40814722306`) on base head `0ab73bc` ended
   `startup_failure` before jobs; the jobs list and commit statuses were empty.
+  The evidence checkpoint was pushed as `340daf9`; GitHub has no run or combined
+  status visible yet for that new head.
 - Next: continue cross-feed measurements and complete physical output-loss and
   audible acceptance; investigate remote Actions startup, Windows MSVC and Pi.
 
