@@ -1,5 +1,32 @@
 # Radio development progress
 
+## Curated live-feed 350/500 ms A/B (2026-10-29 03:19 UTC)
+
+- Added a curated-station mode to `scripts/run_prebuffer_trace_ab.py`. It
+  accepts only station IDs from `catalog/curated-stations.json` and invokes
+  `rust-radio-cli listen`, preserving the runtime publisher allowlist; the
+  existing custom URL mode remains loopback-only. Added three regressions and
+  added the test command to the portable-core Actions job.
+- Validated Skylab immediately before playback: decoded MP3, 48 kHz stereo,
+  1152 frames; no output device was opened by validation. Ran eight muted
+  30-second native CPAL trials in A/B/B/A order twice, 350 ms balanced vs
+  500 ms resilient. All eight completed with zero callback underruns. Mean
+  buffer-ready was 753.643 ms vs 934.959 ms; mean first-play was 802.896 ms
+  vs 965.990 ms. The 350 ms profile reached buffer-ready 181.316 ms sooner
+  and first-play 163.094 ms sooner. This stable single-feed block showed no
+  dropout difference and no listener preference; it does not outweigh the
+  synthetic jitter result or justify a default change.
+- Harness tests (3/3), Python byte-compilation, help output, guarded URL
+  rejection, workflow YAML parsing and `git diff --check` passed. The six
+  workspace gates remain passing on the unchanged Rust source from the prior
+  checkpoint; this turn changed the Python harness and its workflow test step.
+- PR #5 remains open/mergeable at `5d11d08`. Actions run 340
+  (`40811389507`) failed before job creation (`startup_failure`); the jobs
+  endpoint returned zero jobs and combined statuses were empty.
+- Next: repeat 350/500 ms on another curated feed, then obtain audible and
+  physical output-loss acceptance before considering a default change.
+
+
 ## Balanced 350 ms profile and three-setting A/B (2026-10-29 03:07 UTC)
 
 - Added `IpBufferingPreset::Balanced` (350 ms), CLI `--buffering balanced`,

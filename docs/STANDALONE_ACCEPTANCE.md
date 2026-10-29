@@ -245,3 +245,18 @@ This synthetic one-host comparison shows a reliability/startup tradeoff only;
 it does not establish live-feed behavior or listener preference. Per-trial
 records are in `docs/AGENT_PROGRESS.json` under
 `loopback_multi_gap_ab_90ms_followup`.
+
+For a live but still muted comparison, pass a curated station ID instead of a
+fixture URL, for example:
+
+```sh
+python3 scripts/run_prebuffer_trace_ab.py --station skylab --seconds 30 --profile-a balanced --profile-b resilient --output-file /tmp/skylab-buffer-ab.json
+```
+
+The harness accepts only IDs in the machine-readable curated catalog and calls
+the CLI's `listen` command, which enforces its publisher allowlist. At 2026-10-29
+03:19 UTC, Skylab decoded as MP3, 48 kHz stereo. Eight 30-second trials at
+volume 0% produced no callback underruns for either 350 ms or 500 ms. Mean
+buffer-ready latency was 753.643 ms vs 934.959 ms and first-play latency was
+802.896 ms vs 965.990 ms. This is one stable-feed, single-host result; it does
+not establish listener preference or broader network reliability.

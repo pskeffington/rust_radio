@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T03:18:08Z",
+  "updated_at_utc": "2026-10-29T03:24:41Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "98235f5528aef8f028d16c8518c5b788baed4764 + 2fa930aefe7b1aef46d1dda91e94a09a4c647033: additive balanced buffering preset API and profile-selectable A/B runner; original public buffering enum retained unchanged",
@@ -240,7 +240,9 @@
     "All six workspace gates passed, plus Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check.",
     "Preserved source compatibility: the existing public IpBufferingProfile enum and methods remain unchanged; the 350ms choice uses additive IpBufferingPreset and start methods. Full gates and cross-target checks passed after this correction.",
     "After pushing the documentation checkpoint, refreshed PR #5: open/mergeable. Actions run 338 for head 76bec55 failed before job creation; jobs endpoint returned zero jobs and combined statuses were empty.",
-    "Updated PR #5 body with the balanced buffering API, A/B results and validation. Refreshed current head 67e35f1: Actions run 339 failed at startup with zero jobs; combined statuses were empty."
+    "Updated PR #5 body with the balanced buffering API, A/B results and validation. Refreshed current head 67e35f1: Actions run 339 failed at startup with zero jobs; combined statuses were empty.",
+    "Extended the A/B harness with curated-station mode restricted to IDs from the machine-readable catalog; the CLI then enforces publisher allowlists. Added three Python regressions and ran them successfully.",
+    "Validated Skylab as decoded MP3, 48kHz stereo, then ran eight muted 30-second trials in A/B/B/A order twice comparing 350ms and 500ms. Both profiles had zero callback underruns; mean buffer-ready was 753.643ms vs 934.959ms and first-play 802.896ms vs 965.990ms."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -353,8 +355,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "The three-profile synthetic comparison shows a measurable latency/missing-sample tradeoff, but no listener preference and no zero-underrun profile. Obtain a blinded audible comparison and physical output-loss acceptance; then repeat on a second host or a measured live trace before considering any default change. Keep 500ms engine default.",
-  "current_pr_state": "PR #5 remains open and mergeable at pushed head 67e35f15a28f72992e86b10d3ceab0d83d524a2c. Actions run 339 (40811281044) ended startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses are empty. Remote CI remains unverified.",
+  "next_priority": "Repeat the live 350ms/500ms A/B on WCRB or another curated feed to check whether the startup advantage generalizes; compare against the 200ms profile only after the two-profile repeat. Obtain blinded audible and physical output-loss acceptance before changing the default.",
+  "current_pr_state": "PR #5 is open and mergeable at head 5d11d089e2aa9a60cce1f472f031069e6599a873. Actions run 340 (40811389507) ended startup_failure with zero jobs; combined statuses are empty. Exact-head CI remains unverified.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1195,7 +1197,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T03:18:08Z",
+  "current_pr_state_checked_at_utc": "2026-10-29T03:24:41Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -2378,5 +2380,155 @@
     },
     "source_commit": "98235f5528aef8f028d16c8518c5b788baed4764",
     "interpretation": "Resilient 500ms reduced missing-sample share by 59.8% relative (3.486 percentage points) versus balanced 350ms and added 304.447ms mean buffer-ready latency. All eight trials still reported underruns. Synthetic one-host result; no audible preference evidence."
-  }
+  },
+  "live_station_balanced_resilient_ab": {
+    "started_at_utc": "2026-10-29T03:19:55+00:00",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "url": null,
+    "station": "skylab",
+    "seconds": 30,
+    "volume": 0,
+    "output": "system",
+    "repetitions": 2,
+    "profiles": {
+      "A": "balanced",
+      "B": "resilient"
+    },
+    "trial_order": [
+      "A",
+      "B",
+      "B",
+      "A",
+      "A",
+      "B",
+      "B",
+      "A"
+    ],
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 677.409709,
+        "first_play_latency_observed_ms": 727.303084,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2590720,
+        "prebuffer_fill_latency_observed_ms": 81.885083,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 1075.501292,
+        "first_play_latency_observed_ms": 1112.9485,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2551808,
+        "prebuffer_fill_latency_observed_ms": 308.220666,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 1004.16,
+        "first_play_latency_observed_ms": 1014.880416,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2558976,
+        "prebuffer_fill_latency_observed_ms": 313.109625,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 683.2441660000001,
+        "first_play_latency_observed_ms": 742.5059160000001,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2589696,
+        "prebuffer_fill_latency_observed_ms": 94.49825000000001,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 5,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 826.091292,
+        "first_play_latency_observed_ms": 846.2998339999999,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2574336,
+        "prebuffer_fill_latency_observed_ms": 86.454417,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 6,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 1005.4049590000001,
+        "first_play_latency_observed_ms": 1059.248334,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2561024,
+        "prebuffer_fill_latency_observed_ms": 167.55325,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 7,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 654.769,
+        "first_play_latency_observed_ms": 676.882334,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2589696,
+        "prebuffer_fill_latency_observed_ms": 74.41262499999999,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 8,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 827.827583,
+        "first_play_latency_observed_ms": 895.4746660000001,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2575360,
+        "prebuffer_fill_latency_observed_ms": 68.521625,
+        "underrun_samples": 0
+      }
+    ],
+    "summary": {
+      "A": {
+        "profile": "balanced",
+        "prebuffer_ms": 350,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 753.6431875000001,
+        "mean_first_play_latency_observed_ms": 802.895875,
+        "mean_prebuffer_fill_latency_observed_ms": 82.83984375,
+        "output_samples_consumed_current_attempt": 10330112,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      },
+      "B": {
+        "profile": "resilient",
+        "prebuffer_ms": 500,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 934.95881275,
+        "mean_first_play_latency_observed_ms": 965.989896,
+        "mean_prebuffer_fill_latency_observed_ms": 215.8240415,
+        "output_samples_consumed_current_attempt": 10261504,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0
+      }
+    },
+    "source_commit": "5d11d089e2aa9a60cce1f472f031069e6599a873",
+    "prevalidation": {
+      "station": "skylab",
+      "status": "decoded",
+      "codec": "mp3",
+      "sample_rate_hz": 48000,
+      "channels": 2,
+      "decoded_frames": 1152,
+      "audio_output_opened": false
+    },
+    "interpretation": "All four 350ms and four 500ms trials completed with zero callback underruns. The 350ms profile reached buffer-ready 181.316ms sooner on average and first-play 163.094ms sooner. This stable single-feed block shows no dropout difference and no listener preference; it does not override the synthetic jitter tradeoff or justify a default change."
+  },
+  "python_runner_validation_latest": "Passed scripts/test_prebuffer_trace_ab.py (3 tests), py_compile for the runner and its tests, help output, external/deceptive/credentialed URL rejections, curated Skylab station run, and Ruby YAML parse of .github/workflows/rust.yml. The curated station mode only selects IDs from catalog/curated-stations.json and invokes rust-radio-cli listen."
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run repeated muted native-output A/B trials against a loopback trace server."""
+"""Run muted native-output A/B trials against loopback or curated audio."""
 
 import argparse
 from datetime import datetime, timezone
@@ -16,11 +16,19 @@ PROFILES = {
     "resilient": 500,
 }
 REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_URL = "http://127.0.0.1:18743/live"
+CATALOG_PATH = REPO_ROOT / "catalog/curated-stations.json"
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", default="http://127.0.0.1:18743/live")
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--url", help="loopback-only fixture URL")
+    source.add_argument(
+        "--station",
+        choices=sorted(station["id"] for station in json.loads(CATALOG_PATH.read_text())["stations"]),
+        help="curated station ID; playback uses the CLI's publisher allowlist",
+    )
     parser.add_argument("--cli", type=Path, default=REPO_ROOT / "target/debug/rust-radio-cli")
     parser.add_argument("--seconds", type=int, default=8)
     parser.add_argument("--volume", type=int, default=0)
@@ -31,17 +39,19 @@ def parse_args():
     parser.add_argument("--output-file", type=Path)
     args = parser.parse_args()
 
-    parsed_url = urlsplit(args.url)
-    if parsed_url.scheme != "http" or parsed_url.hostname != "127.0.0.1":
-        parser.error("url must be an HTTP URL on the loopback IPv4 address 127.0.0.1")
-    try:
-        port = parsed_url.port
-    except ValueError as error:
-        parser.error(f"url contains an invalid port: {error}")
-    if port == 0:
-        parser.error("url port must be between 1 and 65535")
-    if parsed_url.username is not None or parsed_url.password is not None:
-        parser.error("url must not contain credentials")
+    if args.station is None:
+        args.url = args.url or DEFAULT_URL
+        parsed_url = urlsplit(args.url)
+        if parsed_url.scheme != "http" or parsed_url.hostname != "127.0.0.1":
+            parser.error("url must be an HTTP URL on the loopback IPv4 address 127.0.0.1")
+        try:
+            port = parsed_url.port
+        except ValueError as error:
+            parser.error(f"url contains an invalid port: {error}")
+        if port == 0:
+            parser.error("url port must be between 1 and 65535")
+        if parsed_url.username is not None or parsed_url.password is not None:
+            parser.error("url must not contain credentials")
     if not 1 <= args.seconds <= 300:
         parser.error("seconds must be in 1..300")
     if not 0 <= args.volume <= 100:
@@ -57,10 +67,12 @@ def parse_args():
 
 def run_trial(args, trial, variant, profile):
     expected_prebuffer_ms = PROFILES[profile]
-    command = [
+    command = [str(args.cli), "listen", args.station] if args.station else [
         str(args.cli),
         "stream-listen",
         args.url,
+    ]
+    command.extend([
         "--seconds",
         str(args.seconds),
         "--volume",
@@ -69,7 +81,7 @@ def run_trial(args, trial, variant, profile):
         args.output,
         "--buffering",
         profile,
-    ]
+    ])
     try:
         result = subprocess.run(
             command,
@@ -176,6 +188,7 @@ def main():
         "started_at_utc": started_at_utc,
         "environment": platform.platform(),
         "url": args.url,
+        "station": args.station,
         "seconds": args.seconds,
         "volume": args.volume,
         "output": args.output,
