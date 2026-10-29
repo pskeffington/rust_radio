@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T00:03:12Z",
+  "updated_at_utc": "2026-10-29T00:07:17Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
@@ -159,7 +159,11 @@
     "No PR workflow run was visible yet for docs checkpoint 3ad18a8; previous head fe9fbbd run 289 failed before job creation (startup_failure, zero jobs, no combined statuses).",
     "Fixed stale docs/IP_TRANSPORT_EXTRACTION.md recovery contract: it now lists only the seven transient HTTP statuses implemented by TransportError::http_status; updated DNS regression follow-up to match the SafeResolver-backed tests already in the codebase.",
     "Current focused GUI A/B/C test and HTTP retry classification regression passed. A/B fit remains 25/25 for compact labels at 295px and 25/25 for all variants at 340px; full category fits 24/25 at 295px.",
-    "PR #5 rechecked: open and mergeable at b502d10, no reviews. Actions run 291 (40791274189) startup_failure before jobs; zero jobs and empty combined status."
+    "PR #5 rechecked: open and mergeable at b502d10, no reviews. Actions run 291 (40791274189) startup_failure before jobs; zero jobs and empty combined status.",
+    "Moved curated and saved station row-label Vec<String> construction into the egui popup closure so closed frames no longer allocate all 25 curated labels; selection rendering and keyboard navigation are unchanged.",
+    "Focused A/B and keyboard-navigation regressions passed; A/B at 295px: full category 24/25, names-only and compact 25/25; all variants 25/25 at 340px; compact saves 192px. Layout fit only.",
+    "All six required local gates passed on the source change: fmt, default/all-feature workspace tests (with loopback fixture access), strict default/all-feature Clippy, and all-feature check. git diff --check passed.",
+    "Pushed source commit e29b173. PR #5 is open and mergeable; no reviews. No workflow run or combined status visible for e29b173; last observed run 291 on b502d10 failed before jobs."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -252,14 +256,14 @@
     "only_full_category_overflow": "wcrb",
     "selected_variant": "C compact category, preserving genre cue; full genre remains available on hover",
     "interpretation": "repeatable rendered-layout fit measurement on all 25 current catalog entries, not listener preference data",
-    "last_repeated_at_utc": "2026-10-29T00:02:45Z"
+    "last_repeated_at_utc": "2026-10-29T00:07:17Z"
   },
   "ci": {
     "latest_pr_run": 40791274189,
     "latest_pr_head": "b502d10a0366d1a62d0574c4e0d2300f9f397841",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at b502d10; no reviews. Actions run 291 (40791274189) failed before job creation with startup_failure; zero jobs and no combined statuses. Remote CI remains unverified; hardware and native Windows MSVC acceptance remain open."
+    "details": "PR #5 open and mergeable at e29b173; no reviews. No workflow run or combined status visible for e29b173. Last observed run 291 (40791274189) on b502d10 failed before job creation with startup_failure; zero jobs and no combined statuses."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -270,10 +274,10 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue source-aware playback recovery and cancellation. Pursue audible/device-loss, Bluetooth/USB, Raspberry Pi and receiver acceptance; native Windows MSVC CI; publisher rights and national NPR source/rights; restore AArch64 cross-check with an available C toolchain.",
-  "current_pr_state": "PR #5 open and mergeable at b502d10; Actions run 291 failed before job creation (startup_failure, zero jobs/statuses). No reviews.",
+  "next_priority": "Continue source-aware native playback and compact GUI reliability work with reproducible regressions; obtain actionable PR CI evidence, audible/device-loss and Bluetooth/USB acceptance, Raspberry Pi and receiver acceptance, Windows MSVC/AArch64 builds, publisher distribution permission evidence and a continuous national NPR endpoint with rights.",
+  "current_pr_state": "PR #5 open and mergeable at e29b173; no workflow run or combined status visible for current head. Last observed run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses). No reviews.",
   "live_catalog_revalidation": "2026-10-28T23:59:21Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on current source as of 2026-10-29T00:01Z: cargo fmt --all -- --check; cargo test --workspace --locked (after allowing loopback fixtures); cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked (after allowing loopback fixtures); cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked.",
+  "six_required_gates_latest": "passed on source commit e29b173 as of 2026-10-29T00:07Z: cargo fmt --all -- --check; cargo test --workspace --locked (with loopback fixture access); cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked (with loopback fixture access); cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
   "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed."

@@ -1797,3 +1797,22 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - PR #5 remains open and mergeable at `b502d10`, with no reviews. Actions run
   291 (`40791274189`) ended `startup_failure` before job creation; jobs and
   combined statuses are empty. Local CI remains the available validation path.
+
+
+## Station menu frame-allocation polish (2026-10-29 00:07 UTC)
+
+- Moved station-picker row-label vector construction into egui's popup closure.
+  Closed frames no longer build and discard the 25 curated station labels; row
+  contents and keyboard selection behavior are unchanged. This reduces repeated
+  UI work in the compact native panel.
+- Focused GUI A/B and keyboard-navigation regressions passed. A/B at 295 px:
+  full category 24/25, names-only and compact category 25/25; at 340 px all
+  variants fit 25/25. Compact labels save 192 px versus full categories. Fit
+  measurement only, not listener preference.
+- All six required local gates passed on the source change: formatting, both
+  workspace test suites (with loopback fixture access), default/all-feature
+  strict Clippy and all-feature check. `git diff --check` passed.
+- Source commit `e29b173` was pushed to PR #5. PR is open and mergeable, with no
+  reviews. No workflow run or combined status is visible for `e29b173`; the last
+  observed run 291 (`40791274189`) on `b502d10` failed before jobs with
+  `startup_failure`.
