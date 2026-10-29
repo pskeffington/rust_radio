@@ -2035,8 +2035,8 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   integration tests and socket-driven SDR unit tests. The same occurred on the
   permission retry; those checks are environment-blocked, not code assertion
   failures. Default feature loopback tests did pass on retry.
-- PR #5 remains open and mergeable at `447bf8c`; GitHub reports no workflow run
-  or combined status for that head. No physical playback, listener comparison,
+- Implementation commit `13997d7` is pushed to the existing branch. PR #5 remains
+  open and mergeable; GitHub reports no workflow run or combined status for this head. No physical playback, listener comparison,
   Pi runtime, Bluetooth, USB or Windows MSVC acceptance was performed.
 - Next: expose a bounded operator-facing diagnostic snapshot during actual
   playback and collect repeatable audible 200 ms/500 ms A/B measurements on

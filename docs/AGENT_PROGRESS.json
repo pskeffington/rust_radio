@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-29T00:44:28Z",
+  "updated_at_utc": "2026-10-29T00:45:01Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "pending commit: session-scoped callback underrun diagnostics and observed first-play latency are wired to the stable facade; all-feature audio regression passes.",
+  "implementation_commit": "13997d7b0e13514e3a03ceb149f7e92efda4cf47: per-session native underrun diagnostics and observed first-play latency wired to the stable facade.",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Wired CPAL callback underrun samples through IP, direct nRSP-ST, SDRconnect, and Soapy playback into one per-session counter.",
@@ -305,7 +305,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Expose bounded operator-facing native playback diagnostics and compare actual first-play latency/underruns for repeated 200ms versus 500ms playback on Mac and, when available, Raspberry Pi; retain physical-device and Windows MSVC gates.",
-  "current_pr_state": "PR #5 open and mergeable at 447bf8c when checked 2026-10-29; no workflow run or combined status visible for that head. Full all-feature loopback/network tests remain blocked by local socket permission denial.",
+  "current_pr_state": "PR #5 is open and mergeable at 13997d7b0e13514e3a03ceb149f7e92efda4cf47 (checked 2026-10-29T00:45Z); GitHub reports no workflow run or combined status for this head.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "fmt passed; cargo test --workspace passed after loopback permission retry; strict default Clippy passed; cargo test --workspace --all-features blocked by denied local TCP binds in IP/SDR fixture tests; strict all-feature Clippy passed; all-feature workspace check passed.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
