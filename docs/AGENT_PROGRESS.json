@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:57:28Z",
+  "updated_at_utc": "2026-10-29T01:58:23Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -315,7 +315,7 @@
     "latest_pr_head": "c24bd5dc23497c3071565cfc74cef517ca02b713",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "At 2026-10-29T01:53:16Z the PR pre-change head 05f3512 was open and mergeable with no workflow run or combined status. The previously observed run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; a direct Actions API lookup and job list confirmed there were no jobs/logs to inspect. This failure predates the current callback-integrated regression. Native Windows MSVC CI remains unverified."
+    "details": "At 2026-10-29T01:58:04Z PR #5 was open and mergeable at code/test head e55cbca59b7d95cf56266c8bb982edae80213e5b; no workflow run or combined status was visible for this head. The read-only merge-tree against origin/main completed cleanly (tree ca86104db350627aa4b17daf9dfb8bd9a11c23a9). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; the API run detail and jobs list confirmed no logs exist. Native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -327,7 +327,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Run live 200/500ms comparison under measured stream jitter and a separate human audible A/B before changing the default; investigate Actions startup_failure; complete physical output/Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy integration gates.",
-  "current_pr_state": "PR #5 open and mergeable at pre-change head 05f3512a88e508296eb26348638254bdaae8beb0 as of 2026-10-29T01:53:16Z. No workflow run or combined status was visible for that head. This commit includes the callback-integrated regression and updated evidence.",
+  "current_pr_state": "PR #5 open and mergeable at code/test head e55cbca59b7d95cf56266c8bb982edae80213e5b as of 2026-10-29T01:58:04Z. GitHub showed no workflow run or combined status for that head; this docs checkpoint follows. Read-only merge-tree against refreshed origin/main was clean.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -993,6 +993,7 @@
       ]
     },
     "result": "passed; asserts prebuffer starts at packet 2 for A and packet 5 for B, prebuffer-gap misses, and production-renderer missing-sample counts after playback starts.",
-    "interpretation": "Stronger synthetic algorithm-level evidence: actual production render_samples consumes the actual test ring. It remains a simulated cadence and callback invocation, not a physical CPAL device, real-time scheduling, live-station interruption, or audible acceptance."
+    "interpretation": "Stronger synthetic algorithm-level evidence: actual production render_samples consumes the actual test ring. It remains a simulated cadence and callback invocation, not a physical CPAL device, real-time scheduling, live-station interruption, or audible acceptance.",
+    "test_commit": "e55cbca59b7d95cf56266c8bb982edae80213e5b"
   }
 }
