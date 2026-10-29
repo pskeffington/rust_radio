@@ -15,8 +15,11 @@
 - All six locked Rust workspace gates passed. The first default test run was
   blocked by sandbox-denied loopback sockets in six existing integration fixtures;
   rerunning with local socket access passed the workspace and all-feature suites.
-- Actions run 360 (`40818001252`) on PR head `76d4d8d` failed before job creation;
-  GitHub returned zero jobs and no combined statuses, so it has no diagnostic logs.
+- Actions run 360 (`40818001252`) on parent head `76d4d8d` failed before job
+  creation; GitHub returned zero jobs and no combined statuses, so it has no
+  diagnostic logs. The privacy hardening is pushed as `8d68310`; PR #5 remains
+  open and mergeable, with no run or combined status visible for that exact head
+  at 04:35 UTC.
 
 ## WPR News longer live buffering A/B (2026-10-29 04:22 UTC)
 
