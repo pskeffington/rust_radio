@@ -2078,3 +2078,8 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Next: collect more muted live runs across at least two approved feeds and
   then arrange a separate human audible comparison; preserve the 500 ms default
   until stronger latency/underrun and listening evidence supports a change.
+
+- Implementation commit `7434ce9` is pushed. At 00:54 UTC PR #5 remained open
+  and mergeable at that source head; GitHub showed no workflow run or combined
+  status for `7434ce9`. The previous base run 308 failed at startup with zero
+  jobs.
