@@ -2207,3 +2207,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   manual hardware test. CLI all-feature suite: 20 passed. Local socket fixtures
   passed with network permission. Physical/human listening acceptance remains
   untested.
+
+## Paced prebuffer timing regression (2026-10-29)
+
+- Added `measured_prebuffer_fill_tracks_paced_decoded_packets` to the IP sink
+  tests. It sends one decoded stereo packet every 10 ms through production
+  `SinkState`, uses 4-sample and 8-sample thresholds, and calls the same
+  prebuffer-fill timing recorder when the actual `Buffered` event fires.
+  The larger threshold must report a later fill time. Focused test passed.
+- Repeated the full six required gates with this fixture included: formatting,
+  default workspace tests, strict default Clippy, all-feature tests, strict
+  all-feature Clippy and all-feature check all passed. The all-feature audio
+  suite reports 56 passed and one ignored manual hardware test; all-feature
+  CLI suite reports 20 passed.
+- Test commit: `e60f6e8e427a7d13f01cb364f5d69db89c3deb0d`; measured A/B values
+  and interpretation remain in the preceding `Decoded-audio buffer-fill
+  comparison` section and machine-readable `buffer_fill_ab_latest` record.

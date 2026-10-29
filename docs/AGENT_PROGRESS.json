@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:29:14Z",
+  "updated_at_utc": "2026-10-29T01:32:52Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -212,7 +212,10 @@
     "Added prebuffer_fill_latency_observed to the public diagnostics and CLI JSON. It records worker-side elapsed time from first decoded PCM to the Buffered event; it adds no timing or lock work to the CPAL callback. Updated the acceptance procedure and added first-observation retention plus CLI schema tests.",
     "Repeated live 200/500ms A/B on two validated feeds using the new decoded-PCM fill metric: 16 total muted 30s CPAL runs, eight per station, all with zero callback underrun samples. In both feeds the 500ms profile filled about 83-89ms slower and reached first play about 160-192ms slower. Skylab delivered bursts, yielding one 308ms B fill and three much shorter fills; total startup noise remains substantial. See buffer_fill_ab_latest for all raw values.",
     "All six required workspace gates passed after the fill-metric implementation; default and all-feature socket fixtures passed with local-loopback permission. Audio all-feature library suite: 55 passed, 1 ignored manual hardware check; CLI suite: 20 passed. Synthetic jitter A/B regression passed as part of suites.",
-    "Prior pushed head c24bd5d had PR #5 open/no reviews; Actions run 313 failed before jobs (startup_failure) with empty combined statuses. New source commit f203e23cbcd640e5613c70b0e21898ad0958a05c is validated; goal remains active."
+    "Prior pushed head c24bd5d had PR #5 open/no reviews; Actions run 313 failed before jobs (startup_failure) with empty combined statuses. New source commit f203e23cbcd640e5613c70b0e21898ad0958a05c is validated; goal remains active.",
+    "Added a paced SinkState regression: one decoded stereo packet every 10ms, 4-sample versus 8-sample thresholds, and the same prebuffer_fill_latency recorder invoked on the actual Buffered event. The larger threshold records a greater fill time. Focused test and both full workspace suites passed.",
+    "Repeated all six required gates after adding the paced fixture; all passed. All-feature audio suite now 56 passed / 1 ignored manual hardware check; CLI suite 20 passed.",
+    "Latest local commit e60f6e8e427a7d13f01cb364f5d69db89c3deb0d adds the paced regression. It is local only at this checkpoint and will be pushed with the accompanying docs update."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -547,7 +550,7 @@
     "all_feature_tests": "passed: cargo test --workspace --all-features with local loopback fixture access",
     "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets -- -D warnings",
     "all_feature_check": "passed: cargo check --workspace --all-features",
-    "focused": "passed: rust-radio-audio all-feature library suite 55 passed / 1 ignored; rust-radio-cli all-feature suite 20 passed"
+    "focused": "passed: rust-radio-audio all-feature library suite 56 passed / 1 ignored manual hardware check; rust-radio-cli all-feature suite 20 passed"
   },
   "live_prebuffer_ab_prior_wcrb": {
     "checked_in_prior_run_utc": "2026-10-29 before 01:03 UTC (buffer-ready instrumentation not yet present)",
@@ -743,5 +746,12 @@
       }
     },
     "interpretation": "Across both feeds B took roughly 83-89ms longer to fill decoded PCM to threshold and roughly 160-192ms longer to first play in this new block. Network/decoder startup made total timing noisy; Skylab also shows burst delivery where 500ms ring fill often completed much faster than 500ms elapsed. All 16 trials had zero callback underruns, so this does not show the resilience difference under actual stalls. Muted results are not audible acceptance or listener preference."
+  },
+  "paced_prebuffer_fill_regression": {
+    "test": "playback::ip_pcm::tests::measured_prebuffer_fill_tracks_paced_decoded_packets",
+    "fixture": "Feeds one decoded stereo packet every 10ms through production SinkState with 4-sample and 8-sample thresholds. Records prebuffer_fill_latency_observed_ms on the actual Buffered event.",
+    "assertion": "The larger threshold crosses after additional paced packets, so its measured fill duration is strictly greater.",
+    "result": "passed in focused all-feature test and full default/all-feature workspace suites",
+    "test_commit": "e60f6e8e427a7d13f01cb364f5d69db89c3deb0d"
   }
 }
