@@ -109,10 +109,13 @@ struct OutputFailure {
 
 impl OutputFailure {
     fn record(&self, detail: String) {
-        *self
+        let mut recorded = self
             .detail
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(detail);
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if recorded.is_none() {
+            *recorded = Some(detail);
+        }
         self.failed.store(true, Ordering::Release);
     }
 
@@ -295,7 +298,7 @@ impl NativeAudioOutput {
             &mut self.producer,
             frame,
             cancelled,
-            &self.failed.failed,
+            &self.failed,
             &self.played_samples,
             Duration::from_secs(5),
         )
@@ -306,7 +309,7 @@ fn push_frame_with_callback_watchdog(
     producer: &mut HeapProd<f32>,
     frame: &[f32],
     cancelled: &AtomicBool,
-    failed: &AtomicBool,
+    failed: &OutputFailure,
     played_samples: &AtomicU64,
     stalled_after: Duration,
 ) -> bool {
@@ -314,7 +317,7 @@ fn push_frame_with_callback_watchdog(
     let mut last_consumed = played_samples.load(Ordering::Relaxed);
     for &sample in frame {
         loop {
-            if cancelled.load(Ordering::Acquire) || failed.load(Ordering::Acquire) {
+            if cancelled.load(Ordering::Acquire) || failed.failed.load(Ordering::Acquire) {
                 return false;
             }
             if producer.try_push(sample).is_ok() {
@@ -329,7 +332,7 @@ fn push_frame_with_callback_watchdog(
             // sending an error. Do not block the decoder worker forever
             // on a full ring or pretend audio is still playing.
             if last_progress.elapsed() >= stalled_after {
-                failed.store(true, Ordering::Release);
+                failed.record("Native audio output stopped consuming samples".into());
                 return false;
             }
             thread::sleep(Duration::from_millis(3));
@@ -398,6 +401,7 @@ mod output_identity_tests {
         assert_eq!(failure.detail(), None);
 
         failure.record("device disappeared during stream playback".into());
+        failure.record("less specific follow-up failure".into());
 
         assert!(failure.failed.load(Ordering::Acquire));
         assert_eq!(
@@ -526,7 +530,7 @@ mod output_identity_tests {
         let (mut producer, _consumer) = ring.split();
         producer.try_push(0.25).unwrap();
         let cancelled = AtomicBool::new(false);
-        let failed = AtomicBool::new(false);
+        let failed = OutputFailure::default();
         let played = AtomicU64::new(0);
         let started = Instant::now();
 
@@ -540,7 +544,11 @@ mod output_identity_tests {
         );
 
         assert!(!accepted);
-        assert!(failed.load(Ordering::Acquire));
+        assert!(failed.failed.load(Ordering::Acquire));
+        assert_eq!(
+            failed.detail().as_deref(),
+            Some("Native audio output stopped consuming samples")
+        );
         assert!(started.elapsed() < Duration::from_millis(250));
     }
 
@@ -550,7 +558,7 @@ mod output_identity_tests {
         let (mut producer, _consumer) = ring.split();
         producer.try_push(0.25).unwrap();
         let cancelled = AtomicBool::new(true);
-        let failed = AtomicBool::new(false);
+        let failed = OutputFailure::default();
         let played = AtomicU64::new(0);
 
         let accepted = push_frame_with_callback_watchdog(
@@ -563,7 +571,7 @@ mod output_identity_tests {
         );
 
         assert!(!accepted);
-        assert!(!failed.load(Ordering::Acquire));
+        assert!(!failed.failed.load(Ordering::Acquire));
     }
 
     #[test]
