@@ -3,7 +3,7 @@ use rust_radio::directory::{curated_stations, station_by_id};
 use rust_radio::output::available_outputs;
 use rust_radio::validation::validate_station;
 use rust_radio::validation_types::{StationValidation, ValidationStage, ValidationStatus};
-use rust_radio::{IpBufferingProfile, NativeRadioEngine};
+use rust_radio::{IpBufferingPreset, NativeRadioEngine};
 use std::collections::VecDeque;
 use std::io::{self, BufRead};
 use std::sync::{mpsc, Arc, Mutex};
@@ -25,7 +25,7 @@ struct ListenArgs<'a> {
     seconds: Option<u64>,
     output: &'a str,
     volume: u8,
-    buffering: IpBufferingProfile,
+    buffering: IpBufferingPreset,
 }
 
 fn usage() {
@@ -221,7 +221,7 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
         seconds: None,
         output: "system",
         volume: 60,
-        buffering: IpBufferingProfile::Resilient,
+        buffering: IpBufferingPreset::Resilient,
     };
     let mut used_seconds = false;
     let mut used_output = false;
@@ -263,9 +263,9 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
             }
             "--buffering" if !used_buffering => {
                 parsed.buffering = match args[i + 1].as_str() {
-                    "low-latency" => IpBufferingProfile::LowLatency,
-                    "balanced" => IpBufferingProfile::Balanced,
-                    "resilient" => IpBufferingProfile::Resilient,
+                    "low-latency" => IpBufferingPreset::LowLatency,
+                    "balanced" => IpBufferingPreset::Balanced,
+                    "resilient" => IpBufferingPreset::Resilient,
                     _ => return Err("buffering must be low-latency, balanced, or resilient"),
                 };
                 used_buffering = true;
@@ -291,14 +291,14 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
             return Err("enable the sdrconnect feature".into());
         }
     } else if args.direct {
-        NativeRadioEngine::start_stream_with_buffering(
+        NativeRadioEngine::start_stream_with_buffering_preset(
             args.station,
             args.volume,
             args.output,
             args.buffering,
         )?
     } else {
-        NativeRadioEngine::start_internet_with_buffering(
+        NativeRadioEngine::start_internet_with_buffering_preset(
             args.station,
             args.volume,
             args.output,
@@ -790,7 +790,7 @@ mod tests {
         assert_eq!(parse_listen(&parsed).unwrap().seconds, Some(30));
         assert_eq!(
             parse_listen(&parsed).unwrap().buffering,
-            IpBufferingProfile::Resilient
+            IpBufferingPreset::Resilient
         );
         assert_eq!(
             parse_listen(&options(&[
@@ -801,22 +801,38 @@ mod tests {
             ]))
             .unwrap()
             .buffering,
-            IpBufferingProfile::LowLatency
+            IpBufferingPreset::LowLatency
         );
         assert_eq!(
             parse_listen(&options(&["listen", "skylab", "--buffering", "balanced"]))
                 .unwrap()
                 .buffering,
-            IpBufferingProfile::Balanced
+            IpBufferingPreset::Balanced
         );
         assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
     }
 
     #[test]
     fn buffering_profiles_are_bounded_and_report_their_configured_duration() {
-        assert_eq!(IpBufferingProfile::LowLatency.prebuffer_ms(), 200);
-        assert_eq!(IpBufferingProfile::Balanced.prebuffer_ms(), 350);
-        assert_eq!(IpBufferingProfile::Resilient.prebuffer_ms(), 500);
+        assert_eq!(
+            rust_radio::IpBufferingProfile::LowLatency.prebuffer_ms(),
+            200
+        );
+        assert_eq!(
+            rust_radio::IpBufferingProfile::Resilient.prebuffer_ms(),
+            500
+        );
+        assert_eq!(
+            IpBufferingPreset::from(rust_radio::IpBufferingProfile::LowLatency),
+            IpBufferingPreset::LowLatency
+        );
+        assert_eq!(
+            IpBufferingPreset::from(rust_radio::IpBufferingProfile::Resilient),
+            IpBufferingPreset::Resilient
+        );
+        assert_eq!(IpBufferingPreset::LowLatency.prebuffer_ms(), 200);
+        assert_eq!(IpBufferingPreset::Balanced.prebuffer_ms(), 350);
+        assert_eq!(IpBufferingPreset::Resilient.prebuffer_ms(), 500);
         let diagnostics: serde_json::Value = serde_json::from_str(&diagnostics_json(
             200,
             rust_radio::NativePlaybackDiagnostics {

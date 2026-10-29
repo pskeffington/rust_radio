@@ -110,17 +110,35 @@ pub(super) struct PlaybackContext<'a> {
     output_progress: &'a OutputProgress,
 }
 
-/// Bounded IP-radio buffering profiles used for repeatable latency and underrun
-/// comparisons. Existing start methods retain the resilient profile.
+/// The original bounded IP-radio buffering profiles retained for API
+/// compatibility. Existing start methods retain the resilient profile.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum IpBufferingProfile {
+    LowLatency,
+    #[default]
+    Resilient,
+}
+
+impl IpBufferingProfile {
+    pub const fn prebuffer_ms(self) -> u16 {
+        match self {
+            Self::LowLatency => 200,
+            Self::Resilient => 500,
+        }
+    }
+}
+
+/// Additive IP buffering choices for hosts that want the measured 350 ms
+/// compromise as well as the original low-latency and resilient settings.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IpBufferingPreset {
     LowLatency,
     Balanced,
     #[default]
     Resilient,
 }
 
-impl IpBufferingProfile {
+impl IpBufferingPreset {
     pub const fn prebuffer_ms(self) -> u16 {
         match self {
             Self::LowLatency => 200,
@@ -131,6 +149,15 @@ impl IpBufferingProfile {
 
     const fn duration(self) -> Duration {
         Duration::from_millis(self.prebuffer_ms() as u64)
+    }
+}
+
+impl From<IpBufferingProfile> for IpBufferingPreset {
+    fn from(profile: IpBufferingProfile) -> Self {
+        match profile {
+            IpBufferingProfile::LowLatency => Self::LowLatency,
+            IpBufferingProfile::Resilient => Self::Resilient,
+        }
     }
 }
 
@@ -290,6 +317,21 @@ impl NativeRadioEngine {
         output_id: &str,
         profile: IpBufferingProfile,
     ) -> Result<Self, String> {
+        Self::start_internet_with_buffering_preset(
+            station_id,
+            volume_percent,
+            output_id,
+            profile.into(),
+        )
+    }
+
+    /// Start a curated station with one of the bounded IP buffering presets.
+    pub fn start_internet_with_buffering_preset(
+        station_id: &str,
+        volume_percent: u8,
+        output_id: &str,
+        preset: IpBufferingPreset,
+    ) -> Result<Self, String> {
         if station_by_id(station_id).is_none() {
             return Err("Unknown curated internet radio station".into());
         }
@@ -297,7 +339,7 @@ impl NativeRadioEngine {
             PlaybackSource::Internet(station_id.to_owned()),
             volume_percent,
             output_id,
-            profile.duration(),
+            preset.duration(),
         )
     }
 
@@ -318,12 +360,22 @@ impl NativeRadioEngine {
         output_id: &str,
         profile: IpBufferingProfile,
     ) -> Result<Self, String> {
+        Self::start_stream_with_buffering_preset(url, volume_percent, output_id, profile.into())
+    }
+
+    /// Play a direct stream with one of the bounded IP buffering presets.
+    pub fn start_stream_with_buffering_preset(
+        url: &str,
+        volume_percent: u8,
+        output_id: &str,
+        preset: IpBufferingPreset,
+    ) -> Result<Self, String> {
         radio_net::validate_direct_url(url)?;
         Self::start(
             PlaybackSource::Direct(url.to_owned()),
             volume_percent,
             output_id,
-            profile.duration(),
+            preset.duration(),
         )
     }
 
