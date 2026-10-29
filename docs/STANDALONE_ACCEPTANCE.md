@@ -397,3 +397,12 @@ to +264.875 ms). Both ranges cross zero and the result reverses the earlier
 small-block direction. Keep the resilient default; no preference was measured.
 Raw data is under `wpr_news_live_ab_30s_overnight_followup` in
 `docs/AGENT_PROGRESS.json`.
+
+
+## WFMU Freeform buffering A/B (2026-10-29 23:45 UTC)
+
+- Silent curated-station preflight decoded WFMU Freeform as MP3, 44.1 kHz stereo (1152 frames), without opening audio output.
+- Eight counterbalanced native trials compared balanced 350 ms and resilient 500 ms for 30 seconds each on macOS ARM64/system output at 0% volume. All eight completed with zero callback underruns.
+- Buffer-ready means/medians were 574.294/567.796 ms vs 569.996/558.109 ms. Paired A-minus-B median was -14.088 ms (range -47.260 to +92.626 ms); first-play median was -18.951 ms (range -58.663 to +66.713 ms). Both ranges cross zero, so this second-feed comparison does not establish a latency or reliability winner, and muted trials measure no listener preference. Keep the 500 ms default.
+- Full decoded preflight and individual measurements are in `docs/AGENT_PROGRESS.json` under `live_station_wfmu_balanced_resilient_ab`; the original harness artifact is `/private/tmp/rust-radio-wfmu-balanced-resilient-ab-2026-10-29.json`.
+- The A/B runner regression suite passed 12/12 and the CLI built successfully.

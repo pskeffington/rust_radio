@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T23:43:46Z",
+  "updated_at_utc": "2026-10-29T23:50:00Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "93cf016f926701dc091e853cc951fe7b63687778",
@@ -257,7 +257,8 @@
     "Sanitized remote Content-Type parameters out of both single and batch validation JSON, bounding the retained MIME value; all six Rust workspace gates passed and an end-to-end WPR A/B verified the normalized schema.",
     "Reran all-feature workspace tests with local loopback socket access: passed. Repeated WPR balanced/resilient 30-second A/B eight times with zero underruns; paired ranges overlap and reverse the earlier small startup difference, so retain default.",
     "Passed all six locked workspace gates on 93cf016 after allowing local loopback fixtures. Formatting, default/all-feature tests, strict Clippy in both modes and all-feature check passed.",
-    "Headless/IP/audio/CLI cargo check passed for aarch64-apple-darwin and x86_64-pc-windows-gnu. Broader all-feature AArch64 Linux and Windows GNU checks were blocked by missing cross gcc and Windows SoapySDR pkg-config/sysroot respectively."
+    "Headless/IP/audio/CLI cargo check passed for aarch64-apple-darwin and x86_64-pc-windows-gnu. Broader all-feature AArch64 Linux and Windows GNU checks were blocked by missing cross gcc and Windows SoapySDR pkg-config/sysroot respectively.",
+    "Validated curated WFMU Freeform as MP3 44.1 kHz stereo and ran eight muted 30-second balanced-350ms vs resilient-500ms native trials in counterbalanced ABBA/BAAB order; all had zero underruns. Paired startup latency ranges crossed zero, so no buffering winner; retain 500ms default."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -4932,7 +4933,7 @@
     "environment": "macOS ARM64 with local loopback socket access",
     "context": "The preceding restricted sandbox attempt denied six existing loopback HTTP fixture binds; rerun passed without code changes."
   },
-  "latest_portability_validation_2026_10_30": {
+  "latest_portability_validation_2026_10_29": {
     "source_commit": "93cf016f926701dc091e853cc951fe7b63687778",
     "workspace_gates": {
       "fmt": "passed",
@@ -4959,5 +4960,227 @@
     "result": "passed",
     "timestamp_utc": "2026-10-29T23:43:46Z",
     "context": "Initial restricted test attempt could not bind six loopback fixtures; rerun with permitted socket access passed. No source code changes. PR #5 is open/mergeable at documentation checkpoint 60925e4; no exact-head Actions run/status was visible."
+  },
+  "live_station_wfmu_balanced_resilient_ab": {
+    "timestamp_utc": "2026-10-29T23:45:02+00:00",
+    "station_validation": {
+      "checked_at_unix": 1793317502,
+      "results": [
+        {
+          "attempts": 1,
+          "channels": 2,
+          "checked_at_unix": 1793317502,
+          "codec": "mp3",
+          "content_type": "audio/mpeg",
+          "decoded": true,
+          "decoded_frames": 1152,
+          "recovered": false,
+          "sample_rate": 44100,
+          "stage": "decoded_audio",
+          "station_id": "wfmu",
+          "status": "decoded"
+        }
+      ],
+      "schema_version": 1
+    },
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "station": "wfmu",
+    "seconds_per_trial": 30,
+    "volume_percent": 0,
+    "output": "system",
+    "profiles": {
+      "A": "balanced",
+      "B": "resilient"
+    },
+    "trial_order": [
+      "A",
+      "B",
+      "B",
+      "A",
+      "B",
+      "A",
+      "A",
+      "B"
+    ],
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 678.237875,
+        "first_play_latency_observed_ms": 702.846291,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2817024,
+        "prebuffer_fill_latency_observed_ms": 41.926249999999996,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 585.611416,
+        "first_play_latency_observed_ms": 636.1335409999999,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2824192,
+        "prebuffer_fill_latency_observed_ms": 70.42575,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 523.502958,
+        "first_play_latency_observed_ms": 579.2305829999999,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2831360,
+        "prebuffer_fill_latency_observed_ms": 67.31983299999999,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 537.014417,
+        "first_play_latency_observed_ms": 591.219084,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2828288,
+        "prebuffer_fill_latency_observed_ms": 41.511874999999996,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 5,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 530.6059170000001,
+        "first_play_latency_observed_ms": 593.517167,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2833408,
+        "prebuffer_fill_latency_observed_ms": 69.64399999999999,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 6,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 483.34637499999997,
+        "first_play_latency_observed_ms": 534.8542080000001,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2836480,
+        "prebuffer_fill_latency_observed_ms": 49.518833,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 7,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 598.576833,
+        "first_play_latency_observed_ms": 647.596958,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 2824192,
+        "prebuffer_fill_latency_observed_ms": 54.578833,
+        "underrun_samples": 0
+      },
+      {
+        "trial": 8,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 640.2652089999999,
+        "first_play_latency_observed_ms": 697.487125,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 2821120,
+        "prebuffer_fill_latency_observed_ms": 66.106375,
+        "underrun_samples": 0
+      }
+    ],
+    "summary": {
+      "A": {
+        "profile": "balanced",
+        "prebuffer_ms": 350,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 574.293875,
+        "mean_first_play_latency_observed_ms": 619.12913525,
+        "mean_prebuffer_fill_latency_observed_ms": 46.88394775,
+        "output_samples_consumed_current_attempt": 11305984,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 574.293875,
+            "median": 567.795625,
+            "min": 483.34637499999997,
+            "max": 678.237875
+          },
+          "first_play": {
+            "mean": 619.12913525,
+            "median": 619.408021,
+            "min": 534.8542080000001,
+            "max": 702.846291
+          },
+          "prebuffer_fill": {
+            "mean": 46.88394775,
+            "median": 45.7225415,
+            "min": 41.511874999999996,
+            "max": 54.578833
+          }
+        }
+      },
+      "B": {
+        "profile": "resilient",
+        "prebuffer_ms": 500,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 569.996375,
+        "mean_first_play_latency_observed_ms": 626.592104,
+        "mean_prebuffer_fill_latency_observed_ms": 68.3739895,
+        "output_samples_consumed_current_attempt": 11310080,
+        "underrun_samples": 0,
+        "missing_sample_share_percent": 0.0,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 569.996375,
+            "median": 558.1086665,
+            "min": 523.502958,
+            "max": 640.2652089999999
+          },
+          "first_play": {
+            "mean": 626.592104,
+            "median": 614.825354,
+            "min": 579.2305829999999,
+            "max": 697.487125
+          },
+          "prebuffer_fill": {
+            "mean": 68.3739895,
+            "median": 68.48191649999998,
+            "min": 66.106375,
+            "max": 70.42575
+          }
+        }
+      },
+      "paired_latency_difference_ms": {
+        "definition": "A minus B; negative values mean A was faster",
+        "pairs": 4,
+        "metrics": {
+          "buffer_ready": {
+            "mean": 4.297499999999985,
+            "median": -14.088458500000002,
+            "min": -47.259542000000124,
+            "max": 92.62645900000007
+          },
+          "first_play": {
+            "mean": -7.462968749999959,
+            "median": -18.95083299999999,
+            "min": -58.66295899999989,
+            "max": 66.71275000000003
+          },
+          "prebuffer_fill": {
+            "mean": -21.490041749999996,
+            "median": -22.96656249999999,
+            "min": -28.499499999999998,
+            "max": -11.527541999999997
+          }
+        }
+      }
+    },
+    "artifact_file": "/private/tmp/rust-radio-wfmu-balanced-resilient-ab-2026-10-29.json",
+    "interpretation": "Eight counterbalanced muted native trials completed with zero underruns. Paired A-minus-B buffer-ready median was -14.088 ms (range -47.260 to +92.626 ms); first-play median -18.951 ms (range -58.663 to +66.713 ms). Ranges cross zero. This second-feed result does not establish a buffering winner or listener preference; retain the 500 ms default."
   }
 }
