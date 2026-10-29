@@ -1,5 +1,25 @@
 # Radio development progress
 
+## Validation MIME metadata sanitization (2026-10-29 04:37 UTC)
+
+- Both `validate STATION --json` and `validate-all --json` now retain only a
+  bounded, valid lowercase MIME type from publisher-controlled Content-Type
+  headers. Parameters, which can carry arbitrary text or token-like values, are
+  dropped. Invalid, non-ASCII, malformed or overlong values become null.
+- The CLI suite passed 18/18, including regression coverage for parameter
+  stripping and invalid/oversized media types. The A/B Python suite passed 12/12.
+  All six locked Rust workspace gates passed.
+- End-to-end WPR News preflight returned normalized `audio/mpeg`, omitted URL
+  and detail fields, and the 8-trial muted A/B completed with zero underruns.
+  Balanced 350ms vs resilient 500ms buffer-ready means were
+  1522.834/1655.351ms; paired A-minus-B median was -128.792ms (range -671.608
+  to +399.125ms). First-play paired median was -114.943ms (range -676.902 to
+  +420.357ms). Ranges cross zero; no profile/default or listening-preference
+  conclusion is supported. Full raw trials are in
+  `wpr_news_mime_sanitized_ab_8s` in `docs/AGENT_PROGRESS.json`.
+- Actions run 362 (`40818606116`) on PR head `e1182ac` failed before job
+  creation; GitHub returned zero jobs and no combined statuses or logs.
+
 ## A/B diagnostics privacy hardening (2026-10-29 04:31 UTC)
 
 - `scripts/run_prebuffer_trace_ab.py` now accepts only the six playback diagnostic

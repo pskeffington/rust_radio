@@ -135,7 +135,7 @@ fn batch_validation_json(results: CatalogValidationResults) -> Result<String, St
             "status": validation_status_name(report.status),
             "stage": validation_stage_name(report.stage),
             "checked_at_unix": report.checked_at.and_then(|time| time.duration_since(UNIX_EPOCH).ok()).map(|time| time.as_secs()),
-            "content_type": report.content_type,
+            "content_type": json_content_type(report.content_type.as_deref()),
             "codec": report.codec,
             "sample_rate": report.sample_rate,
             "channels": report.channels,
@@ -167,7 +167,7 @@ fn station_validation_json(report: &StationValidation) -> Result<String, String>
             "status": validation_status_name(report.status),
             "stage": validation_stage_name(report.stage),
             "checked_at_unix": checked_at,
-            "content_type": report.content_type,
+            "content_type": json_content_type(report.content_type.as_deref()),
             "codec": report.codec,
             "sample_rate": report.sample_rate,
             "channels": report.channels,
@@ -176,6 +176,32 @@ fn station_validation_json(report: &StationValidation) -> Result<String, String>
         }],
     }))
     .map_err(|error| format!("Unable to encode station validation report: {error}"))
+}
+
+/// Keep only a bounded MIME type in machine reports; header parameters are
+/// publisher-controlled and may carry tokens or arbitrary diagnostic text.
+fn json_content_type(content_type: Option<&str>) -> Option<String> {
+    let media_type = content_type?.split(';').next()?.trim();
+    if media_type.is_empty() || media_type.len() > 127 || !media_type.is_ascii() {
+        return None;
+    }
+    let mut parts = media_type.split('/');
+    let major = parts.next()?;
+    let subtype = parts.next()?;
+    let is_token = |part: &str| {
+        !part.is_empty()
+            && part
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&byte))
+    };
+    if parts.next().is_some() || !is_token(major) || !is_token(subtype) {
+        return None;
+    }
+    Some(format!(
+        "{}/{}",
+        major.to_ascii_lowercase(),
+        subtype.to_ascii_lowercase()
+    ))
 }
 
 fn validation_status_name(status: ValidationStatus) -> &'static str {
@@ -738,6 +764,7 @@ mod tests {
                 report.stage = ValidationStage::DecodedAudio;
                 report.decoded_frames = 1152;
                 report.codec = Some("mp3".into());
+                report.content_type = Some("audio/mpeg; token=private-header-value".into());
             }
         } else if station_id == "wcrb" {
             report.status = ValidationStatus::InvalidStream;
@@ -961,7 +988,7 @@ mod tests {
         report.status = ValidationStatus::Decoded;
         report.stage = ValidationStage::DecodedAudio;
         report.resolved_url = Some("https://example.invalid/live?token=secret".into());
-        report.content_type = Some("audio/mpeg".into());
+        report.content_type = Some("Audio/MPEG; token=private-header-value".into());
         report.codec = Some("MP3".into());
         report.sample_rate = Some(44_100);
         report.channels = Some(1);
@@ -978,6 +1005,7 @@ mod tests {
         assert_eq!(result["station_id"].as_str(), Some("wpr-news"));
         assert_eq!(result["status"].as_str(), Some("decoded"));
         assert_eq!(result["stage"].as_str(), Some("decoded_audio"));
+        assert_eq!(result["content_type"].as_str(), Some("audio/mpeg"));
         assert_eq!(json["checked_at_unix"].as_u64(), Some(1234));
         assert_eq!(result["codec"].as_str(), Some("MP3"));
         assert_eq!(result["sample_rate"].as_u64(), Some(44_100));
@@ -989,7 +1017,28 @@ mod tests {
         assert!(result.get("resolved_url").is_none());
         assert!(result.get("detail").is_none());
         assert!(!serialized.contains("secret"));
+        assert!(!serialized.contains("private-header-value"));
         assert!(!serialized.contains("private response detail"));
+    }
+
+    #[test]
+    fn json_content_type_drops_parameters_and_rejects_invalid_or_unbounded_values() {
+        assert_eq!(
+            json_content_type(Some("Audio/MPEG; token=secret")),
+            Some("audio/mpeg".into())
+        );
+        assert_eq!(
+            json_content_type(Some(" audio/aac ")),
+            Some("audio/aac".into())
+        );
+        assert_eq!(json_content_type(None), None);
+        assert_eq!(json_content_type(Some("audio")), None);
+        assert_eq!(json_content_type(Some("audio/mpeg/extra")), None);
+        assert_eq!(json_content_type(Some("audio/with space")), None);
+        assert_eq!(
+            json_content_type(Some(&format!("audio/{}", "x".repeat(128)))),
+            None
+        );
     }
 
     #[test]
@@ -1008,6 +1057,8 @@ mod tests {
         assert_eq!(recovered["attempts"].as_u64(), Some(2));
         assert_eq!(recovered["recovered"].as_bool(), Some(true));
         assert_eq!(recovered["status"].as_str(), Some("decoded"));
+        assert_eq!(recovered["content_type"].as_str(), Some("audio/mpeg"));
+        assert!(!json.to_string().contains("private-header-value"));
         let rejected = stations
             .iter()
             .find(|station| station["station_id"] == "wcrb")

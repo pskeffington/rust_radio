@@ -378,3 +378,12 @@ latencies and mistyped, negative or out-of-range prebuffer and sample counts. Fa
 echo raw CLI stdout or stderr, so a loopback query token or future URL-bearing
 diagnostic cannot be copied into an error report. Regression coverage is in
 `scripts/test_prebuffer_trace_ab.py`.
+
+
+Machine-readable station validation no longer retains raw Content-Type header
+parameters. Both single-station and catalog JSON keep only a validated lowercase
+MIME type of at most 127 ASCII characters; malformed values become null. A WPR
+News validation and eight-trial A/B run passed through the normalized envelope.
+The 350/500 ms comparison had zero underruns, while paired startup ranges
+crossed zero; it does not establish a profile winner. Raw data is in
+`docs/AGENT_PROGRESS.json` under `wpr_news_mime_sanitized_ab_8s`.
