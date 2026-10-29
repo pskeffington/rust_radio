@@ -12,6 +12,10 @@ Status: implemented in the standalone module and consumed by Pip-Boy through a p
 - IP playback starts the paused output as soon as the prebuffer threshold is
   reached while delivering a decoded packet. A packet larger than the ring can
   therefore drain without falsely timing out on a full, still-paused output.
+- Internet radio uses a 500 ms prebuffer; native SDR sources retain 200 ms to
+  limit tuning latency. A deterministic jitter-profile A/B reduced modeled
+  silence during 300 ms and 800 ms stream stalls, at the cost of 300 ms more
+  initial buffering. Physical network and device acceptance remains separate.
 - PlaybackStarted may be emitted only after a live sink has actually consumed nonempty PCM. TCP availability is not playback evidence; local mute does not erase callback evidence.
 - `NativeRadioEngine::status()` reconciles the callback's consumed-sample counter before returning a `Playing` snapshot for IP, direct nRSP-native, SDRconnect, and Soapy sources. This covers delayed callbacks while a source awaits another packet/read; each output attempt gets a fresh counter so stale progress cannot advance recovery state.
 - Stop must invalidate generation **and** cancel/join receiver, decoder and output worker resources; generation filtering alone does not release sockets or devices.

@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T00:11:29Z",
+  "updated_at_utc": "2026-10-29T00:15:20Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
@@ -167,7 +167,10 @@
     "Native audio output full-ring watchdog now records a specific stopped-consuming-samples diagnostic if no CPAL callback error is available; first recorded diagnostic wins so backend detail is not overwritten by a generic later error.",
     "Watchdog bounded-failure/detail regression and output-error retention regression passed. GUI label A/B repeated on current tree and passed: 295px A 24/25, B/C 25/25; 340px all 25/25; compact saves 192px.",
     "All six required workspace gates passed on source tree containing e29b173 and 4415ef0; loopback fixtures ran with local networking enabled.",
-    "PR #5 open and mergeable at 4415ef0 with no reviews. No workflow run or status visible for 4415ef0; last observed run 291 on b502d10 failed before jobs."
+    "PR #5 open and mergeable at 4415ef0 with no reviews. No workflow run or status visible for 4415ef0; last observed run 291 on b502d10 failed before jobs.",
+    "Added IP-only 500ms prebuffer after a repeatable synthetic A/B versus the existing 200ms default. Under 100/300/800ms injected stalls, modeled silence was A 0/100/600ms and B 0/0/300ms; B adds 300ms before initial playback. Other SDR sources retain 200ms.",
+    "Focused IP prebuffer A/B and station label A/B tests passed. All six required workspace gates passed on source commit 3a121df; loopback fixtures ran with local networking enabled.",
+    "PR #5 remains open and mergeable at 3a121df, no reviews. No workflow run or combined status visible for this head; last observed run 291 on b502d10 failed before jobs."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -267,7 +270,7 @@
     "latest_pr_head": "b502d10a0366d1a62d0574c4e0d2300f9f397841",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
-    "details": "PR #5 open and mergeable at 4415ef0, no reviews. No Actions run or combined status visible for 4415ef0. Last observed run 291 (40791274189) on b502d10 failed before job creation with startup_failure; zero jobs and no combined statuses."
+    "details": "PR #5 open and mergeable at 3a121df, no reviews. No Actions run or combined status visible for 3a121df. Last observed run 291 (40791274189) on b502d10 failed before job creation with startup_failure; zero jobs and no combined statuses."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -278,11 +281,33 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Continue source-level native playback resilience improvements with reproducible regressions; obtain actionable PR CI and audible/device-loss, Bluetooth/USB, Raspberry Pi and receiver acceptance; validate Windows MSVC and AArch64 builds; complete publisher rights and continuous national NPR feed evidence.",
-  "current_pr_state": "PR #5 open and mergeable at 4415ef0; no workflow run or combined status visible for current head. Last observed run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses). No reviews.",
+  "next_priority": "Validate the IP-only 500ms jitter buffer with live varied-latency streams and audible output; measure startup latency, CPU and memory on Raspberry Pi; pursue Bluetooth/USB loss, receivers, Windows MSVC/AArch64, publisher rights, national NPR feed rights and actionable CI.",
+  "current_pr_state": "PR #5 open and mergeable at 3a121df; no workflow run or combined status visible for current head. Last observed run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses). No reviews.",
   "live_catalog_revalidation": "2026-10-28T23:59:21Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
-  "six_required_gates_latest": "passed on source tree including e29b173 and 4415ef0 as of 2026-10-29T00:11Z: cargo fmt --all -- --check; cargo test --workspace --locked (with loopback fixture access); cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked (with loopback fixture access); cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked.",
+  "six_required_gates_latest": "passed on source commit 3a121df as of 2026-10-29T00:15Z: cargo fmt --all -- --check; cargo test --workspace --locked (with loopback fixture access); cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked (with loopback fixture access); cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
   "windows_gnu_cross_validation": "passed --no-run test binary compilation and strict Clippy for default, SDRconnect, and direct nRSP-native/GUI feature sets; binaries not executed on Windows.",
-  "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed."
+  "aarch64_cross_check": "blocked on host: aarch64-unknown-linux-gnu Rust target installed, but ring build script cannot find aarch64-linux-gnu-gcc; no project Rust error observed.",
+  "prebuffer_ab_test": {
+    "variant_a": "200ms default prebuffer",
+    "variant_b": "500ms Internet IP prebuffer; SDR remains 200ms",
+    "stall_profiles_ms": [
+      100,
+      300,
+      800
+    ],
+    "modeled_silence_a_ms": [
+      0,
+      100,
+      600
+    ],
+    "modeled_silence_b_ms": [
+      0,
+      0,
+      300
+    ],
+    "added_initial_buffer_ms": 300,
+    "selected": "500ms for Internet IP streams",
+    "interpretation": "Deterministic steady-state jitter model only; not live network or hardware measurement."
+  }
 }

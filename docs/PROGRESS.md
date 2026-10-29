@@ -1836,3 +1836,25 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   PR #5. PR is open and mergeable with no reviews. No Actions run or combined
   status is visible for `4415ef0`; run 291 on `b502d10` failed before job
   creation (`startup_failure`, zero jobs).
+
+
+## IP stream prebuffer A/B (2026-10-29 00:15 UTC)
+
+- Compared the current 200 ms prebuffer (A) with a 500 ms candidate (B) in a
+  deterministic steady-state buffer model. With injected 100/300/800 ms network
+  stalls, modeled silence was A: 0/100/600 ms and B: 0/0/300 ms. B adds 300 ms
+  before initial playback. This is a synthetic jitter comparison, not live
+  network or hardware measurement.
+- Selected 500 ms for Internet IP streams to absorb stalls up to 500 ms; direct
+  nRSP, SDRconnect and Soapy sources retain the 200 ms default to preserve
+  tuning responsiveness. Buffer capacity remains two seconds. The implementation
+  and reproducible comparison are in `output.rs` and `playback.rs`.
+- Focused prebuffer A/B and station-label A/B regressions passed. All six
+  required workspace gates passed on source commit `3a121df`; tests used local
+  fixture network access.
+- PR #5 remains open and mergeable at `3a121df`, with no reviews. No Actions run
+  or combined status is visible for this head. The last observed run 291 on
+  `b502d10` failed before jobs (`startup_failure`, zero jobs).
+- Next: exercise the 500 ms policy with live network jitter and audible output,
+  verify Raspberry Pi CPU/memory/start latency, and continue Bluetooth/output
+  loss recovery acceptance.
