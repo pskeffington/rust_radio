@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T00:17:15Z",
+  "updated_at_utc": "2026-10-29T00:18:13Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f92f0fc535d78c4a86949cb5df291bd31547b61b; only HTTP 408/425/429/500/502/503/504 are transient; other HTTP statuses fail permanently.",
@@ -173,7 +173,11 @@
     "PR #5 remains open and mergeable at 3a121df, no reviews. No workflow run or combined status visible for this head; last observed run 291 on b502d10 failed before jobs.",
     "Bounded live validate-all at 2026-10-29T00:16:38Z decoded all 25 feeds in 25 attempts, no retries/failures; point-in-time codec evidence only, not jitter/audible proof.",
     "Ignored native_ip_playback_switching_failure_and_responsiveness test passed on host CPAL at 0% volume with loopback MP3/AAC fixtures using 500ms IP prebuffer; callback Playing, switching, failure/retry, responsiveness and Stop passed. Not audible/device-loss acceptance.",
-    "Repeated both A/B regressions: IP prebuffer 200ms vs 500ms modeled silence 0/100/600ms vs 0/0/300ms across 100/300/800ms stalls, with 300ms extra startup for B; label layout A/B at 295px 24/25 vs 25/25 and all 25/25 at 340px."
+    "Repeated both A/B regressions: IP prebuffer 200ms vs 500ms modeled silence 0/100/600ms vs 0/0/300ms across 100/300/800ms stalls, with 300ms extra startup for B; label layout A/B at 295px 24/25 vs 25/25 and all 25/25 at 340px.",
+    "Rechecked PR #5 at evidence head 577dc21: open and mergeable, no reviews. No Actions run/status visible; prior run 291 on b502d10 startup_failure before jobs.",
+    "Fresh bounded live validate-all at 2026-10-29T00:16:38Z decoded 25/25 feeds in 25 attempts without retries/failures; point-in-time codec evidence only.",
+    "Muted CPAL integration passed with 500ms IP prebuffer and loopback MP3/AAC fixtures; callback startup/lifecycle only, not audible, live jitter or physical device-loss evidence.",
+    "Repeated synthetic IP prebuffer and GUI label A/B regressions; results unchanged. No new source defect was verified and no source change was made this revalidation."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -284,8 +288,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Measure inter-chunk jitter on approved live streams and run audible/target-device tests to evaluate the 500ms IP prebuffer; perform Raspberry Pi startup/CPU/memory measurement; continue Bluetooth/USB and receiver acceptance, Windows MSVC/AArch64, rights and national NPR gates.",
-  "current_pr_state": "PR #5 open and mergeable at evidence head 577dc21; no workflow run/status or reviews visible. Last observed run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses).",
+  "next_priority": "Instrument actual inter-chunk arrival timing on approved live feeds, and run audible/target-device acceptance to evaluate the IP prebuffer; measure Pi startup/CPU/memory and continue Bluetooth/USB, receiver, rights, Windows MSVC/AArch64 and actionable CI gates.",
+  "current_pr_state": "PR #5 open and mergeable at evidence head 577dc21 when checked at 00:18Z; no reviews, no workflow run or combined status visible. Last observed run 291 on b502d10 failed before jobs (startup_failure, zero jobs/statuses).",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "passed on source commit 3a121df as of 2026-10-29T00:15Z: cargo fmt --all -- --check; cargo test --workspace --locked (with loopback fixture access); cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --all-features --locked (with loopback fixture access); cargo clippy --workspace --all-features --all-targets --locked -- -D warnings; cargo check --workspace --all-features --locked.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",

@@ -1884,3 +1884,21 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   audible/target-device checks before claiming field benefit from the longer
   buffer. Raspberry Pi runtime, Bluetooth/USB loss, receiver and rights gates
   remain open.
+
+
+## Buffer change live revalidation (2026-10-29 00:18 UTC)
+
+- Rechecked PR #5 at `577dc21`: open and mergeable, no reviews. No Actions run
+  or combined status was visible for that head; prior run 291 on `b502d10`
+  failed before job creation (`startup_failure`, zero jobs).
+- Live `validate-all --json` at 00:16:38 UTC decoded 25/25 feeds in 25 attempts
+  with no retries or failures. Point-in-time codec check only.
+- The existing muted native CPAL integration passed with the 500 ms IP prebuffer
+  and loopback MP3/AAC fixtures. It verifies callback startup and lifecycle on
+  this host at 0% volume, not audible quality, real stream jitter, or physical
+  device loss.
+- Repeated the synthetic jitter A/B and station-menu layout A/B. Results match
+  the prior checkpoint. No source defect or reason to change either selected
+  variant surfaced; no new source code changed in this revalidation.
+- Next: collect actual inter-chunk timing for approved feeds and do audible and
+  target-device acceptance before claiming field benefit from the prebuffer.
