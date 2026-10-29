@@ -1,5 +1,27 @@
 # Radio development progress
 
+## A/B spread and paired latency reporting (2026-10-29 04:03 UTC)
+
+- Extended `scripts/run_prebuffer_trace_ab.py` to report median/min/max for
+  buffer-ready, first-play and prebuffer-fill latency while retaining existing
+  means and underrun share. It also reports adjacent A-minus-B deltas for each
+  pair in the counterbalanced run. Added tests for spread/delta values and
+  rejection of malformed pair ordering.
+- End-to-end replay used the captured Skylab response timing plus deterministic
+  350/500/250 ms stalls after chunks 20/38/54. All eight muted native CPAL
+  trials had zero underruns. Balanced 350 ms vs resilient 500 ms buffer-ready
+  means were 483.464/468.548 ms; medians 467.319/462.181 ms. Paired A-minus-B
+  median was +5.137 ms, with a wide -147.847 to +197.234 ms range. First-play
+  paired median was +27.006 ms (-149.995 to +173.167 ms). This does not establish
+  a profile winner or listener preference. Raw trials are under
+  `ab_paired_summary_followup` in `docs/AGENT_PROGRESS.json`.
+- All six locked Rust workspace gates passed. Python harness tests passed 6/6,
+  fixture-server process test 1/1, Python compilation/help, workflow YAML, JSON
+  parse and `git diff --check` passed. Actions run 347 on the prior parent head
+  failed before job creation; current branch remote CI remains unverified.
+- Next: complete physical output-loss/reconnect and blinded audible acceptance;
+  native Windows MSVC and Raspberry Pi runtime gates remain open.
+
 ## Combined captured Skylab pacing and stall A/B (2026-10-29 03:57 UTC)
 
 - Replayed the captured Skylab response-body sizes/intervals with bundled synthetic

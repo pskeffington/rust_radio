@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import platform
+import statistics
 import subprocess
 from urllib.parse import urlsplit
 
@@ -131,9 +132,25 @@ def run_trial(args, trial, variant, profile):
 
 
 def summarize(records, profiles):
+    latency_metrics = {
+        "buffer_ready": "buffer_ready_latency_observed_ms",
+        "first_play": "first_play_latency_observed_ms",
+        "prebuffer_fill": "prebuffer_fill_latency_observed_ms",
+    }
+
+    def describe(values):
+        return {
+            "mean": sum(values) / len(values),
+            "median": statistics.median(values),
+            "min": min(values),
+            "max": max(values),
+        }
+
     summaries = {}
     for variant, profile in zip(("A", "B"), profiles):
         group = [record for record in records if record["variant"] == variant]
+        if not group:
+            raise ValueError(f"no trials for variant {variant}")
         totals = {
             "output_samples_consumed_current_attempt": sum(
                 record["output_samples_consumed_current_attempt"] for record in group
@@ -162,7 +179,30 @@ def summarize(records, profiles):
             "missing_sample_share_percent": 100 * missing / (missing + consumed)
             if missing + consumed
             else None,
+            "latency_ms": {
+                label: describe([record[field] for record in group])
+                for label, field in latency_metrics.items()
+            },
         }
+
+    paired_differences = {label: [] for label in latency_metrics}
+    for index in range(0, len(records) - 1, 2):
+        pair = records[index : index + 2]
+        by_variant = {record["variant"]: record for record in pair}
+        if set(by_variant) != {"A", "B"}:
+            raise ValueError("each adjacent trial pair must contain one A and one B trial")
+        for label, field in latency_metrics.items():
+            paired_differences[label].append(
+                by_variant["A"][field] - by_variant["B"][field]
+            )
+
+    summaries["paired_latency_difference_ms"] = {
+        "definition": "A minus B; negative values mean A was faster",
+        "pairs": len(next(iter(paired_differences.values()))),
+        "metrics": {
+            label: describe(values) for label, values in paired_differences.items()
+        },
+    }
     return summaries
 
 

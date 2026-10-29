@@ -154,6 +154,21 @@ underrun totals when startup times differ. After recovery, the consumed count
 resets per output attempt while underruns remain session-cumulative, so do not
 combine them into a ratio for a session that retried.
 
+The A/B runner preserves each trial and reports per-profile mean, median,
+minimum and maximum for buffer-ready, first-play and prebuffer-fill latency. It
+also pairs adjacent counterbalanced trials and reports A-minus-B mean, median
+and range; negative deltas mean A was faster. With small trial counts, these
+descriptive ranges are not confidence intervals and do not by themselves prove
+a profile advantage.
+
+On 2026-10-29, a repeated combined captured-Skylab-trace and injected-stall run
+compared balanced 350 ms (A) with resilient 500 ms (B) across eight muted native
+trials. All trials had zero underruns. Buffer-ready means were 483.464/468.548
+ms and medians were 467.319/462.181 ms. The paired A-minus-B median was
++5.137 ms, with a -147.847 to +197.234 ms range; first-play paired median was
++27.006 ms (-149.995 to +173.167 ms). This remains inconclusive startup evidence
+and is not live-feed or listener acceptance.
+
 For repeatable loopback trials, `scripts/run_prebuffer_trace_ab.py` runs two
 profiles in A/B/B/A order twice and stores per-trial JSON. The default compares
 200 ms against 350 ms. Pass `--profile-a balanced --profile-b resilient` to

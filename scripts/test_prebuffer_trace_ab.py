@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from run_prebuffer_trace_ab import parse_args, repetition_order, run_trial
+from run_prebuffer_trace_ab import parse_args, repetition_order, run_trial, summarize
 
 
 class PrebufferTraceAbTests(unittest.TestCase):
@@ -66,6 +66,57 @@ class PrebufferTraceAbTests(unittest.TestCase):
         self.assertEqual([variant for variant, _ in second], ["B", "A", "A", "B"])
         self.assertEqual(first[0][1], "balanced")
         self.assertEqual(second[0][1], "resilient")
+
+    def test_summary_retains_trial_spread_and_paired_latency_differences(self):
+        values = (10.0, 12.0, 20.0, 25.0)
+        records = []
+        for index, (variant, value) in enumerate(zip(("A", "B", "B", "A"), values)):
+            records.append(
+                {
+                    "trial": index + 1,
+                    "variant": variant,
+                    "buffer_ready_latency_observed_ms": value,
+                    "first_play_latency_observed_ms": value + 5,
+                    "prebuffer_fill_latency_observed_ms": value - 3,
+                    "output_samples_consumed_current_attempt": 100,
+                    "underrun_samples": 0,
+                }
+            )
+
+        result = summarize(records, ("balanced", "resilient"))
+
+        balanced = result["A"]
+        self.assertEqual(balanced["mean_buffer_ready_latency_observed_ms"], 17.5)
+        self.assertEqual(
+            balanced["latency_ms"]["buffer_ready"],
+            {"mean": 17.5, "median": 17.5, "min": 10.0, "max": 25.0},
+        )
+        paired = result["paired_latency_difference_ms"]
+        self.assertEqual(paired["pairs"], 2)
+        self.assertEqual(
+            paired["metrics"]["buffer_ready"],
+            {"mean": 1.5, "median": 1.5, "min": -2.0, "max": 5.0},
+        )
+        self.assertIn("A minus B", paired["definition"])
+
+    def test_summary_rejects_unpaired_trial_order(self):
+        record = {
+            "variant": "A",
+            "buffer_ready_latency_observed_ms": 10.0,
+            "first_play_latency_observed_ms": 12.0,
+            "prebuffer_fill_latency_observed_ms": 8.0,
+            "output_samples_consumed_current_attempt": 100,
+            "underrun_samples": 0,
+        }
+
+        mismatched_pair = [
+            record,
+            dict(record),
+            {**record, "variant": "B"},
+            {**record, "variant": "B"},
+        ]
+        with self.assertRaisesRegex(ValueError, "one A and one B"):
+            summarize(mismatched_pair, ("balanced", "resilient"))
 
 
 if __name__ == "__main__":
