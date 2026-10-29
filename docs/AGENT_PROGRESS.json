@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:41:12Z",
+  "updated_at_utc": "2026-10-29T01:52:04Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -326,7 +326,7 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Repeat controlled live A/B under measured jitter without muting listener evaluation; investigate Actions startup_failure and continue physical device-loss/Pi/receiver acceptance, Windows MSVC, publisher rights and Rust-Boy integration gates.",
+  "next_priority": "Run live 200/500ms comparison under measured stream jitter and conduct a separate human audible A/B before changing the default; investigate Actions startup_failure; continue physical output/Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy integration gates.",
   "current_pr_state": "PR #5 open. Last verified GitHub head before this documentation-only refresh was 31b5256f48e724348eaa558a335e98033f19c30d at 01:40:40Z, mergeable=true. No Actions run or combined status was visible for that head. The current commit advances only the progress checkpoint.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
@@ -792,5 +792,158 @@
     ],
     "interpretation": "Synthetic paced test. Mock callback consumption/underrun model demonstrates the startup/fill tradeoff with stalls injected before profile B begins playback; it is not a physical CPAL callback or audible acceptance. Existing production render_samples A/B separately reports missing samples A=[0,100,600], B=[0,0,300] for these stall durations.",
     "commit": "f56f8c680b5278ab6297554825a5d0b6c63cdb83"
+  },
+  "live_prebuffer_ab_native_latest": {
+    "checked_at_utc": "2026-10-29T01:52:04Z",
+    "implementation_commit": "a58a6c40cf13f35bd1e71058c5110f733f85f56d",
+    "endpoint_validation_utc": "2026-10-29T01:42:06Z",
+    "validated_feeds": {
+      "skylab": "MP3, 48000Hz stereo, decoded audio",
+      "wcrb": "AAC, 48000Hz stereo, decoded audio"
+    },
+    "trial_design": "Each feed: 4 x 30-second muted native CPAL trials per profile on system output at 0% volume; order A/B/B/A twice. A=200ms low-latency, B=500ms resilient. Diagnostics first-play requires native callback PCM consumption.",
+    "skylab": {
+      "variant_a": {
+        "prebuffer_ms": 200,
+        "fill_ms": [
+          65.864917,
+          66.801542,
+          143.722917,
+          284.394875
+        ],
+        "buffer_ready_ms": [
+          718.433167,
+          735.8,
+          1014.257917,
+          886.305584
+        ],
+        "first_play_ms": [
+          730.811209,
+          783.194667,
+          1046.483833,
+          944.865417
+        ],
+        "underrun_samples": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "means_ms": {
+          "fill": 140.196,
+          "buffer_ready": 838.699,
+          "first_play": 876.339
+        }
+      },
+      "variant_b": {
+        "prebuffer_ms": 500,
+        "fill_ms": [
+          74.594542,
+          86.665333,
+          88.051584,
+          89.247125
+        ],
+        "buffer_ready_ms": [
+          621.521833,
+          608.74325,
+          751.864333,
+          709.09675
+        ],
+        "first_play_ms": [
+          674.292,
+          654.314083,
+          796.980833,
+          771.128292
+        ],
+        "underrun_samples": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "means_ms": {
+          "fill": 84.64,
+          "buffer_ready": 672.807,
+          "first_play": 724.179
+        }
+      },
+      "delta_b_minus_a_ms": {
+        "fill": -55.556,
+        "buffer_ready": -165.893,
+        "first_play": -152.16
+      }
+    },
+    "wcrb": {
+      "variant_a": {
+        "prebuffer_ms": 200,
+        "fill_ms": [
+          206.466625,
+          182.455542,
+          224.91125,
+          239.270167
+        ],
+        "buffer_ready_ms": [
+          1664.682083,
+          1596.908125,
+          1755.775375,
+          1759.256625
+        ],
+        "first_play_ms": [
+          1721.073958,
+          1617.695416,
+          1768.677666,
+          1774.921417
+        ],
+        "underrun_samples": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "means_ms": {
+          "fill": 213.276,
+          "buffer_ready": 1694.156,
+          "first_play": 1720.592
+        }
+      },
+      "variant_b": {
+        "prebuffer_ms": 500,
+        "fill_ms": [
+          134.977083,
+          127.689041,
+          184.99625,
+          81.466375
+        ],
+        "buffer_ready_ms": [
+          1467.701083,
+          1390.125,
+          1518.588917,
+          1463.662
+        ],
+        "first_play_ms": [
+          1494.258542,
+          1445.931417,
+          1553.513792,
+          1524.242834
+        ],
+        "underrun_samples": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "means_ms": {
+          "fill": 132.282,
+          "buffer_ready": 1460.019,
+          "first_play": 1504.487
+        }
+      },
+      "delta_b_minus_a_ms": {
+        "fill": -80.994,
+        "buffer_ready": -234.136,
+        "first_play": -216.105
+      }
+    },
+    "interpretation": "B had lower means for fill, buffer-ready and first-play latency on both feeds in this one 4-trial-per-profile block, but sample ranges include substantial station/run variation (for example Skylab A fill 284ms vs other A trials 66-144ms). All 16 runs reported zero callback underrun samples, so this does not demonstrate an underrun/resilience benefit. These muted measurements are not audible/user preference evidence. Keep the default provisional; repeat under measured live jitter and compare audibly before changing it."
   }
 }
