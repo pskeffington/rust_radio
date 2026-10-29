@@ -2869,3 +2869,5 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Buffer-ready means/medians were 574.294/567.796 ms vs 569.996/558.109 ms. Paired A-minus-B median was -14.088 ms (range -47.260 to +92.626 ms); first-play median was -18.951 ms (range -58.663 to +66.713 ms). Both ranges cross zero, so this second-feed comparison does not establish a latency or reliability winner, and muted trials measure no listener preference. Keep the 500 ms default.
 - Full decoded preflight and individual measurements are in `docs/AGENT_PROGRESS.json` under `live_station_wfmu_balanced_resilient_ab`; the original harness artifact is `/private/tmp/rust-radio-wfmu-balanced-resilient-ab-2026-10-29.json`.
 - The A/B runner regression suite passed 12/12 and the CLI built successfully.
+
+PR/CI refresh at 2026-10-29 23:49 UTC: PR #5 is open at `52e3bb4`. GitHub returned `mergeable: false`, while a fresh local merge-tree against `origin/main` was clean. No exact-head Actions run or combined status was visible. Treat GitHub’s mergeability field as an unresolved snapshot, not a confirmed conflict.

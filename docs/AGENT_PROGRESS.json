@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T23:50:00Z",
+  "updated_at_utc": "2026-10-29T23:49:45Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "93cf016f926701dc091e853cc951fe7b63687778",
@@ -5182,5 +5182,16 @@
     },
     "artifact_file": "/private/tmp/rust-radio-wfmu-balanced-resilient-ab-2026-10-29.json",
     "interpretation": "Eight counterbalanced muted native trials completed with zero underruns. Paired A-minus-B buffer-ready median was -14.088 ms (range -47.260 to +92.626 ms); first-play median -18.951 ms (range -58.663 to +66.713 ms). Ranges cross zero. This second-feed result does not establish a buffering winner or listener preference; retain the 500 ms default."
+  },
+  "latest_pr_ci_snapshot_2026_10_29": {
+    "head_commit": "52e3bb479d6f8fcb4e6882bbf1b4d7cd4331b496",
+    "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
+    "state": "open",
+    "github_mergeable_field": false,
+    "local_merge_tree": "clean against freshly fetched origin/main",
+    "workflow_runs_for_exact_head": [],
+    "combined_statuses_for_exact_head": [],
+    "checked_at_utc": "2026-10-29T23:49:45Z",
+    "interpretation": "GitHub mergeability may be a transient snapshot; local merge-tree found no textual conflict."
   }
 }
