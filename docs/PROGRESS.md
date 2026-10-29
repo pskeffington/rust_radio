@@ -2353,3 +2353,23 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Current PR #5 head `137f56a` is open and GitHub reports mergeable. Actions run
   330 (`40805620409`) failed with `startup_failure` before job creation; the job
   and PR diagnostics queries returned no jobs, checks or logs.
+
+## Multi-gap A/B with delivery headroom (2026-10-29)
+
+- Repeated the loopback MP3 A/B at 90 ms chunk intervals with the same gaps
+  (350 ms after chunk 20, 500 ms after 38, 250 ms after 54), eight muted
+  eight-second native CPAL trials in A/B/B/A order twice. This provides about
+  11.1% average delivery headroom for 100 ms audio chunks between gaps.
+- A=200 ms means: buffer fill 209.877 ms, buffer-ready 437.336 ms, first play
+  473.234 ms, consumed 607598 samples, 62099 underruns, 9.2726% missing share.
+  B=500 ms means: 716.541 ms, 974.650 ms, 1005.239 ms, consumed 605184,
+  17152 underruns, 2.7561% missing share. B reduced missing share 70.28%
+  relative (6.52 points) while adding 537.314 ms to buffer-ready latency.
+- This synthetic condition illustrates that extra delivery capacity between
+  gaps lets the larger buffer refill; the exact-real-time 100 ms schedule had
+  a smaller 20% relative reduction and 252 ms startup cost. Neither schedule
+  is a broadcaster network model. Keep the default provisional; results are
+  muted and do not measure listener preference.
+- PR #5 remained open/mergeable at `9d8181b`. Actions run 331
+  (`40806730055`) failed with `startup_failure` before jobs; jobs/diagnostics
+  returned no jobs, statuses, annotations or logs.

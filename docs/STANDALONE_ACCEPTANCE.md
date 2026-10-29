@@ -152,3 +152,9 @@ profile-specific time the callback actually ran and is more useful than raw
 underrun totals when startup times differ. After recovery, the consumed count
 resets per output attempt while underruns remain session-cumulative, so do not
 combine them into a ratio for a session that retried.
+
+For a repeat with average payload headroom between the same gaps, restart the
+fixture with `--interval-ms 90`. The 1600-byte chunk carries roughly 100 ms of
+encoded audio, so 90 ms pacing provides about 11.1% average delivery headroom.
+Run the same A/B/B/A sequence; this deterministic delivery schedule still is
+not a measured broadcaster network trace.

@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T02:29:45Z",
+  "updated_at_utc": "2026-10-29T02:32:47Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "83fc64cecaed823b0bef98c617707cf614b00824: native consumed-sample diagnostic, per-attempt retry semantics, and deterministic multi-gap A/B fixture",
@@ -228,7 +228,10 @@
     "Committed and pushed callback sample-consumption diagnostics and deterministic multi-gap A/B evidence as 83fc64c; branch is clean/synced, local merge-tree clean, exact-head GitHub mergeability metadata currently false and CI has no visible run/status.",
     "Validated publisher-approved Skylab MP3 and WCRB AAC streams before testing and ran eight 30-second muted native CPAL trials per feed, A/B/B/A repeated twice.",
     "All 16 live-feed trials completed with zero reported callback underrun samples. Skylab resilient 500ms averaged 217ms slower to buffer-ready than 200ms; WCRB profile means differed by only -4.8ms, with broad run variance. Live results show no measured drop-out benefit in these stable feeds and no listener preference because volume was zero.",
-    "Verified PR #5 current head 137f56a is open/mergeable. Actions run 330 (40805620409) failed before job creation; both jobs and diagnostics queries returned no jobs, checks, annotations or logs."
+    "Verified PR #5 current head 137f56a is open/mergeable. Actions run 330 (40805620409) failed before job creation; both jobs and diagnostics queries returned no jobs, checks, annotations or logs.",
+    "Repeated the deterministic 3-gap A/B at 90ms chunk intervals (11.1% delivery headroom), eight muted 8-second native CPAL runs in A/B/B/A twice.",
+    "At 90ms intervals, the 500ms profile reduced aggregate callback missing-sample share from 9.2726% to 2.7561% (70.28% relative) while adding 537ms to buffer-ready latency. This is synthetic only; no live-station conclusion or audible claim.",
+    "PR #5 remains open/mergeable at prior head 9d8181b. Actions run 331 (40806730055) failed before jobs; jobs and diagnostics queries returned no jobs, checks, annotations or logs."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -324,12 +327,12 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40805620409,
-    "latest_pr_head": "137f56ae6df53bfe1551749b8f3b8073ea3b2b59",
-    "latest_pr_conclusion": "startup_failure before job creation; jobs and diagnostics queries empty",
+    "latest_pr_run": 40806730055,
+    "latest_pr_head": "9d8181b9ca3c7d531165b3e2aacfa6d58e79f25e",
+    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; diagnostics empty",
     "latest_pr_jobs": 0,
     "details": "At 2026-10-29T01:58:38Z PR #5 was open at 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true; latest returned false. No Actions run or combined status is visible for this head. A fresh merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; no jobs/logs exist. Native Windows MSVC CI remains unverified.",
-    "latest_pr_run_number": 330,
+    "latest_pr_run_number": 331,
     "latest_pr_status_checks": 0
   },
   "remaining_gates": [
@@ -341,8 +344,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Repeat normalized A/B on another host and obtain human audible evidence. The current two live feeds show zero underruns in both profiles; do not claim a live resilience benefit. Investigate Actions startup_failure only if new diagnostic evidence appears. Continue physical device-loss, Pi/receiver, Windows MSVC, rights and Rust-Boy gates.",
-  "current_pr_state": "PR #5 open and GitHub currently reports mergeable=true at head 137f56ae6df53bfe1551749b8f3b8073ea3b2b59. No combined statuses. Actions run 330 (40805620409) failed before job creation; job listing and diagnostics returned no jobs/checks/logs. Local branch is clean/synced.",
+  "next_priority": "Repeat the synthetic multi-gap A/B at 90ms on another host or with a measured live jitter trace; a single-machine fixture supports a tradeoff but not a universal default. Obtain human audible evidence; continue physical output, Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy gates.",
+  "current_pr_state": "PR #5 is open and GitHub reports mergeable=true at checked head 9d8181b9ca3c7d531165b3e2aacfa6d58e79f25e. No combined statuses. Actions run 331 (40806730055) failed before job creation; jobs and PR diagnostics returned no jobs/checks/annotations/logs.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1355,5 +1358,99 @@
       }
     },
     "interpretation": "All 16 real-feed trials were uninterrupted by callback underruns. The 500ms profile was slower on average for Skylab but essentially tied on WCRB; WCRB and Skylab both show wide startup variance. These muted trials support neither a resilience nor a listener-preference claim. Keep the profile/default choice provisional."
+  },
+  "loopback_multi_gap_ab_fast_feed_latest": {
+    "checked_at_utc": "2026-10-29T02:32:47Z",
+    "fixture": "Generated 12.042438-second 440Hz stereo 44.1kHz MP3 over loopback. 1600-byte chunks every 90ms (about 11.1% delivery headroom over 100ms audio payload) and gaps 350ms after chunk 20, 500ms after 38, 250ms after 54.",
+    "environment": "macOS 26.5.2 ARM64, native rust-radio-cli/CPAL system output at 0% volume, 8 seconds per run, actual MP3 decoder and callback. Eight trials completed successfully; no output recovery.",
+    "trial_design": "A/B/B/A repeated twice. A=200ms low-latency; B=500ms resilient. Missing share = underrun_samples/(underrun_samples+output_samples_consumed_current_attempt).",
+    "variant_a": {
+      "buffer_fill_latency_observed_ms": [
+        216.084792,
+        209.122375,
+        204.503833,
+        209.798375
+      ],
+      "buffer_ready_latency_observed_ms": [
+        370.184792,
+        440.233625,
+        498.503625,
+        440.423208
+      ],
+      "first_play_latency_observed_ms": [
+        402.903209,
+        502.239584,
+        526.114292,
+        461.678208
+      ],
+      "output_samples_consumed_current_attempt": [
+        612864,
+        603648,
+        601014,
+        612864
+      ],
+      "underrun_samples": [
+        60928,
+        67072,
+        61514,
+        58880
+      ],
+      "means": {
+        "buffer_fill_latency_observed_ms": 209.877344,
+        "buffer_ready_latency_observed_ms": 437.336313,
+        "first_play_latency_observed_ms": 473.233823,
+        "output_samples_consumed_current_attempt": 607597.5,
+        "underrun_samples": 62098.5,
+        "missing_sample_share_percent": 9.27264
+      }
+    },
+    "variant_b": {
+      "buffer_fill_latency_observed_ms": [
+        712.743208,
+        715.800666,
+        718.357542,
+        719.260792
+      ],
+      "buffer_ready_latency_observed_ms": [
+        1040.38725,
+        1059.447083,
+        841.656375,
+        957.110791
+      ],
+      "first_play_latency_observed_ms": [
+        1073.503625,
+        1078.557083,
+        861.987,
+        1006.909541
+      ],
+      "output_samples_consumed_current_attempt": [
+        602624,
+        599552,
+        614912,
+        603648
+      ],
+      "underrun_samples": [
+        14848,
+        16896,
+        18944,
+        17920
+      ],
+      "means": {
+        "buffer_fill_latency_observed_ms": 716.540552,
+        "buffer_ready_latency_observed_ms": 974.650375,
+        "first_play_latency_observed_ms": 1005.239312,
+        "output_samples_consumed_current_attempt": 605184,
+        "underrun_samples": 17152,
+        "missing_sample_share_percent": 2.756067
+      }
+    },
+    "delta_b_minus_a_means": {
+      "buffer_fill_latency_observed_ms": 506.663208,
+      "buffer_ready_latency_observed_ms": 537.314062,
+      "first_play_latency_observed_ms": 532.005489,
+      "missing_sample_share_percentage_points": -6.516573,
+      "missing_sample_share_relative_percent": -70.277
+    },
+    "interpretation": "With 11.1% average payload delivery headroom between scheduled gaps, the 500ms profile had a substantially lower missing-sample share in this eight-run synthetic block but required about 537ms more to buffer-ready. Compared with the 100ms exact-real-time delivery block, headroom allows more refill between gaps. This is one synthetic host/profile, not a broadcaster model or listener preference; keep the default provisional."
   }
 }
