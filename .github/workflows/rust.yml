@@ -8,8 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Test safe live-feed A/B runner modes
-        run: python3 scripts/test_prebuffer_trace_ab.py
+      - name: Test safe live-feed A/B and fixture runner modes
+        run: python3 scripts/test_prebuffer_trace_ab.py && python3 scripts/test_prebuffer_fixture_server.py
       - name: Install Linux native audio headers
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable

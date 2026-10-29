@@ -132,8 +132,6 @@ def main():
 
     interval_trace = []
     if args.timing_trace_file:
-        if stall_schedule:
-            parser.error("timing-trace-file cannot be combined with stall-schedule")
         try:
             trace_samples = json.loads(args.timing_trace_file.read_text())
         except (OSError, json.JSONDecodeError) as error:

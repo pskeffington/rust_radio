@@ -300,3 +300,13 @@ buffering under that captured pattern but cannot verify real broadcaster audio
 or audible preference. Per-trial data for both tests is in
 `docs/AGENT_PROGRESS.json` under `counterbalanced_wcrb_timing_trace_ab` and
 `counterbalanced_90ms_multi_gap_ab`.
+
+The loopback replay server can also add scheduled stalls on top of captured
+WCRB body pacing. Eight counterbalanced muted 8-second trials (350 ms vs
+500 ms) under the combined pattern had zero underruns for both. Mean
+buffer-ready/first-play was 480.865/527.455 ms vs 420.987/469.475 ms. This
+single replay had no reliability separation and timing direction differed
+between profiles; it does not outweigh the separate multi-gap comparison that
+favored 500 ms for missing-sample share. The server combination is covered by
+`scripts/test_prebuffer_fixture_server.py`; detailed trial data is in
+`docs/AGENT_PROGRESS.json` under `combined_wcrb_trace_and_stalls_ab`.

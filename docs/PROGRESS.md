@@ -1,5 +1,30 @@
 # Radio development progress
 
+## Combined captured pacing and stall A/B (2026-10-29 03:52 UTC)
+
+- Updated `scripts/prebuffer_fixture_server.py` to allow a captured timing trace
+  and additional scheduled stalls together. Added a process-level regression
+  that starts the server with both inputs, and added it to the portable-core
+  workflow.
+- Replayed the captured WCRB body-size/interval trace with synthetic MP3 audio
+  and additive 350/500/250 ms stalls after chunks 20/38/54. Eight counterbalanced
+  muted native 8-second trials produced zero callback underruns at both 350 ms
+  and 500 ms. Mean buffer-ready/first-play: 480.865/527.455 ms at 350 ms and
+  420.987/469.475 ms at 500 ms. Startup direction varied with feed timing, so
+  this block shows no consistent latency winner or reliability difference.
+- The separate paced multi-gap block (90 ms pacing without the captured trace)
+  showed 4.246% missing samples at 350 ms vs 0.735% at 500 ms. Keep 500 ms as
+  the engine default for its stronger result under repeatable stall stress;
+  neither replay is a claim about live-stream dropout or human preference.
+- Both Python suites passed (4 A/B runner tests and 1 fixture-server test),
+  workflow YAML parsing passed, and the combined trace/stall server and native
+  A/B run completed. Rust source is unchanged from the latest six-gate pass.
+- Raw measurements are in `docs/AGENT_PROGRESS.json` under
+  `combined_wcrb_trace_and_stalls_ab`. Run 345 (`40814017194`) on prior head
+  `d84ed5e` had `startup_failure`, zero jobs and no combined statuses. Next:
+  repeat using the Skylab trace and keep real output-loss and audible acceptance
+  open.
+
 ## Counterbalanced WCRB trace and stall A/B (2026-10-29 03:50 UTC)
 
 - Applied the updated A/B/B/A then B/A/A/B runner to two replay conditions,
