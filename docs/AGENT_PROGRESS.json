@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-29T01:10:16Z",
+  "updated_at_utc": "2026-10-29T01:11:35Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "7eaccfd: worker-measured IP buffer-ready latency plus live 200/500ms A/B evidence",
+  "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1: worker-measured IP buffer-ready latency; latest evidence checkpoint d12782975f4dec32c4fed3c3f65231d219bdbca0",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -206,7 +206,7 @@
     "Fresh approved Skylab validation succeeded before A/B: decoded MP3, 48000Hz stereo.",
     "Repeated live native callback A/B with the new buffer-ready metric: eight 30-second muted CPAL runs on system output, A/B/B/A twice. 200ms: buffer-ready mean 781.544ms, first-play mean 814.495ms; 500ms: buffer-ready mean 722.426ms, first-play mean 769.300ms. Every run reported zero underrun samples. Small one-feed sample; no audible conclusion or default change.",
     "All six required workspace validation gates passed after the diagnostics implementation. The initial unprivileged default workspace test hit six loopback bind permission errors; the authorized network-enabled retry passed all tests. All-feature workspace tests passed with local sockets.",
-    "PR #5 at prior head 82d07e1 was open, mergeable per the last checkpoint; Actions run 311 failed before job creation and no combined statuses were present. New code commit 7eaccfd is recorded locally and will be pushed after final evidence update."
+    "Pushed source commit 7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1 and evidence checkpoint d12782975f4dec32c4fed3c3f65231d219bdbca0 to the existing PR branch. PR #5 remains open with no reviews. Actions run 312 (40798866432) for d127829 failed before job creation (startup_failure); combined status checks are empty. All local required gates passed."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -466,7 +466,7 @@
     },
     "interpretation": "Muted native CPAL callback measurements, not listener preference. In this one 4-trial/profile block, 500ms averaged 59.118ms faster to buffer-ready and 45.196ms faster to first play, but sample ranges were broad and all windows reported zero callback underruns. This does not establish audible quality or a robust profile advantage; retain the existing 500ms default and repeat across sessions/feeds plus human audible comparison.",
     "measurement_window_note": "Eight trials completed immediately before this checkpoint; system clock recorded at 01:10:16 UTC.",
-    "implementation_commit": "7eaccfd (buffer-ready instrumentation; finalized source hash to be recorded after push)"
+    "implementation_commit": "7eaccfd39f051cb6f1a8b683d0f967abcc2ce6a1"
   },
   "buffer_ready_diagnostics_latest": {
     "checked_at_utc": "2026-10-29T01:10:16Z",
