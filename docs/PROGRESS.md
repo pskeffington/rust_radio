@@ -2083,3 +2083,10 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   and mergeable at that source head; GitHub showed no workflow run or combined
   status for `7434ce9`. The previous base run 308 failed at startup with zero
   jobs.
+
+- Follow-up PR check after the documentation push: PR #5 is still open and
+  mergeable. One immediate snapshot temporarily reported not-mergeable; the
+  next snapshot returned mergeable, and a read-only merge-tree check found no
+  conflicts against the fetched `main`. Actions run 310
+  (`40797089319`) failed before creating jobs (`startup_failure`, zero jobs);
+  no combined statuses were reported for the checked checkpoint.
