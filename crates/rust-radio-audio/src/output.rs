@@ -437,7 +437,7 @@ where
 }
 
 /// Transfer queued PCM without blocking or allocating in CPAL's callback.
-fn render_samples<T>(
+pub(crate) fn render_samples<T>(
     data: &mut [T],
     consumer: &mut HeapCons<f32>,
     volume: &AtomicU8,

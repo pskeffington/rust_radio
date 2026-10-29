@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:53:00Z",
+  "updated_at_utc": "2026-10-29T01:57:28Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -312,10 +312,10 @@
   },
   "ci": {
     "latest_pr_run": 40798920739,
-    "latest_pr_head": "bb6ea7b0394a0e8d860d23b0afaf7238e13a8703",
-    "latest_pr_conclusion": "no run visible",
-    "latest_pr_jobs": null,
-    "details": "At 2026-10-29T01:53:00Z PR #5 was open at bb6ea7b0394a0e8d860d23b0afaf7238e13a8703. Repeated GitHub metadata calls alternated mergeable=false and true; latest returned true. Read-only merge-tree against origin/main completed cleanly. No workflow run or combined status is visible for this head. Historical run 313 (40798920739) on c24bd5d failed before jobs (startup_failure, zero jobs). Native Windows MSVC CI remains unverified."
+    "latest_pr_head": "c24bd5dc23497c3071565cfc74cef517ca02b713",
+    "latest_pr_conclusion": "startup_failure",
+    "latest_pr_jobs": 0,
+    "details": "At 2026-10-29T01:53:16Z the PR pre-change head 05f3512 was open and mergeable with no workflow run or combined status. The previously observed run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; a direct Actions API lookup and job list confirmed there were no jobs/logs to inspect. This failure predates the current callback-integrated regression. Native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -326,8 +326,8 @@
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
-  "next_priority": "Run live 200/500ms comparison under measured stream jitter and conduct a separate human audible A/B before changing the default; investigate Actions startup_failure; continue physical output/Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy integration gates.",
-  "current_pr_state": "PR #5 open at live-comparison head bb6ea7b0394a0e8d860d23b0afaf7238e13a8703. GitHub mergeability alternated false then true on repeated lookup; latest was true. Read-only merge-tree with refreshed origin/main completed cleanly (tree db4711223ba6357c06418583eee3360cc0540fc2). No Actions run or combined status is visible for bb6ea7b.",
+  "next_priority": "Run live 200/500ms comparison under measured stream jitter and a separate human audible A/B before changing the default; investigate Actions startup_failure; complete physical output/Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy integration gates.",
+  "current_pr_state": "PR #5 open and mergeable at pre-change head 05f3512a88e508296eb26348638254bdaae8beb0 as of 2026-10-29T01:53:16Z. No workflow run or combined status was visible for that head. This commit includes the callback-integrated regression and updated evidence.",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -550,7 +550,7 @@
     "all_feature_tests": "passed: cargo test --workspace --all-features with local loopback fixture access",
     "all_feature_clippy": "passed: cargo clippy --workspace --all-features --all-targets -- -D warnings",
     "all_feature_check": "passed: cargo check --workspace --all-features",
-    "focused": "passed: prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls; all-feature audio suite 57 passed / 1 ignored manual hardware test; CLI suite 20 passed"
+    "focused": "passed: playback::ip_pcm::tests::prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls using the production ring and output::render_samples path"
   },
   "live_prebuffer_ab_prior_wcrb": {
     "checked_in_prior_run_utc": "2026-10-29 before 01:03 UTC (buffer-ready instrumentation not yet present)",
@@ -945,5 +945,54 @@
       }
     },
     "interpretation": "B had lower means for fill, buffer-ready and first-play latency on both feeds in this one 4-trial-per-profile block, but sample ranges include substantial station/run variation (for example Skylab A fill 284ms vs other A trials 66-144ms). All 16 runs reported zero callback underrun samples, so this does not demonstrate an underrun/resilience benefit. These muted measurements are not audible/user preference evidence. Keep the default provisional; repeat under measured live jitter and compare audibly before changing it."
+  },
+  "paced_prebuffer_stall_callback_ab": {
+    "test": "playback::ip_pcm::tests::prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls",
+    "implementation": "Paced SinkState feed and production ring buffer; `render_samples` is now crate-visible so the synthetic fixture invokes the same renderer and atomic counters used by the CPAL callback. Volume zero. No CPAL device was started by this unit test.",
+    "prebuffer_stalls_ms": [
+      100,
+      300,
+      800
+    ],
+    "post_start_stall_ms": 800,
+    "scale": "One ring sample represents one millisecond of queued audio in this bounded synthetic test; each decoded packet contributes 100 such samples.",
+    "variant_a": {
+      "prebuffer_ms": 200,
+      "fill_latency_ms": [
+        0.4695,
+        0.218209,
+        0.210125
+      ],
+      "prebuffer_gap_underrun_samples": [
+        0,
+        100,
+        600
+      ],
+      "post_start_800ms_underrun_samples": [
+        600,
+        700,
+        700
+      ]
+    },
+    "variant_b": {
+      "prebuffer_ms": 500,
+      "fill_latency_ms": [
+        323.513333,
+        514.323958,
+        1018.320291
+      ],
+      "prebuffer_gap_underrun_samples": [
+        0,
+        0,
+        0
+      ],
+      "post_start_800ms_underrun_samples": [
+        300,
+        300,
+        300
+      ]
+    },
+    "result": "passed; asserts prebuffer starts at packet 2 for A and packet 5 for B, prebuffer-gap misses, and production-renderer missing-sample counts after playback starts.",
+    "interpretation": "Stronger synthetic algorithm-level evidence: actual production render_samples consumes the actual test ring. It remains a simulated cadence and callback invocation, not a physical CPAL device, real-time scheduling, live-station interruption, or audible acceptance."
   }
 }

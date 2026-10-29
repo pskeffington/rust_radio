@@ -79,7 +79,10 @@ impl SinkState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::render_samples;
+    use ringbuf::{traits::*, HeapCons, HeapProd, HeapRb};
     use std::cell::Cell;
+    use std::sync::atomic::{AtomicU64, AtomicU8};
     use std::sync::Mutex;
     use std::thread;
     use std::time::{Duration, Instant};
@@ -220,9 +223,11 @@ mod tests {
     }
 
     struct PacedSink {
-        buffered: usize,
-        played: u64,
-        underruns: u64,
+        producer: HeapProd<f32>,
+        consumer: HeapCons<f32>,
+        volume: AtomicU8,
+        played_samples: AtomicU64,
+        underrun_samples: AtomicU64,
         prebuffer_samples: usize,
         started: Cell<bool>,
     }
@@ -232,12 +237,13 @@ mod tests {
             if cancelled.load(Ordering::Acquire) {
                 return false;
             }
-            self.buffered += frame.len();
-            true
+            frame
+                .iter()
+                .all(|sample| self.producer.try_push(*sample).is_ok())
         }
 
         fn buffered(&self) -> usize {
-            self.buffered
+            self.producer.occupied_len()
         }
 
         fn prebuffer(&self) -> usize {
@@ -245,7 +251,7 @@ mod tests {
         }
 
         fn played(&self) -> u64 {
-            self.played
+            self.played_samples.load(Ordering::Relaxed)
         }
 
         fn start(&self) -> Result<(), String> {
@@ -260,24 +266,32 @@ mod tests {
             if !self.started.get() {
                 return;
             }
-            let consumed = self.buffered.min(samples);
-            self.buffered -= consumed;
-            self.played += consumed as u64;
-            self.underruns += (samples - consumed) as u64;
+            let mut callback_buffer = vec![0.0; samples];
+            render_samples(
+                &mut callback_buffer,
+                &mut self.consumer,
+                &self.volume,
+                &self.played_samples,
+                &self.underrun_samples,
+            );
         }
     }
 
     #[test]
     fn prebuffer_ab_measures_fill_and_underruns_under_injected_packet_stalls() {
-        fn run(prebuffer_ms: usize, stall_ms: usize) -> (Duration, u64, usize) {
+        fn run(prebuffer_ms: usize, stall_ms: usize) -> (Duration, u64, u64, usize) {
             // Test scale: one interleaved sample represents one ms of queued
-            // audio. Each decoded packet contributes 100ms; the callback
-            // consumes at the same scale during the injected network gaps.
+            // audio. Feed and callback use real production ring-buffer and
+            // render_samples paths; packet gaps are injected on this worker.
             let mut converter = PcmConverter::new(48_000, 48_000, 2, 2).unwrap();
+            let ring = HeapRb::<f32>::new(2_000);
+            let (producer, consumer) = ring.split();
             let mut output = PacedSink {
-                buffered: 0,
-                played: 0,
-                underruns: 0,
+                producer,
+                consumer,
+                volume: AtomicU8::new(0),
+                played_samples: AtomicU64::new(0),
+                underrun_samples: AtomicU64::new(0),
                 prebuffer_samples: prebuffer_ms,
                 started: Cell::new(false),
             };
@@ -286,6 +300,7 @@ mod tests {
             let observed = Mutex::new(None);
             let cancelled = AtomicBool::new(false);
             let mut packet_count_at_start = None;
+            let mut prebuffer_gap_underruns = Vec::new();
 
             for packet_index in 0..5 {
                 let gap_ms = match packet_index {
@@ -295,7 +310,10 @@ mod tests {
                 };
                 if gap_ms > 0 {
                     thread::sleep(Duration::from_millis(gap_ms as u64));
+                    let underruns_before = output.underrun_samples.load(Ordering::Relaxed);
                     output.consume_during_stall(gap_ms);
+                    prebuffer_gap_underruns
+                        .push(output.underrun_samples.load(Ordering::Relaxed) - underruns_before);
                 }
 
                 state
@@ -321,9 +339,12 @@ mod tests {
                 .lock()
                 .unwrap()
                 .expect("output never reached the prebuffer threshold");
+            let post_start_underruns_before = output.underrun_samples.load(Ordering::Relaxed);
+            output.consume_during_stall(800);
             (
                 fill_latency,
-                output.underruns,
+                prebuffer_gap_underruns.into_iter().sum(),
+                output.underrun_samples.load(Ordering::Relaxed) - post_start_underruns_before,
                 packet_count_at_start.expect("prebuffer event did not record its packet"),
             )
         }
@@ -333,9 +354,17 @@ mod tests {
         let mut resilient_fill_ms = Vec::new();
         let mut low_latency_underruns = Vec::new();
         let mut resilient_underruns = Vec::new();
+        let mut low_latency_post_start_underruns = Vec::new();
+        let mut resilient_post_start_underruns = Vec::new();
         for stall_ms in stalls_ms {
-            let (low_latency_fill, low_latency_missing, low_latency_packet) = run(200, stall_ms);
-            let (resilient_fill, resilient_missing, resilient_packet) = run(500, stall_ms);
+            let (
+                low_latency_fill,
+                low_latency_missing,
+                low_latency_post_missing,
+                low_latency_packet,
+            ) = run(200, stall_ms);
+            let (resilient_fill, resilient_missing, resilient_post_missing, resilient_packet) =
+                run(500, stall_ms);
             assert!(
                 resilient_fill >= Duration::from_millis(stall_ms as u64 + 150),
                 "500ms threshold should include the injected stall and later packets: {resilient_fill:?} under {stall_ms}ms gap"
@@ -346,12 +375,16 @@ mod tests {
             resilient_fill_ms.push(resilient_fill.as_secs_f64() * 1000.0);
             low_latency_underruns.push(low_latency_missing);
             resilient_underruns.push(resilient_missing);
+            low_latency_post_start_underruns.push(low_latency_post_missing);
+            resilient_post_start_underruns.push(resilient_post_missing);
         }
 
         assert_eq!(low_latency_underruns, [0, 100, 600]);
         assert_eq!(resilient_underruns, [0, 0, 0]);
+        assert_eq!(low_latency_post_start_underruns, [600, 700, 700]);
+        assert_eq!(resilient_post_start_underruns, [300, 300, 300]);
         println!(
-            "Paced IP prebuffer A/B (stall_ms={stalls_ms:?}): A 200ms fill={low_latency_fill_ms:?}, missing={low_latency_underruns:?}; B 500ms fill={resilient_fill_ms:?}, missing={resilient_underruns:?}"
+            "Paced IP prebuffer A/B (prebuffer_stall_ms={stalls_ms:?}, post_start_stall_ms=800): A 200ms fill={low_latency_fill_ms:?}, prebuffer_gap_missing={low_latency_underruns:?}, post_start_missing={low_latency_post_start_underruns:?}; B 500ms fill={resilient_fill_ms:?}, prebuffer_gap_missing={resilient_underruns:?}, post_start_missing={resilient_post_start_underruns:?}"
         );
     }
 
