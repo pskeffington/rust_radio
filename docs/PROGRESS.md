@@ -1936,3 +1936,34 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   was performed. Next: compare callback underruns and startup latency during
   repeated audible A/B playback on Mac, then repeat on Raspberry Pi if
   available.
+
+
+## HTTP timing fixture and repeated prebuffer sample (2026-10-29 00:28 UTC)
+
+- Renamed timing thresholds to `gaps_at_or_over_200ms` and
+  `gaps_at_or_over_500ms`, matching the inclusive boundary used by the
+  implementation. Added a loopback HTTP response that flushes three audio
+  chunks with 80 ms and 350 ms gaps. The integration test confirmed the
+  `NetworkGuard` snapshot reports three chunks, two intervals, and a gap at or
+  above 200 ms. The exact threshold counters remain covered by deterministic
+  aggregation tests; the loopback assertion allows for host scheduling delays.
+- Repeated the buffer A/B: for 100/300/800 ms synthetic stalls, 200 ms yielded
+  0/100/600 ms modeled silence; 500 ms yielded 0/0/300 ms, at 300 ms more
+  startup. This still is a simple model, not a listener trial or native
+  underrun measurement.
+- Repeated approved live timing samples: Skylab 8.09 s, 376,704 bytes, 138
+  chunks / 137 intervals, 59.0 ms mean, 655.6 ms max, 15 intervals >=200 ms and
+  7 >=500 ms. WCRB 6.79 s, 524,288 bytes, 76 chunks / 75 intervals, 85.3 ms
+  mean, 413.2 ms max, 16 intervals >=200 ms and none >=500 ms. The broadly
+  similar gap counts across the two samples support keeping 500 ms as the
+  candidate for a real playout A/B, but do not prove audio underruns or benefit.
+- All six required local gates passed on this follow-up, including default and
+  all-feature workspace tests with the paced loopback fixture, strict Clippy
+  both ways, formatting, and all-feature check. Focused live timing fixture,
+  prebuffer A/B and ignored public-feed timing test passed.
+- At 00:24 UTC, PR #5 was open and mergeable at `aa523fa`. GitHub Actions run
+  302 (`40793876301`) for that checkpoint ended `startup_failure` before job
+  creation; there were zero jobs and no combined statuses. No audible or
+  hardware test was performed. Next: record native callback underruns and
+  startup latency during a repeated audible 200/500 ms Mac comparison, then
+  run the same acceptance on Raspberry Pi if available.

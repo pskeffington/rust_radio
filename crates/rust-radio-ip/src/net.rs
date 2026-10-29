@@ -139,8 +139,8 @@ pub struct StreamTimingSnapshot {
     pub interval_count: u64,
     pub mean_interval_us: u64,
     pub max_interval_us: u64,
-    pub gaps_over_200ms: u64,
-    pub gaps_over_500ms: u64,
+    pub gaps_at_or_over_200ms: u64,
+    pub gaps_at_or_over_500ms: u64,
 }
 
 #[derive(Default)]
@@ -170,10 +170,12 @@ impl StreamTimingStats {
                 .min(u64::MAX as u128) as u64;
             state.snapshot.max_interval_us = state.snapshot.max_interval_us.max(micros_u64);
             if interval >= Duration::from_millis(200) {
-                state.snapshot.gaps_over_200ms = state.snapshot.gaps_over_200ms.saturating_add(1);
+                state.snapshot.gaps_at_or_over_200ms =
+                    state.snapshot.gaps_at_or_over_200ms.saturating_add(1);
             }
             if interval >= Duration::from_millis(500) {
-                state.snapshot.gaps_over_500ms = state.snapshot.gaps_over_500ms.saturating_add(1);
+                state.snapshot.gaps_at_or_over_500ms =
+                    state.snapshot.gaps_at_or_over_500ms.saturating_add(1);
             }
         }
         state.last_chunk_at = Some(now);
@@ -684,8 +686,8 @@ mod tests {
                 interval_count: 2,
                 mean_interval_us: 350_000,
                 max_interval_us: 600_000,
-                gaps_over_200ms: 1,
-                gaps_over_500ms: 1,
+                gaps_at_or_over_200ms: 1,
+                gaps_at_or_over_500ms: 1,
             }
         );
     }

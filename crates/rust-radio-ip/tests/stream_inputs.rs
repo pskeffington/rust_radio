@@ -60,6 +60,25 @@ impl Server {
                     .unwrap_or("")
                     .to_owned();
                 seen.lock().unwrap().push(path.clone());
+                if path == "/paced" {
+                    stream
+                        .write_all(
+                            b"HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nContent-Length: 3\r\nConnection: close\r\n\r\n",
+                        )
+                        .unwrap();
+                    for (index, byte) in b"ABC".iter().enumerate() {
+                        if index > 0 {
+                            thread::sleep(if index == 1 {
+                                Duration::from_millis(80)
+                            } else {
+                                Duration::from_millis(350)
+                            });
+                        }
+                        stream.write_all(std::slice::from_ref(byte)).unwrap();
+                        stream.flush().unwrap();
+                    }
+                    continue;
+                }
                 if path == "/audio-stall" {
                     stream
                         .write_all(
@@ -186,6 +205,27 @@ fn relative_redirect_and_m3u_pls_resolve_to_actual_audio() {
             "/audio"
         ]
     );
+}
+
+#[test]
+fn transport_timing_snapshot_tracks_paced_audio_body_chunks() {
+    let server = Server::new();
+    let (mut input, guard) = open_direct_classified(
+        &format!("{}/paced", server.url),
+        Arc::new(AtomicBool::new(false)),
+    )
+    .unwrap();
+    let mut bytes = [0; 3];
+    input.reader.read_exact(&mut bytes).unwrap();
+
+    assert_eq!(&bytes, b"ABC");
+    let timing = guard.timing_snapshot();
+    assert_eq!(timing.chunk_count, 3);
+    assert_eq!(timing.interval_count, 2);
+    assert!(timing.mean_interval_us >= 120_000, "{timing:?}");
+    assert!(timing.max_interval_us >= 200_000, "{timing:?}");
+    assert!(timing.max_interval_us < 3_000_000, "{timing:?}");
+    assert!(timing.gaps_at_or_over_200ms >= 1, "{timing:?}");
 }
 #[test]
 fn http_errors_bad_content_playlists_and_hop_loops_are_bounded() {
