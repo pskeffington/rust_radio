@@ -1,6 +1,35 @@
 # Radio development progress
 
-Updated 2026-10-28. Active priorities and ownership are in the
+## 90 ms pacing multi-gap buffering A/B (2026-10-29 03:01 UTC)
+
+- Repeated the loopback A/B on `dde25b6` with the generated 12-second MP3,
+  1600-byte payloads every 90 ms and post-start gaps of 350/500/250 ms after
+  chunks 20/38/54. Eight muted native CPAL trials ran in A/B/B/A order twice
+  on macOS 26.5.2 ARM64 with system output; both used the same decoder and
+  callback, with no output recovery.
+- At A=200 ms, mean buffer-ready / first-play latency was 632.250/667.820 ms
+  and aggregate missing-sample share was 7.151%. At B=500 ms, it was
+  998.023/1033.327 ms and 2.483%. B reduced missing share by 65.3% relative
+  (4.668 percentage points) and added 365.773 ms to buffer-ready latency.
+  All eight trials completed; every trial had callback underruns. This is one
+  synthetic single-host delivery condition, not live broadcaster behavior,
+  audible quality or listener preference. Keep the buffering default
+  provisional.
+- The immediately preceding bounded catalog sweeps at 2026-10-29 02:58:42 and
+  02:59:42 UTC decoded 25/25 entries in 25 attempts each, with no retries.
+- All six Rust gates passed on this source tree with local-socket permission:
+  formatting, default tests, strict default Clippy, all-feature tests, strict
+  all-feature Clippy and all-feature check. The initial sandboxed test attempt
+  could not bind loopback for six existing IP fixtures; the rerun passed.
+- GitHub PR #5 remains open and mergeable at `dde25b6`. Actions run 335
+  (`40809389372`) failed before creating jobs (`startup_failure`); the exact
+  head has no combined-status checks. No source or regression change was
+  indicated by this measurement.
+- Next: obtain an audible comparison and physical output/device-loss evidence;
+  hardware, Rust-Boy adoption, publisher-rights and native Windows MSVC gates
+  remain open.
+
+Updated 2026-10-29. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
 ## Permanent classification for blocked DNS resolutions (2026-10-28 23:40 UTC)

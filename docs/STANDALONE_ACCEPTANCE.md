@@ -220,3 +220,12 @@ A subsequent Skylab-trace block produced A/B buffer-ready means of
 underruns in all eight trials. The opposite WCRB/Skylab startup direction and
 zero misses in both profiles make the mean differences inconclusive for a
 buffering reliability decision.
+
+On 2026-10-29 03:01 UTC, the loopback test was repeated with 90 ms chunk
+pacing and the same three post-start gaps. Eight muted CPAL trials completed
+on macOS ARM64. A=200 ms produced 7.151% aggregate missing-sample share and
+632.250 ms mean buffer-ready latency; B=500 ms produced 2.483% and 998.023 ms.
+This synthetic one-host comparison shows a reliability/startup tradeoff only;
+it does not establish live-feed behavior or listener preference. Per-trial
+records are in `docs/AGENT_PROGRESS.json` under
+`loopback_multi_gap_ab_90ms_followup`.
