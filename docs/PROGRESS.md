@@ -18,7 +18,9 @@
   conclusion is supported. Full raw trials are in
   `wpr_news_mime_sanitized_ab_8s` in `docs/AGENT_PROGRESS.json`.
 - Actions run 362 (`40818606116`) on PR head `e1182ac` failed before job
-  creation; GitHub returned zero jobs and no combined statuses or logs.
+  creation; GitHub returned zero jobs and no combined statuses or logs. The
+  MIME sanitizer is pushed as `ba881be`; PR #5 is open and mergeable, with no
+  workflow run or combined status visible for that exact head at 04:39 UTC.
 
 ## A/B diagnostics privacy hardening (2026-10-29 04:31 UTC)
 

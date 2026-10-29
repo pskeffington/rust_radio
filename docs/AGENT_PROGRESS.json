@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-29T04:39:08Z",
+  "updated_at_utc": "2026-10-29T04:39:47Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "8d683101f6ec2da3198a749a42384460d2f68b5c",
+  "implementation_commit": "ba881be75afa006b49df4db8c97d753e6b18bf44",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -356,16 +356,10 @@
     "latest_pr_jobs": 0,
     "latest_pr_run_number": 362,
     "latest_pr_status_checks": 0,
-    "exact_current_head": "e1182acd078477343c88af1790bacc125826a17c",
-    "exact_current_head_workflow_runs": [
-      {
-        "run_id": 40818606116,
-        "run_number": 362,
-        "conclusion": "startup_failure"
-      }
-    ],
+    "exact_current_head": "ba881be75afa006b49df4db8c97d753e6b18bf44",
+    "exact_current_head_workflow_runs": [],
     "exact_current_head_combined_statuses": [],
-    "details": "At 2026-10-29T04:39:08Z, PR #5 is open and mergeable at e1182acd078477343c88af1790bacc125826a17c. Actions run 362 failed before any jobs were created; jobs endpoint returned zero and combined commit statuses are empty. No logs exist for diagnosis. JSON MIME sanitization changes are locally validated but uncommitted."
+    "details": "At 2026-10-29T04:39:47Z, PR #5 is open and mergeable at ba881be75afa006b49df4db8c97d753e6b18bf44. No Actions run or combined status is visible for this exact head. Latest observed run 362 (40818606116) on parent e1182ac failed before jobs were created; the jobs endpoint returned zero and no statuses."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -377,7 +371,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Obtain physical Bluetooth/USB output-loss and reconnect acceptance plus blinded audible profile preference. Complete native Windows MSVC and Raspberry Pi runtime gates. The recent muted live A/B runs show zero underruns but paired latency ranges cross zero; do not change the buffering default. Investigate repeated Actions startup failures only if actionable diagnostics appear.",
-  "current_pr_state": "PR #5 is open and mergeable at e1182acd078477343c88af1790bacc125826a17c. Actions run 362 (40818606116) on this head failed with startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses are empty. JSON MIME sanitization changes are locally validated.",
+  "current_pr_state": "PR #5 is open and mergeable at ba881be75afa006b49df4db8c97d753e6b18bf44. No Actions run or combined status is visible for this exact head. Latest observed run 362 (40818606116) on parent e1182ac failed before job creation; jobs/statuses were empty.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1209,7 +1203,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T04:39:08Z",
+  "current_pr_state_checked_at_utc": "2026-10-29T04:39:47Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
