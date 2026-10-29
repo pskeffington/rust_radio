@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-29T01:58:23Z",
+  "updated_at_utc": "2026-10-29T01:58:50Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f203e23cbcd640e5613c70b0e21898ad0958a05c: decoded-PCM-to-prebuffer-threshold timing added to NativePlaybackDiagnostics and CLI JSON",
@@ -312,10 +312,10 @@
   },
   "ci": {
     "latest_pr_run": 40798920739,
-    "latest_pr_head": "c24bd5dc23497c3071565cfc74cef517ca02b713",
-    "latest_pr_conclusion": "startup_failure",
-    "latest_pr_jobs": 0,
-    "details": "At 2026-10-29T01:58:04Z PR #5 was open and mergeable at code/test head e55cbca59b7d95cf56266c8bb982edae80213e5b; no workflow run or combined status was visible for this head. The read-only merge-tree against origin/main completed cleanly (tree ca86104db350627aa4b17daf9dfb8bd9a11c23a9). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; the API run detail and jobs list confirmed no logs exist. Native Windows MSVC CI remains unverified."
+    "latest_pr_head": "757f768fbb0d2861d60b73fbe55654c83f423a31",
+    "latest_pr_conclusion": "no run visible",
+    "latest_pr_jobs": null,
+    "details": "At 2026-10-29T01:58:38Z PR #5 was open at 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true; latest returned false. No Actions run or combined status is visible for this head. A fresh merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420). Historical run 313 (40798920739) on c24bd5d ended startup_failure with zero jobs; no jobs/logs exist. Native Windows MSVC CI remains unverified."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -327,7 +327,7 @@
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
   ],
   "next_priority": "Run live 200/500ms comparison under measured stream jitter and a separate human audible A/B before changing the default; investigate Actions startup_failure; complete physical output/Pi/receiver, Windows MSVC, publisher-rights and Rust-Boy integration gates.",
-  "current_pr_state": "PR #5 open and mergeable at code/test head e55cbca59b7d95cf56266c8bb982edae80213e5b as of 2026-10-29T01:58:04Z. GitHub showed no workflow run or combined status for that head; this docs checkpoint follows. Read-only merge-tree against refreshed origin/main was clean.",
+  "current_pr_state": "PR #5 open at head 757f768fbb0d2861d60b73fbe55654c83f423a31. GitHub mergeability metadata alternated false/true across reads; latest lookup at 01:58:38Z returned false. No combined status or workflow run is visible. A fresh read-only merge-tree against origin/main completed cleanly (tree cdb740855fd8713c89db944c5e69b9ebe9c58420).",
   "live_catalog_revalidation": "2026-10-29T00:16:38Z: bounded validate-all decoded 25/25 feeds in 25 attempts without retries or failures; point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed on current working changes: cargo fmt --all -- --check; cargo test --workspace; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace --all-features; cargo clippy --workspace --all-features --all-targets -- -D warnings; cargo check --workspace --all-features. Loopback/IP/SDR fixtures had local network permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
