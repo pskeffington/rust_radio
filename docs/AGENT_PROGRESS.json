@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-30T00:04:12Z",
+  "updated_at_utc": "2026-10-30T00:06:20Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "bb74393d955ab98968cbd2c4149f6e3f3e3bd798",
@@ -260,7 +260,8 @@
     "Headless/IP/audio/CLI cargo check passed for aarch64-apple-darwin and x86_64-pc-windows-gnu. Broader all-feature AArch64 Linux and Windows GNU checks were blocked by missing cross gcc and Windows SoapySDR pkg-config/sysroot respectively.",
     "Validated curated WFMU Freeform as MP3 44.1 kHz stereo and ran eight muted 30-second balanced-350ms vs resilient-500ms native trials in counterbalanced ABBA/BAAB order; all had zero underruns. Paired startup latency ranges crossed zero, so no buffering winner; retain 500ms default.",
     "Bounded silent validation decoded 24/25 curated stations (19 MP3, 5 AAC). Skylab returned TransportUnavailable before headers on the sweep and immediate repeat; retained it as a temporary failure without changing/removing the catalog entry.",
-    "Added closed, sanitized probe diagnostics for timeout and pre-response connection failures while preserving unavailable status and no-stage semantics. Skylab live recheck identified a connection reset; the publisher still lists its high-quality stream, so the catalog entry is retained. Focused tests and all six locked workspace gates passed."
+    "Added closed, sanitized probe diagnostics for timeout and pre-response connection failures while preserving unavailable status and no-stage semantics. Skylab live recheck identified a connection reset; the publisher still lists its high-quality stream, so the catalog entry is retained. Focused tests and all six locked workspace gates passed.",
+    "Cross-checked the sanitized probe changes with default workspace builds for x86_64-pc-windows-gnu and aarch64-apple-darwin; both passed. Optional rust-radio-sdr excluded."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -5669,5 +5670,18 @@
       "jobs_created": 0,
       "combined_statuses": []
     }
+  },
+  "cross_target_probe_diagnostics_2026_10_30": {
+    "source_commit": "bb74393d955ab98968cbd2c4149f6e3f3e3bd798",
+    "commands": [
+      "cargo check --workspace --locked --target x86_64-pc-windows-gnu --exclude rust-radio-sdr",
+      "cargo check --workspace --locked --target aarch64-apple-darwin --exclude rust-radio-sdr"
+    ],
+    "results": {
+      "x86_64-pc-windows-gnu": "passed",
+      "aarch64-apple-darwin": "passed"
+    },
+    "scope": "Default workspace path including core, IP probe, audio, GUI and CLI; optional rust-radio-sdr excluded. Does not replace Windows MSVC, SDR receiver feature or hardware acceptance.",
+    "timestamp_utc": "2026-10-30T00:06:20Z"
   }
 }

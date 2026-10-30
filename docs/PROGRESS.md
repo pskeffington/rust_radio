@@ -2890,3 +2890,11 @@ Implementation commit: `bb74393`.
 - The point-in-time transport result and validation are recorded in `docs/AGENT_PROGRESS.json` under `probe_transport_diagnostic_2026_10_30`.
 
 - PR #5 is open and mergeable at `0384534`; Actions run 371 (`40977280806`) on this exact head failed with `startup_failure` before job creation. GitHub returned zero jobs and no combined statuses.
+
+
+## Cross-target validation of probe diagnostics (2026-10-30 00:06 UTC)
+
+- `cargo check --workspace --locked --target x86_64-pc-windows-gnu --exclude rust-radio-sdr` passed.
+- `cargo check --workspace --locked --target aarch64-apple-darwin --exclude rust-radio-sdr` passed.
+- Both checks compiled core, IP, audio, GUI and CLI for the default feature path. Optional receiver crate was explicitly excluded; these do not replace native Windows MSVC CI, receiver-feature builds, or physical hardware acceptance.
+- Results are in `docs/AGENT_PROGRESS.json` under `cross_target_probe_diagnostics_2026_10_30`.
