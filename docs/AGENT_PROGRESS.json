@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-30T00:27:00Z",
+  "updated_at_utc": "2026-10-30T00:42:00Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f4d35afd13029cf5b2405238081e41cb50a7ef7b",
@@ -6404,5 +6404,278 @@
       "ongoing Rust-Boy integration"
     ],
     "next_action": "Restore an actionable Windows MSVC workflow result; continue physical acceptance, and repeat Skylab bounded validation after a meaningful recovery interval."
+  },
+  "live_single_700ms_stall_balanced_resilient_ab_2026_10_30": {
+    "started_at_utc": "2026-10-30T00:40:46+00:00",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "seconds": 8,
+    "volume": 0,
+    "output": "system",
+    "repetitions": 2,
+    "order_scheme": "alternating_abba_baab",
+    "profiles": {
+      "A": "balanced",
+      "B": "resilient"
+    },
+    "trial_order": [
+      "A",
+      "B",
+      "B",
+      "A",
+      "B",
+      "A",
+      "A",
+      "B"
+    ],
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 2416.6834590000003,
+        "first_play_latency_observed_ms": 2429.8615,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 509052,
+        "prebuffer_fill_latency_observed_ms": 300.165542,
+        "underrun_samples": 28548
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 579.0862079999999,
+        "first_play_latency_observed_ms": 600.538291,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 702588,
+        "prebuffer_fill_latency_observed_ms": 487.083875,
+        "underrun_samples": 12164
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 568.979083,
+        "first_play_latency_observed_ms": 617.518292,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 703612,
+        "prebuffer_fill_latency_observed_ms": 470.880166,
+        "underrun_samples": 11140
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 404.863875,
+        "first_play_latency_observed_ms": 435.453625,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 700540,
+        "prebuffer_fill_latency_observed_ms": 303.183125,
+        "underrun_samples": 28548
+      },
+      {
+        "trial": 5,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 578.2230000000001,
+        "first_play_latency_observed_ms": 593.743834,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 704636,
+        "prebuffer_fill_latency_observed_ms": 481.10566700000004,
+        "underrun_samples": 12164
+      },
+      {
+        "trial": 6,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 377.977708,
+        "first_play_latency_observed_ms": 439.368083,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 702588,
+        "prebuffer_fill_latency_observed_ms": 298.590625,
+        "underrun_samples": 30596
+      },
+      {
+        "trial": 7,
+        "variant": "A",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 395.782125,
+        "first_play_latency_observed_ms": 437.870958,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 704636,
+        "prebuffer_fill_latency_observed_ms": 301.724333,
+        "underrun_samples": 29572
+      },
+      {
+        "trial": 8,
+        "variant": "B",
+        "profile": "resilient",
+        "buffer_ready_latency_observed_ms": 574.354167,
+        "first_play_latency_observed_ms": 599.1536669999999,
+        "output_prebuffer_ms": 500,
+        "output_samples_consumed_current_attempt": 705660,
+        "prebuffer_fill_latency_observed_ms": 485.518584,
+        "underrun_samples": 11140
+      }
+    ],
+    "summary": {
+      "A": {
+        "profile": "balanced",
+        "prebuffer_ms": 350,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 898.8267917500001,
+        "mean_first_play_latency_observed_ms": 935.6385415,
+        "mean_prebuffer_fill_latency_observed_ms": 300.91590625000003,
+        "output_samples_consumed_current_attempt": 2616816,
+        "underrun_samples": 117264,
+        "missing_sample_share_percent": 4.288974719101123,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 898.8267917500001,
+            "median": 400.323,
+            "min": 377.977708,
+            "max": 2416.6834590000003
+          },
+          "first_play": {
+            "mean": 935.6385415,
+            "median": 438.6195205,
+            "min": 435.453625,
+            "max": 2429.8615
+          },
+          "prebuffer_fill": {
+            "mean": 300.91590625000003,
+            "median": 300.94493750000004,
+            "min": 298.590625,
+            "max": 303.183125
+          }
+        }
+      },
+      "B": {
+        "profile": "resilient",
+        "prebuffer_ms": 500,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 575.1606145,
+        "mean_first_play_latency_observed_ms": 602.738521,
+        "mean_prebuffer_fill_latency_observed_ms": 481.147073,
+        "output_samples_consumed_current_attempt": 2816496,
+        "underrun_samples": 46608,
+        "missing_sample_share_percent": 1.627883583690987,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 575.1606145,
+            "median": 576.2885835,
+            "min": 568.979083,
+            "max": 579.0862079999999
+          },
+          "first_play": {
+            "mean": 602.738521,
+            "median": 599.8459789999999,
+            "min": 593.743834,
+            "max": 617.518292
+          },
+          "prebuffer_fill": {
+            "mean": 481.147073,
+            "median": 483.3121255,
+            "min": 470.880166,
+            "max": 487.083875
+          }
+        }
+      },
+      "paired_latency_difference_ms": {
+        "definition": "A minus B; negative values mean A was faster",
+        "pairs": 4,
+        "metrics": {
+          "buffer_ready": {
+            "mean": 323.6661772500001,
+            "median": -171.34362499999995,
+            "min": -200.24529200000006,
+            "max": 1837.5972510000004
+          },
+          "first_play": {
+            "mean": 332.90002050000004,
+            "median": -157.82922999999997,
+            "min": -182.064667,
+            "max": 1829.3232090000001
+          },
+          "prebuffer_fill": {
+            "mean": -180.23116675,
+            "median": -183.1546465,
+            "min": -186.91833299999996,
+            "max": -167.69704099999996
+          }
+        }
+      }
+    },
+    "paired_latency_difference_ms": {
+      "definition": "A minus B; negative values mean A was faster",
+      "pairs": 4,
+      "metrics": {
+        "buffer_ready": {
+          "mean": 323.6661772500001,
+          "median": -171.34362499999995,
+          "min": -200.24529200000006,
+          "max": 1837.5972510000004
+        },
+        "first_play": {
+          "mean": 332.90002050000004,
+          "median": -157.82922999999997,
+          "min": -182.064667,
+          "max": 1829.3232090000001
+        },
+        "prebuffer_fill": {
+          "mean": -180.23116675,
+          "median": -183.1546465,
+          "min": -186.91833299999996,
+          "max": -167.69704099999996
+        }
+      }
+    },
+    "fixture": {
+      "kind": "synthetic MP3 over loopback",
+      "chunk_bytes": 1600,
+      "interval_ms": 90,
+      "stall_schedule": "20:700"
+    },
+    "interpretation": "In this deterministic single-stall fixture, resilient 500ms buffering reduced aggregate missing-sample share from 4.289% to 1.628%. Balanced had lower paired-median buffer-ready and first-play latency by 171.344ms and 157.829ms respectively; paired ranges include a large balanced startup outlier. Four trials per profile, one host and synthetic stream only. This supports the existing resilience default for this stall, but not listener preference or real broadcaster reliability."
+  },
+  "msrv_review_2026_10_30": {
+    "workspace_rust_version": "1.75",
+    "rust_radio_gui_rust_version": "1.85",
+    "reviewed_api": "Option::is_none_or in crates/rust-radio-gui/src/inputs.rs",
+    "finding": "The GUI-specific use is compatible with the GUI crate MSRV 1.85; no source change was retained.",
+    "installed_toolchains": [
+      "1.90.0",
+      "1.99.1"
+    ],
+    "direct_rust_1_75_build": "not run; toolchain is not installed"
+  },
+  "verification_checkpoint_2026_10_30_0042": {
+    "source_commit_before_checkpoint": "0085d43a2a75d4fd1e23160953cf4904f4b91f49",
+    "branch": "codex/catalog-publisher-permissions",
+    "pull_request": {
+      "number": 5,
+      "url": "https://github.com/pskeffington/rust_radio/pull/5",
+      "state": "open",
+      "mergeable": true,
+      "head": "0085d43a2a75d4fd1e23160953cf4904f4b91f49"
+    },
+    "actions_run": {
+      "id": 40979841058,
+      "number": 376,
+      "conclusion": "startup_failure",
+      "jobs_created": 0,
+      "exact_head": true
+    },
+    "a_b": "live_single_700ms_stall_balanced_resilient_ab_2026_10_30",
+    "a_b_artifact": "/private/tmp/rust-radio-single-700ms-stall-ab-2026-10-30.json",
+    "validation": "All six locked workspace gates passed in the final permitted run. The temporary MSRV expression was rejected by strict Clippy and was reverted, restoring the already-validated original expression.",
+    "remaining_gates": [
+      "actionable GitHub Actions and native Windows MSVC CI",
+      "physical Bluetooth/USB output-loss recovery",
+      "physical Pi runtime/display/touch",
+      "receiver hardware acceptance",
+      "publisher redistribution-rights review",
+      "ongoing Rust-Boy integration"
+    ],
+    "next_action": "Restore actionable Windows MSVC CI and continue physical acceptance; repeat station validation after the next meaningful recovery interval."
   }
 }
