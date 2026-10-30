@@ -205,6 +205,8 @@ pub fn internet_available(cancelled: &AtomicBool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+    use std::thread;
 
     #[test]
     fn request_failures_have_safe_transport_categories() {
@@ -219,6 +221,42 @@ mod tests {
         assert!(matches!(
             classify_request_error_flags(false, false),
             StreamError::TransportUnavailable
+        ));
+    }
+
+    #[test]
+    fn reqwest_response_timeout_is_classified_without_echoing_error_text() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (_connection, _) = listener.accept().unwrap();
+            thread::sleep(Duration::from_millis(300));
+        });
+        let client = Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_millis(100))
+            .build()
+            .unwrap();
+        let error = client.get(format!("http://{address}/")).send().unwrap_err();
+        assert!(error.is_timeout());
+        assert!(matches!(
+            classify_request_error(&error),
+            StreamError::TransportTimeout
+        ));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn reqwest_connect_refusal_is_classified_without_echoing_error_text() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let client = Client::builder().no_proxy().build().unwrap();
+        let error = client.get(format!("http://{address}/")).send().unwrap_err();
+        assert!(error.is_connect());
+        assert!(matches!(
+            classify_request_error(&error),
+            StreamError::TransportConnectionFailed
         ));
     }
 
