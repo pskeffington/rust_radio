@@ -3,7 +3,7 @@ use rust_radio::directory::{curated_stations, station_by_id};
 use rust_radio::output::available_outputs;
 use rust_radio::validation::validate_station;
 use rust_radio::validation_types::{StationValidation, ValidationStage, ValidationStatus};
-use rust_radio::NativeRadioEngine;
+use rust_radio::{IpBufferingPreset, NativeRadioEngine};
 use std::collections::VecDeque;
 use std::io::{self, BufRead};
 use std::sync::{mpsc, Arc, Mutex};
@@ -25,15 +25,17 @@ struct ListenArgs<'a> {
     seconds: Option<u64>,
     output: &'a str,
     volume: u8,
+    buffering: IpBufferingPreset,
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION [--json] | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
     eprintln!(
-        "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
+        "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]"
     );
     eprintln!("Input discovery: inputs (enable nrsp-native and/or soapy-sdr for receiver scans)");
     eprintln!("Interactive listen commands: status | volume N | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
+    eprintln!("IP buffering profiles: low-latency=200ms | balanced=350ms | resilient=500ms; run with --volume 0 for muted callback A/B measurements");
     eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
     eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
     eprintln!("Direct nRSP-ST control/audio: nrsp-native-status IP:9001 | nrsp-listen IP:9001 FREQ_HZ MODE [--seconds N] [--volume N] [--output ID] (enable nrsp-native)");
@@ -45,6 +47,8 @@ fn usage() {
 
 const VALIDATION_WORKERS: usize = 4;
 const VALIDATION_RECOVERY_DELAY: Duration = Duration::from_secs(1);
+const INTERACTIVE_COMMAND_MAX_BYTES: usize = 4096;
+const INTERACTIVE_COMMAND_QUEUE: usize = 8;
 type CatalogValidationResult = Result<StationValidation, String>;
 struct CatalogValidationRecord {
     station_id: String,
@@ -131,7 +135,7 @@ fn batch_validation_json(results: CatalogValidationResults) -> Result<String, St
             "status": validation_status_name(report.status),
             "stage": validation_stage_name(report.stage),
             "checked_at_unix": report.checked_at.and_then(|time| time.duration_since(UNIX_EPOCH).ok()).map(|time| time.as_secs()),
-            "content_type": report.content_type,
+            "content_type": json_content_type(report.content_type.as_deref()),
             "codec": report.codec,
             "sample_rate": report.sample_rate,
             "channels": report.channels,
@@ -146,6 +150,58 @@ fn batch_validation_json(results: CatalogValidationResults) -> Result<String, St
         "results": stations,
     }))
     .map_err(|error| format!("Unable to encode catalog validation report: {error}"))
+}
+
+fn station_validation_json(report: &StationValidation) -> Result<String, String> {
+    let checked_at = report
+        .checked_at
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|time| time.as_secs());
+    serde_json::to_string_pretty(&serde_json::json!({
+        "schema_version": 1,
+        "checked_at_unix": checked_at,
+        "results": [{
+            "station_id": report.station_id,
+            "attempts": 1,
+            "recovered": false,
+            "status": validation_status_name(report.status),
+            "stage": validation_stage_name(report.stage),
+            "checked_at_unix": checked_at,
+            "content_type": json_content_type(report.content_type.as_deref()),
+            "codec": report.codec,
+            "sample_rate": report.sample_rate,
+            "channels": report.channels,
+            "decoded_frames": report.decoded_frames,
+            "decoded": report.is_decoded(),
+        }],
+    }))
+    .map_err(|error| format!("Unable to encode station validation report: {error}"))
+}
+
+/// Keep only a bounded MIME type in machine reports; header parameters are
+/// publisher-controlled and may carry tokens or arbitrary diagnostic text.
+fn json_content_type(content_type: Option<&str>) -> Option<String> {
+    let media_type = content_type?.split(';').next()?.trim();
+    if media_type.is_empty() || media_type.len() > 127 || !media_type.is_ascii() {
+        return None;
+    }
+    let mut parts = media_type.split('/');
+    let major = parts.next()?;
+    let subtype = parts.next()?;
+    let is_token = |part: &str| {
+        !part.is_empty()
+            && part
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&byte))
+    };
+    if parts.next().is_some() || !is_token(major) || !is_token(subtype) {
+        return None;
+    }
+    Some(format!(
+        "{}/{}",
+        major.to_ascii_lowercase(),
+        subtype.to_ascii_lowercase()
+    ))
 }
 
 fn validation_status_name(status: ValidationStatus) -> &'static str {
@@ -172,6 +228,10 @@ fn validation_stage_name(stage: ValidationStage) -> &'static str {
 fn valid_validate_all_args(args: &[String]) -> bool {
     (args.len() == 2 && args[1] == "--json")
         || (args.len() == 4 && args[1] == "--json" && args[2] == "--history" && !args[3].is_empty())
+}
+
+fn valid_validate_args(args: &[String]) -> bool {
+    args.len() == 2 || (args.len() == 3 && args[2] == "--json")
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -217,10 +277,12 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
         seconds: None,
         output: "system",
         volume: 60,
+        buffering: IpBufferingPreset::Resilient,
     };
     let mut used_seconds = false;
     let mut used_output = false;
     let mut used_volume = false;
+    let mut used_buffering = false;
     let mut i = 2;
     while i < args.len() {
         if i + 1 >= args.len() {
@@ -255,9 +317,21 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
                 parsed.output = id;
                 used_output = true;
             }
+            "--buffering" if !used_buffering => {
+                parsed.buffering = match args[i + 1].as_str() {
+                    "low-latency" => IpBufferingPreset::LowLatency,
+                    "balanced" => IpBufferingPreset::Balanced,
+                    "resilient" => IpBufferingPreset::Resilient,
+                    _ => return Err("buffering must be low-latency, balanced, or resilient"),
+                };
+                used_buffering = true;
+            }
             _ => return Err("unknown or repeated listen option"),
         }
         i += 2;
+    }
+    if sdrconnect && used_buffering {
+        return Err("IP buffering profiles apply only to internet radio streams");
     }
     Ok(parsed)
 }
@@ -273,9 +347,19 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
             return Err("enable the sdrconnect feature".into());
         }
     } else if args.direct {
-        NativeRadioEngine::start_stream(args.station, args.volume, args.output)?
+        NativeRadioEngine::start_stream_with_buffering_preset(
+            args.station,
+            args.volume,
+            args.output,
+            args.buffering,
+        )?
     } else {
-        NativeRadioEngine::start_internet(args.station, args.volume, args.output)?
+        NativeRadioEngine::start_internet_with_buffering_preset(
+            args.station,
+            args.volume,
+            args.output,
+            args.buffering,
+        )?
     };
     println!(
         "RUST RADIO / {} / output {} / volume {}%",
@@ -287,23 +371,42 @@ fn listen(args: ListenArgs<'_>) -> Result<(), String> {
         args.output,
         args.volume
     );
-    monitor(engine, args.seconds)
+    let prebuffer_ms = if args.sdrconnect {
+        200
+    } else {
+        args.buffering.prebuffer_ms()
+    };
+    println!("OUTPUT PREBUFFER / {prebuffer_ms} ms");
+    monitor(engine, args.seconds, prebuffer_ms)
 }
 
-fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), String> {
+fn monitor(
+    mut engine: NativeRadioEngine,
+    seconds: Option<u64>,
+    prebuffer_ms: u16,
+) -> Result<(), String> {
     // A separate stdin reader lets the main thread monitor duration and playback failures.
-    let (tx, rx) = mpsc::channel::<String>();
+    let (tx, rx) = mpsc::sync_channel::<String>(INTERACTIVE_COMMAND_QUEUE);
     if seconds.is_none() {
         println!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
         thread::spawn(move || {
-            for line in io::stdin().lock().lines() {
-                match line {
-                    Ok(command) => {
+            let stdin = io::stdin();
+            let mut input = stdin.lock();
+            loop {
+                match read_interactive_command(&mut input, INTERACTIVE_COMMAND_MAX_BYTES) {
+                    Ok(Some(command)) => {
                         if tx.send(command).is_err() {
                             break;
                         }
                     }
-                    Err(_) => break,
+                    Ok(None) => break,
+                    Err(InteractiveCommandReadError::TooLong) => {
+                        eprintln!("Interactive command ignored: line exceeds {INTERACTIVE_COMMAND_MAX_BYTES} bytes");
+                    }
+                    Err(InteractiveCommandReadError::Io(error)) => {
+                        eprintln!("Interactive input failed: {error}");
+                        break;
+                    }
                 }
             }
             let _ = tx.send("stop".to_owned());
@@ -325,8 +428,26 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
         if let Some(seconds) = seconds {
             if start.elapsed() >= Duration::from_secs(seconds) {
                 break if audible {
+                    let diagnostics = engine.diagnostics();
+                    println!(
+                        "RUST RADIO DIAGNOSTICS {}",
+                        diagnostics_json(
+                            prebuffer_ms,
+                            diagnostics,
+                            engine.output_samples_consumed()
+                        )
+                    );
                     Ok(())
                 } else {
+                    let diagnostics = engine.diagnostics();
+                    println!(
+                        "RUST RADIO DIAGNOSTICS {}",
+                        diagnostics_json(
+                            prebuffer_ms,
+                            diagnostics,
+                            engine.output_samples_consumed()
+                        )
+                    );
                     Err("No decoded PCM reached the audio callback".into())
                 };
             }
@@ -336,6 +457,14 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                 break Ok(());
             } else if command == "status" {
                 println!("RADIO {:?} / {:?}", snapshot.state, snapshot.last_error);
+                println!(
+                    "RUST RADIO DIAGNOSTICS {}",
+                    diagnostics_json(
+                        prebuffer_ms,
+                        engine.diagnostics(),
+                        engine.output_samples_consumed(),
+                    )
+                );
                 #[cfg(feature = "nrsp-native")]
                 if let Some(status) = engine.nrsp_native_status() {
                     println!("NATIVE STATUS {status:?}");
@@ -426,6 +555,90 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
     result
 }
 
+fn diagnostics_json(
+    prebuffer_ms: u16,
+    diagnostics: rust_radio::NativePlaybackDiagnostics,
+    output_samples_consumed: u64,
+) -> String {
+    serde_json::json!({
+        "output_prebuffer_ms": prebuffer_ms,
+        "buffer_ready_latency_observed_ms": diagnostics.buffer_ready_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
+        "prebuffer_fill_latency_observed_ms": diagnostics.prebuffer_fill_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
+        "first_play_latency_observed_ms": diagnostics.first_play_latency_observed.map(|latency| latency.as_secs_f64() * 1000.0),
+        "output_samples_consumed_current_attempt": output_samples_consumed,
+        "underrun_samples": diagnostics.underrun_samples,
+    })
+    .to_string()
+}
+
+/// Read one bounded command without allowing a long line or a fast producer to
+/// grow the interactive CLI's memory use without limit. Oversized lines are
+/// drained through their newline so the next command can still be processed.
+#[derive(Debug)]
+enum InteractiveCommandReadError {
+    TooLong,
+    Io(io::Error),
+}
+
+impl From<io::Error> for InteractiveCommandReadError {
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+fn read_interactive_command<R: BufRead>(
+    reader: &mut R,
+    max_bytes: usize,
+) -> Result<Option<String>, InteractiveCommandReadError> {
+    let mut command = Vec::with_capacity(max_bytes.min(256));
+    let mut saw_input = false;
+    let mut oversized = false;
+    loop {
+        let (consumed, newline, eof) = {
+            let available = reader.fill_buf()?;
+            if available.is_empty() {
+                (0, false, true)
+            } else {
+                saw_input = true;
+                let newline = available.contains(&b'\n');
+                let consumed = available
+                    .iter()
+                    .position(|byte| *byte == b'\n')
+                    .map_or(available.len(), |index| index + 1);
+                let content_len = consumed - usize::from(newline);
+                if !oversized {
+                    if command.len().saturating_add(content_len) <= max_bytes {
+                        command.extend_from_slice(&available[..content_len]);
+                    } else {
+                        oversized = true;
+                    }
+                }
+                (consumed, newline, false)
+            }
+        };
+        if eof {
+            if !saw_input {
+                return Ok(None);
+            }
+            if oversized {
+                return Err(InteractiveCommandReadError::TooLong);
+            }
+            break;
+        }
+        reader.consume(consumed);
+        if newline {
+            if oversized {
+                return Err(InteractiveCommandReadError::TooLong);
+            }
+            break;
+        }
+    }
+    if command.last() == Some(&b'\r') {
+        command.pop();
+    }
+    Ok(Some(String::from_utf8_lossy(&command).into_owned()))
+}
+
 fn run(args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
         Some("inputs") if args.len() == 1 => {
@@ -475,9 +688,13 @@ fn run(args: &[String]) -> Result<(), String> {
             }
             Ok(())
         }
-        Some("validate") if args.len() == 2 => {
+        Some("validate") if valid_validate_args(args) => {
             let report = validate_station(&args[1])?;
-            println!("{}", validation_summary(&report));
+            if args.len() == 3 {
+                println!("{}", station_validation_json(&report)?);
+            } else {
+                println!("{}", validation_summary(&report));
+            }
             if report.is_decoded() {
                 Ok(())
             } else {
@@ -547,6 +764,7 @@ mod tests {
                 report.stage = ValidationStage::DecodedAudio;
                 report.decoded_frames = 1152;
                 report.codec = Some("mp3".into());
+                report.content_type = Some("audio/mpeg; token=private-header-value".into());
             }
         } else if station_id == "wcrb" {
             report.status = ValidationStatus::InvalidStream;
@@ -560,6 +778,52 @@ mod tests {
         raw.iter().map(|s| (*s).to_owned()).collect()
     }
 
+    struct InvalidDataReader;
+
+    impl io::Read for InvalidDataReader {
+        fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::InvalidData, "stdin failure"))
+        }
+    }
+
+    impl BufRead for InvalidDataReader {
+        fn fill_buf(&mut self) -> io::Result<&[u8]> {
+            Err(io::Error::new(io::ErrorKind::InvalidData, "stdin failure"))
+        }
+
+        fn consume(&mut self, _amount: usize) {}
+    }
+
+    #[test]
+    fn interactive_input_bounds_lines_and_recovers_after_oversized_input() {
+        let input = format!("{}\n{}\nok\r\n", "x".repeat(4097), "y".repeat(4096));
+        let mut reader = io::Cursor::new(input.into_bytes());
+
+        assert!(matches!(
+            read_interactive_command(&mut reader, 4096),
+            Err(InteractiveCommandReadError::TooLong)
+        ));
+        assert_eq!(
+            read_interactive_command(&mut reader, 4096).unwrap(),
+            Some("y".repeat(4096))
+        );
+        assert_eq!(
+            read_interactive_command(&mut reader, 4096).unwrap(),
+            Some("ok".into())
+        );
+        assert_eq!(read_interactive_command(&mut reader, 4096).unwrap(), None);
+    }
+
+    #[test]
+    fn interactive_input_preserves_reader_errors_instead_of_treating_them_as_long_lines() {
+        let mut reader = InvalidDataReader;
+        assert!(matches!(
+            read_interactive_command(&mut reader, 4096),
+            Err(InteractiveCommandReadError::Io(error))
+                if error.kind() == io::ErrorKind::InvalidData
+        ));
+    }
+
     #[test]
     fn invalid_listen_args_fail_before_device_or_network_access() {
         for args in [
@@ -569,6 +833,7 @@ mod tests {
             vec!["listen", "skylab", "--volume", "101"],
             vec!["listen", "skylab", "--output", "https://localhost"],
             vec!["listen", "skylab", "--volume", "60", "--volume", "70"],
+            vec!["listen", "skylab", "--buffering", "fast"],
         ] {
             assert!(parse_listen(&options(&args)).is_err(), "{:?}", args);
         }
@@ -584,7 +849,80 @@ mod tests {
         ]);
         assert_eq!(parse_listen(&parsed).unwrap().volume, 25);
         assert_eq!(parse_listen(&parsed).unwrap().seconds, Some(30));
+        assert_eq!(
+            parse_listen(&parsed).unwrap().buffering,
+            IpBufferingPreset::Resilient
+        );
+        assert_eq!(
+            parse_listen(&options(&[
+                "listen",
+                "skylab",
+                "--buffering",
+                "low-latency"
+            ]))
+            .unwrap()
+            .buffering,
+            IpBufferingPreset::LowLatency
+        );
+        assert_eq!(
+            parse_listen(&options(&["listen", "skylab", "--buffering", "balanced"]))
+                .unwrap()
+                .buffering,
+            IpBufferingPreset::Balanced
+        );
         assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
+    }
+
+    #[test]
+    fn buffering_profiles_are_bounded_and_report_their_configured_duration() {
+        assert_eq!(
+            rust_radio::IpBufferingProfile::LowLatency.prebuffer_ms(),
+            200
+        );
+        assert_eq!(
+            rust_radio::IpBufferingProfile::Resilient.prebuffer_ms(),
+            500
+        );
+        assert_eq!(
+            IpBufferingPreset::from(rust_radio::IpBufferingProfile::LowLatency),
+            IpBufferingPreset::LowLatency
+        );
+        assert_eq!(
+            IpBufferingPreset::from(rust_radio::IpBufferingProfile::Resilient),
+            IpBufferingPreset::Resilient
+        );
+        assert_eq!(IpBufferingPreset::LowLatency.prebuffer_ms(), 200);
+        assert_eq!(IpBufferingPreset::Balanced.prebuffer_ms(), 350);
+        assert_eq!(IpBufferingPreset::Resilient.prebuffer_ms(), 500);
+        let diagnostics: serde_json::Value = serde_json::from_str(&diagnostics_json(
+            200,
+            rust_radio::NativePlaybackDiagnostics {
+                underrun_samples: 23,
+                buffer_ready_latency_observed: Some(Duration::from_millis(500)),
+                prebuffer_fill_latency_observed: Some(Duration::from_millis(300)),
+                first_play_latency_observed: Some(Duration::from_millis(734)),
+            },
+            1_234,
+        ))
+        .unwrap();
+        assert_eq!(diagnostics["output_prebuffer_ms"].as_u64(), Some(200));
+        assert_eq!(
+            diagnostics["buffer_ready_latency_observed_ms"].as_f64(),
+            Some(500.0)
+        );
+        assert_eq!(
+            diagnostics["prebuffer_fill_latency_observed_ms"].as_f64(),
+            Some(300.0)
+        );
+        assert_eq!(
+            diagnostics["first_play_latency_observed_ms"].as_f64(),
+            Some(734.0)
+        );
+        assert_eq!(diagnostics["underrun_samples"].as_u64(), Some(23));
+        assert_eq!(
+            diagnostics["output_samples_consumed_current_attempt"].as_u64(),
+            Some(1_234)
+        );
     }
 
     #[cfg(feature = "sdrconnect")]
@@ -644,6 +982,66 @@ mod tests {
     }
 
     #[test]
+    fn single_station_validation_json_is_machine_readable_and_omits_urls() {
+        let mut report = StationValidation::unverified("wpr-news");
+        report.checked_at = Some(UNIX_EPOCH + Duration::from_secs(1234));
+        report.status = ValidationStatus::Decoded;
+        report.stage = ValidationStage::DecodedAudio;
+        report.resolved_url = Some("https://example.invalid/live?token=secret".into());
+        report.content_type = Some("Audio/MPEG; token=private-header-value".into());
+        report.codec = Some("MP3".into());
+        report.sample_rate = Some(44_100);
+        report.channels = Some(1);
+        report.decoded_frames = 1152;
+        report.detail = "private response detail".into();
+
+        let serialized = station_validation_json(&report).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let results = json["results"].as_array().unwrap();
+        assert_eq!(results.len(), 1);
+        let result = &results[0];
+
+        assert_eq!(json["schema_version"].as_u64(), Some(1));
+        assert_eq!(result["station_id"].as_str(), Some("wpr-news"));
+        assert_eq!(result["status"].as_str(), Some("decoded"));
+        assert_eq!(result["stage"].as_str(), Some("decoded_audio"));
+        assert_eq!(result["content_type"].as_str(), Some("audio/mpeg"));
+        assert_eq!(json["checked_at_unix"].as_u64(), Some(1234));
+        assert_eq!(result["codec"].as_str(), Some("MP3"));
+        assert_eq!(result["sample_rate"].as_u64(), Some(44_100));
+        assert_eq!(result["channels"].as_u64(), Some(1));
+        assert_eq!(result["decoded_frames"].as_u64(), Some(1152));
+        assert_eq!(result["decoded"].as_bool(), Some(true));
+        assert_eq!(result["attempts"].as_u64(), Some(1));
+        assert_eq!(result["recovered"].as_bool(), Some(false));
+        assert!(result.get("resolved_url").is_none());
+        assert!(result.get("detail").is_none());
+        assert!(!serialized.contains("secret"));
+        assert!(!serialized.contains("private-header-value"));
+        assert!(!serialized.contains("private response detail"));
+    }
+
+    #[test]
+    fn json_content_type_drops_parameters_and_rejects_invalid_or_unbounded_values() {
+        assert_eq!(
+            json_content_type(Some("Audio/MPEG; token=secret")),
+            Some("audio/mpeg".into())
+        );
+        assert_eq!(
+            json_content_type(Some(" audio/aac ")),
+            Some("audio/aac".into())
+        );
+        assert_eq!(json_content_type(None), None);
+        assert_eq!(json_content_type(Some("audio")), None);
+        assert_eq!(json_content_type(Some("audio/mpeg/extra")), None);
+        assert_eq!(json_content_type(Some("audio/with space")), None);
+        assert_eq!(
+            json_content_type(Some(&format!("audio/{}", "x".repeat(128)))),
+            None
+        );
+    }
+
+    #[test]
     fn catalog_validation_retries_only_transient_failures_once() {
         RECOVERY_CHECKS.store(0, Ordering::SeqCst);
         let results =
@@ -659,6 +1057,8 @@ mod tests {
         assert_eq!(recovered["attempts"].as_u64(), Some(2));
         assert_eq!(recovered["recovered"].as_bool(), Some(true));
         assert_eq!(recovered["status"].as_str(), Some("decoded"));
+        assert_eq!(recovered["content_type"].as_str(), Some("audio/mpeg"));
+        assert!(!json.to_string().contains("private-header-value"));
         let rejected = stations
             .iter()
             .find(|station| station["station_id"] == "wcrb")
@@ -690,6 +1090,14 @@ mod tests {
             mirror["policy"]["redistribution"].as_str(),
             Some("not_authorized")
         );
+        assert_eq!(
+            mirror["policy"]["third_party_player_evidence"].as_str(),
+            Some("publisher documents listener playback in third-party players")
+        );
+        assert_eq!(
+            mirror["policy"]["rights_reviewed_at"].as_str(),
+            Some("2026-10-28")
+        );
         let stations = mirror["stations"]
             .as_array()
             .expect("catalog must contain a station array");
@@ -707,6 +1115,14 @@ mod tests {
             assert_eq!(
                 json["publisher_reference_url"].as_str(),
                 Some(station.publisher_reference_url)
+            );
+            assert_eq!(
+                json["third_party_player_support"].as_bool(),
+                Some(station.third_party_player_support)
+            );
+            assert_eq!(
+                json["rights_reviewed_date"].as_str(),
+                Some(station.rights_reviewed_date)
             );
             assert_eq!(
                 json["nominal_kbps"].as_u64(),
@@ -738,6 +1154,16 @@ mod tests {
             "--json",
             "--history",
             "health.json"
+        ])));
+        assert!(valid_validate_args(&options(&["validate", "skylab"])));
+        assert!(valid_validate_args(&options(&[
+            "validate", "skylab", "--json"
+        ])));
+        assert!(!valid_validate_args(&options(&[
+            "validate",
+            "skylab",
+            "--json",
+            "unexpected"
         ])));
     }
 }

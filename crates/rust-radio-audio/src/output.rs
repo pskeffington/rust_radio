@@ -6,10 +6,14 @@ use cpal::{FromSample, SampleFormat, SizedSample};
 use ringbuf::{traits::*, HeapCons, HeapProd, HeapRb};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-    Arc,
+    Arc, Mutex,
 };
 use std::thread;
 use std::time::{Duration, Instant};
+
+const DEFAULT_PREBUFFER: Duration = Duration::from_millis(200);
+#[cfg(test)]
+const IP_RADIO_PREBUFFER: Duration = Duration::from_millis(500);
 
 /// CPAL exposes OS-managed audio endpoints. Connected Bluetooth speakers
 /// and headsets appear here after pairing in macOS/Windows/Linux settings.
@@ -97,19 +101,93 @@ pub struct NativeAudioOutput {
     stream: cpal::Stream,
     pub sample_rate: u32,
     pub channels: usize,
+    prebuffer_samples: usize,
     played_samples: Arc<AtomicU64>,
-    failed: Arc<AtomicBool>,
+    underrun_samples: Arc<AtomicU64>,
+    failed: Arc<OutputFailure>,
+}
+
+fn prebuffer_sample_count(sample_rate: u32, channels: usize, duration: Duration) -> usize {
+    let frames = u64::from(sample_rate) * duration.as_millis() as u64 / 1_000;
+    frames as usize * channels
+}
+
+#[derive(Default)]
+struct OutputFailure {
+    failed: AtomicBool,
+    detail: Mutex<Option<String>>,
+}
+
+impl OutputFailure {
+    fn record(&self, detail: String) {
+        let mut recorded = self
+            .detail
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if recorded.is_none() {
+            *recorded = Some(detail);
+        }
+        self.failed.store(true, Ordering::Release);
+    }
+
+    fn detail(&self) -> Option<String> {
+        if !self.failed.load(Ordering::Acquire) {
+            return None;
+        }
+        self.detail
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    }
 }
 
 impl NativeAudioOutput {
     pub fn open(volume: Arc<AtomicU8>, output_id: &str) -> Result<Self, String> {
-        Self::open_with_progress(volume, output_id, Arc::new(AtomicU64::new(0)))
+        Self::open_with_progress(
+            volume,
+            output_id,
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(AtomicU64::new(0)),
+        )
     }
 
     pub(crate) fn open_with_progress(
         volume: Arc<AtomicU8>,
         output_id: &str,
         played_samples: Arc<AtomicU64>,
+        underrun_samples: Arc<AtomicU64>,
+    ) -> Result<Self, String> {
+        Self::open_with_prebuffer(
+            volume,
+            output_id,
+            played_samples,
+            underrun_samples,
+            DEFAULT_PREBUFFER,
+        )
+    }
+
+    pub(crate) fn open_ip_with_progress(
+        volume: Arc<AtomicU8>,
+        output_id: &str,
+        played_samples: Arc<AtomicU64>,
+        underrun_samples: Arc<AtomicU64>,
+        prebuffer: Duration,
+    ) -> Result<Self, String> {
+        Self::open_with_prebuffer(
+            volume,
+            output_id,
+            played_samples,
+            underrun_samples,
+            prebuffer,
+        )
+    }
+
+    fn open_with_prebuffer(
+        volume: Arc<AtomicU8>,
+        output_id: &str,
+        played_samples: Arc<AtomicU64>,
+        underrun_samples: Arc<AtomicU64>,
+        prebuffer: Duration,
     ) -> Result<Self, String> {
         let host = cpal::default_host();
         let device = resolve_output(&host, output_id)?;
@@ -123,17 +201,28 @@ impl NativeAudioOutput {
         if !(8_000..=192_000).contains(&sample_rate) || !(1..=8).contains(&channels) {
             return Err("Unsupported audio output rate or channel configuration".into());
         }
+        let prebuffer_samples = prebuffer_sample_count(sample_rate, channels, prebuffer);
         // Two seconds of interleaved device-rate PCM; bounded to at most ~12 MiB.
         let ring = HeapRb::<f32>::new(sample_rate as usize * channels * 2);
         let (producer, consumer) = ring.split();
-        let failed = Arc::new(AtomicBool::new(false));
+        let failed = Arc::new(OutputFailure::default());
         let stream = match sample_format {
+            SampleFormat::I8 => build_stream::<i8>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
             SampleFormat::F32 => build_stream::<f32>(
                 &device,
                 &config,
                 consumer,
                 volume,
                 Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
                 Arc::clone(&failed),
             )?,
             SampleFormat::I16 => build_stream::<i16>(
@@ -142,6 +231,43 @@ impl NativeAudioOutput {
                 consumer,
                 volume,
                 Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::I24 => build_stream::<cpal::I24>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::I32 => build_stream::<i32>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::I64 => build_stream::<i64>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::U8 => build_stream::<u8>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
                 Arc::clone(&failed),
             )?,
             SampleFormat::U16 => build_stream::<u16>(
@@ -150,6 +276,34 @@ impl NativeAudioOutput {
                 consumer,
                 volume,
                 Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::U32 => build_stream::<u32>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::U64 => build_stream::<u64>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
+                Arc::clone(&failed),
+            )?,
+            SampleFormat::F64 => build_stream::<f64>(
+                &device,
+                &config,
+                consumer,
+                volume,
+                Arc::clone(&played_samples),
+                Arc::clone(&underrun_samples),
                 Arc::clone(&failed),
             )?,
             format => return Err(format!("Unsupported native sample format: {format:?}")),
@@ -166,13 +320,15 @@ impl NativeAudioOutput {
             stream,
             sample_rate,
             channels,
+            prebuffer_samples,
             played_samples,
+            underrun_samples,
             failed,
         })
     }
 
     pub fn minimum_prebuffer_samples(&self) -> usize {
-        self.sample_rate as usize * self.channels / 5
+        self.prebuffer_samples
     }
 
     pub fn buffered_samples(&self) -> usize {
@@ -183,8 +339,18 @@ impl NativeAudioOutput {
         self.played_samples.load(Ordering::Relaxed)
     }
 
+    /// Number of device-rate samples the native callback had to fill with silence.
+    pub fn underrun_samples(&self) -> u64 {
+        self.underrun_samples.load(Ordering::Relaxed)
+    }
+
     pub fn has_failed(&self) -> bool {
-        self.failed.load(Ordering::Acquire)
+        self.failed.failed.load(Ordering::Acquire)
+    }
+
+    /// Preserve CPAL's asynchronous device diagnostic when it is available.
+    pub fn failure_detail(&self) -> Option<String> {
+        self.failed.detail()
     }
 
     pub fn start(&self) -> Result<(), String> {
@@ -211,7 +377,7 @@ fn push_frame_with_callback_watchdog(
     producer: &mut HeapProd<f32>,
     frame: &[f32],
     cancelled: &AtomicBool,
-    failed: &AtomicBool,
+    failed: &OutputFailure,
     played_samples: &AtomicU64,
     stalled_after: Duration,
 ) -> bool {
@@ -219,7 +385,7 @@ fn push_frame_with_callback_watchdog(
     let mut last_consumed = played_samples.load(Ordering::Relaxed);
     for &sample in frame {
         loop {
-            if cancelled.load(Ordering::Acquire) || failed.load(Ordering::Acquire) {
+            if cancelled.load(Ordering::Acquire) || failed.failed.load(Ordering::Acquire) {
                 return false;
             }
             if producer.try_push(sample).is_ok() {
@@ -234,7 +400,7 @@ fn push_frame_with_callback_watchdog(
             // sending an error. Do not block the decoder worker forever
             // on a full ring or pretend audio is still playing.
             if last_progress.elapsed() >= stalled_after {
-                failed.store(true, Ordering::Release);
+                failed.record("Native audio output stopped consuming samples".into());
                 return false;
             }
             thread::sleep(Duration::from_millis(3));
@@ -249,20 +415,21 @@ fn build_stream<T>(
     mut consumer: HeapCons<f32>,
     volume: Arc<AtomicU8>,
     played: Arc<AtomicU64>,
-    failed: Arc<AtomicBool>,
+    underruns: Arc<AtomicU64>,
+    failed: Arc<OutputFailure>,
 ) -> Result<cpal::Stream, String>
 where
     T: SizedSample + FromSample<f32>,
 {
-    let error_flag = Arc::clone(&failed);
+    let error_state = Arc::clone(&failed);
     device
         .build_output_stream(
             config,
             move |data: &mut [T], _| {
-                render_samples(data, &mut consumer, &volume, &played);
+                render_samples(data, &mut consumer, &volume, &played, &underruns);
             },
-            move |_error| {
-                error_flag.store(true, Ordering::Release);
+            move |error| {
+                error_state.record(format!("Native audio output stream error: {error:?}"));
             },
             None,
         )
@@ -270,30 +437,202 @@ where
 }
 
 /// Transfer queued PCM without blocking or allocating in CPAL's callback.
-fn render_samples<T>(
+pub(crate) fn render_samples<T>(
     data: &mut [T],
     consumer: &mut HeapCons<f32>,
     volume: &AtomicU8,
     played: &AtomicU64,
+    underruns: &AtomicU64,
 ) where
     T: SizedSample + FromSample<f32>,
 {
     let gain = volume.load(Ordering::Relaxed) as f32 / 100.0;
     let mut consumed = 0u64;
+    let mut missing = 0u64;
     for sample in data {
         if let Some(value) = consumer.try_pop() {
             *sample = T::from_sample((value * gain).clamp(-1.0, 1.0));
             consumed += 1;
         } else {
             *sample = T::from_sample(0.0);
+            missing += 1;
         }
     }
     played.fetch_add(consumed, Ordering::Relaxed);
+    if missing > 0 {
+        underruns.fetch_add(missing, Ordering::Relaxed);
+    }
 }
 
 #[cfg(test)]
 mod output_identity_tests {
     use super::*;
+    use cpal::Sample;
+
+    #[test]
+    fn ip_prebuffer_ab_compares_200ms_and_500ms_under_stream_stalls() {
+        fn callback_underrun_samples(prebuffer_ms: u64, stall_ms: u64) -> u64 {
+            // At this test scale one queued sample represents one ms of audio.
+            // Exercise the same lock-free renderer and underrun counter as CPAL.
+            let ring = HeapRb::<f32>::new(1_000);
+            let (mut producer, mut consumer) = ring.split();
+            for _ in 0..prebuffer_ms {
+                producer.try_push(0.25).unwrap();
+            }
+            let volume = AtomicU8::new(0);
+            let played = AtomicU64::new(0);
+            let underruns = AtomicU64::new(0);
+            let mut callback = vec![0.0f32; stall_ms as usize];
+            render_samples(&mut callback, &mut consumer, &volume, &played, &underruns);
+            underruns.load(Ordering::Relaxed)
+        }
+
+        let current_ms = DEFAULT_PREBUFFER.as_millis() as u64;
+        let candidate_ms = IP_RADIO_PREBUFFER.as_millis() as u64;
+        let stall_profiles = [100, 300, 800];
+        let current_underruns: Vec<_> = stall_profiles
+            .iter()
+            .map(|stall| callback_underrun_samples(current_ms, *stall))
+            .collect();
+        let candidate_underruns: Vec<_> = stall_profiles
+            .iter()
+            .map(|stall| callback_underrun_samples(candidate_ms, *stall))
+            .collect();
+
+        assert_eq!(prebuffer_sample_count(48_000, 2, DEFAULT_PREBUFFER), 19_200);
+        assert_eq!(
+            prebuffer_sample_count(48_000, 2, IP_RADIO_PREBUFFER),
+            48_000
+        );
+        assert_eq!(current_underruns, [0, 100, 600]);
+        assert_eq!(candidate_underruns, [0, 0, 300]);
+        println!(
+            "IP prebuffer A/B (callback-level samples; injected stream stalls {:?}ms): A={}ms -> {:?} underrun samples; B={}ms -> {:?} underrun samples; B adds {}ms startup",
+            stall_profiles,
+            current_ms,
+            current_underruns,
+            candidate_ms,
+            candidate_underruns,
+            candidate_ms - current_ms
+        );
+    }
+
+    #[test]
+    fn asynchronous_device_error_retains_backend_diagnostic() {
+        let failure = OutputFailure::default();
+        assert!(!failure.failed.load(Ordering::Acquire));
+        assert_eq!(failure.detail(), None);
+
+        failure.record("device disappeared during stream playback".into());
+        failure.record("less specific follow-up failure".into());
+
+        assert!(failure.failed.load(Ordering::Acquire));
+        assert_eq!(
+            failure.detail().as_deref(),
+            Some("device disappeared during stream playback")
+        );
+    }
+
+    fn assert_rendered_samples_convert<T>(volume_percent: u8)
+    where
+        T: SizedSample + FromSample<f32>,
+        f32: FromSample<T>,
+    {
+        let expected = [-1.0f32, -0.5, 0.0, 0.75, 1.0];
+        let ring = HeapRb::<f32>::new(expected.len());
+        let (mut producer, mut consumer) = ring.split();
+        for sample in expected {
+            producer.try_push(sample).unwrap();
+        }
+        let volume = AtomicU8::new(volume_percent);
+        let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
+        let mut output = vec![T::from_sample(0.0); expected.len()];
+
+        render_samples(&mut output, &mut consumer, &volume, &played, &underruns);
+
+        let converted: Vec<f32> = output.into_iter().map(f32::from_sample).collect();
+        let gain = f32::from(volume_percent) / 100.0;
+        for (actual, input) in converted.into_iter().zip(expected) {
+            let expected = input * gain;
+            assert!(
+                (actual - expected).abs() <= 0.02,
+                "sample conversion error: {actual} vs {expected}"
+            );
+        }
+        assert_eq!(played.load(Ordering::Relaxed), expected.len() as u64);
+        assert_eq!(underruns.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn callback_converts_every_cpal_format_at_full_half_and_mute_gain() {
+        macro_rules! check_format {
+            ($sample_type:ty) => {
+                assert_rendered_samples_convert::<$sample_type>(100);
+                assert_rendered_samples_convert::<$sample_type>(50);
+                assert_rendered_samples_convert::<$sample_type>(0);
+            };
+        }
+        check_format!(i8);
+        check_format!(i16);
+        check_format!(cpal::I24);
+        check_format!(i32);
+        check_format!(i64);
+        check_format!(u8);
+        check_format!(u16);
+        check_format!(u32);
+        check_format!(u64);
+        check_format!(f32);
+        check_format!(f64);
+    }
+
+    fn assert_live_volume_changes<T>()
+    where
+        T: SizedSample + FromSample<f32>,
+        f32: FromSample<T>,
+    {
+        let ring = HeapRb::<f32>::new(3);
+        let (mut producer, mut consumer) = ring.split();
+        for sample in [0.8f32, -0.8, 0.4] {
+            producer.try_push(sample).unwrap();
+        }
+        let volume = AtomicU8::new(100);
+        let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
+
+        for (volume_percent, expected) in [(100, 0.8f32), (50, -0.4), (0, 0.0)] {
+            volume.store(volume_percent, Ordering::Relaxed);
+            let mut output = [T::from_sample(0.0)];
+            render_samples(&mut output, &mut consumer, &volume, &played, &underruns);
+            let actual = f32::from_sample(output[0]);
+            assert!(
+                (actual - expected).abs() <= 0.02,
+                "live volume conversion error: {actual} vs {expected} at {volume_percent}%"
+            );
+        }
+        assert_eq!(played.load(Ordering::Relaxed), 3);
+        assert_eq!(underruns.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn callback_applies_volume_changes_between_buffers_for_every_format() {
+        macro_rules! check_format {
+            ($sample_type:ty) => {
+                assert_live_volume_changes::<$sample_type>();
+            };
+        }
+        check_format!(i8);
+        check_format!(i16);
+        check_format!(cpal::I24);
+        check_format!(i32);
+        check_format!(i64);
+        check_format!(u8);
+        check_format!(u16);
+        check_format!(u32);
+        check_format!(u64);
+        check_format!(f32);
+        check_format!(f64);
+    }
 
     #[test]
     fn callback_applies_gain_and_silences_underrun_without_counting_silence() {
@@ -303,12 +642,14 @@ mod output_identity_tests {
         producer.try_push(-0.5).unwrap();
         let volume = AtomicU8::new(50);
         let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
         let mut output = [1.0f32; 4];
 
-        render_samples(&mut output, &mut consumer, &volume, &played);
+        render_samples(&mut output, &mut consumer, &volume, &played, &underruns);
 
         assert_eq!(output, [0.75, -0.25, 0.0, 0.0]);
         assert_eq!(played.load(Ordering::Relaxed), 2);
+        assert_eq!(underruns.load(Ordering::Relaxed), 2);
         assert_eq!(consumer.occupied_len(), 0);
     }
 
@@ -318,7 +659,7 @@ mod output_identity_tests {
         let (mut producer, _consumer) = ring.split();
         producer.try_push(0.25).unwrap();
         let cancelled = AtomicBool::new(false);
-        let failed = AtomicBool::new(false);
+        let failed = OutputFailure::default();
         let played = AtomicU64::new(0);
         let started = Instant::now();
 
@@ -332,7 +673,11 @@ mod output_identity_tests {
         );
 
         assert!(!accepted);
-        assert!(failed.load(Ordering::Acquire));
+        assert!(failed.failed.load(Ordering::Acquire));
+        assert_eq!(
+            failed.detail().as_deref(),
+            Some("Native audio output stopped consuming samples")
+        );
         assert!(started.elapsed() < Duration::from_millis(250));
     }
 
@@ -342,7 +687,7 @@ mod output_identity_tests {
         let (mut producer, _consumer) = ring.split();
         producer.try_push(0.25).unwrap();
         let cancelled = AtomicBool::new(true);
-        let failed = AtomicBool::new(false);
+        let failed = OutputFailure::default();
         let played = AtomicU64::new(0);
 
         let accepted = push_frame_with_callback_watchdog(
@@ -355,7 +700,7 @@ mod output_identity_tests {
         );
 
         assert!(!accepted);
-        assert!(!failed.load(Ordering::Acquire));
+        assert!(!failed.failed.load(Ordering::Acquire));
     }
 
     #[test]

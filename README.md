@@ -6,6 +6,8 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 The standalone module provides bounded internet and private-LAN streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
 
+The current curated directory contains twenty-five streams whose publishers document direct playback in third-party radio players or internet radios. Recent additions include four WFMU specialty channels, Classical California, KUNC and The Colorado Sound, and KUAF's news, classical and jazz streams. The directory also includes WRVO's NPR News, PRX Remix and BBC World Service feeds, WPR News and Music, Radio Swiss Jazz and Classic, All Classical, WFMT, KFUO, Skylab, GBH, KEXP and Radio Paradise. WRVO and other member-station NPR services are not a national continuous NPR feed. SomaFM presets remain excluded pending written permission under the publisher's current terms. Player guidance does not grant redistribution or relay rights. See the [catalog policy](docs/CURATED_FEED_POLICY.md).
+
 IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. Direct native nRSP-ST control and Opus playback have also reached Mac native callbacks without using SDRconnect: live frequency/mode changes and session cleanup passed. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
 
 ## Navigation
@@ -44,7 +46,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 5. Bounded streaming memory, publisher endpoint validation for presets, explicit direct URLs, controlled redirects and timeouts.
 6. Keep audio output devices, Bluetooth pairing and touch UI under OS/host ownership.
 7. No RF transmit path. Satellite reception is research-stage only.
-8. Any curated broadcaster inclusion requires a redistribution/embedding rights review before released bundles.
+8. Curated presets require publisher-documented use in third-party radio players. This evidence is not permission to redistribute, embed, or relay streams; those uses require separate rights review.
 
 ## Near-term work
 
@@ -93,14 +95,25 @@ nSDR setup is divided into **Tune**, **FM Audio**, **Presets** and **Device**. T
 cargo run -p rust-radio-cli --features nrsp-native,soapy-sdr -- inputs
 cargo run -p rust-radio-cli -- listen wcrb --seconds 30
 cargo run -p rust-radio-cli -- stream-listen 'https://example.org/live.mp3' --seconds 30
+# Repeatable muted native callback buffering comparison (200 ms vs 500 ms):
+cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 0 --buffering low-latency
+cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 0 --buffering resilient
+# Intermediate 350 ms option:
+cargo run -p rust-radio-cli -- listen skylab --seconds 30 --buffering balanced
 ```
 
-Curated transport resolves bounded M3U and PLS playlists using publisher-approved URLs. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. Legacy HTTP entries inside SomaFM playlists are requested over HTTPS after the same host/port/path checks; there is no plaintext fallback. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
+IP buffering options are `low-latency` (200 ms), `balanced` (350 ms) and
+`resilient` (500 ms). The engine default remains `resilient`; see the
+[acceptance measurements](docs/STANDALONE_ACCEPTANCE.md#native-buffering-ab-measurements)
+before selecting another profile.
+
+Curated transport resolves bounded M3U and PLS playlists using publisher-directed URLs. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Connection/read failures and HTTP 408, 425, 429, 500, 502, 503 and 504 share a maximum of three retries with 1/2/4-second delays. Other HTTP responses, including unsupported or configuration-related 5xx statuses, fail without retry.
 
 Check a station without opening an audio device:
 
 ```sh
 cargo run -p rust-radio-cli -- validate skylab
+cargo run -p rust-radio-cli -- validate skylab --json
 ```
 
-Validation records its timestamp, resolved endpoint, furthest verified stage and MP3/AAC decode evidence. It shares one 18-second HTTP deadline across all playlist/redirect hops, reads at most 256 KiB of audio and examines at most 64 packets. Only decoded finite PCM produces a successful exit status; HTTP success and catalog inclusion alone do not. CLI checks are explicit; the GUI also checks operator station selections silently. Public network checks are separate from fixture CI. The CLI uses its 18-second probe path. GUI selection checks use the cancellable playback transport with a 35-second startup budget, 8-second header timeout, 3-second read timeout, 256 KiB decode limit and no automatic retry. CLI reports last for that invocation; GUI reports are retained per station for the panel's lifetime. `validate-all --json --history PATH` optionally persists bounded local evidence, and egui hosts can import it through `RadioPanel::load_validation_history`; runtime checks and playback remain authoritative. Check cancellation prevents subsequent reads/hops and discards late results; an already-blocked request may wait for the remaining HTTP deadline while the GUI keeps repainting.
+Human-readable validation shows its timestamp, resolved endpoint, furthest verified stage and MP3/AAC decode evidence. `validate STATION --json` emits the same version-1 `results` envelope as `validate-all --json` for one station; it includes status, stage, codec and decoded PCM facts, while omitting resolved URLs and free-form detail. Validation shares one 18-second HTTP deadline across all playlist/redirect hops, reads at most 256 KiB of audio and examines at most 64 packets. Only decoded finite PCM produces a successful exit status; HTTP success and catalog inclusion alone do not. CLI checks are explicit; the GUI also checks operator station selections silently. Public network checks are separate from fixture CI. The CLI uses its 18-second probe path. GUI selection checks use the cancellable playback transport with a 35-second startup budget, 8-second header timeout, 3-second read timeout, 256 KiB decode limit and no automatic retry. CLI reports last for that invocation; GUI reports are retained per station for the panel's lifetime. `validate-all --json --history PATH` optionally persists bounded local evidence, and egui hosts can import it through `RadioPanel::load_validation_history`; runtime checks and playback remain authoritative. Check cancellation prevents subsequent reads/hops and discards late results; an already-blocked request may wait for the remaining HTTP deadline while the GUI keeps repainting.

@@ -29,6 +29,8 @@ pub enum StreamError {
     UnsupportedHls,
     InvalidIcyInterval,
     TransportUnavailable,
+    TransportTimeout,
+    TransportConnectionFailed,
     Io(io::Error),
 }
 
@@ -36,6 +38,11 @@ impl fmt::Display for StreamError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnsupportedHls => f.write_str("HLS radio transport is not supported"),
+            Self::TransportUnavailable => f.write_str("Radio transport is unavailable"),
+            Self::TransportTimeout => f.write_str("Radio validation request timed out"),
+            Self::TransportConnectionFailed => {
+                f.write_str("Radio stream connection failed before a response")
+            }
             error => write!(f, "{error:?}"),
         }
     }
@@ -84,23 +91,73 @@ impl ApprovedEndpoint {
             return Err(StreamError::UnsafeEndpoint);
         }
 
+        let host = authority.strip_suffix(":443").unwrap_or(authority);
+        let swiss_stream_node = host
+            .strip_prefix("livestreaming-node-")
+            .and_then(|host| host.strip_suffix(".srg-ssr.ch"))
+            .is_some_and(|node| !node.is_empty() && node.bytes().all(|byte| byte.is_ascii_digit()));
+        let streamtheworld_node = host
+            .strip_suffix(".live.streamtheworld.com")
+            .is_some_and(|node| !node.is_empty() && node.bytes().all(|byte| byte.is_ascii_digit()));
+        let streamtheworld_file = match station.id {
+            "wrvo-news" => "WRVOFM.mp3",
+            "wrvo-prx" => "WRVOHD2.mp3",
+            "wrvo-bbc" => "WRVOHD3.mp3",
+            "kusc" => "KUSCMP128.mp3",
+            _ => "",
+        };
+        let wfmu_path = match station.id {
+            "wfmu" => "freeform-128k",
+            "wfmu-drummer" => "drummer",
+            "wfmu-rock-soul" => "rocknsoul",
+            "wfmu-sheena" => "sheena",
+            _ => "",
+        };
+        let kuaf_path = match station.id {
+            "kuaf" => "kuaf1",
+            "kuaf-classical" => "kuaf2",
+            "kuaf-jazz" => "kuaf3",
+            _ => "",
+        };
         let allowed = if station.id == "skylab" {
             authority == "uksoutha.streaming.broadcast.radio:29690"
                 && path.starts_with("skylab-radio-limited")
         } else if station.id == "wcrb" {
             authority == "wgbh-live.streamguys1.com" && path == "classical-hi/"
+        } else if station.id == "gbh-news" {
+            authority == "wgbh-live.streamguys1.com" && path == "wgbh"
+        } else if station.id == "kexp" {
+            host == "kexp.streamguys1.com" && path == "kexp160.aac"
+        } else if station.id == "radio-paradise" {
+            host == "stream.radioparadise.com"
+        } else if station.id == "wpr-news" {
+            host == "wpr-ice.streamguys1.com" && path == "wpr-ideas-mp3-64"
+        } else if station.id == "wpr-music" {
+            host == "wpr-ice.streamguys1.com" && path == "wpr-music-mp3-96"
+        } else if station.id == "radio-swiss-jazz" {
+            (host == "stream.srg-ssr.ch" || swiss_stream_node) && path == "srgssr/rsj/mp3/128"
+        } else if station.id == "radio-swiss-classic" {
+            (host == "stream.srg-ssr.ch" || swiss_stream_node) && path == "srgssr/rsc_de/mp3/128"
+        } else if station.id == "all-classical" {
+            host == "allclassical.streamguys1.com" && path == "ac128kmp3"
+        } else if station.id == "wfmt" {
+            host == "wfmt-live.streamguys1.com" && path == "wfmt256-aac"
+        } else if station.id == "kfuo" {
+            host == "kfuo.streamguys1.com" && path == "kfuo"
+        } else if !streamtheworld_file.is_empty() {
+            (host == "playerservices.streamtheworld.com"
+                && path == format!("api/livestream-redirect/{streamtheworld_file}"))
+                || (streamtheworld_node && path == streamtheworld_file)
+        } else if !wfmu_path.is_empty() {
+            host == "stream0.wfmu.org" && path == wfmu_path
+        } else if station.id == "kunc" {
+            host == "ais-sa1.streamon.fm" && path == "7890_96k.mp3"
+        } else if station.id == "colorado-sound" {
+            host == "ais-sa1.streamon.fm" && path == "7891_96k.mp3"
+        } else if !kuaf_path.is_empty() {
+            authority == "war.streamguys1.com:7031" && path == kuaf_path
         } else {
-            let host = authority.strip_suffix(":443").unwrap_or(authority);
-            !host.contains(':')
-                && (host == "somafm.com" || host.ends_with(".somafm.com"))
-                && host.split('.').all(|label| {
-                    !label.is_empty()
-                        && !label.starts_with('-')
-                        && !label.ends_with('-')
-                        && label.bytes().all(|byte| {
-                            byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-'
-                        })
-                })
+            false
         };
         if !allowed {
             return Err(StreamError::UnsafeEndpoint);
@@ -144,19 +201,7 @@ pub struct OpenRadioStream<R: Read> {
     pub reader: IcyAudioReader<R>,
 }
 
-/// SomaFM's HTTPS-served playlists still contain legacy HTTP stream links.
-/// Request only their TLS equivalents, subject to the same publisher/port/path
-/// checks as every other endpoint. Never send a plaintext request or downgrade.
 fn playlist_endpoint(station_id: &str, url: &str) -> Result<ApprovedEndpoint, StreamError> {
-    let station = station_by_id(station_id).ok_or(StreamError::UnknownStation)?;
-    if station
-        .publisher_reference_url
-        .starts_with("https://somafm.com/")
-    {
-        if let Some(rest) = url.strip_prefix("http://") {
-            return ApprovedEndpoint::new(station_id, &format!("https://{rest}"));
-        }
-    }
     ApprovedEndpoint::new(station_id, url)
 }
 
@@ -540,7 +585,10 @@ mod tests {
             "https://somafm.com/stream?redirect=localhost",
             "https://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited",
         ] {
-            assert!(ApprovedEndpoint::new("groovesalad", url).is_err(), "{url}");
+            assert!(
+                ApprovedEndpoint::new("radio-paradise", url).is_err(),
+                "{url}"
+            );
         }
         assert!(ApprovedEndpoint::new(
             "skylab",
@@ -548,49 +596,44 @@ mod tests {
         )
         .is_ok());
         assert!(ApprovedEndpoint::new(
-            "groovesalad",
-            "https://ice5.somafm.com/groovesalad-128-mp3"
+            "radio-paradise",
+            "https://stream.radioparadise.com/mp3-128"
         )
         .is_ok());
     }
 
     #[test]
     fn m3u_limits_and_comments_are_handled() {
-        let playlist = b"#EXTM3U\r\n#EXTINF:-1,Groove Salad\r\nhttps://ice5.somafm.com/groovesalad-128-mp3\r\n";
-        let parsed = parse_m3u("groovesalad", playlist).unwrap();
+        let playlist =
+            b"#EXTM3U\r\n#EXTINF:-1,Groove Salad\r\nhttps://stream.radioparadise.com/mp3-128\r\n";
+        let parsed = parse_m3u("radio-paradise", playlist).unwrap();
         assert_eq!(parsed.len(), 1);
-        assert!(parsed[0].url().contains("ice5"));
+        assert!(parsed[0].url().contains("radioparadise.com"));
         assert!(matches!(
-            parse_m3u("groovesalad", &vec![b'a'; MAX_PLAYLIST_BYTES + 1]),
+            parse_m3u("radio-paradise", &vec![b'a'; MAX_PLAYLIST_BYTES + 1]),
             Err(StreamError::OversizedPlaylist)
         ));
-        assert!(parse_m3u("groovesalad", b"#EXTM3U\n# comment").is_err());
-        assert!(parse_m3u("groovesalad", b"https://example.com/steal").is_err());
+        assert!(parse_m3u("radio-paradise", b"#EXTM3U\n# comment").is_err());
+        assert!(parse_m3u("radio-paradise", b"https://example.com/steal").is_err());
     }
 
     #[test]
     fn pls_entries_are_bounded_allowlisted_and_sorted_by_number() {
-        let playlist = "\u{feff}[PLAYLIST]\r\n; broadcaster playlist\r\nFile2=https://ice5.somafm.com/groovesalad-128-mp3\r\nTitle1=Groove=Salad\r\nLength1=-1\r\nfIlE1 = https://ice2.somafm.com/groovesalad-128-mp3\r\nNumberOfEntries=2\r\nVersion=2\r\n";
-        let entries = parse_pls("groovesalad", playlist.as_bytes()).unwrap();
+        let playlist = "\u{feff}[PLAYLIST]\r\n; broadcaster playlist\r\nFile2=https://stream.radioparadise.com/mp3-128\r\nTitle1=Groove=Salad\r\nLength1=-1\r\nfIlE1 = https://stream.radioparadise.com/mp3-128\r\nNumberOfEntries=2\r\nVersion=2\r\n";
+        let entries = parse_pls("radio-paradise", playlist.as_bytes()).unwrap();
         assert_eq!(entries.len(), 2);
-        assert_eq!(
-            entries[0].url(),
-            "https://ice2.somafm.com/groovesalad-128-mp3"
-        );
-        assert_eq!(
-            entries[1].url(),
-            "https://ice5.somafm.com/groovesalad-128-mp3"
-        );
+        assert_eq!(entries[0].url(), "https://stream.radioparadise.com/mp3-128");
+        assert_eq!(entries[1].url(), "https://stream.radioparadise.com/mp3-128");
         assert!(matches!(
-            parse_pls("groovesalad", &vec![b'a'; MAX_PLAYLIST_BYTES + 1]),
+            parse_pls("radio-paradise", &vec![b'a'; MAX_PLAYLIST_BYTES + 1]),
             Err(StreamError::OversizedPlaylist)
         ));
         for body in [
             "[playlist]\nNumberOfEntries=17\n",
-            "[playlist]\nFile17=https://ice5.somafm.com/audio\nNumberOfEntries=1\n",
+            "[playlist]\nFile17=https://stream.radioparadise.com/mp3-128\nNumberOfEntries=1\n",
         ] {
             assert!(matches!(
-                parse_pls("groovesalad", body.as_bytes()),
+                parse_pls("radio-paradise", body.as_bytes()),
                 Err(StreamError::TooManyEntries)
             ));
         }
@@ -601,32 +644,29 @@ mod tests {
         let mut body = format!("[playlist]\nNumberOfEntries={MAX_PLAYLIST_ENTRIES}\nVersion=2\n");
         for index in (1..=MAX_PLAYLIST_ENTRIES).rev() {
             body.push_str(&format!(
-                "File{index}=https://ice5.somafm.com/radio-{index}\n"
+                "File{index}=https://stream.radioparadise.com/mp3-128\n"
             ));
         }
-        let entries = parse_pls("groovesalad", body.as_bytes()).unwrap();
+        let entries = parse_pls("radio-paradise", body.as_bytes()).unwrap();
         assert_eq!(entries.len(), MAX_PLAYLIST_ENTRIES);
-        for (index, endpoint) in entries.iter().enumerate() {
-            assert_eq!(
-                endpoint.url(),
-                format!("https://ice5.somafm.com/radio-{}", index + 1)
-            );
+        for endpoint in &entries {
+            assert_eq!(endpoint.url(), "https://stream.radioparadise.com/mp3-128");
         }
         let sparse = body
-            .replace("File8=https://ice5.somafm.com/radio-8\n", "")
+            .replace("File8=https://stream.radioparadise.com/mp3-128\n", "")
             .replace(
                 &format!("NumberOfEntries={MAX_PLAYLIST_ENTRIES}"),
                 &format!("NumberOfEntries={}", MAX_PLAYLIST_ENTRIES - 1),
             );
         assert!(matches!(
-            parse_pls("groovesalad", sparse.as_bytes()),
+            parse_pls("radio-paradise", sparse.as_bytes()),
             Err(StreamError::InvalidPlaylist)
         ));
     }
 
     #[test]
     fn malformed_pls_counts_versions_and_duplicate_entries_are_rejected() {
-        let audio = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let audio = "https://stream.radioparadise.com/mp3-128";
         for body in [
             String::new(),
             format!("File1={audio}\nNumberOfEntries=1"),
@@ -643,14 +683,14 @@ mod tests {
         ] {
             assert!(
                 matches!(
-                    parse_pls("groovesalad", body.as_bytes()),
+                    parse_pls("radio-paradise", body.as_bytes()),
                     Err(StreamError::InvalidPlaylist)
                 ),
                 "{body}"
             );
         }
         assert!(matches!(
-            parse_pls("groovesalad", b"[playlist]\n\xff"),
+            parse_pls("radio-paradise", b"[playlist]\n\xff"),
             Err(StreamError::InvalidPlaylist)
         ));
     }
@@ -658,56 +698,182 @@ mod tests {
     #[test]
     fn unapproved_pls_fallback_is_rejected_even_after_a_safe_first_entry() {
         for url in [
-            "http://ice5.somafm.com:80/audio",
+            "http://stream.radioparadise.com/audio",
             "https://127.0.0.1/audio",
             "https://somafm.com.evil.test/audio",
         ] {
-            let body = format!("[playlist]\nFile1=https://ice5.somafm.com/audio\nFile2={url}\nNumberOfEntries=2\nVersion=2");
+            let body = format!("[playlist]\nFile1=https://stream.radioparadise.com/mp3-128\nFile2={url}\nNumberOfEntries=2\nVersion=2");
             assert!(matches!(
-                parse_pls("groovesalad", body.as_bytes()),
+                parse_pls("radio-paradise", body.as_bytes()),
                 Err(StreamError::UnsafeEndpoint)
             ));
         }
     }
 
     #[test]
-    fn legacy_somafm_playlist_entries_are_upgraded_before_requesting() {
-        let url = "http://ice6.somafm.com/groovesalad-128-mp3";
-        assert!(ApprovedEndpoint::new("groovesalad", url).is_err());
-        let m3u = parse_m3u("groovesalad", format!("#EXTM3U\n{url}").as_bytes()).unwrap();
-        let pls = parse_pls(
-            "groovesalad",
-            format!("[playlist]\nFile1={url}\nNumberOfEntries=1\nVersion=2").as_bytes(),
+    fn stations_without_publisher_player_guidance_are_not_in_the_catalog() {
+        assert!(station_by_id("groovesalad").is_none());
+        assert!(
+            ApprovedEndpoint::new("radio-paradise", "https://somafm.com/m3u/groovesalad.m3u")
+                .is_err()
+        );
+        assert!(ApprovedEndpoint::new(
+            "radio-paradise",
+            "https://ice5.somafm.com/groovesalad-128-mp3"
         )
-        .unwrap();
-        for entries in [m3u, pls] {
-            assert_eq!(
-                entries[0].url(),
-                "https://ice6.somafm.com/groovesalad-128-mp3"
-            );
-        }
+        .is_err());
         assert!(parse_m3u(
-            "skylab",
-            b"http://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited"
+            "radio-paradise",
+            b"#EXTM3U\nhttps://somafm.com/m3u/groovesalad.m3u"
         )
         .is_err());
     }
 
     #[test]
-    fn legacy_playlist_upgrade_never_relaxes_endpoint_safety() {
+    fn every_curated_station_has_a_validated_https_root() {
+        for station in crate::directory::curated_stations() {
+            ApprovedEndpoint::new(station.id, station.playlist_url)
+                .unwrap_or_else(|error| panic!("{}: {error:?}", station.id));
+        }
+        assert!(ApprovedEndpoint::new(
+            "radio-swiss-jazz",
+            "https://livestreaming-node-3.srg-ssr.ch/srgssr/rsj/mp3/128"
+        )
+        .is_ok());
+        for unsafe_url in [
+            "https://livestreaming-node-x.srg-ssr.ch/srgssr/rsj/mp3/128",
+            "https://attacker.livestreaming-node-3.srg-ssr.ch/srgssr/rsj/mp3/128",
+            "https://livestreaming-node-3.srg-ssr.ch/srgssr/rsc_de/mp3/128",
+        ] {
+            assert!(ApprovedEndpoint::new("radio-swiss-jazz", unsafe_url).is_err());
+        }
+    }
+
+    #[test]
+    fn radio_swiss_shard_redirect_is_limited_to_its_numeric_node_and_station_path() {
+        let origin = "https://stream.srg-ssr.ch/srgssr/rsj/mp3/128";
+        let shard = "https://livestreaming-node-3.srg-ssr.ch/srgssr/rsj/mp3/128";
+        let client = FakeHttp(vec![
+            Fixture {
+                url: origin,
+                status: 302,
+                mime: "text/plain",
+                redirect: Some(shard),
+                metaint: None,
+                body: Vec::new(),
+            },
+            Fixture {
+                url: shard,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: vec![0; 8],
+            },
+        ]);
+        let opened = open_station(&client, "radio-swiss-jazz").unwrap();
+        assert_eq!(opened.endpoint.url(), shard);
+    }
+
+    #[test]
+    fn streamtheworld_redirects_are_limited_to_numeric_shards_and_exact_station_paths() {
+        for (station_id, file) in [
+            ("wrvo-news", "WRVOFM.mp3"),
+            ("wrvo-prx", "WRVOHD2.mp3"),
+            ("wrvo-bbc", "WRVOHD3.mp3"),
+            ("kusc", "KUSCMP128.mp3"),
+        ] {
+            assert!(ApprovedEndpoint::new(
+                station_id,
+                &format!(
+                    "https://playerservices.streamtheworld.com/api/livestream-redirect/{file}"
+                )
+            )
+            .is_ok());
+            assert!(ApprovedEndpoint::new(
+                station_id,
+                &format!("https://29320.live.streamtheworld.com/{file}")
+            )
+            .is_ok());
+        }
+        for unsafe_url in [
+            "https://x29320.live.streamtheworld.com/WRVOFM.mp3",
+            "https://29320.live.streamtheworld.com.evil.test/WRVOFM.mp3",
+            "https://29320.live.streamtheworld.com/WRVOHD2.mp3",
+        ] {
+            assert!(ApprovedEndpoint::new("wrvo-news", unsafe_url).is_err());
+        }
+        assert!(ApprovedEndpoint::new(
+            "kusc",
+            "https://19273.live.streamtheworld.com/KUSCMP128.mp3"
+        )
+        .is_ok());
+        assert!(
+            ApprovedEndpoint::new("kusc", "https://19273.live.streamtheworld.com/WRVOFM.mp3")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn wfmu_player_streams_are_limited_to_exact_https_station_paths() {
+        for (station_id, path) in [
+            ("wfmu", "freeform-128k"),
+            ("wfmu-drummer", "drummer"),
+            ("wfmu-rock-soul", "rocknsoul"),
+            ("wfmu-sheena", "sheena"),
+        ] {
+            assert!(
+                ApprovedEndpoint::new(station_id, &format!("https://stream0.wfmu.org/{path}"))
+                    .is_ok()
+            );
+        }
+        for unsafe_url in [
+            "https://stream2.wfmu.org/freeform-128k",
+            "http://stream0.wfmu.org/freeform-128k",
+            "https://stream0.wfmu.org/drummer",
+            "https://stream0.wfmu.org/freeform-128k.evil",
+        ] {
+            assert!(ApprovedEndpoint::new("wfmu", unsafe_url).is_err());
+        }
+    }
+
+    #[test]
+    fn kunc_colorado_sound_and_kuaf_streams_are_pinned_to_exact_https_paths() {
+        for (station_id, url) in [
+            ("kunc", "https://ais-sa1.streamon.fm/7890_96k.mp3"),
+            ("colorado-sound", "https://ais-sa1.streamon.fm/7891_96k.mp3"),
+            ("kuaf", "https://war.streamguys1.com:7031/kuaf1"),
+            ("kuaf-classical", "https://war.streamguys1.com:7031/kuaf2"),
+            ("kuaf-jazz", "https://war.streamguys1.com:7031/kuaf3"),
+        ] {
+            assert!(ApprovedEndpoint::new(station_id, url).is_ok());
+        }
+        for (station_id, url) in [
+            ("kunc", "https://ais-sa1.streamon.fm/7891_96k.mp3"),
+            ("colorado-sound", "https://ais-sa1.streamon.fm/7890_96k.mp3"),
+            ("kuaf", "https://war.streamguys1.com:7031/kuaf2"),
+            ("kuaf-jazz", "https://war.streamguys1.com:7030/kuaf3"),
+            ("kuaf-classical", "http://war.streamguys1.com:7031/kuaf2"),
+        ] {
+            assert!(ApprovedEndpoint::new(station_id, url).is_err());
+        }
+    }
+
+    #[test]
+    fn plain_http_playlist_entries_are_never_upgraded_or_requested() {
         for url in [
             "http://127.0.0.1/audio",
-            "http://ice6.somafm.com.evil.test/audio",
-            "http://ice6.somafm.com:80/audio",
-            "http://ice6.somafm.com:8080/audio",
-            "http://evil.test@ice6.somafm.com/audio",
-            "http://ice6.somafm.com/../internal",
-            "http://ice6.somafm.com/%2e%2e/internal",
-            "http://ice6.somafm.com/audio?redirect=localhost",
+            "http://stream.radioparadise.com.evil.test/audio",
+            "http://stream.radioparadise.com/audio",
+            "http://stream.radioparadise.com:8080/audio",
+            "http://evil.test@stream.radioparadise.com/audio",
+            "http://stream.radioparadise.com/../internal",
+            "http://stream.radioparadise.com/%2e%2e/internal",
+            "http://stream.radioparadise.com/audio?redirect=localhost",
         ] {
             assert!(
                 matches!(
-                    parse_m3u("groovesalad", url.as_bytes()),
+                    parse_m3u("radio-paradise", url.as_bytes()),
                     Err(StreamError::UnsafeEndpoint)
                 ),
                 "{url}"
@@ -719,41 +885,45 @@ mod tests {
     fn playlist_detection_distinguishes_pls_m3u_and_hls() {
         for (url, mime, expected) in [
             (
-                "https://somafm.com/radio.PLS",
+                "https://stream.radioparadise.com/radio.PLS",
                 None,
                 Some(PlaylistFormat::Pls),
             ),
             (
-                "https://somafm.com/radio",
+                "https://stream.radioparadise.com/radio",
                 Some("Audio/X-SCPLS; charset=utf-8"),
                 Some(PlaylistFormat::Pls),
             ),
             (
-                "https://somafm.com/radio.m3u",
+                "https://stream.radioparadise.com/radio.m3u",
                 Some("audio/x-scpls"),
                 Some(PlaylistFormat::Pls),
             ),
             (
-                "https://somafm.com/radio.m3u",
+                "https://stream.radioparadise.com/radio.m3u",
                 None,
                 Some(PlaylistFormat::M3u),
             ),
             (
-                "https://somafm.com/radio",
+                "https://stream.radioparadise.com/radio",
                 Some("application/x-mpegurl"),
                 Some(PlaylistFormat::M3u),
             ),
             (
-                "https://somafm.com/radio.M3U8",
+                "https://stream.radioparadise.com/radio.M3U8",
                 Some("audio/mpegurl"),
                 Some(PlaylistFormat::Hls),
             ),
             (
-                "https://somafm.com/radio",
+                "https://stream.radioparadise.com/radio",
                 Some("application/vnd.apple.mpegurl"),
                 Some(PlaylistFormat::Hls),
             ),
-            ("https://somafm.com/radio", Some("audio/mpeg"), None),
+            (
+                "https://stream.radioparadise.com/radio",
+                Some("audio/mpeg"),
+                None,
+            ),
         ] {
             assert_eq!(playlist_format(url, mime), expected);
         }
@@ -762,34 +932,34 @@ mod tests {
     #[test]
     fn hls_manifests_are_never_treated_as_direct_station_playlists() {
         for body in [
-            b"#EXTM3U\n#EXT-X-VERSION:3\nhttps://ice5.somafm.com/segment.ts".as_slice(),
-            b"#EXTM3U\nhttps://ice5.somafm.com/audio\n#EXT-X-STREAM-INF:BANDWIDTH=128000",
+            b"#EXTM3U\n#EXT-X-VERSION:3\nhttps://stream.radioparadise.com/segment.ts".as_slice(),
+            b"#EXTM3U\nhttps://stream.radioparadise.com/mp3-128\n#EXT-X-STREAM-INF:BANDWIDTH=128000",
         ] {
             assert!(matches!(
-                parse_m3u("groovesalad", body),
+                parse_m3u("radio-paradise", body),
                 Err(StreamError::UnsupportedHls)
             ));
         }
         assert!(matches!(
-            parse_playlist("groovesalad", b"", PlaylistFormat::Hls),
+            parse_playlist("radio-paradise", b"", PlaylistFormat::Hls),
             Err(StreamError::UnsupportedHls)
         ));
     }
 
     #[test]
     fn redirected_pls_resolves_to_approved_audio() {
-        let ice = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let ice = "https://stream.radioparadise.com/mp3-192";
         let fixture = FakeHttp(vec![
             Fixture {
-                url: "https://somafm.com/m3u/groovesalad.m3u",
+                url: "https://stream.radioparadise.com/mp3-128",
                 status: 302,
                 mime: "text/plain",
-                redirect: Some("https://somafm.com/groovesalad.pls"),
+                redirect: Some("https://stream.radioparadise.com/radio.pls"),
                 metaint: None,
                 body: vec![],
             },
             Fixture {
-                url: "https://somafm.com/groovesalad.pls",
+                url: "https://stream.radioparadise.com/radio.pls",
                 status: 200,
                 mime: "audio/x-scpls",
                 redirect: None,
@@ -805,7 +975,7 @@ mod tests {
                 body: b"audio".to_vec(),
             },
         ]);
-        let mut stream = open_station(&fixture, "groovesalad").unwrap();
+        let mut stream = open_station(&fixture, "radio-paradise").unwrap();
         assert_eq!(stream.endpoint.url(), ice);
         let mut audio = String::new();
         stream.reader.read_to_string(&mut audio).unwrap();
@@ -816,15 +986,16 @@ mod tests {
     fn resolver_rejects_hls_without_fetching_segments() {
         for mime in ["application/vnd.apple.mpegurl", "audio/x-mpegurl"] {
             let fixture = FakeHttp(vec![Fixture {
-                url: "https://somafm.com/m3u/groovesalad.m3u",
+                url: "https://stream.radioparadise.com/mp3-128",
                 status: 200,
                 mime,
                 redirect: None,
                 metaint: None,
-                body: b"#EXTM3U\n#EXT-X-VERSION:3\nhttps://ice5.somafm.com/segment.ts".to_vec(),
+                body: b"#EXTM3U\n#EXT-X-VERSION:3\nhttps://stream.radioparadise.com/segment.ts"
+                    .to_vec(),
             }]);
             assert!(matches!(
-                open_station(&fixture, "groovesalad"),
+                open_station(&fixture, "radio-paradise"),
                 Err(StreamError::UnsupportedHls)
             ));
         }
@@ -832,8 +1003,8 @@ mod tests {
 
     #[test]
     fn playlist_resolves_only_to_allowed_audio_response() {
-        let station_url = "https://somafm.com/m3u/groovesalad.m3u";
-        let ice = "https://ice5.somafm.com/groovesalad-128-mp3";
+        let station_url = "https://stream.radioparadise.com/mp3-128";
+        let ice = "https://stream.radioparadise.com/mp3-192";
         let fixture = FakeHttp(vec![
             Fixture {
                 url: station_url,
@@ -860,7 +1031,7 @@ mod tests {
                 },
             },
         ]);
-        let mut opened = open_station(&fixture, "groovesalad").unwrap();
+        let mut opened = open_station(&fixture, "radio-paradise").unwrap();
         assert_eq!(opened.endpoint.url(), ice);
         let mut audio = [0u8; 4];
         assert_eq!(opened.reader.read(&mut audio).unwrap(), 4);
@@ -873,7 +1044,7 @@ mod tests {
     #[test]
     fn disallowed_redirect_cannot_be_requested() {
         let fixture = FakeHttp(vec![Fixture {
-            url: "https://somafm.com/m3u/groovesalad.m3u",
+            url: "https://stream.radioparadise.com/mp3-128",
             status: 302,
             mime: "text/plain",
             redirect: Some("https://127.0.0.1/internal"),
@@ -881,7 +1052,7 @@ mod tests {
             body: vec![],
         }]);
         assert!(matches!(
-            open_station(&fixture, "groovesalad"),
+            open_station(&fixture, "radio-paradise"),
             Err(StreamError::UnsafeEndpoint)
         ));
     }
