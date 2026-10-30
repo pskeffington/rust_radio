@@ -1,5 +1,15 @@
 # Radio development progress
 
+## Current-head verification and A/B review (2026-10-30 00:27 UTC)
+
+- Starting and ending source commit: `11b9508f8b931f56c05a7a28521b3791a081b220` on `codex/catalog-publisher-permissions`; checkout clean and aligned with its configured origin branch. No source change was justified in this pass.
+- Rechecked PR #5 through the GitHub connector: open, mergeable, no review threads or submitted reviews. Actions run 375 (`40979183899`) for the exact head ended `startup_failure`; GitHub returned zero usable code jobs, so remote CI and native Windows MSVC execution remain unverified.
+- All six locked local gates passed after enabling local loopback sockets: format, default workspace tests, default strict Clippy, all-feature workspace tests, all-feature strict Clippy, and all-feature check. Default suite: 31 GUI tests passed and one hardware integration test ignored; all-feature GUI suite: 40 passed and one hardware integration test ignored. Two reqwest-backed probe tests first failed under the restricted sandbox because localhost binds were denied; both passed in the permitted full rerun. Public-network live timing remains intentionally ignored.
+- A/B decision review: repeated WFMU live muted native buffering trials (350 ms vs 500 ms) in `live_station_wfmu_balanced_resilient_ab_repeat_2026_10_30` had zero underruns in both variants and paired latency ranges crossing zero. The earlier synthetic 90 ms multi-gap test showed lower missing-sample share with 500 ms at the cost of startup latency. Neither result establishes listener preference; retain the 500 ms resilient default. Do not repeat the same experiment without a distinct hypothesis or new environment/feed evidence.
+- UI polish review against the 480×320 egui render tests found that listener-facing errors already use actionable summaries while retaining raw diagnostics on hover; long diagnostics and settings-window bounds are covered by `station_status_and_long_diagnostics_fit_the_micro_viewport` and `playing_surface_has_no_stale_badge_or_decode_diagnostics_and_errors_fit`. Existing station-label A/B/C is geometric fit evidence, not preference data, and already selects the compact-category treatment. No unmeasured variant was promoted.
+- Remaining gates: repair/restore actionable GitHub Actions execution, native Windows MSVC CI, physical Bluetooth/USB output-loss recovery, Pi runtime/display/touch, receiver hardware acceptance, publisher redistribution-rights review, and ongoing Rust-Boy integration.
+- Next action: obtain a real Windows MSVC workflow result and continue physical acceptance; schedule the next bounded Skylab validation after a meaningful recovery interval, preserving the catalog entry until repeated publisher/endpoint evidence supports a change.
+
 ## All-feature test rerun and overnight WPR A/B (2026-10-29 23:35 UTC)
 
 - Reran `cargo test --workspace --all-features --locked` with local socket

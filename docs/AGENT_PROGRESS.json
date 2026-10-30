@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-30T00:21:15Z",
+  "updated_at_utc": "2026-10-30T00:27:00Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f4d35afd13029cf5b2405238081e41cb50a7ef7b",
@@ -664,7 +664,7 @@
       "first_play_mean": -53.096
     },
     "underruns": "0 samples reported in every trial on both feeds",
-    "interpretation": "B was about 45\u201359ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
+    "interpretation": "B was about 45–59ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
   },
   "buffer_fill_ab_latest": {
     "checked_at_utc": "2026-10-29T01:29:14Z",
@@ -6351,5 +6351,58 @@
     ],
     "raw_artifact": "/private/tmp/rust-radio-catalog-validation-repeat-2026-10-30.json",
     "interpretation": "24 stations decoded (19 MP3, 5 AAC). Skylab alone remained unavailable at NotChecked after two attempts with no codec or response evidence. Preserve the catalog entry and retry in the next scheduled recovery window."
+  },
+  "verification_checkpoint_2026_10_30_0027": {
+    "source_commit": "11b9508f8b931f56c05a7a28521b3791a081b220",
+    "branch": "codex/catalog-publisher-permissions",
+    "working_tree": "clean",
+    "pull_request": {
+      "number": 5,
+      "url": "https://github.com/pskeffington/rust_radio/pull/5",
+      "state": "open",
+      "mergeable": true,
+      "reviews": 0,
+      "review_threads": 0,
+      "head": "11b9508f8b931f56c05a7a28521b3791a081b220"
+    },
+    "actions_run": {
+      "id": 40979183899,
+      "number": 375,
+      "conclusion": "startup_failure",
+      "jobs_created": 0,
+      "exact_head": true
+    },
+    "workspace_gates": {
+      "cargo fmt --all -- --check": "passed",
+      "cargo test --workspace --locked": "passed with local loopback access",
+      "cargo clippy --workspace --all-targets --locked -- -D warnings": "passed",
+      "cargo test --workspace --all-features --locked": "passed with local loopback access",
+      "cargo clippy --workspace --all-features --all-targets --locked -- -D warnings": "passed",
+      "cargo check --workspace --all-features --locked": "passed"
+    },
+    "ab_review": {
+      "evidence": "live_station_wfmu_balanced_resilient_ab_repeat_2026_10_30",
+      "decision": "retain resilient 500 ms default",
+      "reason": "both profiles had zero underruns; paired latency ranges crossed zero; synthetic multi-gap evidence favored greater buffering for missing-sample share; muted trials do not measure preference",
+      "new_live_ab_run": false
+    },
+    "gui_review": {
+      "basis": [
+        "station_status_and_long_diagnostics_fit_the_micro_viewport",
+        "playing_surface_has_no_stale_badge_or_decode_diagnostics_and_errors_fit",
+        "station_label_ab_compares_full_compact_and_name_only_variants"
+      ],
+      "finding": "actionable error text, raw diagnostic hover, viewport fit, and compact category labels already have regressions; no evidence-supported code change found",
+      "source_changes": false
+    },
+    "remaining_gates": [
+      "actionable GitHub Actions and native Windows MSVC CI",
+      "physical Bluetooth/USB output-loss recovery",
+      "physical Pi runtime/display/touch",
+      "receiver hardware acceptance",
+      "publisher redistribution-rights review",
+      "ongoing Rust-Boy integration"
+    ],
+    "next_action": "Restore an actionable Windows MSVC workflow result; continue physical acceptance, and repeat Skylab bounded validation after a meaningful recovery interval."
   }
 }
