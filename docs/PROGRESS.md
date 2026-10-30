@@ -2907,3 +2907,10 @@ Implementation commit: `bb74393`.
 - Retried Skylab at Unix time `1793319164`: still `Unavailable`, `NotChecked`, one attempt, and no codec evidence. Keep its publisher-documented feed listed; recheck in the next scheduled validation window.
 - Ran another counterbalanced WFMU 30-second A/B block (balanced 350 ms vs resilient 500 ms, eight muted trials at 0% volume). All eight had zero underruns. Means were 491.996/524.810 ms. Paired A-minus-B buffer-ready median was -56.759 ms (range -116.540 to +98.801 ms); first-play median was -55.726 ms (range -157.109 to +105.583 ms). Ranges cross zero. No reliable winner or listening preference follows; keep the 500 ms default.
 - Raw WFMU records and the recheck are in `docs/AGENT_PROGRESS.json` under `live_station_wfmu_balanced_resilient_ab_repeat_2026_10_30` and `latest_probe_failure_regression_validation_2026_10_30`.
+
+
+## URL-redaction assertions and later catalog repeat (2026-10-30 00:21 UTC)
+
+- Strengthened the real loopback timeout/refusal tests to assert that the safe classified message omits the original request URL. Focused tests passed 2/2 after this test-only change. The full six workspace gates passed immediately before it on implementation `bb74393` plus the initial fixture tests (`6ed5474`).
+- A repeat `validate-all --json` sweep checked all 25 curated feeds: 24 decoded (19 MP3, 5 AAC); Skylab remained unavailable at `NotChecked` after two attempts, with no response or codec evidence. No other station failed. Preserve Skylab and recheck in the next scheduled validation window.
+- Full sanitized results are in `docs/AGENT_PROGRESS.json` under `live_catalog_sweep_repeat_2026_10_30`; raw sweep output is `/private/tmp/rust-radio-catalog-validation-repeat-2026-10-30.json`.
