@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-30T00:43:27Z",
+  "updated_at_utc": "2026-10-30T00:47:00Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "f4d35afd13029cf5b2405238081e41cb50a7ef7b",
@@ -7115,5 +7115,267 @@
       "ongoing Rust-Boy integration"
     ],
     "next_action": "Restore actionable Windows MSVC CI and continue physical acceptance; recheck Skylab after another meaningful recovery interval."
+  },
+  "live_single_700ms_stall_lowlatency_balanced_ab_2026_10_30": {
+    "started_at_utc": "2026-10-30T00:44:24+00:00",
+    "environment": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "seconds": 8,
+    "volume": 0,
+    "output": "system",
+    "repetitions": 2,
+    "order_scheme": "alternating_abba_baab",
+    "profiles": {
+      "A": "low-latency",
+      "B": "balanced"
+    },
+    "trial_order": [
+      "A",
+      "B",
+      "B",
+      "A",
+      "B",
+      "A",
+      "A",
+      "B"
+    ],
+    "records": [
+      {
+        "trial": 1,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 347.70725000000004,
+        "first_play_latency_observed_ms": 379.570333,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 699516,
+        "prebuffer_fill_latency_observed_ms": 190.91591699999998,
+        "underrun_samples": 38788
+      },
+      {
+        "trial": 2,
+        "variant": "B",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 384.95550000000003,
+        "first_play_latency_observed_ms": 437.995625,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 701564,
+        "prebuffer_fill_latency_observed_ms": 292.304708,
+        "underrun_samples": 29572
+      },
+      {
+        "trial": 3,
+        "variant": "B",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 376.223792,
+        "first_play_latency_observed_ms": 431.556917,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 704636,
+        "prebuffer_fill_latency_observed_ms": 290.85,
+        "underrun_samples": 29572
+      },
+      {
+        "trial": 4,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 285.13916700000004,
+        "first_play_latency_observed_ms": 322.534334,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 702588,
+        "prebuffer_fill_latency_observed_ms": 197.9855,
+        "underrun_samples": 37764
+      },
+      {
+        "trial": 5,
+        "variant": "B",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 395.311917,
+        "first_play_latency_observed_ms": 432.55100000000004,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 701564,
+        "prebuffer_fill_latency_observed_ms": 301.4485,
+        "underrun_samples": 28548
+      },
+      {
+        "trial": 6,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 285.056959,
+        "first_play_latency_observed_ms": 327.648459,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 702588,
+        "prebuffer_fill_latency_observed_ms": 194.48220899999998,
+        "underrun_samples": 38788
+      },
+      {
+        "trial": 7,
+        "variant": "A",
+        "profile": "low-latency",
+        "buffer_ready_latency_observed_ms": 286.647708,
+        "first_play_latency_observed_ms": 328.304375,
+        "output_prebuffer_ms": 200,
+        "output_samples_consumed_current_attempt": 705660,
+        "prebuffer_fill_latency_observed_ms": 194.146833,
+        "underrun_samples": 39812
+      },
+      {
+        "trial": 8,
+        "variant": "B",
+        "profile": "balanced",
+        "buffer_ready_latency_observed_ms": 385.869666,
+        "first_play_latency_observed_ms": 433.24525,
+        "output_prebuffer_ms": 350,
+        "output_samples_consumed_current_attempt": 705660,
+        "prebuffer_fill_latency_observed_ms": 293.18679199999997,
+        "underrun_samples": 28548
+      }
+    ],
+    "summary": {
+      "A": {
+        "profile": "low-latency",
+        "prebuffer_ms": 200,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 301.13777100000004,
+        "mean_first_play_latency_observed_ms": 339.51437525,
+        "mean_prebuffer_fill_latency_observed_ms": 194.38261475,
+        "output_samples_consumed_current_attempt": 2810352,
+        "underrun_samples": 155152,
+        "missing_sample_share_percent": 5.231893128453039,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 301.13777100000004,
+            "median": 285.8934375,
+            "min": 285.056959,
+            "max": 347.70725000000004
+          },
+          "first_play": {
+            "mean": 339.51437525,
+            "median": 327.97641699999997,
+            "min": 322.534334,
+            "max": 379.570333
+          },
+          "prebuffer_fill": {
+            "mean": 194.38261475,
+            "median": 194.31452099999998,
+            "min": 190.91591699999998,
+            "max": 197.9855
+          }
+        }
+      },
+      "B": {
+        "profile": "balanced",
+        "prebuffer_ms": 350,
+        "trials": 4,
+        "mean_buffer_ready_latency_observed_ms": 385.59021875,
+        "mean_first_play_latency_observed_ms": 433.837198,
+        "mean_prebuffer_fill_latency_observed_ms": 294.4475,
+        "output_samples_consumed_current_attempt": 2813424,
+        "underrun_samples": 116240,
+        "missing_sample_share_percent": 3.9676904928346732,
+        "latency_ms": {
+          "buffer_ready": {
+            "mean": 385.59021875,
+            "median": 385.41258300000004,
+            "min": 376.223792,
+            "max": 395.311917
+          },
+          "first_play": {
+            "mean": 433.837198,
+            "median": 432.89812500000005,
+            "min": 431.556917,
+            "max": 437.995625
+          },
+          "prebuffer_fill": {
+            "mean": 294.4475,
+            "median": 292.74575,
+            "min": 290.85,
+            "max": 301.4485
+          }
+        }
+      },
+      "paired_latency_difference_ms": {
+        "definition": "A minus B; negative values mean A was faster",
+        "pairs": 4,
+        "metrics": {
+          "buffer_ready": {
+            "mean": -84.45244774999998,
+            "median": -95.15329149999997,
+            "min": -110.25495799999999,
+            "max": -37.248249999999985
+          },
+          "first_play": {
+            "mean": -94.32282275000001,
+            "median": -104.92170800000002,
+            "min": -109.022583,
+            "max": -58.42529200000001
+          },
+          "prebuffer_fill": {
+            "mean": -100.06488525000002,
+            "median": -100.214375,
+            "min": -106.96629100000004,
+            "max": -92.86450000000002
+          }
+        }
+      }
+    },
+    "paired_latency_difference_ms": {
+      "definition": "A minus B; negative values mean A was faster",
+      "pairs": 4,
+      "metrics": {
+        "buffer_ready": {
+          "mean": -84.45244774999998,
+          "median": -95.15329149999997,
+          "min": -110.25495799999999,
+          "max": -37.248249999999985
+        },
+        "first_play": {
+          "mean": -94.32282275000001,
+          "median": -104.92170800000002,
+          "min": -109.022583,
+          "max": -58.42529200000001
+        },
+        "prebuffer_fill": {
+          "mean": -100.06488525000002,
+          "median": -100.214375,
+          "min": -106.96629100000004,
+          "max": -92.86450000000002
+        }
+      }
+    },
+    "fixture": {
+      "kind": "synthetic MP3 over loopback",
+      "chunk_bytes": 1600,
+      "interval_ms": 90,
+      "stall_schedule": "20:700"
+    },
+    "interpretation": "Under this deterministic single-stall fixture, balanced 350ms reduced aggregate missing-sample share from 5.232% to 3.968% versus low-latency 200ms, a 24.2% relative reduction, at a paired-median buffer-ready/first-play cost of 95.153/104.922ms. Both variants underrun; four trials per profile, one host, synthetic audio only. No listener preference or broadcaster reliability is inferred."
+  },
+  "verification_checkpoint_2026_10_30_0047": {
+    "source_commit": "48798a3445cdf82f1186500791b2336da9c9a395",
+    "branch": "codex/catalog-publisher-permissions",
+    "source_changes": false,
+    "a_b": "live_single_700ms_stall_lowlatency_balanced_ab_2026_10_30",
+    "a_b_artifact": "/private/tmp/rust-radio-single-700ms-stall-200-350-ab-2026-10-30.json",
+    "python_validation": {
+      "scripts/test_prebuffer_trace_ab.py": "12 passed",
+      "scripts/test_prebuffer_fixture_server.py": "1 passed with loopback permission",
+      "py_compile": "passed",
+      "git diff --check": "passed"
+    },
+    "initial_restricted_fixture_test": "blocked by sandbox-denied localhost bind; rerun with loopback permission passed",
+    "previous_exact_head_ci": {
+      "head": "48798a3445cdf82f1186500791b2336da9c9a395",
+      "run_id": 40981389354,
+      "run_number": 377,
+      "conclusion": "startup_failure",
+      "jobs_created": 0
+    },
+    "remaining_gates": [
+      "actionable GitHub Actions and native Windows MSVC CI",
+      "physical Bluetooth/USB output-loss recovery",
+      "physical Pi runtime/display/touch",
+      "receiver hardware acceptance",
+      "publisher redistribution-rights review",
+      "ongoing Rust-Boy integration"
+    ],
+    "next_action": "Restore actionable Windows MSVC CI and continue physical acceptance; avoid changing buffering defaults based on this small synthetic A/B alone."
   }
 }
