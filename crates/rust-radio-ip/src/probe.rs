@@ -239,10 +239,10 @@ mod tests {
             .unwrap();
         let error = client.get(format!("http://{address}/")).send().unwrap_err();
         assert!(error.is_timeout());
-        assert!(matches!(
-            classify_request_error(&error),
-            StreamError::TransportTimeout
-        ));
+        let classified = classify_request_error(&error);
+        assert!(matches!(&classified, StreamError::TransportTimeout));
+        assert_eq!(classified.to_string(), "Radio validation request timed out");
+        assert!(!classified.to_string().contains(&address.to_string()));
         server.join().unwrap();
     }
 
@@ -254,10 +254,16 @@ mod tests {
         let client = Client::builder().no_proxy().build().unwrap();
         let error = client.get(format!("http://{address}/")).send().unwrap_err();
         assert!(error.is_connect());
+        let classified = classify_request_error(&error);
         assert!(matches!(
-            classify_request_error(&error),
+            &classified,
             StreamError::TransportConnectionFailed
         ));
+        assert_eq!(
+            classified.to_string(),
+            "Radio stream connection failed before a response"
+        );
+        assert!(!classified.to_string().contains(&address.to_string()));
     }
 
     #[test]
