@@ -2933,3 +2933,10 @@ Implementation commit: `bb74393`.
 - MSRV review confirmed workspace crates declare Rust 1.75, while `rust-radio-gui` independently declares 1.85; its `Option::is_none_or` use is compatible. No source change was retained. Rust 1.75 itself is not installed locally, so direct MSRV compilation remains unverified.
 - All six local locked workspace gates passed in the immediately prior full validation run. PR #5 remains open and mergeable at `0085d43`; exact-head Actions run 376 (`40979841058`) failed before jobs were created (`startup_failure`). Native Windows MSVC CI and physical device acceptance remain open.
 - Next: restore actionable Windows MSVC CI and continue physical Bluetooth/USB, Pi, and receiver acceptance. Preserve station endpoints through transient outages; recheck Skylab after a meaningful recovery interval.
+
+## Repeat catalog recovery validation (2026-10-30 00:43 UTC)
+
+- Bounded silent `validate-all --json` checked all 25 curated stations. Twenty-four decoded (19 MP3, 5 AAC); Skylab alone remained `unavailable` at `not_checked` after two attempts. The probe received no response and established no codec evidence. Preserve the publisher-documented endpoint and retry after a later recovery interval.
+- Sanitized full results are in `docs/AGENT_PROGRESS.json` under `live_catalog_sweep_repeat_2026_10_30_0043`; raw output: `/private/tmp/rust-radio-catalog-validation-2026-10-30-0045.json`.
+- PR #5 remains open and mergeable at `237e373`. Exact-head Actions run 377 (`40981389354`) again failed before job creation (`startup_failure`, zero jobs). It exposes no code-level diagnostic. No source change was made; the six local validation gates and controlled A/B evidence remain recorded at the preceding checkpoints.
+- Next: restore actionable Windows MSVC CI and continue physical device/Pi/receiver acceptance; retain Skylab pending repeated response-level evidence.
