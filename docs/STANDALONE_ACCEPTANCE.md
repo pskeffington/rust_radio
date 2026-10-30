@@ -413,3 +413,11 @@ Raw data is under `wpr_news_live_ab_30s_overnight_followup` in
 - `validate-all --json` checked all 25 curated feeds without opening an audio output. Twenty-four decoded successfully: 19 MP3 and 5 AAC. Skylab was the only unavailable result; it had no decoded format evidence and returned `TransportUnavailable` before endpoint/header validation. An immediate single-station check returned the same unavailable stage with one attempt and endpoint unknown.
 - This is a point-in-time transport failure, not evidence that the publisher removed or permanently changed the feed. The catalog entry is preserved; retry in a later validation window before any endpoint or availability decision.
 - The full sanitized JSON results and recheck are in `docs/AGENT_PROGRESS.json` under `live_catalog_sweep_2026_10_29`. The sweep artifact is also saved at `/private/tmp/rust-radio-catalog-validation-2026-10-29.json`.
+
+
+## Sanitized silent-probe transport diagnostics (2026-10-30 00:03 UTC)
+
+- Added separate `TransportTimeout` and `TransportConnectionFailed` errors for bounded native probes. Reqwest error values and URLs are never surfaced; user-facing details come from fixed messages. All transport failures retain the existing `Unavailable` status and `NotChecked` stage until an HTTP response is received.
+- After the earlier outage window, the Skylab validator again returned `Unavailable`/`NotChecked`; it now reports `Radio stream connection failed before a response`. Bounded HEAD and rate-limited GET requests to the publisher-listed host both received a connection reset and zero bytes. The publisher’s [official listening page](https://www.skylabradio.com/listen) still lists a high-quality online stream, so this is not evidence to remove the station or replace its endpoint. Recheck after a later recovery window.
+- Added tests for safe timeout/connect category selection and validation-report output. All six required locked workspace gates passed; one live-timing suite remains intentionally ignored. The prior WFMU A/B remains inconclusive and the 500 ms default stays unchanged.
+- The point-in-time transport result and validation are recorded in `docs/AGENT_PROGRESS.json` under `probe_transport_diagnostic_2026_10_30`.

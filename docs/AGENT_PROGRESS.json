@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-29T23:51:01Z",
+  "updated_at_utc": "2026-10-30T00:03:49Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "93cf016f926701dc091e853cc951fe7b63687778",
+  "implementation_commit": "bb74393d955ab98968cbd2c4149f6e3f3e3bd798",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -259,7 +259,8 @@
     "Passed all six locked workspace gates on 93cf016 after allowing local loopback fixtures. Formatting, default/all-feature tests, strict Clippy in both modes and all-feature check passed.",
     "Headless/IP/audio/CLI cargo check passed for aarch64-apple-darwin and x86_64-pc-windows-gnu. Broader all-feature AArch64 Linux and Windows GNU checks were blocked by missing cross gcc and Windows SoapySDR pkg-config/sysroot respectively.",
     "Validated curated WFMU Freeform as MP3 44.1 kHz stereo and ran eight muted 30-second balanced-350ms vs resilient-500ms native trials in counterbalanced ABBA/BAAB order; all had zero underruns. Paired startup latency ranges crossed zero, so no buffering winner; retain 500ms default.",
-    "Bounded silent validation decoded 24/25 curated stations (19 MP3, 5 AAC). Skylab returned TransportUnavailable before headers on the sweep and immediate repeat; retained it as a temporary failure without changing/removing the catalog entry."
+    "Bounded silent validation decoded 24/25 curated stations (19 MP3, 5 AAC). Skylab returned TransportUnavailable before headers on the sweep and immediate repeat; retained it as a temporary failure without changing/removing the catalog entry.",
+    "Added closed, sanitized probe diagnostics for timeout and pre-response connection failures while preserving unavailable status and no-stage semantics. Skylab live recheck identified a connection reset; the publisher still lists its high-quality stream, so the catalog entry is retained. Focused tests and all six locked workspace gates passed."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -5611,5 +5612,48 @@
     ],
     "raw_artifact": "/private/tmp/rust-radio-catalog-validation-2026-10-29.json",
     "interpretation": "24 of 25 stations decoded in the sweep (19 MP3, 5 AAC). Skylab returned unavailable/TransportUnavailable before a codec stage in the sweep and an immediate single-station recheck. Treat as temporary transport failure; preserve the catalog entry and retry in a later validation window."
+  },
+  "probe_transport_diagnostic_2026_10_30": {
+    "source_parent": "8e44fa8f6bff347fa40637b406f68053a67d7e36",
+    "behavior": {
+      "timeout": "TransportTimeout; safe detail: Radio validation request timed out",
+      "connect": "TransportConnectionFailed; safe detail: Radio stream connection failed before a response",
+      "other": "TransportUnavailable; generic safe detail"
+    },
+    "status_policy": "All three categories remain ValidationStatus::Unavailable; no endpoint, codec, or decode stage is claimed before response.",
+    "security": "Only closed category names and static messages are exposed; raw reqwest error text and publisher URL are not included.",
+    "live_recheck": {
+      "station_id": "skylab",
+      "status": "unavailable",
+      "stage": "not_checked",
+      "safe_detail": "Radio stream connection failed before a response",
+      "endpoint": "unknown",
+      "checked_at_unix": 1793318264
+    },
+    "publisher_reference": "https://www.skylabradio.com/listen",
+    "independent_bounded_probe": {
+      "method": "curl bounded HEAD and rate-limited GET",
+      "remote_ip": "87.117.222.91",
+      "result": "connection reset by peer; zero response bytes"
+    },
+    "tests": {
+      "probe_failure_category_unit_test": "passed",
+      "validation_report_sanitization_integration_test": "passed",
+      "workspace_gates": "all six passed",
+      "live_timing_test": "intentionally ignored; requires public network"
+    },
+    "result": "passed; Skylab catalog entry retained as publisher continues to list its high-quality stream and current transport failure is not proof of removal or permanent unavailability.",
+    "timestamp_utc": "2026-10-30T00:03:49Z",
+    "source_commit": "bb74393d955ab98968cbd2c4149f6e3f3e3bd798",
+    "workspace_gate_commands": [
+      "cargo fmt --all -- --check",
+      "cargo test --workspace --locked",
+      "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "cargo test --workspace --all-features --locked",
+      "cargo clippy --workspace --all-features --all-targets --locked -- -D warnings",
+      "cargo check --workspace --all-features --locked"
+    ],
+    "ab_evidence_reference": "live_station_wfmu_balanced_resilient_ab",
+    "catalog_sweep_reference": "live_catalog_sweep_2026_10_29"
   }
 }
