@@ -429,3 +429,12 @@ Raw data is under `wpr_news_live_ab_30s_overnight_followup` in
 - `cargo check --workspace --locked --target aarch64-apple-darwin --exclude rust-radio-sdr` passed.
 - Both checks compiled core, IP, audio, GUI and CLI for the default feature path. Optional receiver crate was explicitly excluded; these do not replace native Windows MSVC CI, receiver-feature builds, or physical hardware acceptance.
 - Results are in `docs/AGENT_PROGRESS.json` under `cross_target_probe_diagnostics_2026_10_30`.
+
+
+## Probe timeout/connect regression and WFMU A/B repeat (2026-10-30 00:12 UTC)
+
+- Added bounded loopback tests using real `reqwest` errors: an accepted connection that withholds a response reaches the request timeout category; a closed local port reaches the connection-failed category. Both are converted to fixed, sanitized messages. Focused probe suite passed 7/7 and station-validation suite passed 9/9.
+- Reran the six locked workspace gates with local fixture socket access. Formatting, default/all-feature tests, strict Clippy for both configurations, and all-feature check passed. One public live-timing test remains intentionally ignored.
+- Retried Skylab at Unix time `1793319164`: still `Unavailable`, `NotChecked`, one attempt, and no codec evidence. Keep its publisher-documented feed listed; recheck in the next scheduled validation window.
+- Ran another counterbalanced WFMU 30-second A/B block (balanced 350 ms vs resilient 500 ms, eight muted trials at 0% volume). All eight had zero underruns. Means were 491.996/524.810 ms. Paired A-minus-B buffer-ready median was -56.759 ms (range -116.540 to +98.801 ms); first-play median was -55.726 ms (range -157.109 to +105.583 ms). Ranges cross zero. No reliable winner or listening preference follows; keep the 500 ms default.
+- Raw WFMU records and the recheck are in `docs/AGENT_PROGRESS.json` under `live_station_wfmu_balanced_resilient_ab_repeat_2026_10_30` and `latest_probe_failure_regression_validation_2026_10_30`.
