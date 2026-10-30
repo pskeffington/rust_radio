@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-10-30T00:03:49Z",
+  "updated_at_utc": "2026-10-30T00:04:12Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
   "implementation_commit": "bb74393d955ab98968cbd2c4149f6e3f3e3bd798",
@@ -5643,7 +5643,7 @@
       "live_timing_test": "intentionally ignored; requires public network"
     },
     "result": "passed; Skylab catalog entry retained as publisher continues to list its high-quality stream and current transport failure is not proof of removal or permanent unavailability.",
-    "timestamp_utc": "2026-10-30T00:03:49Z",
+    "timestamp_utc": "2026-10-30T00:04:12Z",
     "source_commit": "bb74393d955ab98968cbd2c4149f6e3f3e3bd798",
     "workspace_gate_commands": [
       "cargo fmt --all -- --check",
@@ -5654,6 +5654,20 @@
       "cargo check --workspace --all-features --locked"
     ],
     "ab_evidence_reference": "live_station_wfmu_balanced_resilient_ab",
-    "catalog_sweep_reference": "live_catalog_sweep_2026_10_29"
+    "catalog_sweep_reference": "live_catalog_sweep_2026_10_29",
+    "checkpoint_commit": "03845345167807f183ec34af0dbf6f2f8a8a83f5",
+    "pull_request_snapshot": {
+      "number": 5,
+      "state": "open",
+      "mergeable": true,
+      "head": "03845345167807f183ec34af0dbf6f2f8a8a83f5"
+    },
+    "actions_run": {
+      "id": 40977280806,
+      "number": 371,
+      "conclusion": "startup_failure",
+      "jobs_created": 0,
+      "combined_statuses": []
+    }
   }
 }

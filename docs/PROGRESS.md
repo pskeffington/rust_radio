@@ -2888,3 +2888,5 @@ Implementation commit: `bb74393`.
 - After the earlier outage window, the Skylab validator again returned `Unavailable`/`NotChecked`; it now reports `Radio stream connection failed before a response`. Bounded HEAD and rate-limited GET requests to the publisher-listed host both received a connection reset and zero bytes. The publisher’s [official listening page](https://www.skylabradio.com/listen) still lists a high-quality online stream, so this is not evidence to remove the station or replace its endpoint. Recheck after a later recovery window.
 - Added tests for safe timeout/connect category selection and validation-report output. All six required locked workspace gates passed; one live-timing suite remains intentionally ignored. The prior WFMU A/B remains inconclusive and the 500 ms default stays unchanged.
 - The point-in-time transport result and validation are recorded in `docs/AGENT_PROGRESS.json` under `probe_transport_diagnostic_2026_10_30`.
+
+- PR #5 is open and mergeable at `0384534`; Actions run 371 (`40977280806`) on this exact head failed with `startup_failure` before job creation. GitHub returned zero jobs and no combined statuses.
