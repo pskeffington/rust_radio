@@ -21,6 +21,20 @@ use std::time::{Duration, Instant};
 /// One deadline covers every playlist/redirect hop and the final audio body.
 pub const PROBE_DEADLINE: Duration = Duration::from_secs(18);
 
+fn classify_request_error_flags(is_timeout: bool, is_connect: bool) -> StreamError {
+    if is_timeout {
+        StreamError::TransportTimeout
+    } else if is_connect {
+        StreamError::TransportConnectionFailed
+    } else {
+        StreamError::TransportUnavailable
+    }
+}
+
+fn classify_request_error(error: &reqwest::Error) -> StreamError {
+    classify_request_error_flags(error.is_timeout(), error.is_connect())
+}
+
 #[derive(Debug)]
 struct ProbeCancelled;
 
@@ -115,7 +129,7 @@ impl RadioHttp for NativeRadioHttp {
             .deadline
             .checked_duration_since(Instant::now())
             .filter(|duration| !duration.is_zero())
-            .ok_or(StreamError::TransportUnavailable)?;
+            .ok_or(StreamError::TransportTimeout)?;
         // ApprovedEndpoint checks curated station ownership and HTTPS before
         // the request is built; reqwest performs normal certificate validation.
         let response = self
@@ -124,7 +138,7 @@ impl RadioHttp for NativeRadioHttp {
             .timeout(remaining)
             .header("Icy-MetaData", "1")
             .send()
-            .map_err(|_| StreamError::TransportUnavailable)?;
+            .map_err(|error| classify_request_error(&error))?;
         check_probe(self.deadline, &self.cancelled)?;
         let status = response.status().as_u16();
         let content_type = header_value(&response, CONTENT_TYPE)?;
@@ -191,6 +205,22 @@ pub fn internet_available(cancelled: &AtomicBool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn request_failures_have_safe_transport_categories() {
+        assert!(matches!(
+            classify_request_error_flags(true, true),
+            StreamError::TransportTimeout
+        ));
+        assert!(matches!(
+            classify_request_error_flags(false, true),
+            StreamError::TransportConnectionFailed
+        ));
+        assert!(matches!(
+            classify_request_error_flags(false, false),
+            StreamError::TransportUnavailable
+        ));
+    }
 
     #[test]
     fn native_tls_probe_can_initialize_without_network() {

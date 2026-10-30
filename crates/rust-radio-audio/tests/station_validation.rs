@@ -201,6 +201,28 @@ fn network_failure_and_unverified_catalog_entries_never_claim_audio() {
     assert!(!report.is_decoded());
 }
 
+struct ConnectionFailure;
+
+impl RadioHttp for ConnectionFailure {
+    type Body = Cursor<Vec<u8>>;
+
+    fn get(&self, _: &ApprovedEndpoint) -> Result<HttpResponse<Self::Body>, StreamError> {
+        Err(StreamError::TransportConnectionFailed)
+    }
+}
+
+#[test]
+fn connection_failure_is_reported_safely_without_changing_unavailable_status() {
+    let report = validate_with(&ConnectionFailure, "skylab").unwrap();
+    assert_eq!(report.status, ValidationStatus::Unavailable);
+    assert_eq!(report.stage, ValidationStage::NotChecked);
+    assert_eq!(
+        report.detail,
+        "Radio stream connection failed before a response"
+    );
+    assert!(!report.is_decoded());
+}
+
 #[test]
 fn unknown_stations_fail_before_transport_or_audio_initialization() {
     let fixture = Fixture::audio("audio/mpeg", MP3);

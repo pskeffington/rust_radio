@@ -29,6 +29,8 @@ pub enum StreamError {
     UnsupportedHls,
     InvalidIcyInterval,
     TransportUnavailable,
+    TransportTimeout,
+    TransportConnectionFailed,
     Io(io::Error),
 }
 
@@ -36,6 +38,11 @@ impl fmt::Display for StreamError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnsupportedHls => f.write_str("HLS radio transport is not supported"),
+            Self::TransportUnavailable => f.write_str("Radio transport is unavailable"),
+            Self::TransportTimeout => f.write_str("Radio validation request timed out"),
+            Self::TransportConnectionFailed => {
+                f.write_str("Radio stream connection failed before a response")
+            }
             error => write!(f, "{error:?}"),
         }
     }
