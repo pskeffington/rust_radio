@@ -1,5 +1,13 @@
 # Radio development progress
 
+## Documentation reconciliation — 2026-11-05 (documentation-only)
+
+- Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.
+- Historical 2026-10-28 records below include a 25/25 silent catalog sweep reaching decoded audio. This establishes only that bounded audio decoding succeeded at that UTC observation; it does not establish present-day feed availability, publisher rights, callback consumption or audible listening.
+- Skylab remains the first **reverification priority**, not a confirmed currently failed broadcaster. An earlier sandbox check reported transport unavailable, while previous dated tests documented successful decoding and operator playback. RR-101 requires current environment-qualified comparison of CLI validation, audible playback and GUI state.
+- Reconcile hosted CI and exact-SHA evidence before making any release claim. Previous zero-job startup failures are not evidence that code tests failed.
+- Queue work items RR-101 through RR-109 remain READY or hardware/rights BLOCKED as explicitly listed; no implementation progress is asserted by this documentation pass.
+
 Updated 2026-10-28. Active priorities and ownership are in the
 [roadmap](PORTING_PLAN.md); embedding commands are in [the module contract](EMBEDDING.md).
 
