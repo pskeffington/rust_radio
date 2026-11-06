@@ -29,7 +29,7 @@ struct ListenArgs<'a> {
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION [--json] | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION [--json|--diagnostics-json] | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]"
     );
@@ -231,7 +231,56 @@ fn valid_validate_all_args(args: &[String]) -> bool {
 }
 
 fn valid_validate_args(args: &[String]) -> bool {
-    args.len() == 2 || (args.len() == 3 && args[2] == "--json")
+    args.len() == 2
+        || (args.len() == 3 && matches!(args[2].as_str(), "--json" | "--diagnostics-json"))
+}
+
+fn catalog_hostname(station_id: &str) -> Option<&'static str> {
+    let station = station_by_id(station_id)?;
+    let authority = station
+        .playlist_url
+        .strip_prefix("https://")?
+        .split('/')
+        .next()?;
+    authority.split(':').next()
+}
+
+fn validation_failure_kind(report: &StationValidation) -> &'static str {
+    match (report.status, report.stage) {
+        (ValidationStatus::Unavailable, ValidationStage::NotChecked) => "connection_failed",
+        (ValidationStatus::Unavailable, _) => "endpoint_unavailable",
+        (ValidationStatus::InvalidStream, ValidationStage::EndpointReached) => {
+            "endpoint_reached_failure"
+        }
+        (ValidationStatus::InvalidStream, _) => "invalid_stream",
+        (ValidationStatus::Unsupported, _) => "unsupported_audio",
+        (ValidationStatus::Cancelled, _) => "cancelled",
+        (ValidationStatus::Unverified, _) => "not_verified",
+        (ValidationStatus::Decoded, _) => "none",
+    }
+}
+
+fn station_validation_diagnostics_json(report: &StationValidation) -> Result<String, String> {
+    let checked_at = report
+        .checked_at
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|time| time.as_secs());
+    serde_json::to_string_pretty(&serde_json::json!({
+        "diagnostics_schema_version": 1,
+        "station_id": report.station_id,
+        "catalog_hostname": catalog_hostname(&report.station_id),
+        "path": "<redacted>",
+        "status": validation_status_name(report.status),
+        "stage": validation_stage_name(report.stage),
+        "checked_at_unix": checked_at,
+        "content_type": json_content_type(report.content_type.as_deref()),
+        "codec": report.codec,
+        "sample_rate": report.sample_rate,
+        "channels": report.channels,
+        "decoded_frames": report.decoded_frames,
+        "failure_kind": validation_failure_kind(report),
+    }))
+    .map_err(|error| format!("Unable to encode station diagnostics: {error}"))
 }
 
 fn validation_summary(report: &StationValidation) -> String {
@@ -421,9 +470,19 @@ fn monitor(
             audible = true;
         }
         if snapshot.state == rust_radio::controller::PlaybackState::Failed {
-            break Err(snapshot
+            let error = snapshot
                 .last_error
-                .unwrap_or_else(|| "playback failed".to_owned()));
+                .unwrap_or_else(|| "playback failed".to_owned());
+            let diagnostics = engine.diagnostics();
+            let consumed = engine.output_samples_consumed();
+            println!("RUST RADIO FAILURE {{\"state\":\"failed\",\"output_failed\":{},\"callback_samples_consumed\":{},\"failure_stage\":\"{}\"}}",
+                engine.output_failed(), consumed,
+                if engine.output_failed() { "native_output" } else { "playback" });
+            println!(
+                "RUST RADIO DIAGNOSTICS {}",
+                diagnostics_json(prebuffer_ms, diagnostics, consumed)
+            );
+            break Err(error);
         }
         if let Some(seconds) = seconds {
             if start.elapsed() >= Duration::from_secs(seconds) {
@@ -690,7 +749,9 @@ fn run(args: &[String]) -> Result<(), String> {
         }
         Some("validate") if valid_validate_args(args) => {
             let report = validate_station(&args[1])?;
-            if args.len() == 3 {
+            if args.get(2).map(String::as_str) == Some("--diagnostics-json") {
+                println!("{}", station_validation_diagnostics_json(&report)?);
+            } else if args.len() == 3 {
                 println!("{}", station_validation_json(&report)?);
             } else {
                 println!("{}", validation_summary(&report));
@@ -776,6 +837,53 @@ mod tests {
 
     fn options(raw: &[&str]) -> Vec<String> {
         raw.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn diagnostic_station_json_redacts_transport_details_and_keeps_initial_host() {
+        let mut report = StationValidation::unverified("skylab");
+        report.status = ValidationStatus::Unavailable;
+        report.stage = ValidationStage::NotChecked;
+        report.checked_at = Some(SystemTime::UNIX_EPOCH + Duration::from_secs(123));
+        report.resolved_url = Some("https://redirect.example/private?token=secret".into());
+        report.content_type = Some("Audio/MPEG; token=header-secret".into());
+        report.detail = "Authorization: Bearer detail-secret".into();
+
+        let output = station_validation_diagnostics_json(&report).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["station_id"], "skylab");
+        assert_eq!(
+            json["catalog_hostname"],
+            "uksoutha.streaming.broadcast.radio"
+        );
+        assert_eq!(json["path"], "<redacted>");
+        assert_eq!(json["diagnostics_schema_version"], 1);
+        assert_eq!(json["failure_kind"], "connection_failed");
+        assert_eq!(json["content_type"], "audio/mpeg");
+        for secret in [
+            "redirect.example",
+            "private",
+            "token=secret",
+            "header-secret",
+            "detail-secret",
+        ] {
+            assert!(!output.contains(secret), "diagnostic leaked {secret}");
+        }
+    }
+
+    #[test]
+    fn validate_diagnostics_flag_is_opt_in_and_json_v1_flag_remains_supported() {
+        assert!(valid_validate_args(&options(&[
+            "validate", "skylab", "--json"
+        ])));
+        assert!(valid_validate_args(&options(&[
+            "validate",
+            "skylab",
+            "--diagnostics-json"
+        ])));
+        assert!(!valid_validate_args(&options(&[
+            "validate", "skylab", "--other"
+        ])));
     }
 
     struct InvalidDataReader;

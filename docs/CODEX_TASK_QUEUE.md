@@ -4,7 +4,7 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 
 | ID | Priority | Owner lane | Status | Deliverable | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| RR-101 | P0 | Transport | READY | Reproduce Skylab validation/listening discrepancy with structured, redacted endpoint and stage diagnostics | Distinguish DNS/TLS/HTTP/playlist/codec/callback and reproduce with a fixture; no autoplay |
+| RR-101 | P0 | Transport | IN_REVIEW | Reproduce Skylab validation/listening discrepancy with structured, redacted endpoint and stage diagnostics | Report the safe stage boundary supported by the transport API, add fixture/redaction and CLI compatibility regressions, and distinguish validation failure from output initialization failure; no autoplay |
 | RR-102 | P0 | Validation | READY | Catalog sweep with timestamped JSON/history review | Report each canonical ID, attempts, decoded stage, failures and known environmental limits; do not equate 25/25 historical decode with current availability |
 | RR-103 | P0 | Audio | BLOCKED: physical device | Mac audio loss, device-switch and stop-recovery evidence | Explicit speaker/Bluetooth/USB manual matrix; no overlapping sessions |
 | RR-104 | P1 | GUI | READY | 480x320 control/state regression and a human operator checklist | Long text, arrows, keyboard, volume, mute, Stop/Retry, station switches tested; physical touch remains separate |
@@ -18,9 +18,21 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
 2. Add fixture-first tests around the reproducible failure; do not infer the cause from a website response, old status, or one failed network attempt.
 3. Run silent `cargo run -p rust-radio-cli -- validate skylab`; compare with `cargo run -p rust-radio-cli -- listen skylab --seconds 30` only when audio testing is explicitly authorized.
-4. Capture redacted HTTP chain, final content type, codec probing and last verified stage without leaking URL query tokens. The transport must remain bounded and secure.
+4. Capture redacted HTTP chain, final content type, codec probing and last verified stage without leaking URL query tokens. The transport must remain bounded and secure. If the HTTP client does not expose a safe sub-classification, retain a generic connection-failed category rather than parsing error text.
 5. If a defect is proven, implement the minimum change, add a regression and run required gates. If outbound network is unavailable, mark blocked and provide deterministic fixtures, not a false failed station verdict.
 6. Open a PR, update queue/roadmap/progress and stop at unresolved hardware or rights gates. Avoid changing other repos unless the host pin is specifically in scope.
+
+RR-101 execution update (2026-11-06): `validate skylab` returned unavailable at
+`not_checked` before receiving a response; this is environment-qualified
+transport evidence, not a broadcaster verdict. The muted `listen` comparison
+failed while initializing CoreAudio before stream/output callback comparison.
+The CLI now has opt-in redacted `--diagnostics-json`, and terminal listener
+failure prints callback/output diagnostics. DNS and TLS are intentionally not
+distinguished because reqwest currently exposes only a generic connect error
+at this boundary. Failed validations continue to emit their JSON report while
+exiting nonzero, preserving the existing `--json` success/failure convention.
+Local workspace tests pass; exact-head hosted CI is still
+blocked by GitHub Actions `startup_failure` with zero jobs. See `PROGRESS.md`.
 
 ## Parallel review
 Validation agent independently checks the proposed reproduction, cancellation, stale-result handling, no autoplay, private endpoint filtering and evidence for claimed success. Integration agent reviews Rust-Boy API compatibility but does not update its dependency pin without explicit host validation.

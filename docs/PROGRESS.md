@@ -1,5 +1,16 @@
 # Radio development progress
 
+## RR-101 Skylab diagnostics and bounded reproduction — 2026-11-06
+
+- Starting source head: `8c2b3bec6b3e07fc7836bbfbb3a7b1ec051e7a31` on task branch `codex/rr101-skylab`, based on the fetched `origin/main` and synchronized to PR #5 without force-pushing. Worktree and build target are on separate persistent Data and temporary build volumes respectively.
+- `cargo run --locked -p rust-radio-cli -- validate skylab --json` completed at `2026-11-06T07:46:28Z`: one attempt, `unavailable` at `not_checked`, no response, no codec evidence. This describes the observed client environment only and does not establish broadcaster status.
+- Exercised the new `validate skylab --diagnostics-json` at `2026-11-06T07:59:02Z`: it emitted `connection_failed` at `not_checked`, hostname `uksoutha.streaming.broadcast.radio`, redacted path, and no content/codec evidence; process exited 2 under existing validation semantics. No raw URL, redirect target, header or error detail was emitted.
+- A zero-volume 30-second `listen skylab` comparison exited while CoreAudio output initialization failed (`coreaudio-rs` unknown error). No stream callback or audible output comparison occurred; this is a host output limitation, not a station finding.
+- Added opt-in `validate STATION --diagnostics-json`, exposing only the catalog hostname, redacted path, normalized content type and bounded validation fields; legacy `--json` schema remains unchanged. Terminal playback failure now prints output-failure and callback diagnostics before the existing error. Generic connection classification is retained because safe DNS/TLS separation is unavailable at the current reqwest boundary.
+- `cargo fmt --all -- --check` passed after formatting. `cargo test -p rust-radio-cli --locked` passed 20/20. `cargo test --workspace --locked` passed; one GUI hardware integration test and one live-network timing integration test remain ignored by their existing gates. Strict Clippy initially found one needless `?` lint, which was corrected; the final rerun passed.
+- GitHub Actions run 388 for the synchronized PR head ended `startup_failure` before any job was created. This is an infrastructure gate, not a source-test failure. Physical audible playback and station status remain unverified.
+- Next: complete independent review; commit and push the RR-101 change, then take the fresh silent catalog sweep RR-102 without overwriting retained evidence.
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.

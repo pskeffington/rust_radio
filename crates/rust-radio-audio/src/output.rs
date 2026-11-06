@@ -41,7 +41,6 @@ pub fn available_outputs() -> Result<Vec<OutputDeviceInfo>, String> {
     let host = cpal::default_host();
     let default_device = host.default_output_device();
     let default_available = default_device.is_some();
-    let default_name = default_device.and_then(|device| device.name().ok());
     let devices = host
         .output_devices()
         .map_err(|error| format!("Cannot list audio outputs: {error}"))?;
@@ -56,14 +55,9 @@ pub fn available_outputs() -> Result<Vec<OutputDeviceInfo>, String> {
             .name()
             .unwrap_or_else(|_| "Unnamed audio output".into());
         let id = device_key(index, &name);
-        let label = if default_name.as_deref() == Some(name.as_str()) {
-            format!("{name} (default)")
-        } else {
-            name
-        };
         result.push(OutputDeviceInfo {
             id,
-            name: label,
+            name,
             is_default: false,
             available: true,
         });

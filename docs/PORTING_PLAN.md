@@ -1,6 +1,6 @@
 # Radio module roadmap and ownership
 
-Implementation roadmap updated 2026-10-28; documentation reconciliation 2026-11-05. The standalone library is integrated into
+Implementation roadmap updated 2026-10-28; documentation reconciliation 2026-11-06. The standalone library is integrated into
 [Pip-Boy](https://github.com/pskeffington/pip_boy) through a pinned Git dependency.
 The next work strengthens playback and completes platform acceptance. Source
 provenance remains in the extraction notes; dated evidence is in
@@ -36,7 +36,7 @@ provenance remains in the extraction notes; dated evidence is in
 
 ## November 2026 execution order
 
-The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) govern subsequent Codex passes. Start with RR-101 (Skylab root-cause reproduction), RR-102 (fresh silent catalog evidence), and RR-108 (exact-head CI review). Do not call historical 25/25 decoded streams a current live result. Mac device/output tests, physical Pi 5 and SDR hardware acceptance remain distinct blocked or operator-run gates. See [status checkpoint](STATUS_2026-11-05.md).
+The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) govern subsequent Codex passes. RR-101 now has opt-in redacted CLI diagnostics and a terminal playback failure report; its bounded local reproduction is recorded in [progress](PROGRESS.md), with exact-head hosted CI still blocked. Continue with RR-102 (fresh silent catalog evidence) and RR-108 (exact-head CI review). Do not call historical 25/25 decoded streams a current live result. Mac device/output tests, physical Pi 5 and SDR hardware acceptance remain distinct blocked or operator-run gates. See [status checkpoint](STATUS_2026-11-05.md).
 
 ## Next development priorities
 
