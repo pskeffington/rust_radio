@@ -11,14 +11,14 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-105 | P1 | SDR | BLOCKED: receiver access | Independent direct nRSP-ST live audio and control acceptance | Record receiver, handshake, tuning, PCM/callback, audible output, Stop cleanup |
 | RR-106 | P1 | SDR | BLOCKED: USB hardware | SoapySDR 240ksample/s CS16 mono-FM field acceptance | Supported dongle/driver, actual RF/audio and unplug cleanup |
 | RR-107 | P1 | Integration | BLOCKED: Pi 5 target | Pi runtime and Rust-Boy embedded host signoff | Pinned dependency, physical screen, native output, CPU/memory/thermal/power |
-| RR-108 | P1 | Validation | BLOCKED: no exact-SHA workflow/status | CI status audit and exact-SHA evidence reconciliation | Distinguish startup_failure from test failure and verify hosted jobs before completion |
+| RR-108 | P1 | Validation | BLOCKED: exact-head startup_failure, zero jobs | CI status audit and exact-SHA evidence reconciliation | Distinguish startup_failure from test failure and verify hosted jobs before completion |
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
 
 ## Immediate Codex order: RR-101, RR-102, then RR-108
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
 2. Add fixture-first tests around the reproducible failure; do not infer the cause from a website response, old status, or one failed network attempt.
 3. Run silent `cargo run -p rust-radio-cli -- validate skylab`; compare with `cargo run -p rust-radio-cli -- listen skylab --seconds 30` only when audio testing is explicitly authorized.
-4. Capture redacted HTTP chain, final content type, codec probing and last verified stage without leaking URL query tokens. The transport must remain bounded and secure. If the HTTP client does not expose a safe sub-classification, retain a generic connection-failed category rather than parsing error text.
+4. Capture redacted HTTP chain, final content type, codec probing and last verified stage without leaking URL query tokens. The transport must remain bounded and secure. If the HTTP client does not expose a safe sub-classification, retain a generic pre-response transport category rather than parsing error text.
 5. If a defect is proven, implement the minimum change, add a regression and run required gates. If outbound network is unavailable, mark blocked and provide deterministic fixtures, not a false failed station verdict.
 6. Open a PR, update queue/roadmap/progress and stop at unresolved hardware or rights gates. Avoid changing other repos unless the host pin is specifically in scope.
 
@@ -27,9 +27,9 @@ RR-101 execution update (2026-11-06): `validate skylab` returned unavailable at
 transport evidence, not a broadcaster verdict. The muted `listen` comparison
 failed while initializing CoreAudio before stream/output callback comparison.
 The CLI now has opt-in redacted `--diagnostics-json`, and terminal listener
-failure prints callback/output diagnostics. DNS and TLS are intentionally not
-distinguished because reqwest currently exposes only a generic connect error
-at this boundary. Failed validations continue to emit their JSON report while
+failure prints callback/output diagnostics. Failures before a response use a
+generic transport category; diagnostics do not distinguish DNS, connection
+setup, TLS, timeout or other I/O. Failed validations continue to emit their JSON report while
 exiting nonzero, preserving the existing `--json` success/failure convention.
 Local workspace tests pass; exact-head hosted CI is still
 blocked by GitHub Actions `startup_failure` with zero jobs. See `PROGRESS.md`.
@@ -45,11 +45,11 @@ are stored under `/Volumes/Data/Codex/rr101-skylab/` as
 `rr102-catalog-validation-report-history-2026-11-06.json`. No URLs or free-form
 details are present. This is client-environment codec evidence, not audible
 playback or a permanent station-health verdict. Continue with RR-108 exact-head
-CI reconciliation; the GitHub connector returned no workflow runs or combined
-statuses for the latest visible PR head, and no workflow-dispatch action is
-available in this environment. Local required gates are recorded in the
-progress log; the prior exact-head run on the RR-101 code commit returned
-`startup_failure` before jobs were created.
+CI reconciliation. Exact PR head `f8adc633f0b5ed1581277f7a4de015470e46c871`
+had Actions run 392 (`42185406559`) fail with `startup_failure` before jobs;
+jobs, statuses and logs were empty. A retry request was rejected by GitHub with
+403 because the run cannot be retried. Local required gates and detailed skill
+provenance are recorded in `PROGRESS.md`.
 
 ## Parallel review
 Validation agent independently checks the proposed reproduction, cancellation, stale-result handling, no autoplay, private endpoint filtering and evidence for claimed success. Integration agent reviews Rust-Boy API compatibility but does not update its dependency pin without explicit host validation.

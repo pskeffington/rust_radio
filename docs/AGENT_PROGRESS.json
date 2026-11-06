@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-10-30T00:47:00Z",
+  "updated_at_utc": "2026-11-06T08:23:10Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "f4d35afd13029cf5b2405238081e41cb50a7ef7b",
+  "implementation_commit": "7db8373",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -263,7 +263,12 @@
     "Added closed, sanitized probe diagnostics for timeout and pre-response connection failures while preserving unavailable status and no-stage semantics. Skylab live recheck identified a connection reset; the publisher still lists its high-quality stream, so the catalog entry is retained. Focused tests and all six locked workspace gates passed.",
     "Cross-checked the sanitized probe changes with default workspace builds for x86_64-pc-windows-gnu and aarch64-apple-darwin; both passed. Optional rust-radio-sdr excluded.",
     "Added real loopback reqwest timeout and connection-refusal tests; focused probe tests passed 7/7. All six locked workspace gates passed. Skylab remains unavailable/not-checked after a later retry; the publisher-listed entry is preserved. Repeated WFMU eight-trial A/B had zero underruns and inconclusive paired latency ranges; keep 500ms default.",
-    "Strengthened timeout/connect regression tests to assert classified messages omit request URLs (2 focused tests passed). A later bounded catalog sweep decoded 24/25 feeds; Skylab remained unavailable after two attempts and is preserved pending the next scheduled recovery window."
+    "Strengthened timeout/connect regression tests to assert classified messages omit request URLs (2 focused tests passed). A later bounded catalog sweep decoded 24/25 feeds; Skylab remained unavailable after two attempts and is preserved pending the next scheduled recovery window.",
+    "RR-101 follow-up: committed 7db8373 hardens catalog-derived hostname parsing (DNS labels, numeric ports, bracketed IPv6, userinfo rejection), uses pre_response_transport_failure for the not_checked boundary, and documents opt-in --diagnostics-json without changing legacy --json.",
+    "Independent offline verification on the RR-101 worktree: fmt passed; workspace tests 215 passed, 0 failed, 2 ignored; strict workspace Clippy passed; CLI suite 23 tests. Independent code, documentation, and security reviews found no blocking findings.",
+    "RR-102 current catalog report/history retained on /Volumes/Data/Codex/rr101-skylab; latest complete sweep matched all 25 IDs, decoded 24, and left Skylab unavailable after two attempts. First sweep's WFMU unsupported result did not repeat.",
+    "RR-104 offline GUI suite passed and a Mac operator checklist is documented; physical interaction and audible playback remain unverified.",
+    "RR-108 exact baseline head f8adc633f0b5ed1581277f7a4de015470e46c871 had Actions run 392 startup_failure before jobs; zero jobs/statuses/log. One rerun request returned 403 because the run cannot be retried."
   ],
   "validation": {
     "fmt": "passed on 19-station WFMU expansion",
@@ -359,22 +364,14 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_run": 40819022289,
-    "latest_pr_head": "ec53bf1cd571cb72bf0d22d480d297ff353364c8",
-    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no combined statuses",
+    "latest_pr_head": "f8adc633f0b5ed1581277f7a4de015470e46c871",
+    "latest_pr_run": 42185406559,
+    "latest_pr_run_number": 392,
+    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no statuses, annotations, or log",
     "latest_pr_jobs": 0,
-    "latest_pr_run_number": 364,
     "latest_pr_status_checks": 0,
-    "exact_current_head": "ec53bf1cd571cb72bf0d22d480d297ff353364c8",
-    "exact_current_head_workflow_runs": [
-      {
-        "run_id": 40819022289,
-        "run_number": 364,
-        "conclusion": "startup_failure"
-      }
-    ],
-    "exact_current_head_combined_statuses": [],
-    "details": "At 2026-10-29T23:39:47Z, PR #5 is open and mergeable at ec53bf1cd571cb72bf0d22d480d297ff353364c8. Actions run 364 ended before jobs were created; jobs endpoint returned zero and combined commit statuses are empty. No logs exist for diagnosis."
+    "retry_request": "HTTP 403: This workflow run cannot be retried",
+    "details": "Exact PR head f8adc633f0b5ed1581277f7a4de015470e46c871 was open and mergeable when checked. Run 392 failed before jobs; diagnostics returned empty checks, statuses, annotations, jobs, and log."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -383,10 +380,14 @@
     "Publisher distribution permissions before bundling or redistribution",
     "National continuous NPR feed inclusion requires a named endpoint and applicable rights evidence; WRVO 1 supplies NPR member-station news programming",
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
-    "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken"
+    "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken",
+    "Exact-head GitHub Actions startup failure before job creation; no actionable logs and retry rejected",
+    "CoreAudio output initialization failed before callback consumption; physical audible output remains unverified",
+    "Dedicated audio-engineering role/skill unavailable in the verified central registry snapshots (BLOCKED-AGENT)",
+    "FACTORY-002 sanitized failure/repair submission pending"
   ],
-  "next_priority": "Obtain physical Bluetooth/USB output-loss and reconnect acceptance plus blinded audible profile preference. Complete native Windows MSVC and Raspberry Pi runtime gates. The recent muted live A/B runs show zero underruns but paired latency ranges cross zero; do not change the buffering default. Investigate repeated Actions startup failures only if actionable diagnostics appear.",
-  "current_pr_state": "PR #5 is open and mergeable at ec53bf1cd571cb72bf0d22d480d297ff353364c8. Actions run 364 (40819022289) on this exact head failed with startup_failure before job creation; the jobs endpoint returned zero jobs and combined statuses are empty.",
+  "next_priority": "Push the RR-101 implementation/provenance checkpoint and recheck exact-head CI. Keep the CoreAudio audible/output recovery, Pi, SDR hardware, and publisher-rights gates open; do not merge while required exact-head checks are missing.",
+  "current_pr_state": "PR #5 was open and mergeable at exact head f8adc633f0b5ed1581277f7a4de015470e46c871; Actions run 392 failed before job creation with zero jobs, statuses, annotations, or logs. The local follow-up commit 7db8373 is not yet published at this checkpoint.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1218,7 +1219,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-10-29T23:39:47Z",
+  "current_pr_state_checked_at_utc": "2026-11-06T08:23:10Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -7377,5 +7378,104 @@
       "ongoing Rust-Boy integration"
     ],
     "next_action": "Restore actionable Windows MSVC CI and continue physical acceptance; avoid changing buffering defaults based on this small synthetic A/B alone."
+  },
+  "task_branch": "codex/rr101-skylab",
+  "published_branch": "codex/catalog-publisher-permissions",
+  "rr101_agent_workflow_2026_11_06": {
+    "task_id": "RR-101",
+    "baseline_commit": "f8adc633f0b5ed1581277f7a4de015470e46c871",
+    "source_commit": "7db8373",
+    "main_base_sha": "4b377519b585f0ff155e7ab9146eaa3bb822e777",
+    "changed_files": [
+      "crates/rust-radio-cli/src/main.rs",
+      "README.md"
+    ],
+    "registry": {
+      "repository": "pskeffington/agent_skills",
+      "pinned_commit": "42cf3196122feffa8658239fe7947c033bd39913",
+      "roles_blob": "49ec89bf1391a90b9a90b5f908d87909b3ba82ab",
+      "resource_chain_blob": "f7916f43f4f747c8552ebbb3c8c2d0ca3965fe82",
+      "remote_main_checked_sha": "ea4a1c678d5a5ba0ef83e8df422b0a53a7e46aba",
+      "audio_specialist": "BLOCKED-AGENT: neither the pinned catalog nor current remote main provides a dedicated audio-engineering role/skill; audio-scoped work used registered general roles without claiming audio-specialist status"
+    },
+    "invocations": [
+      {
+        "agent": "/root/audio_research",
+        "role": "researcher",
+        "skill": "engineering-research",
+        "skill_blob": "f3c8f3c4ae99829d045ad918667c8b125e8d344c"
+      },
+      {
+        "agent": "/root/rr101_implementer",
+        "role": "planner",
+        "skill": "engineering-planning",
+        "skill_blob": "4f83eb49be42225f3f111593b25eb2edbe35faac"
+      },
+      {
+        "agent": "/root/rr101_architecture",
+        "role": "architect",
+        "skill": "architecture-design",
+        "skill_blob": "12c91c8040d13f618a209de24cbbf6e4f89830d1"
+      },
+      {
+        "agent": "/root/rr101_implementer",
+        "role": "implementer",
+        "skill": "code-implementation",
+        "skill_blob": "7c46f620c3940c7b8bdf3ffdb4f8831817d08043"
+      },
+      {
+        "agent": "/root/audio_research",
+        "role": "verifier",
+        "skill": "test-verification",
+        "skill_blob": "c15b91ca42a279ccf92d55c1e41db11655ee0b4a"
+      },
+      {
+        "agent": "/root/rr101_architecture",
+        "role": "code-reviewer",
+        "skill": "independent-code-review",
+        "skill_blob": "e44217c9f0c2492087f8b16da94f3ca80eae4555"
+      },
+      {
+        "agent": "/root/rr101_architecture",
+        "role": "documenter",
+        "skill": "documentation-maintenance",
+        "skill_blob": "409db01491df686901ee5f39d5705ee61b91e117"
+      },
+      {
+        "agent": "/root/audio_research",
+        "role": "security-reviewer",
+        "skill": "security-assurance",
+        "skill_blob": "4ad8219c8c8142a76a8ae0a33f6c39ce3214dc4a"
+      }
+    ],
+    "verification": {
+      "fmt": "CARGO_NET_OFFLINE=true cargo fmt --all -- --check: PASS",
+      "workspace_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo test --workspace --locked: PASS, 215 passed, 0 failed, 2 ignored",
+      "strict_clippy": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo clippy --workspace --all-targets --locked -- -D warnings: PASS",
+      "cli_tests": "23 passed, 0 failed, 0 ignored",
+      "diff_check": "git -c core.filemode=false diff --check: PASS",
+      "ignored_tests": [
+        "GUI native_ip_playback_switching_failure_retry_and_responsiveness: requires native output and local TCP; muted",
+        "IP approved_live_stream_chunk_timing_samples: requires public network"
+      ]
+    },
+    "reviews": {
+      "architecture_and_code_review": "PASS; no actionable code findings after DNS, port, IPv6, userinfo, and failure-kind fixes",
+      "documentation_review": "PASS; README records known-station JSON behavior, redaction, generic stage, and nonzero exit",
+      "security_review": "PASS; no URL/query/raw-header/free-form error leakage or permission/dependency changes"
+    },
+    "ci_at_baseline_head": {
+      "head": "f8adc633f0b5ed1581277f7a4de015470e46c871",
+      "run_id": 42185406559,
+      "run_number": 392,
+      "conclusion": "startup_failure",
+      "jobs": 0,
+      "statuses": 0,
+      "annotations": 0,
+      "log_available": false,
+      "retry_result": "403: This workflow run cannot be retried"
+    },
+    "factory_002_submission": "pending",
+    "release_merge": "not performed"
   }
 }
