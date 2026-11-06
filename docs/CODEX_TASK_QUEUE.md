@@ -13,8 +13,9 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-107 | P1 | Integration | BLOCKED: Pi 5 target | Pi runtime and Rust-Boy embedded host signoff | Pinned dependency, physical screen, native output, CPU/memory/thermal/power |
 | RR-108 | P1 | Validation | BLOCKED: exact-head startup_failure, zero jobs | CI status audit and exact-SHA evidence reconciliation | Distinguish startup_failure from test failure and verify hosted jobs before completion |
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
+| RR-110 | P1 | Transport | DONE | Reject invalid ICY metadata intervals at the public reader boundary | Direct `IcyAudioReader::new` calls with zero or above-limit intervals fail with `InvalidInput`; valid intervals and `None` remain unchanged; focused and workspace gates pass |
 
-## Immediate Codex order: RR-101, RR-102, then RR-108
+## Current execution order: RR-108 hosted CI, then physical acceptance gates
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
 2. Add fixture-first tests around the reproducible failure; do not infer the cause from a website response, old status, or one failed network attempt.
 3. Run silent `cargo run -p rust-radio-cli -- validate skylab`; compare with `cargo run -p rust-radio-cli -- listen skylab --seconds 30` only when audio testing is explicitly authorized.
@@ -55,3 +56,5 @@ provenance are recorded in `PROGRESS.md`.
 Validation agent independently checks the proposed reproduction, cancellation, stale-result handling, no autoplay, private endpoint filtering and evidence for claimed success. Integration agent reviews Rust-Boy API compatibility but does not update its dependency pin without explicit host validation.
 
 RR-101 follow-up and required FACTORY-002 report are pushed to PR #5 at `324c32c733e986ee2936d82302fd76f371dd8855`. The sanitized issue report is recorded at [agent_skills #14](https://github.com/pskeffington/agent_skills/issues/14) (comment `6680570338`). RR-101 implementation review and local gates are complete; hosted exact-head CI remains outstanding. RR-108 is still BLOCKED because the published head currently has no visible Actions runs or combined statuses.
+
+RR-110 public ICY reader hardening was verified locally and is complete: direct constructors reject zero and above-limit metadata intervals with `InvalidInput`, while valid boundaries and `None` retain their behavior. See the dated evidence in `PROGRESS.md`; exact-head Actions startup failure remains a separate RR-108 blocker.

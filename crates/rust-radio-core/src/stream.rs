@@ -469,15 +469,18 @@ pub fn open_station<C: RadioHttp>(
 pub struct IcyAudioReader<R: Read> {
     inner: R,
     interval: Option<usize>,
+    invalid_interval: bool,
     remaining_audio: usize,
     last_title: Option<String>,
 }
 
 impl<R: Read> IcyAudioReader<R> {
     pub fn new(inner: R, interval: Option<usize>) -> Self {
+        let invalid_interval = interval.is_some_and(|value| value == 0 || value > MAX_ICY_INTERVAL);
         Self {
             inner,
             interval,
+            invalid_interval,
             remaining_audio: interval.unwrap_or(0),
             last_title: None,
         }
@@ -503,6 +506,12 @@ impl<R: Read> Read for IcyAudioReader<R> {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
         if buffer.is_empty() {
             return Ok(0);
+        }
+        if self.invalid_interval {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "invalid ICY metadata interval",
+            ));
         }
         let cap = buffer.len().min(MAX_AUDIO_READ);
         if self.interval.is_some() {
@@ -1065,6 +1074,36 @@ mod tests {
             Err(StreamError::InvalidIcyInterval)
         ));
         assert!(!is_audio(Some("text/html")));
+    }
+
+    #[test]
+    fn direct_icy_reader_rejects_zero_and_oversized_intervals() {
+        let mut buffer = [0u8; 1];
+        for interval in [0, MAX_ICY_INTERVAL + 1] {
+            let mut reader = IcyAudioReader::new(Cursor::new(b"audio"), Some(interval));
+            assert_eq!(reader.read(&mut []).unwrap(), 0);
+            let error = reader.read(&mut buffer).unwrap_err();
+            assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+        }
+    }
+
+    #[test]
+    fn direct_icy_reader_accepts_valid_interval_boundaries_and_none() {
+        let mut buffer = [0u8; 1];
+
+        let mut min_interval = IcyAudioReader::new(Cursor::new(b"A\0B\0"), Some(1));
+        assert_eq!(min_interval.read(&mut buffer).unwrap(), 1);
+        assert_eq!(&buffer, b"A");
+        assert_eq!(min_interval.read(&mut buffer).unwrap(), 1);
+        assert_eq!(&buffer, b"B");
+
+        let mut max_interval = IcyAudioReader::new(Cursor::new(b"A"), Some(MAX_ICY_INTERVAL));
+        assert_eq!(max_interval.read(&mut buffer).unwrap(), 1);
+        assert_eq!(&buffer, b"A");
+
+        let mut no_interval = IcyAudioReader::new(Cursor::new(b"A"), None);
+        assert_eq!(no_interval.read(&mut buffer).unwrap(), 1);
+        assert_eq!(&buffer, b"A");
     }
 
     #[test]
