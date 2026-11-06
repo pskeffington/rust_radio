@@ -1,9 +1,15 @@
 {
-  "updated_at_utc": "2026-11-06T08:43:28Z",
+  "updated_at_utc": "2026-11-06T09:02:12Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "badb8c7ddb0fb601acf908801027d72e4082c3c1",
-  "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
+  "implementation_commit": "76973b61e292fe72b590619b9084edf0808e9145",
+  "pull_request": {
+    "number": 5,
+    "head": "76973b61e292fe72b590619b9084edf0808e9145",
+    "state": "open",
+    "mergeable": true,
+    "merged": false
+  },
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
     "Added CLI --buffering low-latency|resilient selection and structured diagnostic snapshots for timed/interactive playback; invalid profiles are rejected before I/O.",
@@ -364,13 +370,13 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_head": "badb8c7ddb0fb601acf908801027d72e4082c3c1",
-    "latest_pr_run": 42189673825,
-    "latest_pr_run_number": 398,
-    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no combined statuses or log",
-    "latest_pr_jobs": 0,
-    "latest_pr_status_checks": 0,
-    "details": "PR #5 Actions run 398 on exact head badb8c7ddb0fb601acf908801027d72e4082c3c1 failed before jobs were created. Jobs, statuses, annotations and logs were empty."
+    "head": "76973b61e292fe72b590619b9084edf0808e9145",
+    "run_id": 42191781213,
+    "run_number": 400,
+    "conclusion": "startup_failure",
+    "jobs": 0,
+    "combined_statuses": 0,
+    "diagnostics": "empty; no actionable logs"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -384,7 +390,7 @@
     "Dedicated audio-engineering role/skill unavailable in the verified central registry snapshots (BLOCKED-AGENT)",
     "Exact source head 709cec92bfc90bb5cc0d73ae6adf4d38d3996bab Actions run 397 startup_failure before jobs; no actionable logs"
   ],
-  "next_priority": "RR-108 hosted CI reconciliation and remaining hardware/rights gates. RR-110 ICY reader input validation and RR-111 recoverable validation-history checkpoint are implemented and locally verified.",
+  "next_priority": "RR-108 actionable hosted CI evidence; RR-113 independent-sweep outage confirmation, then explicit eligibility reporting; physical audio, Pi/receiver, and publisher-rights gates remain separate.",
   "current_pr_state": "PR #5 was open and mergeable at exact head badb8c7ddb0fb601acf908801027d72e4082c3c1. Actions run 398 (42189673825) ended startup_failure before jobs; statuses, jobs and logs are empty.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
@@ -663,7 +669,7 @@
       "first_play_mean": -53.096
     },
     "underruns": "0 samples reported in every trial on both feeds",
-    "interpretation": "B was about 45\u201359ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
+    "interpretation": "B was about 45–59ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
   },
   "buffer_fill_ab_latest": {
     "checked_at_utc": "2026-10-29T01:29:14Z",
@@ -7638,6 +7644,90 @@
       "issue": "https://github.com/pskeffington/agent_skills/issues/14",
       "comment_id": 6680870745,
       "sanitization": "No private source, raw URLs, credentials or operator data; contains behavioral summary, tests and explicit durability limits."
+    }
+  },
+  "rr112_feed_health_v2_2026_11_06": {
+    "task_id": "RR-112",
+    "status": "DONE",
+    "baseline_commit": "c65e29829c539087d91f0857ab315b2241d758ec",
+    "source_commit": "76973b61e292fe72b590619b9084edf0808e9145",
+    "github_issue": "https://github.com/pskeffington/rust_radio/issues/2",
+    "changed_files": [
+      "crates/rust-radio-cli/src/feed_history.rs",
+      "crates/rust-radio-core/src/feed_history.rs",
+      "crates/rust-radio-core/src/validation.rs",
+      "crates/rust-radio-gui/src/ip_settings.rs",
+      "crates/rust-radio-gui/src/lib.rs",
+      "crates/rust-radio-gui/src/tests.rs",
+      "crates/rust-radio-gui/src/validation_history.rs",
+      "docs/CODEX_TASK_QUEUE.md",
+      "docs/PORTING_PLAN.md"
+    ],
+    "summary": "Core retains the existing FeedHealth API, reads v1/v2 and recomputes additive history health. CLI writes v2 and retains last-good decode evidence through failure/cancel/unverified results. GUI shows degraded/retry after a failed check with decoded evidence no older than 24 hours; saved health never gates Play.",
+    "registry": {
+      "repository": "pskeffington/agent_skills",
+      "pinned_commit": "42cf3196122feffa8658239fe7947c033bd39913",
+      "remote_main_checked_sha": "ea4a1c678d5a5ba0ef83e8df422b0a53a7e46aba",
+      "audio_specialist": "BLOCKED-AGENT: no dedicated audio-engineering role/skill in checked registry snapshots"
+    },
+    "invocations": [
+      {
+        "agent": "/root/rr112_architect",
+        "role": "architect",
+        "skill": "architecture-design",
+        "skill_blob": "12c91c8040d13f618a209de24cbbf6e4f89830d1",
+        "result": "additive API preserving FeedHealth compatibility; v1 read/v2 write; define freshness and UI precedence"
+      },
+      {
+        "agent": "/root/rr112_implementer",
+        "role": "implementer",
+        "skill": "code-implementation",
+        "skill_blob": "7c46f620c3940c7b8bdf3ffdb4f8831817d08043",
+        "result": "implemented core/CLI/GUI health and migration with regression coverage"
+      },
+      {
+        "agent": "/root/rr112_test",
+        "role": "verifier",
+        "skill": "test-verification",
+        "skill_blob": "c15b91ca42a279ccf92d55c1e41db11655ee0b4a",
+        "result": "default and all-feature gates passed independently; no edits"
+      },
+      {
+        "agent": "/root/rr112_review",
+        "role": "independent-code-reviewer",
+        "skill": "independent-code-review",
+        "skill_blob": "a12f7119ad72b25f177692b1084307696cd2fda4",
+        "result": "PASS, no actionable findings; stale parser comment corrected"
+      }
+    ],
+    "verification": {
+      "fmt": "CARGO_NET_OFFLINE=true cargo fmt --all -- --check: PASS",
+      "workspace_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo test --workspace --locked --quiet: PASS, 225 passed, 0 failed, 2 ignored",
+      "strict_clippy": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo clippy --workspace --all-targets --locked -- -D warnings: PASS",
+      "all_features_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo test --workspace --all-features --locked --quiet: PASS, 281 passed, 0 failed, 3 ignored",
+      "all_features_clippy": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo clippy --workspace --all-targets --all-features --locked -- -D warnings: PASS",
+      "all_features_check": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo check --workspace --all-features --locked: PASS",
+      "diff_check": "git -c core.filemode=false diff --check: PASS"
+    },
+    "ci": {
+      "head": "76973b61e292fe72b590619b9084edf0808e9145",
+      "run_id": 42191781213,
+      "run_number": 400,
+      "conclusion": "startup_failure",
+      "jobs": 0,
+      "combined_statuses": 0,
+      "diagnostics": "no checks, jobs, annotations, statuses or logs"
+    },
+    "limits": [
+      "2 default ignored tests require hardware/native device and public network; 3 all-feature ignored tests include hardware/network gates",
+      "no physical audible playback, Pi, receiver or publisher-rights acceptance",
+      "RR-112 addresses health/schema migration only; independent-sweep outage guard and eligibility policy remain future issue #2 work"
+    ],
+    "factory_002_submission": {
+      "status": "submitted",
+      "issue": "https://github.com/pskeffington/agent_skills/issues/14",
+      "comment_id": 6681169795,
+      "sanitization": "Behavioral summary and aggregate test evidence only; no private source, URLs, credentials or operator data."
     }
   }
 }
