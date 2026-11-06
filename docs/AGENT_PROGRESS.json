@@ -1,14 +1,17 @@
 {
-  "updated_at_utc": "2026-11-06T09:02:12Z",
+  "updated_at_utc": "2026-11-06T15:48:00Z",
   "status": "active",
-  "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "76973b61e292fe72b590619b9084edf0808e9145",
+  "branch": "codex/rr113-independent-outage",
+  "implementation_commit": "cf0aa46dfc421a8e406814480cae0885c0677b34",
   "pull_request": {
-    "number": 5,
-    "head": "76973b61e292fe72b590619b9084edf0808e9145",
+    "number": 9,
+    "head": "cf0aa46dfc421a8e406814480cae0885c0677b34",
+    "base": "codex/catalog-publisher-permissions",
     "state": "open",
+    "draft": true,
+    "merged": false,
     "mergeable": true,
-    "merged": false
+    "stacked_on_pr": 5
   },
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -370,13 +373,13 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "head": "76973b61e292fe72b590619b9084edf0808e9145",
-    "run_id": 42191781213,
-    "run_number": 400,
+    "head": "088fb7cc2d5de7793610c4ab38865067edf2bbb5",
+    "run_id": 42246134663,
+    "run_number": 405,
     "conclusion": "startup_failure",
     "jobs": 0,
     "combined_statuses": 0,
-    "diagnostics": "empty; no actionable logs"
+    "diagnostics": "no checks, statuses, annotations, jobs or logs"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -390,8 +393,8 @@
     "Dedicated audio-engineering role/skill unavailable in the verified central registry snapshots (BLOCKED-AGENT)",
     "Exact source head 709cec92bfc90bb5cc0d73ae6adf4d38d3996bab Actions run 397 startup_failure before jobs; no actionable logs"
   ],
-  "next_priority": "RR-108 actionable hosted CI evidence; RR-113 independent-sweep outage confirmation, then explicit eligibility reporting; physical audio, Pi/receiver, and publisher-rights gates remain separate.",
-  "current_pr_state": "PR #5 was open and mergeable at exact head badb8c7ddb0fb601acf908801027d72e4082c3c1. Actions run 398 (42189673825) ended startup_failure before jobs; statuses, jobs and logs are empty.",
+  "next_priority": "Complete final independent review for RR-113 after workspace credits are available; continue RR-108 hosted CI reconciliation; then implement explicit eligibility reporting and 1.5-second retry policy; physical hardware and publisher-rights gates remain separate.",
+  "current_pr_state": "PR #9 is an open, draft, mergeable stacked PR on PR #5 branch. Exact head 088fb7cc2d5de7793610c4ab38865067edf2bbb5 Actions run 405 failed with startup_failure before jobs; no checks/statuses/logs.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -7729,5 +7732,126 @@
       "comment_id": 6681169795,
       "sanitization": "Behavioral summary and aggregate test evidence only; no private source, URLs, credentials or operator data."
     }
+  },
+  "rr113_independent_sweep_outage_2026_11_06": {
+    "task_id": "RR-113",
+    "status": "IN_REVIEW",
+    "baseline_commit": "1842558cd2e5de14234e92f87f2e808245c3767d",
+    "source_commit": "cf0aa46dfc421a8e406814480cae0885c0677b34",
+    "github_issue": "https://github.com/pskeffington/rust_radio/pull/2",
+    "changed_files": [
+      "crates/rust-radio-cli/src/feed_history.rs",
+      "crates/rust-radio-cli/src/main.rs",
+      "docs/CODEX_TASK_QUEUE.md",
+      "docs/PORTING_PLAN.md"
+    ],
+    "summary": "Complete batch reports have unique sweep IDs; history requires three distinct definitive failures to confirm a station. Decoded success resets its streak. Complete zero-decode and all-failed shared-publisher sweeps record outage incidents without incrementing member counters. Status remains advisory; no station removal or playback gating.",
+    "registry": {
+      "repository": "pskeffington/agent_skills",
+      "pinned_commit": "42cf3196122feffa8658239fe7947c033bd39913",
+      "remote_main_checked_sha": "ea4a1c678d5a5ba0ef83e8df422b0a53a7e46aba",
+      "audio_specialist": "BLOCKED-AGENT: no dedicated audio-engineering role/skill in checked registry snapshots; RR-113 changes no audio behavior"
+    },
+    "invocations": [
+      {
+        "agent": "/root/rr113_architect",
+        "role": "architect",
+        "skill": "architecture-design",
+        "skill_blob": "12c91c8040d13f618a209de24cbbf6e4f89830d1",
+        "result": "design returned; scoped independent-sweep, host and publisher guards"
+      },
+      {
+        "agent": "/root/rr113_implementer",
+        "role": "implementer",
+        "skill": "code-implementation",
+        "skill_blob": "7c46f620c3940c7b8bdf3ffdb4f8831817d08043",
+        "result": "diff delivered; agent stopped when workspace ran out of credits"
+      },
+      {
+        "agent": "/root/rr113_verifier",
+        "role": "verifier",
+        "skill": "test-verification",
+        "skill_blob": "c15b91ca42a279ccf92d55c1e41db11655ee0b4a",
+        "result": "skill read; agent stopped before verification; parent ran required gates"
+      },
+      {
+        "agent": "/root/rr113_reviewer",
+        "role": "independent-code-reviewer",
+        "skill": "independent-code-review",
+        "skill_blob": "e44217c9f0c2492087f8b16da94f3ca80eae4555",
+        "result": "partial independent findings resolved; final review BLOCKED when workspace ran out of credits"
+      },
+      {
+        "agent": "/root",
+        "role": "parent verification and self-audit",
+        "skills": [
+          "test-verification",
+          "independent-code-review"
+        ],
+        "skill_blobs": [
+          "c15b91ca42a279ccf92d55c1e41db11655ee0b4a",
+          "e44217c9f0c2492087f8b16da94f3ca80eae4555"
+        ],
+        "result": "read exact pinned skill blobs, ran gates and self-audited; does not replace final independent review"
+      }
+    ],
+    "verification": {
+      "focused_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo test --locked -p rust-radio-cli feed_history::tests -- --nocapture: PASS, 19/19",
+      "workspace_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo test --workspace --locked --quiet: PASS, 235 passed, 0 failed, 2 ignored on final rerun",
+      "strict_clippy": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo clippy --workspace --all-targets --locked -- -D warnings: PASS",
+      "all_features_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo test --workspace --all-features --locked --quiet: PASS, 291 passed, 0 failed, 3 ignored",
+      "all_features_clippy": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo clippy --workspace --all-targets --all-features --locked -- -D warnings: PASS",
+      "all_features_check": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rr112-target cargo check --workspace --all-features --locked: PASS",
+      "format": "CARGO_NET_OFFLINE=true cargo fmt --all -- --check: PASS",
+      "diff_check": "git -c core.filemode=false diff --check: PASS",
+      "flaky_observation": "First full run failed timing-sensitive measured_prebuffer_fill_tracks_paced_decoded_packets (37.63 ms vs 36.41 ms); targeted run and later full suite passed."
+    },
+    "ci": {
+      "head": "088fb7cc2d5de7793610c4ab38865067edf2bbb5",
+      "run_id": 42246134663,
+      "run_number": 405,
+      "conclusion": "startup_failure",
+      "jobs": 0,
+      "combined_statuses": 0,
+      "diagnostics": "no actionable logs"
+    },
+    "pull_request": {
+      "number": 9,
+      "url": "https://github.com/pskeffington/rust_radio/pull/9",
+      "state": "open",
+      "draft": true,
+      "base": "codex/catalog-publisher-permissions",
+      "mergeable": true,
+      "stacked_on_pr": 5
+    },
+    "limits": [
+      "final independent review is outstanding because reviewer agent stopped due workspace credits",
+      "hosted Actions startup_failure is not a source-test failure",
+      "2 default ignored / 3 all-feature ignored require network, native audio or hardware",
+      "RR-113 does not implement explicit eligibility flags or the issue requested 1.5-second retry",
+      "no physical audio, Pi, receiver, rights, release or production acceptance"
+    ],
+    "factory_002_submission": {
+      "status": "submitted",
+      "issue": "https://github.com/pskeffington/agent_skills/issues/14",
+      "comment_id": 6688837753,
+      "sanitization": "Summary and aggregate validation only; no private source, URLs, credentials or operator data."
+    }
+  },
+  "latest_pr_ci_snapshot": {
+    "head": "088fb7cc2d5de7793610c4ab38865067edf2bbb5",
+    "workflow_run": {
+      "id": 42246134663,
+      "number": 405,
+      "conclusion": "startup_failure"
+    },
+    "combined_statuses": [],
+    "diagnostics": {
+      "checks": 0,
+      "jobs": 0,
+      "annotations": 0,
+      "logs": 0
+    },
+    "state": "startup_failure before jobs"
   }
 }

@@ -6,6 +6,7 @@ use rust_radio::validation_types::{StationValidation, ValidationStage, Validatio
 use rust_radio::{IpBufferingPreset, NativeRadioEngine};
 use std::collections::VecDeque;
 use std::io::{self, BufRead};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -47,6 +48,7 @@ fn usage() {
 
 const VALIDATION_WORKERS: usize = 4;
 const VALIDATION_RECOVERY_DELAY: Duration = Duration::from_secs(1);
+static NEXT_SWEEP_ID: AtomicU64 = AtomicU64::new(0);
 const INTERACTIVE_COMMAND_MAX_BYTES: usize = 4096;
 const INTERACTIVE_COMMAND_QUEUE: usize = 8;
 type CatalogValidationResult = Result<StationValidation, String>;
@@ -123,10 +125,16 @@ fn collect_catalog_validations_with_delay(
 }
 
 fn batch_validation_json(results: CatalogValidationResults) -> Result<String, String> {
-    let checked_at = SystemTime::now()
+    let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|_| "System clock predates Unix epoch".to_owned())?
-        .as_secs();
+        .map_err(|_| "System clock predates Unix epoch".to_owned())?;
+    let checked_at = now.as_secs();
+    let sweep_id = format!(
+        "{:032x}-{:08x}-{:016x}",
+        now.as_nanos(),
+        process::id(),
+        NEXT_SWEEP_ID.fetch_add(1, Ordering::Relaxed)
+    );
     let stations: Vec<_> = results.into_iter().map(|record| match record.result {
         Ok(report) => serde_json::json!({
             "station_id": record.station_id,
@@ -146,7 +154,13 @@ fn batch_validation_json(results: CatalogValidationResults) -> Result<String, St
     }).collect();
     serde_json::to_string_pretty(&serde_json::json!({
         "schema_version": 1,
+        "sweep_id": sweep_id,
         "checked_at_unix": checked_at,
+        "outage_guard": {
+            "state": "unconfirmed",
+            "reason": "persistent_history_required",
+            "required_failed_sweeps": 3,
+        },
         "results": stations,
     }))
     .map_err(|error| format!("Unable to encode catalog validation report: {error}"))
@@ -804,13 +818,18 @@ fn run(args: &[String]) -> Result<(), String> {
         }
         Some("validate-all") if valid_validate_all_args(args) => {
             let results = collect_catalog_validations(validate_station)?;
-            let report = batch_validation_json(results)?;
-            if args.len() == 4 {
-                let value: serde_json::Value = serde_json::from_str(&report)
+            let mut report: serde_json::Value =
+                serde_json::from_str(&batch_validation_json(results)?)
                     .map_err(|error| format!("Unable to parse validation report: {error}"))?;
-                feed_history::update_file(std::path::Path::new(&args[3]), &value)?;
+            if args.len() == 4 {
+                let history = feed_history::update_file(std::path::Path::new(&args[3]), &report)?;
+                report["outage_guard"] = history["outage_guard"].clone();
             }
-            println!("{report}");
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report)
+                    .map_err(|error| format!("Unable to encode validation report: {error}"))?
+            );
             Ok(())
         }
         Some("listen" | "stream-listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
@@ -1168,6 +1187,9 @@ mod tests {
         let json: serde_json::Value =
             serde_json::from_str(&batch_validation_json(results).unwrap()).unwrap();
         assert_eq!(json["schema_version"].as_u64(), Some(1));
+        assert!(!json["sweep_id"].as_str().unwrap().is_empty());
+        assert_eq!(json["outage_guard"]["state"], "unconfirmed");
+        assert_eq!(json["outage_guard"]["required_failed_sweeps"], 3);
         let stations = json["results"].as_array().unwrap();
         assert_eq!(stations.len(), curated_stations().len());
         assert_eq!(stations[0]["station_id"].as_str(), Some(expected[0]));
