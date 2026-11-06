@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-11-06T08:26:00Z",
+  "updated_at_utc": "2026-11-06T08:33:10Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "324c32c733e986ee2936d82302fd76f371dd8855",
+  "implementation_commit": "f741b91fbd777965ec9ce781232efdbd4fe6ddf7",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -364,14 +364,14 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_head": "324c32c733e986ee2936d82302fd76f371dd8855",
-    "latest_pr_run": null,
-    "latest_pr_run_number": null,
-    "latest_pr_conclusion": "no pull-request-triggered workflow runs observed for exact head; combined statuses empty",
+    "latest_pr_head": "f741b91fbd777965ec9ce781232efdbd4fe6ddf7",
+    "latest_pr_run": 42188529356,
+    "latest_pr_run_number": 395,
+    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no combined statuses or log",
     "latest_pr_jobs": 0,
     "latest_pr_status_checks": 0,
-    "retry_request": "Not applicable; no run exists for this exact head",
-    "details": "PR #5 remained open and mergeable at exact head 324c32c733e986ee2936d82302fd76f371dd8855. GitHub connector returned workflow_runs=[] and combined statuses=[] after push."
+    "retry_request": "Not run; this is a new exact-head startup failure",
+    "details": "PR #5 run 395 (42188529356) on exact source head f741b91fbd777965ec9ce781232efdbd4fe6ddf7 completed startup_failure before jobs were created. Jobs and combined status endpoints were empty; no actionable logs were available."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -381,13 +381,12 @@
     "National continuous NPR feed inclusion requires a named endpoint and applicable rights evidence; WRVO 1 supplies NPR member-station news programming",
     "GitHub Actions runner startup reliability; the latest historical run failed before job creation",
     "Native Windows MSVC workflow execution; local MinGW cross-check passed but GitHub Actions runner startup remains broken",
-    "Exact-head GitHub Actions startup failure before job creation; no actionable logs and retry rejected",
     "CoreAudio output initialization failed before callback consumption; physical audible output remains unverified",
     "Dedicated audio-engineering role/skill unavailable in the verified central registry snapshots (BLOCKED-AGENT)",
-    "FACTORY-002 sanitized failure/repair submission pending"
+    "Exact source head f741b91fbd777965ec9ce781232efdbd4fe6ddf7 Actions run 395 startup_failure before jobs; no actionable logs"
   ],
-  "next_priority": "Push the RR-101 implementation/provenance checkpoint and recheck exact-head CI. Keep the CoreAudio audible/output recovery, Pi, SDR hardware, and publisher-rights gates open; do not merge while required exact-head checks are missing.",
-  "current_pr_state": "PR #5 is open and mergeable at exact head 324c32c733e986ee2936d82302fd76f371dd8855. No workflow runs or combined statuses are visible for this exact head.",
+  "next_priority": "RR-108 exact-head CI reconciliation; continue physical Mac output loss/recovery, Raspberry Pi runtime, receiver hardware, Windows MSVC, and publisher-rights gates. RR-110 public ICY reader hardening is implemented and locally verified.",
+  "current_pr_state": "PR #5 remains open and mergeable at source head f741b91fbd777965ec9ce781232efdbd4fe6ddf7. Actions run 395 (42188529356) ended startup_failure before jobs; jobs, combined statuses, and logs are empty.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1219,7 +1218,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-11-06T08:26:00Z",
+  "current_pr_state_checked_at_utc": "2026-11-06T08:33:10Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -7490,5 +7489,76 @@
       "combined_statuses": [],
       "checked_at_utc": "2026-11-06T08:26:00Z"
     }
+  },
+  "rr110_icy_reader_boundary_2026_11_06": {
+    "task_id": "RR-110",
+    "status": "DONE",
+    "baseline_commit": "6d8152a1be9b7057b426c3abd941abf40556ca80",
+    "source_commit": "f741b91fbd777965ec9ce781232efdbd4fe6ddf7",
+    "changed_files": [
+      "crates/rust-radio-core/src/stream.rs",
+      "docs/CODEX_TASK_QUEUE.md",
+      "docs/PORTING_PLAN.md"
+    ],
+    "registry": {
+      "repository": "pskeffington/agent_skills",
+      "pinned_commit": "42cf3196122feffa8658239fe7947c033bd39913",
+      "remote_main_checked_sha": "ea4a1c678d5a5ba0ef83e8df422b0a53a7e46aba",
+      "audio_specialist": "BLOCKED-AGENT: no dedicated audio-engineering role/skill in the checked registry snapshots"
+    },
+    "invocations": [
+      {
+        "agent": "/root/rr110_architect",
+        "role": "architect",
+        "skill": "architecture-design",
+        "skill_blob": "12c91c8040d13f618a209de24cbbf6e4f89830d1",
+        "result": "confirmed public-constructor invalid interval edge and minimal compatible behavior"
+      },
+      {
+        "agent": "/root/rr110_implementer",
+        "role": "implementer",
+        "skill": "code-implementation",
+        "skill_blob": "7c46f620c3940c7b8bdf3ffdb4f8831817d08043",
+        "result": "implemented validation and regressions in stream.rs only"
+      },
+      {
+        "agent": "/root/rr110_verifier",
+        "role": "verifier",
+        "skill": "test-verification",
+        "skill_blob": "c15b91ca42a279ccf92d55c1e41db11655ee0b4a",
+        "result": "focused stream tests 23 passed; diff check passed"
+      },
+      {
+        "agent": "/root/rr110_review",
+        "role": "independent-code-reviewer",
+        "skill": "independent-code-review",
+        "skill_blob": "e44217c9f0c2492087f8b16da94f3ca80eae4555",
+        "result": "PASS, no actionable findings"
+      }
+    ],
+    "verification": {
+      "fmt": "CARGO_NET_OFFLINE=true cargo fmt --all -- --check: PASS",
+      "focused_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo test -p rust-radio-core --locked stream::tests: PASS, 23 passed",
+      "workspace_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo test --workspace --locked --quiet: PASS, 217 passed, 0 failed, 2 ignored",
+      "strict_clippy": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo clippy --workspace --all-targets --locked -- -D warnings: PASS",
+      "all_features_tests": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo test --workspace --all-features --locked --quiet: PASS, 273 passed, 0 failed, 3 ignored",
+      "all_features_clippy": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo clippy --workspace --all-features --all-targets --locked -- -D warnings: PASS",
+      "all_features_check": "CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-rr101-target cargo check --workspace --all-features --locked: PASS",
+      "diff_check": "git -c core.filemode=false diff --check: PASS"
+    },
+    "ci": {
+      "head": "f741b91fbd777965ec9ce781232efdbd4fe6ddf7",
+      "run_id": 42188529356,
+      "run_number": 395,
+      "conclusion": "startup_failure",
+      "jobs": 0,
+      "combined_statuses": 0,
+      "logs": "unavailable/no actionable log"
+    },
+    "limits": [
+      "native-output ignored integration not run",
+      "public-network timing test ignored",
+      "no audible output, hardware, Pi runtime, or publisher rights acceptance"
+    ]
   }
 }
