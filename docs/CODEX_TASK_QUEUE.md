@@ -53,3 +53,5 @@ provenance are recorded in `PROGRESS.md`.
 
 ## Parallel review
 Validation agent independently checks the proposed reproduction, cancellation, stale-result handling, no autoplay, private endpoint filtering and evidence for claimed success. Integration agent reviews Rust-Boy API compatibility but does not update its dependency pin without explicit host validation.
+
+RR-101 follow-up and required FACTORY-002 report are pushed to PR #5 at `324c32c733e986ee2936d82302fd76f371dd8855`. The sanitized issue report is recorded at [agent_skills #14](https://github.com/pskeffington/agent_skills/issues/14) (comment `6680570338`). RR-101 implementation review and local gates are complete; hosted exact-head CI remains outstanding. RR-108 is still BLOCKED because the published head currently has no visible Actions runs or combined statuses.

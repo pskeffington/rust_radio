@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-11-06T08:23:10Z",
+  "updated_at_utc": "2026-11-06T08:26:00Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "7db8373",
+  "implementation_commit": "324c32c733e986ee2936d82302fd76f371dd8855",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -364,14 +364,14 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_head": "f8adc633f0b5ed1581277f7a4de015470e46c871",
-    "latest_pr_run": 42185406559,
-    "latest_pr_run_number": 392,
-    "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no statuses, annotations, or log",
+    "latest_pr_head": "324c32c733e986ee2936d82302fd76f371dd8855",
+    "latest_pr_run": null,
+    "latest_pr_run_number": null,
+    "latest_pr_conclusion": "no pull-request-triggered workflow runs observed for exact head; combined statuses empty",
     "latest_pr_jobs": 0,
     "latest_pr_status_checks": 0,
-    "retry_request": "HTTP 403: This workflow run cannot be retried",
-    "details": "Exact PR head f8adc633f0b5ed1581277f7a4de015470e46c871 was open and mergeable when checked. Run 392 failed before jobs; diagnostics returned empty checks, statuses, annotations, jobs, and log."
+    "retry_request": "Not applicable; no run exists for this exact head",
+    "details": "PR #5 remained open and mergeable at exact head 324c32c733e986ee2936d82302fd76f371dd8855. GitHub connector returned workflow_runs=[] and combined statuses=[] after push."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -387,7 +387,7 @@
     "FACTORY-002 sanitized failure/repair submission pending"
   ],
   "next_priority": "Push the RR-101 implementation/provenance checkpoint and recheck exact-head CI. Keep the CoreAudio audible/output recovery, Pi, SDR hardware, and publisher-rights gates open; do not merge while required exact-head checks are missing.",
-  "current_pr_state": "PR #5 was open and mergeable at exact head f8adc633f0b5ed1581277f7a4de015470e46c871; Actions run 392 failed before job creation with zero jobs, statuses, annotations, or logs. The local follow-up commit 7db8373 is not yet published at this checkpoint.",
+  "current_pr_state": "PR #5 is open and mergeable at exact head 324c32c733e986ee2936d82302fd76f371dd8855. No workflow runs or combined statuses are visible for this exact head.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -665,7 +665,7 @@
       "first_play_mean": -53.096
     },
     "underruns": "0 samples reported in every trial on both feeds",
-    "interpretation": "B was about 45–59ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
+    "interpretation": "B was about 45\u201359ms faster in these small muted samples on both feeds, while per-trial spread was much wider. Does not show an audible result or prove the 500ms buffer is superior; repeat across time and perform human listening test."
   },
   "buffer_fill_ab_latest": {
     "checked_at_utc": "2026-10-29T01:29:14Z",
@@ -1219,7 +1219,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-11-06T08:23:10Z",
+  "current_pr_state_checked_at_utc": "2026-11-06T08:26:00Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -7384,7 +7384,7 @@
   "rr101_agent_workflow_2026_11_06": {
     "task_id": "RR-101",
     "baseline_commit": "f8adc633f0b5ed1581277f7a4de015470e46c871",
-    "source_commit": "7db8373",
+    "source_commit": "7db83732ad9a5714871093dfd86d3c92ffe61813",
     "main_base_sha": "4b377519b585f0ff155e7ab9146eaa3bb822e777",
     "changed_files": [
       "crates/rust-radio-cli/src/main.rs",
@@ -7475,7 +7475,20 @@
       "log_available": false,
       "retry_result": "403: This workflow run cannot be retried"
     },
-    "factory_002_submission": "pending",
-    "release_merge": "not performed"
+    "factory_002_submission": {
+      "status": "submitted",
+      "issue": "https://github.com/pskeffington/agent_skills/issues/14",
+      "comment_id": 6680570338,
+      "sanitization": "No secrets, raw URLs, private source, or operator data; includes output-init reproduction, scoped repair, verification counts, and CI limit."
+    },
+    "release_merge": "not performed",
+    "documentation_commit": "324c32c733e986ee2936d82302fd76f371dd8855",
+    "published_branch_head": "324c32c733e986ee2936d82302fd76f371dd8855",
+    "ci_at_published_head": {
+      "head": "324c32c733e986ee2936d82302fd76f371dd8855",
+      "workflow_runs": [],
+      "combined_statuses": [],
+      "checked_at_utc": "2026-11-06T08:26:00Z"
+    }
   }
 }

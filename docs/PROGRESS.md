@@ -2991,3 +2991,9 @@ Implementation commit: `bb74393`.
 - Raw records are in `/private/tmp/rust-radio-single-700ms-stall-200-350-ab-2026-10-30.json`; sanitized data is in `docs/AGENT_PROGRESS.json` under `live_single_700ms_stall_lowlatency_balanced_ab_2026_10_30`.
 - PR #5 remains open and mergeable at source head `48798a3`. Actions run 377 (`40981389354`) failed before job creation (`startup_failure`, zero jobs); native Windows MSVC remains unverified.
 - Next: restore actionable Windows MSVC CI and continue physical device/Pi/receiver acceptance. Keep 500 ms resilient as the engine default; 350 ms remains an opt-in middle profile and 200 ms an opt-in latency profile pending broader field evidence.
+
+## Git synchronization and FACTORY-002 submission — 2026-11-06
+
+- Pushed the RR-101 source commit `7db8373e475d24ed7d130a59eb749cc0e01ccb50` and documentation checkpoint `324c32c733e986ee2936d82302fd76f371dd8855` to the existing PR #5 branch `codex/catalog-publisher-permissions`; PR #5 remains open and mergeable.
+- Submitted the required sanitized reproduction and repair note to [agent_skills issue #14](https://github.com/pskeffington/agent_skills/issues/14), comment `6680570338`. It records the CoreAudio output-init failure boundary, redacted diagnostics repair and test counts without raw URLs, device identifiers or private source.
+- Rechecked exact published head `324c32c733e986ee2936d82302fd76f371dd8855`: no pull-request-triggered workflow runs and no combined statuses are currently visible. Keep RR-108 blocked pending hosted check evidence; do not treat absent checks as a pass.
