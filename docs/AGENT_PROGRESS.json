@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-11-06T15:45:00Z",
+  "updated_at_utc": "2026-11-06T15:47:00Z",
   "status": "active",
   "branch": "codex/rr113-independent-outage",
   "implementation_commit": "cf0aa46dfc421a8e406814480cae0885c0677b34",
@@ -373,13 +373,13 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "head": "cf0aa46dfc421a8e406814480cae0885c0677b34",
-    "run_id": 42245428555,
-    "run_number": 402,
+    "head": "fe3144ef3bbb3a5ce101be677293bd0a57423cc2",
+    "run_id": 42245997050,
+    "run_number": 404,
     "conclusion": "startup_failure",
     "jobs": 0,
     "combined_statuses": 0,
-    "diagnostics": "no jobs, checks, statuses, annotations or actionable logs"
+    "diagnostics": "no checks, statuses, annotations, jobs or logs"
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -394,7 +394,7 @@
     "Exact source head 709cec92bfc90bb5cc0d73ae6adf4d38d3996bab Actions run 397 startup_failure before jobs; no actionable logs"
   ],
   "next_priority": "Complete final independent review for RR-113 after workspace credits are available; continue RR-108 hosted CI reconciliation; then implement explicit eligibility reporting and 1.5-second retry policy; physical hardware and publisher-rights gates remain separate.",
-  "current_pr_state": "PR #9 is a one-commit focused stacked draft on PR #5 branch; after docs head 2ea46234740c8f88be3b6a61057d34c5734d53b7 there were no PR-triggered workflow runs, combined statuses, checks or jobs. Source-head run 402 startup_failure remains separate evidence.",
+  "current_pr_state": "PR #9 is an open, mergeable, one-commit stacked draft on PR #5 branch. Exact head fe3144ef3bbb3a5ce101be677293bd0a57423cc2 Actions run 404 failed with startup_failure before jobs; no checks/statuses/logs.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -7807,9 +7807,9 @@
       "flaky_observation": "First full run failed timing-sensitive measured_prebuffer_fill_tracks_paced_decoded_packets (37.63 ms vs 36.41 ms); targeted run and later full suite passed."
     },
     "ci": {
-      "head": "cf0aa46dfc421a8e406814480cae0885c0677b34",
-      "run_id": 42245428555,
-      "run_number": 402,
+      "head": "fe3144ef3bbb3a5ce101be677293bd0a57423cc2",
+      "run_id": 42245997050,
+      "run_number": 404,
       "conclusion": "startup_failure",
       "jobs": 0,
       "combined_statuses": 0,
@@ -7841,8 +7841,12 @@
     }
   },
   "latest_pr_ci_snapshot": {
-    "head": "2ea46234740c8f88be3b6a61057d34c5734d53b7",
-    "workflow_runs": [],
+    "head": "fe3144ef3bbb3a5ce101be677293bd0a57423cc2",
+    "workflow_run": {
+      "id": 42245997050,
+      "number": 404,
+      "conclusion": "startup_failure"
+    },
     "combined_statuses": [],
     "diagnostics": {
       "checks": 0,
@@ -7850,6 +7854,6 @@
       "annotations": 0,
       "logs": 0
     },
-    "state": "NOT RUN / NOT VISIBLE"
+    "state": "startup_failure before jobs"
   }
 }
