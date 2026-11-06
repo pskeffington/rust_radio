@@ -6,14 +6,18 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_HISTORY_BYTES: u64 = 64 * 1024;
 const REQUIRED_FAILED_SWEEPS: usize = 3;
 const MAX_PROCESSED_SWEEP_IDS: usize = 64;
 const MAX_SWEEP_ID_BYTES: usize = 80;
+const HISTORY_LOCK_TIMEOUT: Duration = Duration::from_secs(5);
+const HISTORY_LOCK_RETRY_INTERVAL: Duration = Duration::from_millis(10);
 
 pub fn update_file(path: &Path, report: &Value) -> Result<Value, String> {
+    let _lock = HistoryLock::acquire(path)?;
     let previous = read(path)?;
     let history = merge(previous.as_deref(), report)?;
     let serialized = serde_json::to_vec_pretty(&history)
@@ -35,6 +39,197 @@ pub fn update_file(path: &Path, report: &Value) -> Result<Value, String> {
     }
     write_atomic(path, &serialized)?;
     Ok(history)
+}
+
+fn lock_path(path: &Path) -> PathBuf {
+    let mut lock = path.as_os_str().to_owned();
+    lock.push(".lock");
+    PathBuf::from(lock)
+}
+
+struct HistoryLock {
+    file: File,
+    state: LockState,
+}
+
+#[cfg(unix)]
+type LockState = ();
+
+#[cfg(windows)]
+type LockState = WindowsOverlapped;
+
+impl HistoryLock {
+    fn acquire(path: &Path) -> Result<Self, String> {
+        Self::acquire_with_timeout(path, HISTORY_LOCK_TIMEOUT)
+    }
+
+    fn acquire_with_timeout(path: &Path, timeout: Duration) -> Result<Self, String> {
+        if let Some(parent) = path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+        {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("Cannot create feed history directory: {error}"))?;
+        }
+
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).create(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let file = options
+            .open(lock_path(path))
+            .map_err(|error| format!("Cannot open feed history lock: {error}"))?;
+        let deadline = Instant::now() + timeout;
+        let mut first_attempt = true;
+
+        loop {
+            if !first_attempt && Instant::now() >= deadline {
+                return Err("Timed out waiting for feed history update lock".into());
+            }
+            first_attempt = false;
+            match try_lock(&file) {
+                Ok(state) => {
+                    return Ok(Self { file, state });
+                }
+                Err(error) if is_lock_contention(&error) => {
+                    let now = Instant::now();
+                    if now >= deadline {
+                        return Err("Timed out waiting for feed history update lock".into());
+                    }
+                    thread::sleep(HISTORY_LOCK_RETRY_INTERVAL.min(deadline - now));
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(format!("Cannot lock feed history: {error}")),
+            }
+        }
+    }
+}
+
+impl Drop for HistoryLock {
+    fn drop(&mut self) {
+        unlock(&self.file, &mut self.state);
+    }
+}
+
+#[cfg(unix)]
+fn try_lock(file: &File) -> std::io::Result<LockState> {
+    use std::os::fd::AsRawFd;
+
+    const LOCK_EX: i32 = 2;
+    const LOCK_NB: i32 = 4;
+    // SAFETY: `flock` uses the valid file descriptor held by `file` and does
+    // not retain pointers after the call.
+    let result = unsafe { flock(file.as_raw_fd(), LOCK_EX | LOCK_NB) };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+#[cfg(unix)]
+fn unlock(file: &File, _state: &mut LockState) {
+    use std::os::fd::AsRawFd;
+
+    const LOCK_UN: i32 = 8;
+    // SAFETY: `flock` uses the valid file descriptor held by `file`.
+    let _ = unsafe { flock(file.as_raw_fd(), LOCK_UN) };
+}
+
+#[cfg(unix)]
+fn is_lock_contention(error: &std::io::Error) -> bool {
+    error.kind() == std::io::ErrorKind::WouldBlock
+}
+
+#[cfg(unix)]
+extern "C" {
+    fn flock(fd: i32, operation: i32) -> i32;
+}
+
+#[cfg(windows)]
+#[repr(C)]
+struct WindowsOverlapped {
+    internal: usize,
+    internal_high: usize,
+    offset: u32,
+    offset_high: u32,
+    event: *mut std::ffi::c_void,
+}
+
+#[cfg(windows)]
+impl WindowsOverlapped {
+    fn new() -> Self {
+        Self {
+            internal: 0,
+            internal_high: 0,
+            offset: 0,
+            offset_high: 0,
+            event: std::ptr::null_mut(),
+        }
+    }
+}
+
+#[cfg(windows)]
+fn try_lock(file: &File) -> std::io::Result<LockState> {
+    use std::os::windows::io::AsRawHandle;
+
+    const LOCKFILE_EXCLUSIVE_LOCK: u32 = 0x0000_0002;
+    const LOCKFILE_FAIL_IMMEDIATELY: u32 = 0x0000_0001;
+    let mut overlapped = WindowsOverlapped::new();
+    // SAFETY: The file handle is valid for the duration of the call, and the
+    // initialized OVERLAPPED remains alive until the matching unlock.
+    let result = unsafe {
+        LockFileEx(
+            file.as_raw_handle(),
+            LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+            0,
+            1,
+            0,
+            &mut overlapped,
+        )
+    };
+    if result != 0 {
+        Ok(overlapped)
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+#[cfg(windows)]
+fn unlock(file: &File, state: &mut LockState) {
+    use std::os::windows::io::AsRawHandle;
+
+    // SAFETY: This is the same handle, byte range, and OVERLAPPED used to
+    // acquire the lock, all of which remain valid until `HistoryLock` drops.
+    let _ = unsafe { UnlockFileEx(file.as_raw_handle(), 0, 1, 0, state) };
+}
+
+#[cfg(windows)]
+fn is_lock_contention(error: &std::io::Error) -> bool {
+    error.kind() == std::io::ErrorKind::WouldBlock || error.raw_os_error() == Some(33)
+}
+
+#[cfg(windows)]
+#[link(name = "kernel32")]
+extern "system" {
+    fn LockFileEx(
+        file: *mut std::ffi::c_void,
+        flags: u32,
+        reserved: u32,
+        bytes_low: u32,
+        bytes_high: u32,
+        overlapped: *mut WindowsOverlapped,
+    ) -> i32;
+    fn UnlockFileEx(
+        file: *mut std::ffi::c_void,
+        reserved: u32,
+        bytes_low: u32,
+        bytes_high: u32,
+        overlapped: *mut WindowsOverlapped,
+    ) -> i32;
 }
 
 fn backup_path(path: &Path) -> PathBuf {
@@ -191,6 +386,13 @@ fn merge(previous_text: Option<&str>, report: &Value) -> Result<Value, String> {
         return Err("Validation report does not cover the complete catalog".into());
     }
 
+    let mut processed_sweep_ids = previous_guard.processed_sweep_ids.clone();
+    processed_sweep_ids.push(sweep_id.to_owned());
+    if processed_sweep_ids.len() > MAX_PROCESSED_SWEEP_IDS {
+        processed_sweep_ids.remove(0);
+    }
+    let retained_sweeps: BTreeSet<_> = processed_sweep_ids.iter().cloned().collect();
+
     let decoded_count = outcomes
         .values()
         .filter(|status| *status == "decoded")
@@ -264,6 +466,7 @@ fn merge(previous_text: Option<&str>, report: &Value) -> Result<Value, String> {
             FeedHistoryHealth::Failed => "failed",
         };
         let mut failed_sweeps = previous_guard.stations.get(id).cloned().unwrap_or_default();
+        failed_sweeps.retain(|failure| retained_sweeps.contains(&failure.sweep_id));
         let publisher = rust_radio::directory::curated_stations()
             .iter()
             .find(|station| station.id == id)
@@ -337,11 +540,6 @@ fn merge(previous_text: Option<&str>, report: &Value) -> Result<Value, String> {
             )
         })
         .collect();
-    let mut processed_sweep_ids = previous_guard.processed_sweep_ids;
-    processed_sweep_ids.push(sweep_id.to_owned());
-    if processed_sweep_ids.len() > MAX_PROCESSED_SWEEP_IDS {
-        processed_sweep_ids.remove(0);
-    }
     let outage_guard = json!({
         "state": if host_outage {
             "host_outage_watch"
@@ -675,6 +873,112 @@ mod tests {
         ))
     }
 
+    fn remove_test_files(path: &Path) {
+        let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup_path(path));
+        let _ = fs::remove_file(lock_path(path));
+    }
+
+    #[test]
+    fn history_lock_waits_for_the_current_writer_and_releases() {
+        use std::sync::mpsc;
+
+        assert_eq!(HISTORY_LOCK_TIMEOUT, Duration::from_secs(5));
+        let path = temp_path();
+        let held = HistoryLock::acquire(&path).unwrap();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (acquired_tx, acquired_rx) = mpsc::channel();
+        let worker_path = path.clone();
+        let worker = std::thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            let _lock = HistoryLock::acquire(&worker_path).unwrap();
+            acquired_tx.send(()).unwrap();
+        });
+
+        started_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("second writer should start");
+        assert!(acquired_rx.recv_timeout(Duration::from_millis(50)).is_err());
+        drop(held);
+        acquired_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("second writer should acquire after release");
+        worker.join().unwrap();
+        remove_test_files(&path);
+    }
+
+    #[test]
+    fn history_lock_times_out_and_can_be_acquired_after_release() {
+        let path = temp_path();
+        let held = HistoryLock::acquire(&path).unwrap();
+        let timeout = HistoryLock::acquire_with_timeout(&path, Duration::from_millis(25));
+        assert!(matches!(timeout, Err(error) if error.contains("Timed out")));
+        drop(held);
+
+        let acquired = HistoryLock::acquire_with_timeout(&path, Duration::from_secs(1)).unwrap();
+        drop(acquired);
+        remove_test_files(&path);
+    }
+
+    #[test]
+    fn concurrent_success_and_failure_writers_merge_after_the_previous_reset() {
+        use std::sync::mpsc;
+
+        let path = temp_path();
+        update_file(&path, &report(1_700_000_100, "unavailable", false)).unwrap();
+        update_file(&path, &report(1_700_000_101, "unavailable", false)).unwrap();
+        assert_eq!(
+            read(&path).unwrap().unwrap().parse::<Value>().unwrap()["stations"]["skylab"]
+                ["consecutive_failures"],
+            2
+        );
+
+        let held = HistoryLock::acquire(&path).unwrap();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel();
+        let mut workers = Vec::new();
+        for (time, status, decoded) in [
+            (1_700_000_102, "unavailable", false),
+            (1_700_000_103, "decoded", true),
+        ] {
+            let path = path.clone();
+            let started = started_tx.clone();
+            let done = done_tx.clone();
+            workers.push(std::thread::spawn(move || {
+                started.send(()).unwrap();
+                done.send(update_file(&path, &report(time, status, decoded)).map(|_| ()))
+                    .unwrap();
+            }));
+        }
+        drop(started_tx);
+        drop(done_tx);
+        for _ in 0..2 {
+            started_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("both writer threads should start");
+        }
+        assert!(done_rx.recv_timeout(Duration::from_millis(50)).is_err());
+        drop(held);
+        for _ in 0..2 {
+            done_rx
+                .recv_timeout(Duration::from_secs(2))
+                .expect("writer should finish after lock release")
+                .unwrap();
+        }
+        for worker in workers {
+            worker.join().unwrap();
+        }
+
+        let saved: Value = serde_json::from_str(&read(&path).unwrap().unwrap()).unwrap();
+        parse_outage_guard(&saved).unwrap();
+        assert_eq!(saved["stations"]["skylab"]["consecutive_failures"], 0);
+        assert_ne!(
+            saved["outage_guard"]["stations"]["skylab"]["classification"],
+            "confirmed_unavailable"
+        );
+        remove_test_files(&path);
+    }
+
     fn report(time: u64, status: &str, decoded: bool) -> Value {
         let results: Vec<_> = rust_radio::directory::curated_stations()
             .iter()
@@ -753,8 +1057,7 @@ mod tests {
         );
         assert_eq!(saved["stations"]["skylab"]["consecutive_failures"], 1);
         assert_eq!(saved["stations"]["skylab"]["health"], "degraded");
-        let _ = fs::remove_file(path);
-        let _ = fs::remove_file(backup);
+        remove_test_files(&path);
     }
 
     #[test]
@@ -766,8 +1069,7 @@ mod tests {
         assert!(update_file(&path, &report(1_000_000, "decoded", true)).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "not-json");
         assert_eq!(fs::read_to_string(&backup).unwrap(), "last-known-backup");
-        let _ = fs::remove_file(path);
-        let _ = fs::remove_file(backup);
+        remove_test_files(&path);
     }
 
     #[test]
@@ -777,6 +1079,7 @@ mod tests {
         report["results"][0]["stage"] = json!("unknown_stage");
         assert!(update_file(&path, &report).is_err());
         assert!(!path.exists());
+        remove_test_files(&path);
     }
 
     #[test]
@@ -791,7 +1094,7 @@ mod tests {
         assert_eq!(fs::read(&path).unwrap(), primary);
 
         let _ = fs::remove_dir(backup);
-        let _ = fs::remove_file(path);
+        remove_test_files(&path);
     }
 
     #[cfg(unix)]
@@ -805,8 +1108,7 @@ mod tests {
         update_file(&path, &report(1_000_100, "unavailable", false)).unwrap();
         let mode = fs::metadata(&backup).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
-        let _ = fs::remove_file(path);
-        let _ = fs::remove_file(backup);
+        remove_test_files(&path);
     }
 
     #[test]
@@ -821,7 +1123,7 @@ mod tests {
             fs::read(&path).unwrap(),
             serde_json::to_vec(&invalid).unwrap()
         );
-        let _ = fs::remove_file(path);
+        remove_test_files(&path);
     }
 
     #[test]
@@ -958,6 +1260,39 @@ mod tests {
     }
 
     #[test]
+    fn suppressed_sweeps_expire_failure_references_with_the_processed_window() {
+        let mut history = merge(None, &report(1_700_000_100, "decoded", true)).unwrap();
+        for time in [1_700_000_101, 1_700_000_102] {
+            history = merge(
+                Some(&history.to_string()),
+                &report(time, "unavailable", false),
+            )
+            .unwrap();
+        }
+        assert_eq!(history["stations"]["skylab"]["consecutive_failures"], 2);
+
+        for offset in 0..=MAX_PROCESSED_SWEEP_IDS as u64 {
+            let sweep = full_outage_report(1_700_000_103 + offset);
+            history = merge(Some(&history.to_string()), &sweep).unwrap();
+            parse_outage_guard(&history).expect("merged history must stay internally valid");
+        }
+
+        assert_eq!(
+            history["outage_guard"]["processed_sweep_ids"]
+                .as_array()
+                .unwrap()
+                .len(),
+            MAX_PROCESSED_SWEEP_IDS
+        );
+        assert_eq!(
+            history["outage_guard"]["stations"]["skylab"]["failed_sweeps"],
+            json!([])
+        );
+        assert_eq!(history["stations"]["skylab"]["consecutive_failures"], 0);
+        parse_feed_history(&history.to_string()).unwrap();
+    }
+
+    #[test]
     fn shared_publisher_outage_suppresses_member_counters_but_mixed_results_do_not() {
         let shared = merge(
             None,
@@ -1050,7 +1385,6 @@ mod tests {
         let saved: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
         assert_eq!(saved["schema_version"], 2);
         assert_eq!(fs::read_to_string(&backup).unwrap(), original);
-        let _ = fs::remove_file(path);
-        let _ = fs::remove_file(backup);
+        remove_test_files(&path);
     }
 }
