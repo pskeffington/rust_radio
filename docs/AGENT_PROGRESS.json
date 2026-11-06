@@ -1,8 +1,8 @@
 {
-  "updated_at_utc": "2026-11-06T08:42:14Z",
+  "updated_at_utc": "2026-11-06T08:43:28Z",
   "status": "active",
   "branch": "codex/catalog-publisher-permissions",
-  "implementation_commit": "709cec92bfc90bb5cc0d73ae6adf4d38d3996bab",
+  "implementation_commit": "badb8c7ddb0fb601acf908801027d72e4082c3c1",
   "pull_request": "https://github.com/pskeffington/rust_radio/pull/5",
   "completed_this_run": [
     "Added stable IpBufferingProfile API for bounded 200ms and 500ms IP buffering variants; existing engine entry points retain the 500ms default and non-IP receivers retain 200ms.",
@@ -364,13 +364,13 @@
     "last_repeated_at_utc": "2026-10-29T00:11:29Z"
   },
   "ci": {
-    "latest_pr_head": "709cec92bfc90bb5cc0d73ae6adf4d38d3996bab",
-    "latest_pr_run": 42189558879,
-    "latest_pr_run_number": 397,
+    "latest_pr_head": "badb8c7ddb0fb601acf908801027d72e4082c3c1",
+    "latest_pr_run": 42189673825,
+    "latest_pr_run_number": 398,
     "latest_pr_conclusion": "startup_failure before job creation; zero jobs; no combined statuses or log",
     "latest_pr_jobs": 0,
     "latest_pr_status_checks": 0,
-    "details": "PR #5 Actions run 397 on exact source head 709cec92bfc90bb5cc0d73ae6adf4d38d3996bab failed before jobs were created. Jobs, statuses, annotations and logs were empty."
+    "details": "PR #5 Actions run 398 on exact head badb8c7ddb0fb601acf908801027d72e4082c3c1 failed before jobs were created. Jobs, statuses, annotations and logs were empty."
   },
   "remaining_gates": [
     "Physical Bluetooth and USB output loss/recovery acceptance",
@@ -385,7 +385,7 @@
     "Exact source head 709cec92bfc90bb5cc0d73ae6adf4d38d3996bab Actions run 397 startup_failure before jobs; no actionable logs"
   ],
   "next_priority": "RR-108 hosted CI reconciliation and remaining hardware/rights gates. RR-110 ICY reader input validation and RR-111 recoverable validation-history checkpoint are implemented and locally verified.",
-  "current_pr_state": "At source head 709cec92bfc90bb5cc0d73ae6adf4d38d3996bab, PR #5 remains open and unmerged. Actions run 397 (42189558879) ended startup_failure before jobs; statuses, jobs and logs are empty.",
+  "current_pr_state": "PR #5 was open and mergeable at exact head badb8c7ddb0fb601acf908801027d72e4082c3c1. Actions run 398 (42189673825) ended startup_failure before jobs; statuses, jobs and logs are empty.",
   "live_catalog_revalidation": "2026-10-29T02:58:42Z and 2026-10-29T02:59:42Z: two bounded validate-all runs decoded 25/25 feeds in 25 attempts, without retries. Point-in-time codec evidence only.",
   "six_required_gates_latest": "Passed after compatibility-preserving source commit 2fa930aefe7b1aef46d1dda91e94a09a4c647033: cargo fmt --all -- --check; cargo test --workspace --locked; strict default Clippy; cargo test --workspace --all-features --locked; strict all-feature Clippy; cargo check --workspace --all-features --locked. Also passed Windows GNU workspace check/strict Clippy and AArch64 macOS headless IP check. Loopback integration tests ran with local socket permission.",
   "muted_native_integration": "passed 2026-10-28: ignored native_ip_playback_switching_failure_retry_and_responsiveness on host CPAL at 0% volume with local fixture streams; exercises callback evidence/lifecycle but not audible or device-loss acceptance.",
@@ -1217,7 +1217,7 @@
     },
     "interpretation": "The 500ms profile had a lower missing-sample share in this one eight-run deterministic multi-gap block, with roughly 252ms higher mean buffer-ready latency. Both variants still had substantial callback silence and run variation; this is synthetic single-host muted evidence, not listener preference, a broadcaster network model, or hardware acceptance. Keep the default provisional and obtain human audible comparison plus measured live-stream jitter."
   },
-  "current_pr_state_checked_at_utc": "2026-11-06T08:42:14Z",
+  "current_pr_state_checked_at_utc": "2026-11-06T08:43:28Z",
   "live_cross_feed_native_ab_followup": {
     "checked_at_utc": "2026-10-29T02:29:45Z",
     "environment": "macOS 26.5.2 ARM64, rust-radio-cli/CPAL system output, volume 0%, 30s duration per trial. Skylab decoded MP3 48kHz stereo; WCRB decoded AAC 48kHz stereo immediately before trials.",
@@ -7632,6 +7632,12 @@
       "no parent-directory fsync: crash/power-loss durability not claimed",
       "native output and live public network tests ignored",
       "no physical audio or hardware acceptance"
-    ]
+    ],
+    "factory_002_submission": {
+      "status": "submitted",
+      "issue": "https://github.com/pskeffington/agent_skills/issues/14",
+      "comment_id": 6680870745,
+      "sanitization": "No private source, raw URLs, credentials or operator data; contains behavioral summary, tests and explicit durability limits."
+    }
   }
 }
