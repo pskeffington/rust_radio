@@ -237,17 +237,57 @@ fn valid_validate_args(args: &[String]) -> bool {
 
 fn catalog_hostname(station_id: &str) -> Option<&'static str> {
     let station = station_by_id(station_id)?;
-    let authority = station
-        .playlist_url
+    catalog_hostname_from_url(station.playlist_url)
+}
+
+fn catalog_hostname_from_url(url: &str) -> Option<&str> {
+    let authority = url
         .strip_prefix("https://")?
-        .split('/')
+        .split(['/', '?', '#'])
         .next()?;
-    authority.split(':').next()
+    if authority.is_empty() || authority.contains('@') {
+        return None;
+    }
+
+    if let Some(bracketed_host) = authority.strip_prefix('[') {
+        let close = bracketed_host.find(']')?;
+        bracketed_host[..close].parse::<std::net::Ipv6Addr>().ok()?;
+        let suffix = &bracketed_host[close + 1..];
+        if !suffix.is_empty() {
+            let port = suffix.strip_prefix(':')?;
+            if port.parse::<u16>().is_err() {
+                return None;
+            }
+        }
+        return Some(&authority[..close + 2]);
+    }
+
+    let mut parts = authority.split(':');
+    let host = parts.next()?;
+    if host.is_empty()
+        || host.len() > 253
+        || !host
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-'))
+        || host.split('.').any(|label| {
+            label.is_empty() || label.len() > 63 || label.starts_with('-') || label.ends_with('-')
+        })
+    {
+        return None;
+    }
+    if let Some(port) = parts.next() {
+        if port.parse::<u16>().is_err() || parts.next().is_some() {
+            return None;
+        }
+    }
+    Some(host)
 }
 
 fn validation_failure_kind(report: &StationValidation) -> &'static str {
     match (report.status, report.stage) {
-        (ValidationStatus::Unavailable, ValidationStage::NotChecked) => "connection_failed",
+        (ValidationStatus::Unavailable, ValidationStage::NotChecked) => {
+            "pre_response_transport_failure"
+        }
         (ValidationStatus::Unavailable, _) => "endpoint_unavailable",
         (ValidationStatus::InvalidStream, ValidationStage::EndpointReached) => {
             "endpoint_reached_failure"
@@ -858,7 +898,7 @@ mod tests {
         );
         assert_eq!(json["path"], "<redacted>");
         assert_eq!(json["diagnostics_schema_version"], 1);
-        assert_eq!(json["failure_kind"], "connection_failed");
+        assert_eq!(json["failure_kind"], "pre_response_transport_failure");
         assert_eq!(json["content_type"], "audio/mpeg");
         for secret in [
             "redirect.example",
@@ -869,6 +909,54 @@ mod tests {
         ] {
             assert!(!output.contains(secret), "diagnostic leaked {secret}");
         }
+    }
+
+    #[test]
+    fn catalog_hostname_parser_handles_dns_ports_and_bracketed_ipv6() {
+        assert_eq!(
+            catalog_hostname_from_url("https://radio/live"),
+            Some("radio")
+        );
+        assert_eq!(
+            catalog_hostname_from_url("https://radio.example/live"),
+            Some("radio.example")
+        );
+        assert_eq!(
+            catalog_hostname_from_url("https://radio.example:8443/live"),
+            Some("radio.example")
+        );
+        assert_eq!(
+            catalog_hostname_from_url("https://[2001:db8::1]:8443/live"),
+            Some("[2001:db8::1]")
+        );
+    }
+
+    #[test]
+    fn catalog_hostname_parser_rejects_malformed_dns_labels() {
+        let long_label = format!("https://{}/live", "a".repeat(64));
+        let long_host = format!(
+            "https://{}/live",
+            (0..5).map(|_| "a".repeat(63)).collect::<Vec<_>>().join(".")
+        );
+        for url in [
+            "https://radio..example/live".to_owned(),
+            "https://.radio/live".to_owned(),
+            "https://radio./live".to_owned(),
+            "https://-radio.example/live".to_owned(),
+            "https://radio-.example/live".to_owned(),
+            long_label,
+            long_host,
+        ] {
+            assert_eq!(catalog_hostname_from_url(&url), None, "accepted {url}");
+        }
+    }
+
+    #[test]
+    fn catalog_hostname_parser_rejects_userinfo() {
+        assert_eq!(
+            catalog_hostname_from_url("https://listener:secret@radio.example/live"),
+            None
+        );
     }
 
     #[test]
