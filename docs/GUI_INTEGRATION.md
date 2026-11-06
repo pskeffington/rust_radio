@@ -118,6 +118,10 @@ open. This inspection does not establish physical touch or Pi acceptance.
 
 ## Next operator Mac acceptance
 
+Use the repeatable [Mac operator checklist](GUI_OPERATOR_CHECKLIST.md) to
+record interactive results separately from the automated layout and state
+regressions below.
+
 ```sh
 cd ~/GitHub/rust_radio
 git pull --ff-only origin main
