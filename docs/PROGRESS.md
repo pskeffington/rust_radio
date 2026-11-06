@@ -3093,3 +3093,8 @@ Implementation commit: `bb74393`.
 - Requeried workflow jobs for runs 412 (`42254173554`), 413 (`42254768780`), 414 (`42255064526`) and 415 (`42255214442`): all return an empty job list. PR #9–#11 review-submission queries also return no GitHub review nodes; the documented local independent reviews remain distinct evidence.
 - Repository workflow inspection found no actionable repository-step failure because no job was created. The next path requires GitHub Actions startup/permissions diagnostics unavailable in the returned run data; do not infer a source-code failure or report hosted CI as passing.
 - Corrected the RR-115 queue row so it remains inside the Markdown table, updated the execution order to place exact-head CI diagnosis and the stacked review sequence accurately, and refreshed the porting checkpoint with RR-116 and exact startup-failure state. `git diff --check` passed before commit. Hardware/audio, Pi, SDR, publisher-rights, release and production gates remain open.
+
+## RR-117 and stacked PR exact-head CI refresh — 2026-11-06
+
+- Current PR #9 head `8b3c89d38eb107219f21411d82cc8e3ee54fe776` produced Actions run 418 (`42258352224`); PR #10 head `4c5873c29d7aeaf1980b7eb467c9929b58f72626` produced run 419 (`42258510865`); PR #11 head `9bdb4ce6429a25079458335c021d4a9ab65fc899` produced run 420 (`42259021823`). Each ended `startup_failure` before jobs. Combined statuses are empty. This does not indicate a source-test failure or pass.
+- PR #9–#11 are open and draft; GitHub reports each mergeable. PR #10 now bases on RR-117-updated PR #9; PR #11 bases on the updated PR #10. No merge or release action was taken. Physical audio/device, Pi/receiver, publisher-rights, release and production gates remain separate and unverified.
