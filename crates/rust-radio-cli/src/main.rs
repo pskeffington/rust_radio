@@ -1,11 +1,12 @@
 //! Operator-triggered standalone test harness. No automatic network or audio I/O.
 use rust_radio::directory::{curated_stations, station_by_id};
+use rust_radio::feed_history::{parse_feed_history, FeedHistoryHealth};
 use rust_radio::output::available_outputs;
 use rust_radio::validation::validate_station;
 use rust_radio::validation_types::{StationValidation, ValidationStage, ValidationStatus};
 use rust_radio::{IpBufferingPreset, NativeRadioEngine};
 use std::collections::VecDeque;
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -30,7 +31,7 @@ struct ListenArgs<'a> {
 }
 
 fn usage() {
-    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION [--json|--diagnostics-json] | validate-all --json [--history PATH] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
+    eprintln!("Usage: rust-radio-cli stations | outputs | validate STATION [--json|--diagnostics-json] | validate-all --json [--history PATH] [--eligible] [--strict-eligible] [--once] | listen STATION [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]");
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100] [--buffering low-latency|balanced|resilient]"
     );
@@ -58,6 +59,14 @@ struct CatalogValidationRecord {
     result: CatalogValidationResult,
 }
 type CatalogValidationResults = Vec<CatalogValidationRecord>;
+
+#[derive(Debug, Default, PartialEq, Eq)]
+struct ValidateAllOptions {
+    history_path: Option<String>,
+    eligible: bool,
+    strict_eligible: bool,
+    once: bool,
+}
 
 fn collect_catalog_validations(
     check: fn(&str) -> Result<StationValidation, String>,
@@ -240,8 +249,144 @@ fn validation_stage_name(stage: ValidationStage) -> &'static str {
 }
 
 fn valid_validate_all_args(args: &[String]) -> bool {
-    (args.len() == 2 && args[1] == "--json")
-        || (args.len() == 4 && args[1] == "--json" && args[2] == "--history" && !args[3].is_empty())
+    parse_validate_all_args(args).is_some()
+}
+
+fn parse_validate_all_args(args: &[String]) -> Option<ValidateAllOptions> {
+    if args.first().map(String::as_str) != Some("validate-all")
+        || args.get(1).map(String::as_str) != Some("--json")
+    {
+        return None;
+    }
+    let mut options = ValidateAllOptions::default();
+    let mut index = 2;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--history" if options.history_path.is_none() => {
+                let path = args.get(index + 1)?;
+                if path.is_empty() || path.starts_with("--") {
+                    return None;
+                }
+                options.history_path = Some(path.clone());
+                index += 2;
+            }
+            "--eligible" if !options.eligible => {
+                options.eligible = true;
+                index += 1;
+            }
+            "--strict-eligible" if !options.strict_eligible => {
+                options.strict_eligible = true;
+                index += 1;
+            }
+            "--once" if !options.once => {
+                options.once = true;
+                index += 1;
+            }
+            _ => return None,
+        }
+    }
+    Some(options)
+}
+
+fn eligibility_json(
+    history: Option<&serde_json::Value>,
+    options: &ValidateAllOptions,
+    now: SystemTime,
+) -> Result<serde_json::Value, String> {
+    let Some(history) = history else {
+        let mut output = serde_json::json!({
+            "status": "unverified",
+            "reason": "persistent_history_required",
+        });
+        if options.eligible {
+            output["eligible_station_ids"] = serde_json::Value::Null;
+        }
+        if options.strict_eligible {
+            output["strict_eligible_station_ids"] = serde_json::Value::Null;
+        }
+        return Ok(output);
+    };
+
+    let history_text = serde_json::to_string(history)
+        .map_err(|error| format!("Unable to encode feed history for eligibility: {error}"))?;
+    let parsed = parse_feed_history(&history_text)?;
+    let mut eligible = Vec::new();
+    let mut strict_eligible = Vec::new();
+    for station in curated_stations() {
+        let Some(record) = parsed.stations.get(station.id) else {
+            continue;
+        };
+        match record.history_health_at(now) {
+            FeedHistoryHealth::Fresh => {
+                eligible.push(station.id);
+                strict_eligible.push(station.id);
+            }
+            FeedHistoryHealth::Degraded => eligible.push(station.id),
+            FeedHistoryHealth::Stale
+            | FeedHistoryHealth::Unverified
+            | FeedHistoryHealth::Failed => {}
+        }
+    }
+    let mut output = serde_json::json!({"status": "verified"});
+    if options.eligible {
+        output["eligible_station_ids"] = serde_json::json!(eligible);
+    }
+    if options.strict_eligible {
+        output["strict_eligible_station_ids"] = serde_json::json!(strict_eligible);
+    }
+    Ok(output)
+}
+
+fn broad_outage_detected(report: &serde_json::Value) -> bool {
+    let Some(results) = report["results"].as_array() else {
+        return false;
+    };
+    if results.len() != curated_stations().len() {
+        return false;
+    }
+    if results.iter().all(|result| result["decoded"] != true) {
+        return true;
+    }
+    let statuses: std::collections::BTreeMap<_, _> = results
+        .iter()
+        .filter_map(|result| Some((result["station_id"].as_str()?, result["status"].as_str()?)))
+        .collect();
+    curated_stations().iter().any(|station| {
+        let members: Vec<_> = curated_stations()
+            .iter()
+            .filter(|candidate| candidate.broadcaster == station.broadcaster)
+            .collect();
+        members.len() > 1
+            && members.iter().all(|member| {
+                statuses.get(member.id).is_some_and(|status| {
+                    matches!(*status, "unavailable" | "invalid_stream" | "unsupported")
+                })
+            })
+    })
+}
+
+fn write_validate_all_report(report: &serde_json::Value, once: bool) -> Result<bool, String> {
+    let mut stdout = io::stdout().lock();
+    write_validate_all_report_to(report, &mut stdout)?;
+    Ok(validate_all_should_fail(report, once))
+}
+
+fn validate_all_should_fail(report: &serde_json::Value, once: bool) -> bool {
+    once && broad_outage_detected(report)
+}
+
+fn write_validate_all_report_to(
+    report: &serde_json::Value,
+    output: &mut impl Write,
+) -> Result<(), String> {
+    let serialized = serde_json::to_vec_pretty(report)
+        .map_err(|error| format!("Unable to encode validation report: {error}"))?;
+    output
+        .write_all(&serialized)
+        .and_then(|()| output.write_all(b"\n"))
+        .and_then(|()| output.flush())
+        .map_err(|error| format!("Unable to write validation report: {error}"))?;
+    Ok(())
 }
 
 fn valid_validate_args(args: &[String]) -> bool {
@@ -817,20 +962,27 @@ fn run(args: &[String]) -> Result<(), String> {
             }
         }
         Some("validate-all") if valid_validate_all_args(args) => {
+            let options = parse_validate_all_args(args).expect("validated arguments must parse");
             let results = collect_catalog_validations(validate_station)?;
             let mut report: serde_json::Value =
                 serde_json::from_str(&batch_validation_json(results)?)
                     .map_err(|error| format!("Unable to parse validation report: {error}"))?;
-            if args.len() == 4 {
-                let history = feed_history::update_file(std::path::Path::new(&args[3]), &report)?;
+            let mut history_value = None;
+            if let Some(path) = options.history_path.as_deref() {
+                let history = feed_history::update_file(std::path::Path::new(path), &report)?;
                 report["outage_guard"] = history["outage_guard"].clone();
+                history_value = Some(history);
             }
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&report)
-                    .map_err(|error| format!("Unable to encode validation report: {error}"))?
-            );
-            Ok(())
+            if options.eligible || options.strict_eligible {
+                report["eligibility"] =
+                    eligibility_json(history_value.as_ref(), &options, SystemTime::now())?;
+            }
+            let broad_outage = write_validate_all_report(&report, options.once)?;
+            if broad_outage {
+                Err("Completed validation sweep detected a broad host or publisher outage".into())
+            } else {
+                Ok(())
+            }
         }
         Some("listen" | "stream-listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
         Some("sdr-devices") if args.len() == 1 => sdr::devices(),
@@ -1383,5 +1535,168 @@ mod tests {
             "--json",
             "unexpected"
         ])));
+    }
+
+    #[test]
+    fn validate_all_options_accept_supported_flags_once_and_reject_ambiguous_input() {
+        let parsed = parse_validate_all_args(&options(&[
+            "validate-all",
+            "--json",
+            "--once",
+            "--strict-eligible",
+            "--history",
+            "state.json",
+            "--eligible",
+        ]))
+        .unwrap();
+        assert_eq!(parsed.history_path.as_deref(), Some("state.json"));
+        assert!(parsed.once && parsed.eligible && parsed.strict_eligible);
+        for invalid in [
+            options(&["validate-all", "--json", "--eligible", "--eligible"]),
+            options(&[
+                "validate-all",
+                "--json",
+                "--strict-eligible",
+                "--strict-eligible",
+            ]),
+            options(&["validate-all", "--json", "--once", "--once"]),
+            options(&["validate-all", "--json", "--history", "a", "--history", "b"]),
+            options(&["validate-all", "--json", "--history"]),
+            options(&["validate-all", "--json", "--history", "--eligible"]),
+            options(&["validate-all", "--json", "--unknown"]),
+        ] {
+            assert!(!valid_validate_all_args(&invalid), "accepted {invalid:?}");
+        }
+    }
+
+    #[test]
+    fn eligibility_lists_fresh_and_degraded_ids_and_excludes_stale_evidence() {
+        let now = SystemTime::now();
+        let now_unix = now.duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let records = [
+            ("skylab", now_unix - 60 * 60, "fresh"),
+            ("wpr-news", now_unix - 12 * 60 * 60, "degraded"),
+            ("wfmu", now_unix - 25 * 60 * 60, "stale"),
+        ];
+        let stations: serde_json::Map<_, _> = records
+            .iter()
+            .map(|(id, checked, health)| {
+                (
+                    (*id).to_owned(),
+                    serde_json::json!({
+                        "last_checked_at_unix": checked,
+                        "last_status": "decoded",
+                        "last_stage": "decoded_audio",
+                        "attempts": 1,
+                        "last_decoded_at_unix": checked,
+                        "consecutive_failures": 0,
+                        "health": health,
+                    }),
+                )
+            })
+            .collect();
+        let history = serde_json::json!({
+            "schema_version": 2,
+            "updated_at_unix": now_unix,
+            "stations": stations,
+        });
+        let output = eligibility_json(
+            Some(&history),
+            &ValidateAllOptions {
+                eligible: true,
+                strict_eligible: true,
+                ..ValidateAllOptions::default()
+            },
+            UNIX_EPOCH + Duration::from_secs(now_unix),
+        )
+        .unwrap();
+        assert_eq!(output["status"], "verified");
+        assert_eq!(
+            output["eligible_station_ids"],
+            serde_json::json!(["skylab", "wpr-news"])
+        );
+        assert_eq!(
+            output["strict_eligible_station_ids"],
+            serde_json::json!(["skylab"])
+        );
+    }
+
+    #[test]
+    fn eligibility_without_persistent_history_is_explicitly_unverified() {
+        let output = eligibility_json(
+            None,
+            &ValidateAllOptions {
+                eligible: true,
+                strict_eligible: true,
+                ..ValidateAllOptions::default()
+            },
+            SystemTime::now(),
+        )
+        .unwrap();
+        assert_eq!(output["status"], "unverified");
+        assert_eq!(output["reason"], "persistent_history_required");
+        assert!(output["eligible_station_ids"].is_null());
+        assert!(output["strict_eligible_station_ids"].is_null());
+    }
+
+    #[test]
+    fn once_marks_host_and_shared_publisher_outages_as_failure_after_formatting_report() {
+        let mut report = serde_json::json!({
+            "outage_guard": {"state": "unconfirmed"},
+            "results": curated_stations().iter().map(|station| serde_json::json!({
+                "station_id": station.id,
+                "status": "unavailable",
+                "decoded": false,
+            })).collect::<Vec<_>>(),
+        });
+        let mut serialized = Vec::new();
+        write_validate_all_report_to(&report, &mut serialized).unwrap();
+        let should_fail = validate_all_should_fail(&report, true);
+        assert!(should_fail);
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&serialized).unwrap()["results"]
+                .as_array()
+                .unwrap()
+                .len(),
+            curated_stations().len()
+        );
+
+        for result in report["results"].as_array_mut().unwrap() {
+            result["status"] = serde_json::json!("decoded");
+            result["decoded"] = serde_json::json!(true);
+        }
+        for result in report["results"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .filter(|result| {
+                curated_stations()
+                    .iter()
+                    .find(|station| station.id == result["station_id"].as_str().unwrap())
+                    .is_some_and(|station| station.broadcaster == "GBH")
+            })
+        {
+            result["status"] = serde_json::json!("unavailable");
+            result["decoded"] = serde_json::json!(false);
+        }
+        assert!(broad_outage_detected(&report));
+
+        report["outage_guard"]["state"] = serde_json::json!("station_checks");
+        if let Some(member) = report["results"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|result| result["station_id"] == "wcrb")
+        {
+            member["status"] = serde_json::json!("decoded");
+            member["decoded"] = serde_json::json!(true);
+        }
+        assert!(!broad_outage_detected(&report));
+        assert!(!validate_all_should_fail(&report, false));
+
+        // A prior history incident must not fail this run after a successful
+        // current sweep (for example, if the system clock moved backward).
+        report["outage_guard"]["state"] = serde_json::json!("host_outage_watch");
+        assert!(!broad_outage_detected(&report));
     }
 }
