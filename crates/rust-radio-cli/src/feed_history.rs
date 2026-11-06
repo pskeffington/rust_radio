@@ -18,14 +18,19 @@ const HISTORY_LOCK_RETRY_INTERVAL: Duration = Duration::from_millis(10);
 
 pub fn update_file(path: &Path, report: &Value) -> Result<Value, String> {
     let _lock = HistoryLock::acquire(path)?;
+    let now = unix_time_seconds()?;
+    update_file_locked(path, report, now)
+}
+
+fn update_file_locked(path: &Path, report: &Value, now: u64) -> Result<Value, String> {
     let previous = read(path)?;
-    let history = merge(previous.as_deref(), report)?;
+    let history = merge_at(previous.as_deref(), report, now)?;
     let serialized = serde_json::to_vec_pretty(&history)
         .map_err(|error| format!("Unable to encode feed history: {error}"))?;
     let validated_text = std::str::from_utf8(&serialized)
         .map_err(|error| format!("Encoded feed history is not UTF-8: {error}"))?;
     parse_feed_history(validated_text)?;
-    parse_outage_guard(&history)?;
+    parse_outage_guard_at(&history, now)?;
     if previous.as_deref().is_some_and(|previous| {
         serde_json::from_str::<Value>(previous).is_ok_and(|value| value == history)
     }) {
@@ -39,6 +44,13 @@ pub fn update_file(path: &Path, report: &Value) -> Result<Value, String> {
     }
     write_atomic(path, &serialized)?;
     Ok(history)
+}
+
+fn unix_time_seconds() -> Result<u64, String> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .map_err(|error| format!("System clock predates Unix epoch: {error}"))
 }
 
 fn lock_path(path: &Path) -> PathBuf {
@@ -298,13 +310,21 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     result.map_err(|error| format!("Cannot save feed history: {error}"))
 }
 
+#[cfg(test)]
 fn merge(previous_text: Option<&str>, report: &Value) -> Result<Value, String> {
+    merge_at(previous_text, report, unix_time_seconds()?)
+}
+
+fn merge_at(previous_text: Option<&str>, report: &Value, now: u64) -> Result<Value, String> {
     if report["schema_version"].as_u64() != Some(1) {
         return Err("Unsupported validation report schema version".into());
     }
     let checked_at = report["checked_at_unix"]
         .as_u64()
         .ok_or_else(|| "Validation report has no valid checked_at_unix".to_owned())?;
+    if checked_at > now {
+        return Err("Validation report timestamp is in the future".into());
+    }
     let sweep_id = report["sweep_id"]
         .as_str()
         .filter(|id| valid_sweep_id(id))
@@ -326,7 +346,7 @@ fn merge(previous_text: Option<&str>, report: &Value) -> Result<Value, String> {
         .map_err(|_| "Feed history is invalid JSON".to_owned())?;
     let previous_guard = previous_json
         .as_ref()
-        .map(parse_outage_guard)
+        .map(|history| parse_outage_guard_at(history, now))
         .transpose()?
         .unwrap_or_default();
     if previous_json.is_some()
@@ -610,10 +630,19 @@ fn is_definitive_failure(status: &str) -> bool {
     matches!(status, "unavailable" | "invalid_stream" | "unsupported")
 }
 
+#[cfg(test)]
 fn parse_outage_guard(history: &Value) -> Result<OutageGuard, String> {
+    parse_outage_guard_at(history, unix_time_seconds()?)
+}
+
+fn parse_outage_guard_at(history: &Value, now: u64) -> Result<OutageGuard, String> {
     let Some(value) = history.get("outage_guard") else {
+        let last_completed_at = history["updated_at_unix"].as_u64();
+        if last_completed_at.is_some_and(|timestamp| timestamp > now) {
+            return Err("Feed history update timestamp is in the future".into());
+        }
         return Ok(OutageGuard {
-            last_completed_at: history["updated_at_unix"].as_u64(),
+            last_completed_at,
             ..OutageGuard::default()
         });
     };
@@ -630,6 +659,9 @@ fn parse_outage_guard(history: &Value) -> Result<OutageGuard, String> {
         .get("last_completed_at_unix")
         .and_then(Value::as_u64)
         .ok_or_else(|| "Invalid last sweep time in feed history".to_owned())?;
+    if last_completed_at > now {
+        return Err("Last feed history sweep timestamp is in the future".into());
+    }
     if last_completed_at != history["updated_at_unix"].as_u64().unwrap_or_default()
         || sweep_time_seconds(&last_completed_sweep_id) != last_completed_at
     {
@@ -877,6 +909,11 @@ mod tests {
         let _ = fs::remove_file(path);
         let _ = fs::remove_file(backup_path(path));
         let _ = fs::remove_file(lock_path(path));
+    }
+
+    fn update_file_at(path: &Path, report: &Value, now: u64) -> Result<Value, String> {
+        let _lock = HistoryLock::acquire(path)?;
+        update_file_locked(path, report, now)
     }
 
     #[test]
@@ -1359,6 +1396,92 @@ mod tests {
         history["outage_guard"]["last_completed_sweep_id"] = json!(&future_id);
         history["outage_guard"]["processed_sweep_ids"][0] = json!(future_id);
         assert!(parse_outage_guard(&history).is_err());
+    }
+
+    #[test]
+    fn incoming_future_sweep_is_rejected_before_history_ordering_checks() {
+        let now = 1_700_000_100;
+        let future_report = report(now + 1, "decoded", true);
+        assert!(merge_at(None, &future_report, now)
+            .unwrap_err()
+            .contains("future"));
+
+        let valid_past_history = merge_at(None, &report(now - 1, "decoded", true), now).unwrap();
+        let history_text = serde_json::to_string(&valid_past_history).unwrap();
+        assert!(merge_at(Some(&history_text), &future_report, now)
+            .unwrap_err()
+            .contains("future"));
+    }
+
+    #[test]
+    fn future_persisted_guard_and_legacy_timestamp_are_rejected() {
+        let now = 1_700_000_100;
+        let mut history = merge_at(None, &report(now - 1, "decoded", true), now).unwrap();
+        let future_time = now + 1;
+        let future_id = format!(
+            "{:032x}-00000001-0000000000000002",
+            u128::from(future_time) * 1_000_000_000
+        );
+        history["updated_at_unix"] = json!(future_time);
+        history["outage_guard"]["last_completed_at_unix"] = json!(future_time);
+        history["outage_guard"]["last_completed_sweep_id"] = json!(&future_id);
+        history["outage_guard"]["processed_sweep_ids"] = json!([future_id]);
+        assert!(parse_outage_guard_at(&history, now)
+            .unwrap_err()
+            .contains("future"));
+        let future_history_text = serde_json::to_string(&history).unwrap();
+        assert!(merge_at(
+            Some(&future_history_text),
+            &report(now, "decoded", true),
+            now
+        )
+        .unwrap_err()
+        .contains("future"));
+
+        let legacy: Value =
+            serde_json::from_str(include_str!("../../../testdata/feed-health-v1.json")).unwrap();
+        let mut future_legacy = legacy;
+        future_legacy["updated_at_unix"] = json!(future_time);
+        assert!(parse_outage_guard_at(&future_legacy, now)
+            .unwrap_err()
+            .contains("future"));
+        let future_legacy_text = serde_json::to_string(&future_legacy).unwrap();
+        assert!(merge_at(
+            Some(&future_legacy_text),
+            &report(now, "decoded", true),
+            now
+        )
+        .unwrap_err()
+        .contains("future"));
+    }
+
+    #[test]
+    fn rejected_future_report_preserves_primary_and_backup_bytes() {
+        let path = temp_path();
+        let original =
+            serde_json::to_vec(&merge(None, &report(1_700_000_100, "decoded", true)).unwrap())
+                .unwrap();
+        let backup = backup_path(&path);
+        let backup_bytes = b"prior-backup-checkpoint";
+        fs::write(&path, &original).unwrap();
+        fs::write(&backup, backup_bytes).unwrap();
+
+        let result = update_file_at(
+            &path,
+            &report(1_700_000_102, "decoded", true),
+            1_700_000_101,
+        );
+        assert!(result.unwrap_err().contains("future"));
+        assert_eq!(fs::read(&path).unwrap(), original);
+        assert_eq!(fs::read(&backup).unwrap(), backup_bytes);
+        remove_test_files(&path);
+    }
+
+    #[test]
+    fn current_and_past_sweeps_are_accepted_by_injected_clock() {
+        let now = 1_700_000_100;
+        assert!(merge_at(None, &report(now, "decoded", true), now).is_ok());
+        assert!(merge_at(None, &report(now - 1, "decoded", true), now).is_ok());
     }
 
     #[test]
