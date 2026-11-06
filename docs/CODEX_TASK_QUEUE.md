@@ -15,8 +15,9 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
 | RR-110 | P1 | Transport | DONE | Reject invalid ICY metadata intervals at the public reader boundary | Direct `IcyAudioReader::new` calls with zero or above-limit intervals fail with `InvalidInput`; valid intervals and `None` remain unchanged; focused and workspace gates pass |
 | RR-111 | P1 | Storage | DONE | Preserve the prior validated catalog-history report as an atomic `.bak` checkpoint | On update, an existing valid primary is copied to `<path>.bak` before replacement; backup failures preserve the primary; invalid primary is never overwritten; both files remain bounded and private; focused/workspace gates pass |
+| RR-112 | P1 | Validation/GUI | DONE | Persist 6-hour fresh and 24-hour degraded last-good feed health with schema-v1 migration | V1 histories remain readable and migrate to v2 on update; decoded evidence is Fresh through 6h, Degraded through 24h, then Stale; a failed recheck with recent last-good evidence is Degraded/Retry; no last-good evidence falls back to failure; cancelled/unverified checks do not erase last-good proof; live state takes precedence and saved health never gates Play |
 
-## Current execution order: RR-108 hosted CI, then physical acceptance gates
+## Current execution order: RR-108 hosted CI and remaining issue #2 policy, then physical acceptance gates
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
 2. Add fixture-first tests around the reproducible failure; do not infer the cause from a website response, old status, or one failed network attempt.
 3. Run silent `cargo run -p rust-radio-cli -- validate skylab`; compare with `cargo run -p rust-radio-cli -- listen skylab --seconds 30` only when audio testing is explicitly authorized.

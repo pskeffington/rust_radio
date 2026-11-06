@@ -5,12 +5,14 @@
 //! playback.
 
 use crate::directory::curated_stations;
-use crate::validation::{FeedHealth, ValidationStage, ValidationStatus, FEED_FRESHNESS_TTL};
+use crate::validation::{
+    FeedHealth, ValidationStage, ValidationStatus, FEED_DEGRADED_GRACE_TTL, FEED_FRESHNESS_TTL,
+};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub const FEED_HISTORY_SCHEMA_VERSION: u64 = 1;
+pub const FEED_HISTORY_SCHEMA_VERSION: u64 = 2;
 pub const MAX_FEED_HISTORY_BYTES: usize = 64 * 1024;
 const MAX_CONSECUTIVE_FAILURES: u64 = 1_000_000;
 
@@ -30,7 +32,40 @@ pub struct FeedHistoryRecord {
     pub consecutive_failures: u32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedHistoryHealth {
+    Fresh,
+    Degraded,
+    Stale,
+    Unverified,
+    Failed,
+}
+
+pub fn feed_history_health_at(
+    status: ValidationStatus,
+    last_decoded_at: Option<SystemTime>,
+    now: SystemTime,
+) -> FeedHistoryHealth {
+    match status {
+        ValidationStatus::Decoded => {
+            match last_decoded_at.and_then(|at| now.duration_since(at).ok()) {
+                Some(age) if age <= FEED_FRESHNESS_TTL => FeedHistoryHealth::Fresh,
+                Some(age) if age <= FEED_DEGRADED_GRACE_TTL => FeedHistoryHealth::Degraded,
+                _ => FeedHistoryHealth::Stale,
+            }
+        }
+        ValidationStatus::Cancelled | ValidationStatus::Unverified => FeedHistoryHealth::Unverified,
+        _ => match last_decoded_at.and_then(|at| now.duration_since(at).ok()) {
+            Some(age) if age <= FEED_DEGRADED_GRACE_TTL => FeedHistoryHealth::Degraded,
+            _ => FeedHistoryHealth::Failed,
+        },
+    }
+}
+
 impl FeedHistoryRecord {
+    pub fn history_health_at(self, now: SystemTime) -> FeedHistoryHealth {
+        feed_history_health_at(self.status, self.last_decoded_at, now)
+    }
     /// Recompute freshness at display time; cached health labels are not trusted.
     pub fn health_at(self, now: SystemTime) -> FeedHealth {
         match self.status {
@@ -49,14 +84,15 @@ impl FeedHistoryRecord {
     }
 }
 
-/// Parse and validate the v1 CLI `--history` document for any Rust host.
+/// Parse and validate v1 or v2 CLI `--history` documents for any Rust host.
 pub fn parse_feed_history(json: &str) -> Result<FeedHistory, String> {
     if json.len() > MAX_FEED_HISTORY_BYTES {
         return Err("Feed validation history exceeds 64 KiB".into());
     }
     let value: Value = serde_json::from_str(json)
         .map_err(|error| format!("Feed validation history is invalid JSON: {error}"))?;
-    if value["schema_version"].as_u64() != Some(FEED_HISTORY_SCHEMA_VERSION) {
+    let schema_version = value["schema_version"].as_u64();
+    if !matches!(schema_version, Some(1 | 2)) {
         return Err("Unsupported feed validation history schema".into());
     }
     let updated_at = epoch(value["updated_at_unix"].as_u64(), "update")?;
@@ -125,8 +161,8 @@ pub fn parse_feed_history(json: &str) -> Result<FeedHistory, String> {
         let health = record["health"]
             .as_str()
             .ok_or_else(|| format!("Missing health in feed history for {id}"))?;
-        let valid_health = match status {
-            ValidationStatus::Decoded => {
+        let valid_health = match (schema_version, status) {
+            (Some(1), ValidationStatus::Decoded) => {
                 let age = updated_at.duration_since(checked_at).unwrap_or_default();
                 health
                     == if age <= FEED_FRESHNESS_TTL {
@@ -135,8 +171,21 @@ pub fn parse_feed_history(json: &str) -> Result<FeedHistory, String> {
                         "stale"
                     }
             }
-            ValidationStatus::Cancelled | ValidationStatus::Unverified => health == "unverified",
-            _ => health == "failed",
+            (Some(1), ValidationStatus::Cancelled | ValidationStatus::Unverified) => {
+                health == "unverified"
+            }
+            (Some(1), _) => health == "failed",
+            (Some(2), _) => {
+                health
+                    == match feed_history_health_at(status, last_decoded_at, updated_at) {
+                        FeedHistoryHealth::Fresh => "fresh",
+                        FeedHistoryHealth::Degraded => "degraded",
+                        FeedHistoryHealth::Stale => "stale",
+                        FeedHistoryHealth::Unverified => "unverified",
+                        FeedHistoryHealth::Failed => "failed",
+                    }
+            }
+            _ => false,
         };
         if !valid_health {
             return Err(format!("Inconsistent health in feed history for {id}"));
@@ -237,5 +286,54 @@ mod tests {
             + 60;
         future_update["updated_at_unix"] = json!(future);
         assert!(parse_feed_history(&future_update.to_string()).is_err());
+    }
+
+    #[test]
+    fn v2_health_boundaries_and_failed_recheck_use_last_good_decode() {
+        let checked = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let decoded =
+            |age| feed_history_health_at(ValidationStatus::Decoded, Some(checked), checked + age);
+        assert_eq!(decoded(FEED_FRESHNESS_TTL), FeedHistoryHealth::Fresh);
+        assert_eq!(
+            decoded(FEED_FRESHNESS_TTL + Duration::from_secs(1)),
+            FeedHistoryHealth::Degraded
+        );
+        assert_eq!(
+            decoded(FEED_DEGRADED_GRACE_TTL),
+            FeedHistoryHealth::Degraded
+        );
+        assert_eq!(
+            decoded(FEED_DEGRADED_GRACE_TTL + Duration::from_secs(1)),
+            FeedHistoryHealth::Stale
+        );
+        assert_eq!(
+            feed_history_health_at(
+                ValidationStatus::Unavailable,
+                Some(checked),
+                checked + FEED_DEGRADED_GRACE_TTL
+            ),
+            FeedHistoryHealth::Degraded
+        );
+        assert_eq!(
+            feed_history_health_at(ValidationStatus::Unavailable, None, checked),
+            FeedHistoryHealth::Failed
+        );
+        assert_eq!(
+            feed_history_health_at(ValidationStatus::Cancelled, Some(checked), checked),
+            FeedHistoryHealth::Unverified
+        );
+    }
+
+    #[test]
+    fn v2_parser_accepts_consistent_degraded_and_rejects_forged_health() {
+        let mut value: Value =
+            serde_json::from_str(include_str!("../../../testdata/feed-health-v1.json")).unwrap();
+        value["schema_version"] = json!(2);
+        let checked = value["updated_at_unix"].as_u64().unwrap();
+        value["updated_at_unix"] = json!(checked + FEED_FRESHNESS_TTL.as_secs() + 1);
+        value["stations"]["skylab"]["health"] = json!("degraded");
+        assert!(parse_feed_history(&value.to_string()).is_ok());
+        value["stations"]["skylab"]["health"] = json!("fresh");
+        assert!(parse_feed_history(&value.to_string()).is_err());
     }
 }
