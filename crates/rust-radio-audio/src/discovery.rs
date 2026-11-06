@@ -195,4 +195,37 @@ mod tests {
             thread::yield_now();
         }
     }
+
+    #[test]
+    fn dropping_scan_cancels_and_returns_without_waiting_for_driver_work() {
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let (cancelled_tx, cancelled_rx) = std::sync::mpsc::channel();
+        let scan = InputScan::with_worker(move |cancelled| {
+            started_tx.send(()).unwrap();
+            release_rx.recv().unwrap();
+            cancelled_tx
+                .send(cancelled.load(Ordering::Acquire))
+                .unwrap();
+            InputReport::default()
+        })
+        .unwrap();
+        started_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap();
+
+        let (dropped_tx, dropped_rx) = std::sync::mpsc::channel();
+        thread::spawn(move || {
+            drop(scan);
+            dropped_tx.send(()).unwrap();
+        });
+        dropped_rx
+            .recv_timeout(std::time::Duration::from_millis(250))
+            .expect("dropping an input scan must not wait for its worker");
+
+        release_tx.send(()).unwrap();
+        assert!(cancelled_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap());
+    }
 }

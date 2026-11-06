@@ -225,7 +225,10 @@ fn transport_failure(station_id: &str, error: StreamError) -> StationValidation 
     let mut report = StationValidation::unverified(station_id);
     let status = match &error {
         StreamError::Io(error) if probe_was_cancelled(error) => ValidationStatus::Cancelled,
-        StreamError::TransportUnavailable | StreamError::Io(_) => ValidationStatus::Unavailable,
+        StreamError::TransportUnavailable
+        | StreamError::TransportTimeout
+        | StreamError::TransportConnectionFailed
+        | StreamError::Io(_) => ValidationStatus::Unavailable,
         StreamError::HttpStatus(status) => {
             report.stage = ValidationStage::EndpointReached;
             if matches!(status, 408 | 425 | 429 | 500..=599) {
@@ -407,7 +410,7 @@ mod tests {
             .contains("unexpectedly"));
         assert!(panicked.try_finish().is_none());
         let mut wrong_station = StationValidationTask::spawn("skylab", |_| {
-            Ok(StationValidation::unverified("groovesalad"))
+            Ok(StationValidation::unverified("radio-paradise"))
         })
         .unwrap();
         assert!(finish_task(&mut wrong_station)

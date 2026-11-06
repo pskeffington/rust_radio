@@ -249,6 +249,9 @@ impl RadioPanel {
                     }
                     Ok(report) => match station_by_id(&report.station_id) {
                         Some(station) => {
+                            if report.status == ValidationStatus::Decoded {
+                                self.remember_live_success(station.id, report.checked_at);
+                            }
                             self.validations.insert(station.id, report);
                             self.note =
                                 format!("STATION CHECK / {}", self.validation_label(station.id));
@@ -513,6 +516,25 @@ impl RadioPanel {
             Some(report) if report.health_at(SystemTime::now()) == FeedHealth::Stale => {
                 "STALE / RECHECK"
             }
+            Some(report)
+                if matches!(
+                    report.status,
+                    ValidationStatus::Unavailable
+                        | ValidationStatus::InvalidStream
+                        | ValidationStatus::Unsupported
+                ) && self.saved_validations.get(id).is_some_and(|saved| {
+                    matches!(
+                        validation_history::health_after_failure(
+                            *saved,
+                            report.status,
+                            SystemTime::now()
+                        ),
+                        rust_radio_core::feed_history::FeedHistoryHealth::Degraded
+                    )
+                }) =>
+            {
+                "DEGRADED / RETRY"
+            }
             Some(report) => match report.status {
                 ValidationStatus::Unavailable => "UNAVAILABLE",
                 ValidationStatus::InvalidStream => "INVALID STREAM",
@@ -524,6 +546,18 @@ impl RadioPanel {
                 .get(id)
                 .map(|validation| validation_history::label(*validation, SystemTime::now()))
                 .unwrap_or("UNVERIFIED"),
+        }
+    }
+
+    fn remember_live_success(&mut self, id: &'static str, checked_at: Option<SystemTime>) {
+        if checked_at.is_some() {
+            self.saved_validations.insert(
+                id,
+                SavedFeedValidation {
+                    status: ValidationStatus::Decoded,
+                    last_decoded_at: checked_at,
+                },
+            );
         }
     }
 

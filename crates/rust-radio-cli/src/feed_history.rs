@@ -1,15 +1,14 @@
 //! Optional, bounded persistence for point-in-time curated feed validation.
 
-use rust_radio::feed_history::parse_feed_history;
+use rust_radio::feed_history::{feed_history_health_at, parse_feed_history, FeedHistoryHealth};
 use serde_json::{json, Map, Value};
 use std::collections::BTreeSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_HISTORY_BYTES: u64 = 64 * 1024;
-const FRESHNESS_TTL: u64 = 6 * 60 * 60;
 
 pub fn update_file(path: &Path, report: &Value) -> Result<(), String> {
     let previous = read(path)?;
@@ -19,7 +18,16 @@ pub fn update_file(path: &Path, report: &Value) -> Result<(), String> {
     if bytes.len() as u64 > MAX_HISTORY_BYTES {
         return Err("Feed history exceeds 64 KiB".into());
     }
+    if let Some(previous) = previous.as_deref() {
+        write_atomic(&backup_path(path), previous.as_bytes())?;
+    }
     write_atomic(path, &bytes)
+}
+
+fn backup_path(path: &Path) -> PathBuf {
+    let mut backup = path.as_os_str().to_owned();
+    backup.push(".bak");
+    PathBuf::from(backup)
 }
 
 fn read(path: &Path) -> Result<Option<String>, String> {
@@ -141,19 +149,34 @@ fn merge(previous: Option<&str>, report: &Value) -> Result<Value, String> {
         } else {
             previous_decoded
         };
-        let health = if decoded {
-            if checked <= checked_at && checked_at - checked <= FRESHNESS_TTL {
-                "fresh"
-            } else {
-                "stale"
+        let status_kind = match status {
+            "decoded" => rust_radio::validation_types::ValidationStatus::Decoded,
+            "unavailable" | "check_error" => {
+                rust_radio::validation_types::ValidationStatus::Unavailable
             }
-        } else if matches!(status, "unverified" | "cancelled") {
-            "unverified"
-        } else {
-            "failed"
+            "invalid_stream" => rust_radio::validation_types::ValidationStatus::InvalidStream,
+            "unsupported" => rust_radio::validation_types::ValidationStatus::Unsupported,
+            "cancelled" => rust_radio::validation_types::ValidationStatus::Cancelled,
+            "unverified" => rust_radio::validation_types::ValidationStatus::Unverified,
+            _ => return Err(format!("Validation result for {id} has unknown status")),
+        };
+        let decoded_at =
+            last_decoded.map(|seconds| UNIX_EPOCH + std::time::Duration::from_secs(seconds));
+        let health = match feed_history_health_at(
+            status_kind,
+            decoded_at,
+            UNIX_EPOCH + std::time::Duration::from_secs(checked_at),
+        ) {
+            FeedHistoryHealth::Fresh => "fresh",
+            FeedHistoryHealth::Degraded => "degraded",
+            FeedHistoryHealth::Stale => "stale",
+            FeedHistoryHealth::Unverified => "unverified",
+            FeedHistoryHealth::Failed => "failed",
         };
         let failures = if decoded {
             0
+        } else if matches!(status, "unverified" | "cancelled") {
+            previous_failures
         } else {
             previous_failures.saturating_add(1)
         };
@@ -173,7 +196,7 @@ fn merge(previous: Option<&str>, report: &Value) -> Result<Value, String> {
     }
 
     serde_json::to_value(json!({
-        "schema_version": 1,
+        "schema_version": 2,
         "updated_at_unix": checked_at,
         "stations": stations,
     }))
@@ -230,27 +253,69 @@ mod tests {
     #[test]
     fn history_preserves_last_decode_and_tracks_consecutive_failures_atomically() {
         let path = temp_path();
+        let backup = backup_path(&path);
         update_file(&path, &report(1_000_000, "decoded", true)).unwrap();
+        let first_report = fs::read(&path).unwrap();
+        assert!(!backup.exists());
         update_file(&path, &report(1_000_100, "unavailable", false)).unwrap();
+        assert_eq!(fs::read(&backup).unwrap(), first_report);
+        assert!(fs::metadata(&backup).unwrap().len() <= MAX_HISTORY_BYTES);
         let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
-        assert_eq!(saved["schema_version"].as_u64(), Some(1));
+        let previous: Value = serde_json::from_slice(&fs::read(&backup).unwrap()).unwrap();
+        assert_eq!(saved["schema_version"].as_u64(), Some(2));
         assert_eq!(saved["stations"]["skylab"]["last_status"], "unavailable");
+        assert_eq!(previous["updated_at_unix"], 1_000_000);
         assert_eq!(
             saved["stations"]["skylab"]["last_decoded_at_unix"],
             1_000_000
         );
         assert_eq!(saved["stations"]["skylab"]["consecutive_failures"], 1);
-        assert_eq!(saved["stations"]["skylab"]["health"], "failed");
+        assert_eq!(saved["stations"]["skylab"]["health"], "degraded");
         let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup);
     }
 
     #[test]
     fn invalid_history_is_not_overwritten() {
         let path = temp_path();
+        let backup = backup_path(&path);
         fs::write(&path, "not-json").unwrap();
+        fs::write(&backup, "last-known-backup").unwrap();
         assert!(update_file(&path, &report(1_000_000, "decoded", true)).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "not-json");
+        assert_eq!(fs::read_to_string(&backup).unwrap(), "last-known-backup");
         let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup);
+    }
+
+    #[test]
+    fn backup_failure_leaves_the_primary_history_unchanged() {
+        let path = temp_path();
+        update_file(&path, &report(1_000_000, "decoded", true)).unwrap();
+        let primary = fs::read(&path).unwrap();
+        let backup = backup_path(&path);
+        fs::create_dir(&backup).unwrap();
+
+        assert!(update_file(&path, &report(1_000_100, "unavailable", false)).is_err());
+        assert_eq!(fs::read(&path).unwrap(), primary);
+
+        let _ = fs::remove_dir(backup);
+        let _ = fs::remove_file(path);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn backup_history_is_private_on_unix() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let path = temp_path();
+        let backup = backup_path(&path);
+        update_file(&path, &report(1_000_000, "decoded", true)).unwrap();
+        update_file(&path, &report(1_000_100, "unavailable", false)).unwrap();
+        let mode = fs::metadata(&backup).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+        let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup);
     }
 
     #[test]
@@ -296,5 +361,35 @@ mod tests {
             1_700_000_000
         );
         assert_eq!(updated["stations"]["skylab"]["consecutive_failures"], 1);
+        assert_eq!(updated["schema_version"], 2);
+        assert_eq!(updated["stations"]["skylab"]["health"], "degraded");
+    }
+
+    #[test]
+    fn cancelled_and_unverified_checks_preserve_good_proof_without_counting_failures() {
+        let previous = include_str!("../../../testdata/feed-health-v1.json");
+        for status in ["cancelled", "unverified"] {
+            let updated = merge(Some(previous), &report(1_700_000_100, status, false)).unwrap();
+            assert_eq!(
+                updated["stations"]["skylab"]["last_decoded_at_unix"],
+                1_700_000_000
+            );
+            assert_eq!(updated["stations"]["skylab"]["consecutive_failures"], 0);
+            assert_eq!(updated["stations"]["skylab"]["health"], "unverified");
+        }
+    }
+
+    #[test]
+    fn updating_a_v1_file_backs_it_up_and_writes_v2() {
+        let path = temp_path();
+        let backup = backup_path(&path);
+        let original = include_str!("../../../testdata/feed-health-v1.json");
+        fs::write(&path, original).unwrap();
+        update_file(&path, &report(1_700_000_100, "unavailable", false)).unwrap();
+        let saved: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(saved["schema_version"], 2);
+        assert_eq!(fs::read_to_string(&backup).unwrap(), original);
+        let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup);
     }
 }

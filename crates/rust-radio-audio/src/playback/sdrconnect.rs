@@ -37,6 +37,7 @@ pub(super) fn play(
         Arc::clone(&context.volume),
         context.output_id,
         played_samples,
+        Arc::clone(&context.output_underruns),
     )
     .map_err(PlaybackFailure::Output)?;
     let mut pump = StereoPump::new(&output)?;

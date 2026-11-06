@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test safe live-feed A/B and fixture runner modes
+        run: python3 scripts/test_prebuffer_trace_ab.py && python3 scripts/test_prebuffer_fixture_server.py
       - name: Install Linux native audio headers
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
@@ -70,3 +72,27 @@ jobs:
         run: cargo clippy --locked -p rust-radio-sdr --all-targets --features soapy -- -D warnings
       - name: Check hardware-only embedded module
         run: cargo check --locked -p rust-radio --no-default-features --features soapy-sdr
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check the default workspace on Windows MSVC
+        run: cargo check --workspace --locked
+      - name: Lint the default workspace on Windows MSVC
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test the default workspace on Windows MSVC
+        run: cargo test --workspace --locked
+      - name: Check the optional SDRconnect receiver on Windows MSVC
+        run: cargo check --workspace --locked --features rust-radio-cli/sdrconnect
+      - name: Lint the optional SDRconnect receiver on Windows MSVC
+        run: cargo clippy --workspace --all-targets --locked --features rust-radio-cli/sdrconnect -- -D warnings
+      - name: Test the optional SDRconnect receiver on Windows MSVC
+        run: cargo test --workspace --locked --features rust-radio-cli/sdrconnect
+      - name: Check the direct nRSP receiver and GUI on Windows MSVC
+        run: cargo check --workspace --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native
+      - name: Lint the direct nRSP receiver and GUI on Windows MSVC
+        run: cargo clippy --workspace --all-targets --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native -- -D warnings
+      - name: Test the direct nRSP receiver and GUI on Windows MSVC
+        run: cargo test --workspace --locked --features rust-radio-cli/nrsp-native,rust-radio-gui/nrsp-native

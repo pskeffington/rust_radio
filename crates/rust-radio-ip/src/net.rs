@@ -2,7 +2,7 @@
 //! Network I/O runs outside the Symphonia worker and CPAL callback.
 
 use crate::error::TransportError;
-use crate::safe_dns::{is_public_unicast, SafeResolver};
+use crate::safe_dns::{is_public_unicast, NonPublicAddressResolution, SafeResolver};
 use reqwest::header::{CONTENT_TYPE, LOCATION};
 use reqwest::redirect::Policy;
 use rust_radio_core::directory::station_by_id;
@@ -128,6 +128,107 @@ pub struct RadioInput {
 pub struct NetworkGuard {
     worker: Option<JoinHandle<()>>,
     stopped: Arc<AtomicBool>,
+    timing: Arc<StreamTimingStats>,
+}
+
+/// Aggregate timing for audio response body chunks observed by the HTTP pump.
+/// This is transport delivery evidence, not packet timing or audio underruns.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StreamTimingSnapshot {
+    pub chunk_count: u64,
+    pub interval_count: u64,
+    pub mean_interval_us: u64,
+    pub max_interval_us: u64,
+    pub gaps_at_or_over_200ms: u64,
+    pub gaps_at_or_over_500ms: u64,
+}
+
+/// One bounded response-body chunk timing sample for an optional loopback replay.
+/// The first observed body chunk has no preceding interval.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StreamTimingSample {
+    pub interval_us: Option<u64>,
+    pub body_bytes: usize,
+}
+
+const MAX_TIMING_TRACE_SAMPLES: usize = 256;
+
+#[derive(Default)]
+struct StreamTimingStats {
+    state: Mutex<StreamTimingState>,
+}
+
+#[derive(Default)]
+struct StreamTimingState {
+    last_chunk_at: Option<Instant>,
+    snapshot: StreamTimingSnapshot,
+    interval_total_us: u128,
+    trace_samples: Vec<StreamTimingSample>,
+}
+
+impl StreamTimingStats {
+    fn record_at(&self, now: Instant, body_bytes: usize) {
+        let mut state = self.state.lock().expect("Radio timing mutex poisoned");
+        state.snapshot.chunk_count = state.snapshot.chunk_count.saturating_add(1);
+        let interval_us = if let Some(previous) = state.last_chunk_at {
+            let interval = now.saturating_duration_since(previous);
+            let micros = interval.as_micros();
+            let micros_u64 = micros.min(u64::MAX as u128) as u64;
+            state.snapshot.interval_count = state.snapshot.interval_count.saturating_add(1);
+            state.interval_total_us = state.interval_total_us.saturating_add(micros);
+            state.snapshot.mean_interval_us = (state.interval_total_us
+                / state.snapshot.interval_count as u128)
+                .min(u64::MAX as u128) as u64;
+            state.snapshot.max_interval_us = state.snapshot.max_interval_us.max(micros_u64);
+            if interval >= Duration::from_millis(200) {
+                state.snapshot.gaps_at_or_over_200ms =
+                    state.snapshot.gaps_at_or_over_200ms.saturating_add(1);
+            }
+            if interval >= Duration::from_millis(500) {
+                state.snapshot.gaps_at_or_over_500ms =
+                    state.snapshot.gaps_at_or_over_500ms.saturating_add(1);
+            }
+            Some(micros_u64)
+        } else {
+            None
+        };
+        if state.trace_samples.len() < MAX_TIMING_TRACE_SAMPLES {
+            state.trace_samples.push(StreamTimingSample {
+                interval_us,
+                body_bytes,
+            });
+        }
+        state.last_chunk_at = Some(now);
+    }
+
+    fn snapshot(&self) -> StreamTimingSnapshot {
+        self.state
+            .lock()
+            .expect("Radio timing mutex poisoned")
+            .snapshot
+    }
+
+    fn trace_samples(&self) -> Vec<StreamTimingSample> {
+        self.state
+            .lock()
+            .expect("Radio timing mutex poisoned")
+            .trace_samples
+            .clone()
+    }
+}
+
+impl NetworkGuard {
+    /// Return timing for response-body chunks observed while this connection ran.
+    pub fn timing_snapshot(&self) -> StreamTimingSnapshot {
+        self.timing.snapshot()
+    }
+
+    /// Return at most 256 response-body chunk size/interval samples for
+    /// controlled loopback replay. These are transport-pump observations, not
+    /// packet arrival times or decoded-buffer underrun evidence.
+    pub fn timing_trace(&self) -> Vec<StreamTimingSample> {
+        self.timing.trace_samples()
+    }
 }
 
 impl Drop for NetworkGuard {
@@ -198,6 +299,12 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
     if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
         return Err("Stream URL must not contain credentials or a fragment".into());
     }
+    if url.host_str().is_some_and(is_somafm_host) {
+        return Err(
+            "SomaFM does not authorize new third-party radio clients without prior written permission"
+                .into(),
+        );
+    }
     match url.scheme() {
         "https" if url.host().is_some() => {
             let literal_ip = url.host_str().and_then(|host| {
@@ -221,6 +328,18 @@ pub fn validate_direct_url(value: &str) -> Result<(), String> {
         },
         _ => Err("Use an HTTPS stream URL or a private IPv4 HTTP URL".into()),
     }
+}
+
+fn is_somafm_host(host: &str) -> bool {
+    // DNS treats a final dot as the absolute form of the same hostname.
+    // Normalize it before applying the publisher policy so URL spelling
+    // cannot bypass the block for the root domain or one of its subdomains.
+    let host = host.trim_end_matches('.');
+    host.eq_ignore_ascii_case("somafm.com")
+        || host
+            .to_ascii_lowercase()
+            .strip_suffix(".somafm.com")
+            .is_some()
 }
 
 /// Start an explicitly entered audio stream or bounded M3U/PLS playlist.
@@ -259,6 +378,8 @@ fn open_input(
     let worker_cancel = Arc::clone(&cancelled);
     let stopped = Arc::new(AtomicBool::new(false));
     let worker_stopped = Arc::clone(&stopped);
+    let timing = Arc::new(StreamTimingStats::default());
+    let worker_timing = Arc::clone(&timing);
     let worker = thread::Builder::new()
         .name("rust-radio-http".into())
         .spawn(move || {
@@ -270,7 +391,14 @@ fn open_input(
                 })
                 .and_then(|runtime| {
                     runtime.block_on(until_cancelled(
-                        pump_input(&id, direct, &worker_cancel, &startup_tx, &audio_tx),
+                        pump_input(
+                            &id,
+                            direct,
+                            &worker_cancel,
+                            &startup_tx,
+                            &audio_tx,
+                            &worker_timing,
+                        ),
                         &worker_cancel,
                         &worker_stopped,
                     ))
@@ -288,6 +416,7 @@ fn open_input(
     let guard = NetworkGuard {
         worker: Some(worker),
         stopped: Arc::clone(&stopped),
+        timing,
     };
 
     let start = Instant::now();
@@ -342,6 +471,7 @@ async fn pump_input(
     cancelled: &AtomicBool,
     startup: &SyncSender<Result<StreamHeaders, TransportError>>,
     audio: &SyncSender<Vec<u8>>,
+    timing: &StreamTimingStats,
 ) -> Result<(), TransportError> {
     let initial = if direct {
         station_id
@@ -375,11 +505,7 @@ async fn pump_input(
         )
         .await
         .map_err(|_| TransportError::Network("Radio connect/header timeout".to_owned()))?
-        .map_err(|_| {
-            TransportError::Network(
-                "Radio stream connection failed (check address and network)".into(),
-            )
-        })?;
+        .map_err(classify_connection_error)?;
         let status = response.status();
         if status.is_redirection() {
             let location = response
@@ -461,9 +587,29 @@ async fn pump_input(
                 "Server did not return an audio stream: {mime}"
             )));
         }
-        return pump_audio(response, content_type, cancelled, startup, audio).await;
+        return pump_audio(response, content_type, cancelled, startup, audio, timing).await;
     }
     Err("Radio exceeded redirect/playlist hop limit".into())
+}
+
+fn caused_by_non_public_resolution(mut error: &(dyn std::error::Error + 'static)) -> bool {
+    loop {
+        if error.downcast_ref::<NonPublicAddressResolution>().is_some() {
+            return true;
+        }
+        match error.source() {
+            Some(source) => error = source,
+            None => return false,
+        }
+    }
+}
+
+fn classify_connection_error(error: reqwest::Error) -> TransportError {
+    if caused_by_non_public_resolution(&error) {
+        TransportError::Permanent("Radio host resolved to a non-public address".into())
+    } else {
+        TransportError::Network("Radio stream connection failed (check address and network)".into())
+    }
 }
 
 // Each indirection is checked again. Public inputs cannot downgrade to HTTP;
@@ -518,6 +664,7 @@ async fn pump_audio(
     cancelled: &AtomicBool,
     startup: &SyncSender<Result<StreamHeaders, TransportError>>,
     audio: &SyncSender<Vec<u8>>,
+    timing: &StreamTimingStats,
 ) -> Result<(), TransportError> {
     let icy_header = response
         .headers()
@@ -545,6 +692,7 @@ async fn pump_audio(
         let Some(piece) = piece else {
             return Err(TransportError::Network("Radio stream ended".into()));
         };
+        timing.record_at(Instant::now(), piece.len());
         for fragment in piece.chunks(CHUNK_SIZE) {
             if !send_fragment(audio, fragment.to_vec(), cancelled).await {
                 return Ok(());
@@ -557,6 +705,104 @@ async fn pump_audio(
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn stream_timing_snapshot_aggregates_chunk_intervals_and_threshold_gaps() {
+        let stats = StreamTimingStats::default();
+        let start = Instant::now();
+        stats.record_at(start, 1024);
+        stats.record_at(start + Duration::from_millis(100), 2048);
+        stats.record_at(start + Duration::from_millis(700), 4096);
+
+        assert_eq!(
+            stats.snapshot(),
+            StreamTimingSnapshot {
+                chunk_count: 3,
+                interval_count: 2,
+                mean_interval_us: 350_000,
+                max_interval_us: 600_000,
+                gaps_at_or_over_200ms: 1,
+                gaps_at_or_over_500ms: 1,
+            }
+        );
+        assert_eq!(
+            stats.trace_samples(),
+            vec![
+                StreamTimingSample {
+                    interval_us: None,
+                    body_bytes: 1024,
+                },
+                StreamTimingSample {
+                    interval_us: Some(100_000),
+                    body_bytes: 2048,
+                },
+                StreamTimingSample {
+                    interval_us: Some(600_000),
+                    body_bytes: 4096,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn stream_timing_trace_is_bounded_at_256_samples() {
+        let stats = StreamTimingStats::default();
+        let start = Instant::now();
+        for index in 0..MAX_TIMING_TRACE_SAMPLES + 50 {
+            stats.record_at(start + Duration::from_millis(index as u64), index + 1);
+        }
+        let samples = stats.trace_samples();
+        assert_eq!(samples.len(), MAX_TIMING_TRACE_SAMPLES);
+        assert_eq!(samples.first().unwrap().body_bytes, 1);
+        assert_eq!(samples.last().unwrap().body_bytes, MAX_TIMING_TRACE_SAMPLES);
+    }
+
+    struct FailingResolver {
+        non_public: bool,
+    }
+
+    impl reqwest::dns::Resolve for FailingResolver {
+        fn resolve(&self, _name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+            let error: Box<dyn std::error::Error + Send + Sync> = if self.non_public {
+                Box::new(NonPublicAddressResolution)
+            } else {
+                Box::new(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "synthetic temporary DNS timeout",
+                ))
+            };
+            Box::pin(async move { Err(error) })
+        }
+    }
+
+    #[test]
+    fn non_public_dns_rejection_is_permanent_but_resolver_timeout_is_transient() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let request_error = |non_public| {
+            let client = reqwest::Client::builder()
+                .dns_resolver(Arc::new(FailingResolver { non_public }))
+                .build()
+                .unwrap();
+            runtime
+                .block_on(client.get("https://radio.example/audio").send())
+                .unwrap_err()
+        };
+
+        assert!(matches!(
+            classify_connection_error(request_error(true)),
+            TransportError::Permanent(message)
+                if message == "Radio host resolved to a non-public address"
+        ));
+        assert!(matches!(
+            classify_connection_error(request_error(false)),
+            TransportError::Network(message)
+                if message == "Radio stream connection failed (check address and network)"
+        ));
+    }
 
     #[test]
     fn startup_budget_rejects_even_buffered_bytes_until_pcm_is_decoded() {
@@ -627,6 +873,7 @@ mod tests {
         for url in [
             "https://example.com/live?token=abc",
             "https://8.8.8.8/live",
+            "https://somafm.com.evil.test/live",
             "http://127.0.0.1:8080/live",
             "http://192.168.1.5:8000/live",
         ] {
@@ -634,6 +881,11 @@ mod tests {
         }
         for url in [
             "http://example.com/live",
+            "https://somafm.com/m3u/groovesalad.m3u",
+            "https://somafm.com./m3u/groovesalad.m3u",
+            "https://SOMAFM.COM./m3u/groovesalad.m3u",
+            "https://ice5.somafm.com./groovesalad-128-mp3",
+            "https://ice5.somafm.com/groovesalad-128-mp3",
             "http://169.254.169.254/",
             "https://127.0.0.1/live",
             "https://192.168.1.5/live",
@@ -695,6 +947,7 @@ mod tests {
             NetworkGuard {
                 worker: Some(worker),
                 stopped,
+                timing: Arc::new(StreamTimingStats::default()),
             },
             dropped_rx,
         )

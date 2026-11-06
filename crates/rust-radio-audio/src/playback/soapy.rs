@@ -18,6 +18,7 @@ pub(super) fn play(
         Arc::clone(&context.volume),
         context.output_id,
         played_samples,
+        Arc::clone(&context.output_underruns),
     )
     .map_err(PlaybackFailure::Output)?;
     let mut converter = PcmConverter::new(AUDIO_RATE_HZ, output.sample_rate, 1, output.channels)

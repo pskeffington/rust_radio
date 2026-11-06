@@ -117,7 +117,7 @@ fn run_wfm(request: WfmArgs<'_>) -> Result<(), String> {
         "RUST RADIO / USB MONO FM / {} Hz / output {} / volume {}%",
         request.frequency_hz, request.output, request.volume
     );
-    super::monitor(engine, request.seconds)
+    super::monitor(engine, request.seconds, 200)
 }
 
 fn parse(args: &[String]) -> Result<CaptureArgs<'_>, String> {

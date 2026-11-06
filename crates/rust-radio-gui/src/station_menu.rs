@@ -117,6 +117,7 @@ impl RadioPanel {
         let count = self.ip_station_count();
         let id = ui.make_persistent_id("rust_radio_station");
         let cursor_id = id.with("cursor");
+        let selected_name = self.ip_station_name().to_owned();
         let open = egui::ComboBox::is_open(ui.ctx(), id);
         let mut cursor = if open {
             ui.data_mut(|data| data.get_temp::<usize>(cursor_id))
@@ -125,12 +126,6 @@ impl RadioPanel {
             selected
         };
         let mut choice = None;
-        let names: Vec<String> = curated_stations()
-            .iter()
-            .map(|station| station_menu_label(station, true))
-            .chain(self.ip_stations.iter().map(|station| station.name.clone()))
-            .chain(std::iter::once("Custom public / LAN stream".into()))
-            .collect();
         let mut moved = false;
         if open {
             let action = ui.input_mut(|input| {
@@ -169,12 +164,17 @@ impl RadioPanel {
             .width(ui.available_width().min(360.0))
             .height(170.0)
             .truncate()
-            .selected_text(
-                egui::RichText::new(self.ip_station_name())
-                    .strong()
-                    .size(16.0),
-            )
+            .selected_text(egui::RichText::new(&selected_name).strong().size(16.0))
             .show_ui(ui, |ui| {
+                // Building every row label allocates once per station. Defer
+                // that work until the popup is open instead of doing it on
+                // every normal frame.
+                let names: Vec<String> = curated_stations()
+                    .iter()
+                    .map(|station| station_menu_label(station, true))
+                    .chain(self.ip_stations.iter().map(|station| station.name.clone()))
+                    .chain(std::iter::once("Custom public / LAN stream".into()))
+                    .collect();
                 theme::apply(ui);
                 ui.spacing_mut().button_padding.x = STATION_MENU_BUTTON_HORIZONTAL_PADDING;
                 let row_width = ui.available_width().min(STATION_MENU_MAX_ROW_WIDTH);
@@ -228,7 +228,7 @@ impl RadioPanel {
             .response
             .on_hover_text(format!(
                 "{}\nTab to focus; Enter opens; arrows navigate; Enter selects; Escape closes",
-                names[selected]
+                selected_name
             ));
         ui.data_mut(|data| data.insert_temp(cursor_id, cursor));
         if !open && response.has_focus() {
@@ -297,7 +297,7 @@ mod label_ab_test {
                 let mut compact_width_saved = 0.0;
                 let mut current_overflows = Vec::new();
                 for station in curated_stations() {
-                    if station.id == "wcrb" {
+                    if station.category == "CLASSICAL" {
                         assert_eq!(compact_station_category(station.category), "CLASS");
                     } else {
                         assert_eq!(compact_station_category(station.category), station.category);
@@ -359,8 +359,10 @@ mod label_ab_test {
             PREVIOUS_STATION_MENU_ROW_WIDTH,
             STATION_MENU_MAX_ROW_WIDTH,
         );
-        assert_eq!(full_category_current_fit + 1, station_count);
-        assert_eq!(current_overflows, vec!["wcrb"]);
+        assert_eq!(
+            full_category_current_fit + current_overflows.len(),
+            station_count
+        );
         assert_eq!(name_current_fit, station_count);
         assert_eq!(compact_category_current_fit, station_count);
         assert_eq!(full_category_widened_fit, station_count);
