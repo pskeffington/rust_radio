@@ -5,7 +5,7 @@ use serde_json::{json, Map, Value};
 use std::collections::BTreeSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_HISTORY_BYTES: u64 = 64 * 1024;
@@ -19,7 +19,16 @@ pub fn update_file(path: &Path, report: &Value) -> Result<(), String> {
     if bytes.len() as u64 > MAX_HISTORY_BYTES {
         return Err("Feed history exceeds 64 KiB".into());
     }
+    if let Some(previous) = previous.as_deref() {
+        write_atomic(&backup_path(path), previous.as_bytes())?;
+    }
     write_atomic(path, &bytes)
+}
+
+fn backup_path(path: &Path) -> PathBuf {
+    let mut backup = path.as_os_str().to_owned();
+    backup.push(".bak");
+    PathBuf::from(backup)
 }
 
 fn read(path: &Path) -> Result<Option<String>, String> {
@@ -230,11 +239,18 @@ mod tests {
     #[test]
     fn history_preserves_last_decode_and_tracks_consecutive_failures_atomically() {
         let path = temp_path();
+        let backup = backup_path(&path);
         update_file(&path, &report(1_000_000, "decoded", true)).unwrap();
+        let first_report = fs::read(&path).unwrap();
+        assert!(!backup.exists());
         update_file(&path, &report(1_000_100, "unavailable", false)).unwrap();
+        assert_eq!(fs::read(&backup).unwrap(), first_report);
+        assert!(fs::metadata(&backup).unwrap().len() <= MAX_HISTORY_BYTES);
         let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        let previous: Value = serde_json::from_slice(&fs::read(&backup).unwrap()).unwrap();
         assert_eq!(saved["schema_version"].as_u64(), Some(1));
         assert_eq!(saved["stations"]["skylab"]["last_status"], "unavailable");
+        assert_eq!(previous["updated_at_unix"], 1_000_000);
         assert_eq!(
             saved["stations"]["skylab"]["last_decoded_at_unix"],
             1_000_000
@@ -242,15 +258,50 @@ mod tests {
         assert_eq!(saved["stations"]["skylab"]["consecutive_failures"], 1);
         assert_eq!(saved["stations"]["skylab"]["health"], "failed");
         let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup);
     }
 
     #[test]
     fn invalid_history_is_not_overwritten() {
         let path = temp_path();
+        let backup = backup_path(&path);
         fs::write(&path, "not-json").unwrap();
+        fs::write(&backup, "last-known-backup").unwrap();
         assert!(update_file(&path, &report(1_000_000, "decoded", true)).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "not-json");
+        assert_eq!(fs::read_to_string(&backup).unwrap(), "last-known-backup");
         let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup);
+    }
+
+    #[test]
+    fn backup_failure_leaves_the_primary_history_unchanged() {
+        let path = temp_path();
+        update_file(&path, &report(1_000_000, "decoded", true)).unwrap();
+        let primary = fs::read(&path).unwrap();
+        let backup = backup_path(&path);
+        fs::create_dir(&backup).unwrap();
+
+        assert!(update_file(&path, &report(1_000_100, "unavailable", false)).is_err());
+        assert_eq!(fs::read(&path).unwrap(), primary);
+
+        let _ = fs::remove_dir(backup);
+        let _ = fs::remove_file(path);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn backup_history_is_private_on_unix() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let path = temp_path();
+        let backup = backup_path(&path);
+        update_file(&path, &report(1_000_000, "decoded", true)).unwrap();
+        update_file(&path, &report(1_000_100, "unavailable", false)).unwrap();
+        let mode = fs::metadata(&backup).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+        let _ = fs::remove_file(path);
+        let _ = fs::remove_file(backup);
     }
 
     #[test]

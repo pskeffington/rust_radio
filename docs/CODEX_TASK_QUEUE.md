@@ -14,6 +14,7 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-108 | P1 | Validation | BLOCKED: exact-head startup_failure, zero jobs | CI status audit and exact-SHA evidence reconciliation | Distinguish startup_failure from test failure and verify hosted jobs before completion |
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
 | RR-110 | P1 | Transport | DONE | Reject invalid ICY metadata intervals at the public reader boundary | Direct `IcyAudioReader::new` calls with zero or above-limit intervals fail with `InvalidInput`; valid intervals and `None` remain unchanged; focused and workspace gates pass |
+| RR-111 | P1 | Storage | DONE | Preserve the prior validated catalog-history report as an atomic `.bak` checkpoint | On update, an existing valid primary is copied to `<path>.bak` before replacement; backup failures preserve the primary; invalid primary is never overwritten; both files remain bounded and private; focused/workspace gates pass |
 
 ## Current execution order: RR-108 hosted CI, then physical acceptance gates
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
@@ -55,6 +56,8 @@ provenance are recorded in `PROGRESS.md`.
 ## Parallel review
 Validation agent independently checks the proposed reproduction, cancellation, stale-result handling, no autoplay, private endpoint filtering and evidence for claimed success. Integration agent reviews Rust-Boy API compatibility but does not update its dependency pin without explicit host validation.
 
-RR-101 follow-up and required FACTORY-002 report are pushed to PR #5 at `324c32c733e986ee2936d82302fd76f371dd8855`. The sanitized issue report is recorded at [agent_skills #14](https://github.com/pskeffington/agent_skills/issues/14) (comment `6680570338`). RR-101 implementation review and local gates are complete; hosted exact-head CI remains outstanding. RR-108 is still BLOCKED because the published head currently has no visible Actions runs or combined statuses.
+RR-101 follow-up and required FACTORY-002 report are pushed to PR #5 at `324c32c733e986ee2936d82302fd76f371dd8855`. The sanitized issue report is recorded at [agent_skills #14](https://github.com/pskeffington/agent_skills/issues/14) (comment `6680570338`). RR-101 implementation review and local gates are complete; hosted exact-head CI remains outstanding. Before RR-111, Actions run 396 on documentation head `4033aec18dfcaa7cfd3611d49822719600f62f18` ended `startup_failure` before jobs; combined statuses were empty.
 
 RR-110 public ICY reader hardening was verified locally and is complete: direct constructors reject zero and above-limit metadata intervals with `InvalidInput`, while valid boundaries and `None` retain their behavior. See the dated evidence in `PROGRESS.md`; exact-head Actions startup failure remains a separate RR-108 blocker.
+
+RR-111 history backup hardening is complete: subsequent valid history updates atomically checkpoint the previous validated bytes to `<path>.bak` before replacing the primary. Backup failure leaves the primary intact; invalid primary input is preserved and rejected. No interprocess lock or parent-directory sync was added.
