@@ -9,7 +9,14 @@
 - Added opt-in `validate STATION --diagnostics-json`, exposing only the catalog hostname, redacted path, normalized content type and bounded validation fields; legacy `--json` schema remains unchanged. Terminal playback failure now prints output-failure and callback diagnostics before the existing error. Generic connection classification is retained because safe DNS/TLS separation is unavailable at the current reqwest boundary.
 - `cargo fmt --all -- --check` passed after formatting. `cargo test -p rust-radio-cli --locked` passed 20/20. `cargo test --workspace --locked` passed; one GUI hardware integration test and one live-network timing integration test remain ignored by their existing gates. Strict Clippy initially found one needless `?` lint, which was corrected; the final rerun passed.
 - GitHub Actions run 388 for the synchronized PR head ended `startup_failure` before any job was created. This is an infrastructure gate, not a source-test failure. Physical audible playback and station status remain unverified.
-- Next: complete independent review; commit and push the RR-101 change, then take the fresh silent catalog sweep RR-102 without overwriting retained evidence.
+- Next: continue RR-108 exact-head CI reconciliation; preserve the separate physical audio, Pi, receiver and publisher-rights gates.
+
+## RR-102 current catalog sweep — 2026-11-06
+
+- Ran two bounded, silent sweeps against all 25 canonical station IDs in catalog order. The complete report at `2026-11-06T08:01:40Z` records 24 decoded stations and Skylab unavailable at `not_checked` after two attempts; total attempts were 26. This is client-environment codec evidence, not audible playback or a lasting health verdict.
+- In the first sweep, 23 stations decoded, Skylab was unavailable after two attempts, and WFMU was unsupported at `stream_response` with `audio/mpeg`; in the following sweep WFMU decoded successfully. This variation is evidence to retain WFMU and investigate publisher variability only if repeated; no catalog or endpoint changes were made.
+- Saved schema-v1 report and matching health history on the Data volume: `/Volumes/Data/Codex/rr101-skylab/rr102-catalog-validation-report-2026-11-06.json` (SHA-256 `a744b362e0171415b8c9db381758114de24ff7b4d30213da3598f6108ae4dfe8`) and `/Volumes/Data/Codex/rr101-skylab/rr102-catalog-validation-report-history-2026-11-06.json` (SHA-256 `581885c4bc0fd3ae9a3a7435005a80197e20eb202ee8883265c1d45efd473e19`). An earlier history-only snapshot is also retained; all files contain redacted bounded fields and no resolved URLs.
+- Queue state: RR-101 is in review on the open PR; RR-102 evidence is complete; RR-108 exact-head CI reconciliation is next. GitHub reports no workflow run or combined status for commit `6d6190fcf2a2c62c90b38880f163ead9296b3045` yet. Physical audible playback remains unverified because CoreAudio failed during output initialization.
 
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
