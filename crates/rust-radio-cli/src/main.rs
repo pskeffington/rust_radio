@@ -48,7 +48,7 @@ fn usage() {
 }
 
 const VALIDATION_WORKERS: usize = 4;
-const VALIDATION_RECOVERY_DELAY: Duration = Duration::from_secs(1);
+const VALIDATION_RECOVERY_DELAY: Duration = Duration::from_millis(1_500);
 static NEXT_SWEEP_ID: AtomicU64 = AtomicU64::new(0);
 const INTERACTIVE_COMMAND_MAX_BYTES: usize = 4096;
 const INTERACTIVE_COMMAND_QUEUE: usize = 8;
@@ -1435,6 +1435,11 @@ mod tests {
             .unwrap();
         assert_eq!(rejected["attempts"].as_u64(), Some(1));
         assert_eq!(rejected["status"].as_str(), Some("invalid_stream"));
+    }
+
+    #[test]
+    fn catalog_validation_recovery_delay_is_one_point_five_seconds() {
+        assert_eq!(VALIDATION_RECOVERY_DELAY, Duration::from_millis(1_500));
     }
 
     #[test]
