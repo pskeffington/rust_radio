@@ -71,6 +71,17 @@ receiver hardware acceptance listed there as an open Rust Radio gate.
   callback-consumed PCM, human-audible playback, publisher redistribution
   rights, or hardware/release acceptance. No audio output was opened.
 
+## RR-107 headless AArch64 Linux portability check — 2026-11-23
+
+- Source SHA: `1d18300e4c6bde4a7515d22cffd1cc20e859e809`. Ran
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-pi-headless cargo check --locked
+  --offline -p rust-radio --no-default-features --target
+  aarch64-unknown-linux-gnu`; PASS in 2.17 seconds.
+- This checks the no-default-feature host API for AArch64 Linux compilation.
+  It does not check Pi-native audio, GUI, the physical display, Rust-Boy runtime
+  integration, thermal/power behavior, or operator acceptance. RR-107 remains
+  BLOCKED on the Pi 5 target and embedded-host run.
+
 ## RR-120 streaming-only scope migration — 2026-11-23
 
 - Baseline: `4b377519b585f0ff155e7ab9146eaa3bb822e777`; implementation commit: `36e603152e1d770014e3487c056c0cd7664acd5f` on isolated Research-volume branch `codex/rr120-ip-radio-scope`.

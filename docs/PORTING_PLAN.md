@@ -29,7 +29,7 @@ provenance remains in the extraction notes; dated evidence is in
 | IP playback | Native MP3/AAC, curated presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported; playlist playback uses the first entry |
 | Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and external audio-output loss/reconnect; Windows output |
 | Compact GUI | Optional 480×320 egui panel with phosphor skin, passive internet reachability check, asynchronous station checks, saved public/LAN streams, keyboard menus and layout/lifecycle coverage | Physical touch and Pi rendering |
-| Raspberry Pi | Portable IP streaming library and native audio output | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |
+| Raspberry Pi | Portable IP streaming library and native audio output; headless AArch64 Linux API compile checked on the current PR source | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |
 | Remote CI | Linux workspace formatting, tests and strict clippy configured | Hosted runs must be checked at the tested commit |
 | Curated station release | 25 publisher-directed entries with a machine-readable `redistribution: not_authorized` policy | **Release blocked.** Current SomaFM terms reject new third-party apps (23 entries); GBH and Skylab bundle permission remains unresolved. Exclude uncleared entries or record applicable rights before shipping; see [publisher rights audit](PUBLISHER_RIGHTS_AUDIT.md). |
 
