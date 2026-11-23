@@ -9,6 +9,15 @@ are removed from current source, feature flags, CI and operator documentation.
 Older entries below are historical evidence for the revisions they identify;
 they do not describe the current product scope. RR-120 tracks this migration.
 
+## RR-120 streaming-only scope migration — 2026-11-23
+
+- Baseline: `4b377519b585f0ff155e7ab9146eaa3bb822e777`; implementation commit: `36e603152e1d770014e3487c056c0cd7664acd5f` on isolated Research-volume branch `codex/rr120-ip-radio-scope`.
+- Removed the USB SDR/RF and nRSP/SDR receiver crate, APIs, features, CLI commands, GUI source/settings, receiver-only CI jobs, and current-facing receiver guides. Removed the satellite/RF model as outside the internet-streaming scope. Historical dated progress and status entries remain as revision-bound evidence.
+- Kept curated/custom IP streaming, native audio output and device selection (including OS-managed USB/Bluetooth sound devices), host integration, and standalone saved IP-station persistence. The persistence helper retains bounded reads/writes, atomic replacement, existing path override and Unix 0600 permissions.
+- Canonical `agent_skills` main: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`. Architect `/root/rr120_scope_audit` used `architecture-design` blob `12c91c8040d13f618a209de24cbbf6e4f89830d1`; implementer `/root/rr120_scope_impl` used `code-implementation` blob `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; verifier `/root/rr120_scope_verifier` used `test-verification` blob `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`; reviewer `/root/rr120_scope_review` used `independent-code-review` blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`. Architecture, implementation, verification and independent review passed. Skills were read from the exact canonical registry revision; the local checkout is behind.
+- Validation: `cargo fmt --all -- --check` PASS; `cargo test --workspace --locked --offline` PASS (**148 passed, 0 failed, 1 ignored**); strict workspace Clippy PASS; all-feature workspace tests and strict Clippy PASS (**148 passed, 0 failed, 1 ignored**); `cargo check --locked -p rust-radio --no-default-features` PASS; `git diff --check` PASS. One native GUI playback test is ignored because it needs hardware and local TCP. All build outputs used `/private/tmp` due the Research SMB no-exec mount.
+- Active source, workflow and current-facing documentation search found no receiver APIs/features; remaining USB/nSDR wording identifies the scope boundary or generic sound-output devices. No physical audio was opened or tested. Hosted CI and physical audio/Pi acceptance remain open. Queue status is READY until the draft PR is created.
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.

@@ -36,6 +36,8 @@ provenance remains in the extraction notes; dated evidence is in
 
 The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) govern subsequent Codex passes. Do not call historical decoded streams a current live result. Mac device/output tests and physical Pi 5 acceptance remain distinct blocked or operator-run gates. See [status checkpoint](STATUS_2026-11-05.md).
 
+RR-120 commit `36e603152e1d770014e3487c056c0cd7664acd5f` removes SDR/nSDR/satellite support from this repository's code, build features, CLI/GUI, CI and current-facing guides. IP streaming, generic audio device selection and saved IP stations remain. Local locked workspace, all-feature and no-default checks pass; hosted CI and physical audio/Pi acceptance remain separate gates. Historical receiver evidence stays in dated progress entries.
+
 ## Next development priorities
 
 1. Keep recovery source-aware: terminal stream setup failures require explicit
