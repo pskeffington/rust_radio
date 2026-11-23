@@ -1681,6 +1681,9 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   `45240548604`, also `startup_failure` with zero jobs and no PR checks. The
   sanitized observation was submitted to FACTORY-002 at
   [issue comment 7110710904](https://github.com/pskeffington/agent_skills/issues/14#issuecomment-7110710904).
+- Documentation head `1bfdc69fc45cb57b4393996520a1e2c607fa818b` produced
+  Actions run `45242622210`, again `startup_failure` with zero jobs and no PR
+  checks. This runner failure occurred before repository steps.
 
 ## RR-118 live process observation (2026-11-23)
 
