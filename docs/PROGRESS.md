@@ -1673,3 +1673,7 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Follow-up Actions run `45240046988` for exact head
   `f3770f699ed48ee92995ecfcd35c9409a86b2488` also ended `startup_failure`
   before job creation with zero jobs; `gh pr checks 14` reported no checks.
+- Current documentation head `69bcbd7807487defdbcd8296ea7dec86d1f855b7`
+  produced Actions run `45240372774`, again `startup_failure` before job
+  creation with zero jobs. No PR checks are reported. This failure did not run
+  repository tests.
