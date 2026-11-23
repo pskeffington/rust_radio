@@ -101,6 +101,9 @@ they do not describe the current product scope. RR-120 tracks this migration.
   produced Actions run `45219125732`, `startup_failure`, with zero jobs. `gh pr
   checks 14` reports no checks. Hosted validation is blocked before repository
   commands execute; this is not a Rust test failure.
+- Follow-up exact head `da1f26c3d624dcf1ba4846540a8e40c62268b751` produced
+  Actions run `45220851038`, also `startup_failure` with zero jobs; no PR checks
+  were reported. This remains a runner-startup blocker.
 
 `STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
 their receiver references describe their recorded revisions. Do not interpret
@@ -144,6 +147,10 @@ receiver hardware acceptance listed there as an open Rust Radio gate.
   and unnotarized; distribution signing, notarization and Gatekeeper acceptance
   remain NOT RUN. `bash -n` for both scripts and `git diff --check` passed. No
   cargo tests were run for this packaging task.
+- On 2026-11-23, the user reported that Rust Radio is already open and running.
+  No new instance was launched. This user observation does not verify screen
+  layout, control behavior, playback, or audible output; those gates remain
+  distinct.
 - Canonical `agent_skills` revision: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`;
   implementer used `code-implementation` blob
   `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; independent review used
