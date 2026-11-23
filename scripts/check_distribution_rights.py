@@ -14,6 +14,32 @@ from urllib.parse import urlsplit
 
 MAX_INPUT_BYTES = 256 * 1024
 ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}\Z")
+STATION_STRING_FIELDS = (
+    "id",
+    "name",
+    "broadcaster",
+    "genre",
+    "language",
+    "country",
+    "category",
+    "playlist_url",
+    "publisher_reference_url",
+    "format",
+)
+STATION_FIELDS = (
+    "id",
+    "name",
+    "broadcaster",
+    "genre",
+    "language",
+    "country",
+    "category",
+    "playlist_url",
+    "publisher_reference_url",
+    "nominal_kbps",
+    "format",
+)
+STATION_FIELD_SET = frozenset(STATION_FIELDS)
 
 
 class GateError(Exception):
@@ -52,36 +78,255 @@ def _read_json(path: Path, label: str) -> tuple[bytes, Any]:
     return raw, value
 
 
-def _runtime_stations(source: str) -> dict[str, dict[str, str]]:
-    declaration = re.search(
-        r"pub\s+const\s+CURATED_STATIONS\s*:\s*\[\s*InternetStation\s*;\s*(\d+)\s*\]\s*=\s*\[(.*?)\];",
-        source,
-        re.DOTALL,
-    )
-    if declaration is None:
-        raise GateError("cannot identify the compiled CURATED_STATIONS declaration")
-    declared_count = int(declaration.group(1))
-    body = declaration.group(2)
-    blocks = re.findall(r"\bInternetStation\s*\{(.*?)\n\s*\}", body, re.DOTALL)
-    if len(blocks) != declared_count:
-        raise GateError("compiled station declaration count does not match its entries")
+def _rust_tokens(source: str) -> list[tuple[str, str, bool]]:
+    """Tokenize the Rust syntax used by the curated station declaration.
 
-    stations: dict[str, dict[str, str]] = {}
-    for block in blocks:
-        fields: dict[str, str] = {}
-        for field in ("id", "broadcaster"):
-            values = re.findall(rf"\b{field}\s*:\s*\"([^\"]*)\"", block)
-            if len(values) != 1:
+    This is deliberately not a general Rust parser. It skips nested comments,
+    keeps string contents atomic, and fails closed when the declaration uses
+    metadata expressions this preflight cannot safely interpret.
+    """
+    tokens: list[tuple[str, str, bool]] = []
+    index = 0
+
+    def quoted(start: int, quote: str) -> tuple[str, bool, int]:
+        cursor = start + 1
+        value: list[str] = []
+        escaped = False
+        while cursor < len(source):
+            char = source[cursor]
+            if char == "\\":
+                escaped = True
+                if cursor + 1 >= len(source):
+                    raise GateError("unterminated Rust string or character literal")
+                value.append(source[cursor + 1])
+                cursor += 2
+            elif char == quote:
+                return "".join(value), escaped, cursor + 1
+            else:
+                value.append(char)
+                cursor += 1
+        raise GateError("unterminated Rust string or character literal")
+
+    while index < len(source):
+        char = source[index]
+        if char.isspace():
+            index += 1
+            continue
+
+        if source.startswith("//", index):
+            newline = source.find("\n", index + 2)
+            index = len(source) if newline < 0 else newline + 1
+            continue
+
+        if source.startswith("/*", index):
+            depth = 1
+            index += 2
+            while index < len(source) and depth:
+                if source.startswith("/*", index):
+                    depth += 1
+                    index += 2
+                elif source.startswith("*/", index):
+                    depth -= 1
+                    index += 2
+                else:
+                    index += 1
+            if depth:
+                raise GateError("unterminated Rust block comment")
+            continue
+
+        # Rust raw strings can contain quotes and comment markers verbatim.
+        raw_prefix = "br" if source.startswith("br", index) else "r" if char == "r" else None
+        if raw_prefix is not None:
+            cursor = index + len(raw_prefix)
+            while cursor < len(source) and source[cursor] == "#":
+                cursor += 1
+            if cursor < len(source) and source[cursor] == '"':
+                hashes = source[index + len(raw_prefix) : cursor]
+                terminator = '"' + hashes
+                end = source.find(terminator, cursor + 1)
+                if end < 0:
+                    raise GateError("unterminated Rust raw string literal")
+                kind = "byte_string" if raw_prefix == "br" else "string"
+                tokens.append((kind, source[cursor + 1 : end], False))
+                index = end + len(terminator)
+                continue
+
+        if source.startswith('b"', index):
+            value, escaped, index = quoted(index + 1, '"')
+            tokens.append(("byte_string", value, escaped))
+            continue
+
+        if char == '"':
+            value, escaped, index = quoted(index, '"')
+            tokens.append(("string", value, escaped))
+            continue
+
+        if char == "'":
+            # Rust lifetimes have no closing apostrophe; character literals do.
+            cursor = index + 1
+            if cursor < len(source) and (source[cursor].isalpha() or source[cursor] == "_"):
+                cursor += 1
+                while cursor < len(source) and (source[cursor].isalnum() or source[cursor] == "_"):
+                    cursor += 1
+                if cursor >= len(source) or source[cursor] != "'":
+                    tokens.append(("lifetime", source[index + 1 : cursor], False))
+                    index = cursor
+                    continue
+            _, _, index = quoted(index, "'")
+            tokens.append(("character", "", False))
+            continue
+
+        if char.isalpha() or char == "_":
+            cursor = index + 1
+            while cursor < len(source) and (source[cursor].isalnum() or source[cursor] == "_"):
+                cursor += 1
+            tokens.append(("identifier", source[index:cursor], False))
+            index = cursor
+            continue
+
+        if char.isdigit():
+            cursor = index + 1
+            while cursor < len(source) and (source[cursor].isdigit() or source[cursor] == "_"):
+                cursor += 1
+            tokens.append(("number", source[index:cursor], False))
+            index = cursor
+            continue
+
+        tokens.append(("punctuation", char, False))
+        index += 1
+
+    return tokens
+
+
+def _matches(tokens: list[tuple[str, str, bool]], start: int, pattern: tuple[tuple[str, str], ...]) -> bool:
+    return start + len(pattern) <= len(tokens) and all(
+        tokens[start + offset][:2] == expected for offset, expected in enumerate(pattern)
+    )
+
+
+def _runtime_stations(source: str) -> dict[str, dict[str, str | int]]:
+    tokens = _rust_tokens(source)
+    declaration_prefix = (
+        ("identifier", "pub"),
+        ("identifier", "const"),
+        ("identifier", "CURATED_STATIONS"),
+        ("punctuation", ":"),
+        ("punctuation", "["),
+        ("identifier", "InternetStation"),
+        ("punctuation", ";"),
+    )
+    declarations = [
+        index
+        for index in range(len(tokens))
+        if _matches(tokens, index, declaration_prefix)
+    ]
+    if len(declarations) != 1:
+        raise GateError("cannot uniquely identify the compiled CURATED_STATIONS declaration")
+
+    declaration = declarations[0]
+    count_token = tokens[declaration + len(declaration_prefix)]
+    suffix_start = declaration + len(declaration_prefix) + 1
+    if count_token[0] != "number" or not re.fullmatch(r"[0-9]+", count_token[1]):
+        raise GateError("compiled station declaration has an unsupported entry count")
+    declared_count = int(count_token[1])
+    if not _matches(
+        tokens,
+        suffix_start,
+        (("punctuation", "]"), ("punctuation", "="), ("punctuation", "[")),
+    ):
+        raise GateError("compiled station declaration has an unsupported array form")
+
+    cursor = suffix_start + 3
+    stations: dict[str, dict[str, str | int]] = {}
+    string_fields = frozenset(STATION_STRING_FIELDS)
+
+    while cursor < len(tokens) and tokens[cursor][:2] != ("punctuation", "]"):
+        if not _matches(tokens, cursor, (("identifier", "InternetStation"), ("punctuation", "{"))):
+            raise GateError("compiled station array contains an unsupported entry")
+        cursor += 2
+        fields: dict[str, str | int] = {}
+
+        while cursor < len(tokens) and tokens[cursor][:2] != ("punctuation", "}"):
+            field_token = tokens[cursor]
+            if field_token[0] != "identifier" or cursor + 1 >= len(tokens) or tokens[cursor + 1][:2] != ("punctuation", ":"):
+                raise GateError("compiled station entry has an unsupported field form")
+            field_name = field_token[1]
+            if field_name not in STATION_FIELD_SET:
+                raise GateError("compiled station entry has an unknown field")
+            if field_name in fields:
+                raise GateError(f"compiled station entry has duplicate {field_name} fields")
+            cursor += 2
+
+            if field_name in string_fields:
+                value_token = tokens[cursor] if cursor < len(tokens) else None
+                if value_token is None or value_token[0] != "string" or value_token[2]:
+                    raise GateError(f"compiled station field {field_name} must be a direct string literal")
+                if cursor + 1 >= len(tokens) or tokens[cursor + 1][:2] not in (
+                    ("punctuation", ","),
+                    ("punctuation", "}"),
+                ):
+                    raise GateError(f"compiled station field {field_name} must be a direct string literal")
+                field_value = value_token[1]
+                cursor += 1
+            else:
+                value_token = tokens[cursor] if cursor < len(tokens) else None
+                if (
+                    value_token is None
+                    or value_token[0] != "number"
+                    or not re.fullmatch(r"[0-9]+(?:_[0-9]+)*", value_token[1])
+                ):
+                    raise GateError("compiled station field nominal_kbps must be an integer literal")
+                field_value = int(value_token[1].replace("_", ""))
+                if field_value > 65_535:
+                    raise GateError("compiled station field nominal_kbps exceeds u16")
+                if cursor + 1 >= len(tokens) or tokens[cursor + 1][:2] not in (
+                    ("punctuation", ","),
+                    ("punctuation", "}"),
+                ):
+                    raise GateError("compiled station field nominal_kbps must be a direct integer literal")
+                cursor += 1
+
+            fields[field_name] = field_value
+
+            if cursor >= len(tokens):
+                raise GateError("compiled station entry is unterminated")
+            if tokens[cursor][:2] == ("punctuation", ","):
+                cursor += 1
+                if cursor < len(tokens) and tokens[cursor][:2] == ("punctuation", "}"):
+                    break  # Rust permits a trailing struct-field comma.
+            elif tokens[cursor][:2] != ("punctuation", "}"):
+                raise GateError("compiled station entry has an unsupported field separator")
+
+        if cursor >= len(tokens) or tokens[cursor][:2] != ("punctuation", "}"):
+            raise GateError("compiled station entry is unterminated")
+        cursor += 1
+
+        for field in STATION_FIELDS:
+            if field not in fields:
                 raise GateError(f"compiled station entry must have one {field}")
-            fields[field] = values[0]
         station_id = fields["id"]
+        if not isinstance(station_id, str):
+            raise GateError("compiled station ID must be a string literal")
         if not ID_PATTERN.fullmatch(station_id):
             raise GateError("compiled station ID has an invalid format")
         if station_id in stations:
             raise GateError(f"duplicate compiled station ID: {station_id}")
-        if not fields["broadcaster"].strip():
+        broadcaster = fields["broadcaster"]
+        if not isinstance(broadcaster, str) or not broadcaster.strip():
             raise GateError(f"compiled station {station_id} has no publisher")
         stations[station_id] = fields
+
+        if cursor < len(tokens) and tokens[cursor][:2] == ("punctuation", ","):
+            cursor += 1
+        elif cursor >= len(tokens) or tokens[cursor][:2] != ("punctuation", "]"):
+            raise GateError("compiled station array has an unsupported entry separator")
+
+    if cursor >= len(tokens) or not _matches(
+        tokens, cursor, (("punctuation", "]"), ("punctuation", ";"))
+    ):
+        raise GateError("compiled station array is unterminated")
+    if len(stations) != declared_count:
+        raise GateError("compiled station declaration count does not match its entries")
     return stations
 
 
@@ -116,19 +361,24 @@ def validate(root: Path, manifest_path: Path) -> None:
     if not isinstance(catalog_entries, list):
         raise GateError("catalog stations must be a list")
 
-    catalog_stations: dict[str, dict[str, str]] = {}
+    catalog_stations: dict[str, dict[str, str | int]] = {}
     for entry in catalog_entries:
-        if not isinstance(entry, dict):
+        if not isinstance(entry, dict) or set(entry) != STATION_FIELD_SET:
             raise GateError("catalog station entry must be an object")
-        station_id = entry.get("id")
-        broadcaster = entry.get("broadcaster")
+        station = {field: entry[field] for field in STATION_FIELDS}
+        station_id = station["id"]
+        broadcaster = station["broadcaster"]
         if not isinstance(station_id, str) or not ID_PATTERN.fullmatch(station_id):
             raise GateError("catalog station ID has an invalid format")
         if not isinstance(broadcaster, str) or not broadcaster.strip():
             raise GateError(f"catalog station {station_id} has no publisher")
+        if any(not isinstance(station[field], str) for field in STATION_STRING_FIELDS):
+            raise GateError(f"catalog station {station_id} has a non-string metadata field")
+        if type(station["nominal_kbps"]) is not int or not 0 <= station["nominal_kbps"] <= 65_535:
+            raise GateError(f"catalog station {station_id} has an invalid nominal bitrate")
         if station_id in catalog_stations:
             raise GateError(f"duplicate catalog station ID: {station_id}")
-        catalog_stations[station_id] = {"id": station_id, "broadcaster": broadcaster}
+        catalog_stations[station_id] = station
 
     try:
         with runtime_path.open("rb") as stream:
@@ -139,8 +389,8 @@ def validate(root: Path, manifest_path: Path) -> None:
     if not runtime_raw or len(runtime_raw) > MAX_INPUT_BYTES:
         raise GateError("compiled station source is outside the allowed size")
     runtime_stations = _runtime_stations(runtime_source)
-    if catalog_stations != runtime_stations:
-        raise GateError("catalog station IDs and publishers do not match compiled stations")
+    if list(catalog_stations) != list(runtime_stations) or catalog_stations != runtime_stations:
+        raise GateError("ordered catalog station metadata does not match compiled stations")
 
     manifest_raw, manifest = _read_json(manifest_path, "approval manifest")
     del manifest_raw  # Manifest content is validated below; it contains no credentials.

@@ -36,15 +36,39 @@ class DistributionRightsTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def write_runtime(self, stations: list[tuple[str, str]]) -> None:
+    def station_record(self, station_id: str, publisher: str) -> dict[str, Any]:
+        return {
+            "id": station_id,
+            "name": station_id.title(),
+            "broadcaster": publisher,
+            "genre": "Ambient",
+            "language": "en",
+            "country": "US",
+            "category": "CHILL",
+            "playlist_url": f"https://radio.example.test/{station_id}",
+            "publisher_reference_url": f"https://publisher.example.test/{station_id}",
+            "nominal_kbps": 128,
+            "format": "MP3",
+        }
+
+    def write_runtime(
+        self,
+        stations: list[tuple[str, str]],
+        runtime_overrides: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
+        runtime_overrides = runtime_overrides or {}
         entries = []
         for station_id, publisher in stations:
-            entries.append(
-                "    InternetStation {\n"
-                f'        id: "{station_id}",\n'
-                f'        broadcaster: "{publisher}",\n'
-                "    }"
-            )
+            station = self.station_record(station_id, publisher)
+            station.update(runtime_overrides.get(station_id, {}))
+            fields = []
+            for field in gate.STATION_FIELDS:
+                value = station[field]
+                if field == "nominal_kbps":
+                    fields.append(f"        {field}: {value},")
+                else:
+                    fields.append(f'        {field}: "{value}",')
+            entries.append("    InternetStation {\n" + "\n".join(fields) + "\n    }")
         body = ",\n".join(entries)
         self.runtime_path.write_text(
             f"pub const CURATED_STATIONS: [InternetStation; {len(stations)}] = [\n{body}\n];\n",
@@ -56,7 +80,7 @@ class DistributionRightsTests(unittest.TestCase):
     ) -> None:
         catalog: dict[str, Any] = {
             "schema_version": 1,
-            "stations": [{"id": station_id, "broadcaster": publisher} for station_id, publisher in stations],
+            "stations": [self.station_record(station_id, publisher) for station_id, publisher in stations],
         }
         if include_policy:
             catalog["policy"] = {"redistribution": redistribution}
@@ -145,17 +169,117 @@ class DistributionRightsTests(unittest.TestCase):
         self.write_manifest(self.approvals())
         self.assert_blocked()
 
-    def test_repository_catalog_matches_compiled_station_ids_and_publishers(self) -> None:
+    def test_catalog_station_order_must_match_runtime_order(self) -> None:
+        self.write_catalog([("beta", "Beta Radio"), ("alpha", "Alpha Radio")])
+        self.write_manifest(self.approvals())
+        self.assert_blocked()
+
+    def test_commented_station_values_cannot_mask_runtime_constants(self) -> None:
+        self.runtime_path.write_text(
+            'const ACTUAL_ALPHA: &str = "not-in-catalog";\n'
+            'const ACTUAL_PUBLISHER: &str = "Unapproved Publisher";\n'
+            "pub const CURATED_STATIONS: [InternetStation; 2] = [\n"
+            "    InternetStation {\n"
+            '        // id: "alpha",\n'
+            "        id: ACTUAL_ALPHA,\n"
+            '        /* broadcaster: "Alpha Radio" */\n'
+            "        broadcaster: ACTUAL_PUBLISHER,\n"
+            "    },\n"
+            "    InternetStation {\n"
+            '        id: "beta",\n'
+            '        broadcaster: "Beta Radio",\n'
+            "    },\n"
+            "];\n",
+            encoding="utf-8",
+        )
+        self.write_manifest(self.approvals())
+        with self.assertRaises(gate.GateError):
+            gate._runtime_stations(self.runtime_path.read_text(encoding="utf-8"))
+
+    def test_raw_string_contents_cannot_satisfy_runtime_metadata_fields(self) -> None:
+        self.runtime_path.write_text(
+            'const ACTUAL_PUBLISHER: &str = "Unapproved Publisher";\n'
+            "pub const CURATED_STATIONS: [InternetStation; 2] = [\n"
+            "    InternetStation {\n"
+            '        id: "alpha",\n'
+            '        name: r#"broadcaster: "Alpha Radio""#,\n'
+            "        broadcaster: ACTUAL_PUBLISHER,\n"
+            '        genre: "Ambient",\n'
+            '        language: "en",\n'
+            '        country: "US",\n'
+            '        category: "CHILL",\n'
+            '        playlist_url: "https://radio.example.test/a",\n'
+            '        publisher_reference_url: "https://publisher.example.test/a",\n'
+            "        nominal_kbps: 128,\n"
+            '        format: "MP3",\n'
+            "    },\n"
+            "    InternetStation {\n"
+            '        id: "beta",\n'
+            '        name: "Beta",\n'
+            '        broadcaster: "Beta Radio",\n'
+            '        genre: "Classical",\n'
+            '        language: "en",\n'
+            '        country: "US",\n'
+            '        category: "CLASSICAL",\n'
+            '        playlist_url: "https://radio.example.test/b",\n'
+            '        publisher_reference_url: "https://publisher.example.test/b",\n'
+            "        nominal_kbps: 128,\n"
+            '        format: "AAC",\n'
+            "    },\n"
+            "];\n",
+            encoding="utf-8",
+        )
+        self.write_manifest(self.approvals())
+        with self.assertRaises(gate.GateError):
+            gate._runtime_stations(self.runtime_path.read_text(encoding="utf-8"))
+
+    def test_runtime_metadata_requires_exact_fields_and_literal_values(self) -> None:
+        valid_source = self.runtime_path.read_text(encoding="utf-8")
+        malformed_sources = (
+            valid_source.replace('        name: "Alpha",\n', "", 1),
+            valid_source.replace(
+                "    InternetStation {\n",
+                '    InternetStation {\n        unexpected: "field",\n',
+                1,
+            ),
+            valid_source.replace(
+                '        name: "Alpha",\n',
+                '        name: "Alpha",\n        name: "Shadow",\n',
+                1,
+            ),
+            valid_source.replace('        genre: "Ambient",\n', "        genre: GENRE,\n", 1),
+            valid_source.replace("        nominal_kbps: 128,\n", "        nominal_kbps: RATE,\n", 1),
+        )
+        for malformed in malformed_sources:
+            with self.subTest(source=malformed):
+                self.runtime_path.write_text(malformed, encoding="utf-8")
+                self.write_manifest(self.approvals())
+                self.assert_blocked()
+
+    def test_runtime_playlist_url_must_match_even_with_fresh_source_digest(self) -> None:
+        self.write_runtime(
+            [("alpha", "Alpha Radio"), ("beta", "Beta Radio")],
+            runtime_overrides={"alpha": {"playlist_url": "https://radio.example.test/changed"}},
+        )
+        self.write_manifest(self.approvals())
+        manifest = self.manifest(self.approvals())
+        self.assertEqual(
+            manifest["runtime_source_sha256"],
+            hashlib.sha256(self.runtime_path.read_bytes()).hexdigest(),
+        )
+        self.assert_blocked()
+
+    def test_repository_catalog_matches_ordered_compiled_station_metadata(self) -> None:
         project_root = SCRIPTS.parent
         catalog = json.loads((project_root / "catalog/curated-stations.json").read_text(encoding="utf-8"))
         runtime = (project_root / "crates/rust-radio-core/src/directory.rs").read_text(encoding="utf-8")
-        catalog_stations = {item["id"]: item["broadcaster"] for item in catalog["stations"]}
+        catalog_stations = [
+            {field: item[field] for field in gate.STATION_FIELDS}
+            for item in catalog["stations"]
+        ]
         runtime_stations = gate._runtime_stations(runtime)
         self.assertEqual(len(runtime_stations), 25)
-        self.assertEqual(
-            catalog_stations,
-            {station_id: station["broadcaster"] for station_id, station in runtime_stations.items()},
-        )
+        self.assertEqual(catalog_stations, list(runtime_stations.values()))
 
     def test_duplicate_json_keys_fail_closed(self) -> None:
         self.manifest_path.write_text(
