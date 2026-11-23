@@ -1,11 +1,5 @@
 # Radio development progress
 
-## Operator playback controls follow-up — 2026-11-23
-
-- Operator reports channel back/forward, Play/Stop, mute, volume, output switching, stop/restart, and audible output working in the running Rust Radio app. This is direct human/operator evidence, not an automated test result.
-- The observed running process maps an older backup app executable (`/Users/null/Applications/.Rust Radio.app.backup.20998/Contents/MacOS/rust-radio-gui`); its exact source SHA is not established by the current process inspection. The current installed bundle has not been cleanly relaunched, so these results do not qualify the current source revision.
-- Output-loss/reconnect recovery across specific physical devices, Pi acceptance, hosted CI, signing/notarization, and publisher rights remain separate open gates.
-
 ## Current scope — 2026-11-23
 
 Rust Radio is scoped to receive-only internet streaming radio: curated and
@@ -14,6 +8,22 @@ USB SDR and nSDR receiver implementations have moved to separate projects and
 are removed from current source, feature flags, CI and operator documentation.
 Older entries below are historical evidence for the revisions they identify;
 they do not describe the current product scope. RR-120 tracks this migration.
+
+## Operator playback controls follow-up — 2026-11-23
+
+- Operator confirms channel back/forward, Play/Stop, mute, volume, output switching, stop/restart, and audible output work in the running app. This is operator evidence, not an automated test result.
+- Existing app evidence identifies the running process as source `241976c`; current source `857bdea` is installed but has not been cleanly relaunched. These controls therefore do not qualify current-source playback.
+- Device-specific output-loss/reconnect, physical Pi, hosted CI, signing/notarization, and publisher-rights gates remain separate and open.
+
+## RR-126 preflight parser hardening — 2026-11-23
+
+- Baseline `89b8047ad9ce6abc85260fcf92d41a9950e2ea79`; code commit `976725abb53456b7fec5218be383f0c69688b62e`. Only `scripts/check_distribution_rights.py` and `scripts/test_distribution_rights.py` changed.
+- Replaced regex extraction of Rust station metadata with a bounded tokenizer that skips line and nested block comments, keeps ordinary/raw string contents atomic, and fails closed on unsupported expressions. It requires all 11 `InternetStation` metadata fields as direct literals and compares the complete ordered metadata against the JSON catalog.
+- Regression coverage includes comment/raw-string spoofing, direct-literal and exact-field requirements, ordered catalog parity, and playlist endpoint drift even when a fresh source digest is supplied.
+- Registered workflow used `pskeffington/agent_skills` revision `42cf3196122feffa8658239fe7947c033bd39913`. Invocations: `/root/rr126_release_audit` (`architecture-design`, blob `12c91c8040d13f618a209de24cbbf6e4f89830d1`); `/root/rr126_security_audit` (`security-assurance`, blob `4ad8219c8c8142a76a8ae0a33f6c39ce3214dc4a`); `/root/rr126_parser_fix` (`code-implementation`, blob `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`); `/root/rr126_test_verifier` (`test-verification`, blob `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`); `/root/rr126_parser_review` (`independent-code-review`, blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`); `/root/rr126_readiness` (`release-readiness`, blob `e294f4434df7f69cca65e0f389024a374e69a605`). Independent parser review passed; verifier independently passed 15/15 Python tests.
+- Re-run on the Research checkout: `TMPDIR="$PWD/target/rr126-final-verifier-tmp" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts.test_distribution_rights -v` — 15/15 PASS; `bash -n scripts/package_macos_app.sh` PASS; `cargo fmt --all -- --check` PASS; `git diff --check` PASS. `cargo test --workspace --locked --offline` and strict workspace Clippy are BLOCKED before compilation because Cargo cannot create its temporary build directory on the Research SMB mount (`Operation not permitted`, OS error 1). No Rust-source changes were made.
+- Current catalog policy remains `not_authorized`; the structural check is not legal permission. RR-109, signing/notarization, and release remain blocked. Security review's source-preflight/build snapshot race and symlink concerns remain open; this change does not claim race-free packaging.
+- Prior exact-head Actions run `45258002913` on `89b8047` ended `startup_failure` with zero jobs. No run was visible yet for `976725a` when checked. Hosted CI is not a local test result.
 
 ## RR-102 current catalog and Skylab check — 2026-11-23
 
