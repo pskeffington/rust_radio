@@ -72,6 +72,10 @@ they do not describe the current product scope. RR-120 tracks this migration.
   registry revision `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; PASS with no
   actionable findings. Workspace tests and strict all-feature Clippy passed
   with the scope deletion present; hosted CI remains a separate gate.
+- After pushing, exact PR head `a38e9b01fd9cac8ec164797d48af0b49533a1cf1`
+  produced Actions run `45219125732`, `startup_failure`, with zero jobs. `gh pr
+  checks 14` reports no checks. Hosted validation is blocked before repository
+  commands execute; this is not a Rust test failure.
 
 `STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
 their receiver references describe their recorded revisions. Do not interpret
