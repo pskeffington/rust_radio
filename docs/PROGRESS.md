@@ -9,6 +9,67 @@ are removed from current source, feature flags, CI and operator documentation.
 Older entries below are historical evidence for the revisions they identify;
 they do not describe the current product scope. RR-120 tracks this migration.
 
+## RR-122 callback underrun diagnostics — 2026-11-23
+
+- Task contract: `RR-122-AUDIO-UNDERRUN-01`, validated against the canonical
+  task-contract schema at registry commit `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`.
+  RR-122 adds a session-lifetime `NativeRadioEngine::underrun_callbacks()`
+  diagnostic. A count represents one nonempty callback buffer that required
+  zero-fill after output startup; queued zero PCM remains consumed PCM, not an
+  underrun. The counter spans retries. Callback-consumed samples and this
+  diagnostic do not establish human-audible output.
+- The independent verifier reran `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-verifier
+  cargo test --locked --offline -p rust-radio-audio` against the current diff:
+  PASS (35 unit and 8 integration tests; no failures or ignored tests). Coverage
+  uses synthetic buffers/transport and does not initialize an audio device.
+- Post-fix workspace validation: `cargo fmt --all -- --check` PASS;
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-final cargo test --workspace
+  --locked --offline` PASS (158 passed, 0 failed, 1 ignored);
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-final cargo test --workspace
+  --all-features --locked --offline` PASS (158 passed, 0 failed, 1 ignored);
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-final cargo clippy --workspace
+  --all-targets --all-features --locked --offline -- -D warnings` PASS. The ignored
+  GUI test requires native audio output and local TCP. Build output stayed in
+  `/private/tmp`.
+- Independent review found the output-start race between `play()` and opening
+  the diagnostic gate. RR-122 now arms the gate immediately before `play()` and
+  resets it on startup failure. Post-fix tests and review passed; no CPAL device
+  or audible playback was exercised.
+- Registered architecture, audio-engineering, test-verification and independent
+  review roles used canonical `agent_skills` revision
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; skill blobs were
+  `architecture-design` `12c91c8040d13f618a209de24cbbf6e4f89830d1`,
+  `audio-systems-engineering` `20b5652c462ebc0032e9f282491a14f41adc90d2`,
+  `test-verification` `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`, and
+  `independent-code-review` `e44217c9f0c2492087f8b16da94f3ca80eae4555`.
+  Agents: `/root/rr122_audio_arch` (architecture), `/root/rr122_audio_peer`
+  (audio review), `/root/rr122_verify` (independent verification),
+  `/root/rr122_impl_specialist` (implementation specialist) and
+  `/root/rr123_scope_review` (independent review). The coordinator implemented
+  the change. The implementation specialist reported PASS with no changes.
+  Independent review PASS: no actionable findings; the exact-revision review
+  read the audio skill and references and confirmed the pre-play gate correction
+  and orphan-file deletion. The focused verifier PASS was rerun on the final
+  working diff. CPAL start/race behavior and actual device output remain
+  unverified because no native audio device was opened.
+
+## RR-123 streaming-only source scope cleanup — 2026-11-23
+
+- Source audit found `crates/rust-radio-core/src/sdr/wfm.rs` was tracked but
+  not referenced by any module or build feature. Removed this orphaned mono-FM
+  demodulator. Generic OS audio output selection, including USB audio devices,
+  remains in scope. Historical receiver records stay revision-bound.
+- A search across `.github`, crate sources, manifests, README, AGENTS and
+  current-facing docs found no active SDR/nSDR/Soapy receiver code or
+  configuration. Dated progress/status and `AGENT_PROGRESS.json` remain
+  explicitly historical; no separate-project files or data were changed.
+- Canonical review used `independent-code-review`
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555` and
+  `audio-systems-engineering` `20b5652c462ebc0032e9f282491a14f41adc90d2` at
+  registry revision `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; PASS with no
+  actionable findings. Workspace tests and strict all-feature Clippy passed
+  with the scope deletion present; hosted CI remains a separate gate.
+
 `STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
 their receiver references describe their recorded revisions. Do not interpret
 receiver hardware acceptance listed there as an open Rust Radio gate.

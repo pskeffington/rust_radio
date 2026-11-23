@@ -98,18 +98,33 @@ pub struct NativeAudioOutput {
     pub sample_rate: u32,
     pub channels: usize,
     played_samples: Arc<AtomicU64>,
+    underrun_callbacks: Arc<AtomicU64>,
+    started: Arc<AtomicBool>,
     failed: Arc<AtomicBool>,
+}
+
+#[derive(Clone)]
+struct CallbackProgress {
+    played_samples: Arc<AtomicU64>,
+    underrun_callbacks: Arc<AtomicU64>,
+    started: Arc<AtomicBool>,
 }
 
 impl NativeAudioOutput {
     pub fn open(volume: Arc<AtomicU8>, output_id: &str) -> Result<Self, String> {
-        Self::open_with_progress(volume, output_id, Arc::new(AtomicU64::new(0)))
+        Self::open_with_progress(
+            volume,
+            output_id,
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(AtomicU64::new(0)),
+        )
     }
 
     pub(crate) fn open_with_progress(
         volume: Arc<AtomicU8>,
         output_id: &str,
         played_samples: Arc<AtomicU64>,
+        underrun_callbacks: Arc<AtomicU64>,
     ) -> Result<Self, String> {
         let host = cpal::default_host();
         let device = resolve_output(&host, output_id)?;
@@ -127,13 +142,19 @@ impl NativeAudioOutput {
         let ring = HeapRb::<f32>::new(sample_rate as usize * channels * 2);
         let (producer, consumer) = ring.split();
         let failed = Arc::new(AtomicBool::new(false));
+        let started = Arc::new(AtomicBool::new(false));
+        let callback_progress = CallbackProgress {
+            played_samples: Arc::clone(&played_samples),
+            underrun_callbacks: Arc::clone(&underrun_callbacks),
+            started: Arc::clone(&started),
+        };
         let stream = match sample_format {
             SampleFormat::F32 => build_stream::<f32>(
                 &device,
                 &config,
                 consumer,
                 volume,
-                Arc::clone(&played_samples),
+                callback_progress.clone(),
                 Arc::clone(&failed),
             )?,
             SampleFormat::I16 => build_stream::<i16>(
@@ -141,7 +162,7 @@ impl NativeAudioOutput {
                 &config,
                 consumer,
                 volume,
-                Arc::clone(&played_samples),
+                callback_progress.clone(),
                 Arc::clone(&failed),
             )?,
             SampleFormat::U16 => build_stream::<u16>(
@@ -149,7 +170,7 @@ impl NativeAudioOutput {
                 &config,
                 consumer,
                 volume,
-                Arc::clone(&played_samples),
+                callback_progress,
                 Arc::clone(&failed),
             )?,
             format => return Err(format!("Unsupported native sample format: {format:?}")),
@@ -167,6 +188,8 @@ impl NativeAudioOutput {
             sample_rate,
             channels,
             played_samples,
+            underrun_callbacks,
+            started,
             failed,
         })
     }
@@ -183,14 +206,26 @@ impl NativeAudioOutput {
         self.played_samples.load(Ordering::Relaxed)
     }
 
+    /// Number of started output callback buffers that required zero-fill
+    /// because the PCM queue ran empty. This is not proof of audible output.
+    pub fn underrun_callbacks(&self) -> u64 {
+        self.underrun_callbacks.load(Ordering::Relaxed)
+    }
+
     pub fn has_failed(&self) -> bool {
         self.failed.load(Ordering::Acquire)
     }
 
     pub fn start(&self) -> Result<(), String> {
-        self.stream
-            .play()
-            .map_err(|e| format!("Cannot start native audio output: {e}"))
+        // Arm before play(): some backends can invoke the callback as soon as
+        // play() returns, so setting the gate afterward can miss the first
+        // active buffer. Roll it back if the backend refuses to start.
+        self.started.store(true, Ordering::Release);
+        if let Err(error) = self.stream.play() {
+            self.started.store(false, Ordering::Release);
+            return Err(format!("Cannot start native audio output: {error}"));
+        }
+        Ok(())
     }
 
     /// Writes a complete interleaved frame. If the PCM ring is full, the
@@ -204,6 +239,12 @@ impl NativeAudioOutput {
             &self.played_samples,
             Duration::from_secs(5),
         )
+    }
+}
+
+impl Drop for NativeAudioOutput {
+    fn drop(&mut self) {
+        self.started.store(false, Ordering::Release);
     }
 }
 
@@ -248,7 +289,7 @@ fn build_stream<T>(
     config: &cpal::StreamConfig,
     mut consumer: HeapCons<f32>,
     volume: Arc<AtomicU8>,
-    played: Arc<AtomicU64>,
+    progress: CallbackProgress,
     failed: Arc<AtomicBool>,
 ) -> Result<cpal::Stream, String>
 where
@@ -259,7 +300,14 @@ where
         .build_output_stream(
             config,
             move |data: &mut [T], _| {
-                render_samples(data, &mut consumer, &volume, &played);
+                render_samples(
+                    data,
+                    &mut consumer,
+                    &volume,
+                    &progress.played_samples,
+                    &progress.underrun_callbacks,
+                    &progress.started,
+                );
             },
             move |_error| {
                 error_flag.store(true, Ordering::Release);
@@ -275,10 +323,13 @@ fn render_samples<T>(
     consumer: &mut HeapCons<f32>,
     volume: &AtomicU8,
     played: &AtomicU64,
+    underrun_callbacks: &AtomicU64,
+    started: &AtomicBool,
 ) where
     T: SizedSample + FromSample<f32>,
 {
     let gain = volume.load(Ordering::Relaxed) as f32 / 100.0;
+    let output_len = data.len();
     let mut consumed = 0u64;
     for sample in data {
         if let Some(value) = consumer.try_pop() {
@@ -289,6 +340,9 @@ fn render_samples<T>(
         }
     }
     played.fetch_add(consumed, Ordering::Relaxed);
+    if started.load(Ordering::Relaxed) && output_len > 0 && consumed < output_len as u64 {
+        underrun_callbacks.fetch_add(1, Ordering::Relaxed);
+    }
 }
 
 #[cfg(test)]
@@ -303,13 +357,174 @@ mod output_identity_tests {
         producer.try_push(-0.5).unwrap();
         let volume = AtomicU8::new(50);
         let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
+        let started = AtomicBool::new(true);
         let mut output = [1.0f32; 4];
 
-        render_samples(&mut output, &mut consumer, &volume, &played);
+        render_samples(
+            &mut output,
+            &mut consumer,
+            &volume,
+            &played,
+            &underruns,
+            &started,
+        );
 
         assert_eq!(output, [0.75, -0.25, 0.0, 0.0]);
         assert_eq!(played.load(Ordering::Relaxed), 2);
+        assert_eq!(underruns.load(Ordering::Relaxed), 1);
         assert_eq!(consumer.occupied_len(), 0);
+    }
+
+    #[test]
+    fn callback_counts_empty_ring_once_when_output_is_started() {
+        let ring = HeapRb::<f32>::new(1);
+        let (_producer, mut consumer) = ring.split();
+        let volume = AtomicU8::new(60);
+        let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
+        let started = AtomicBool::new(true);
+        let mut output = [1.0f32; 4];
+
+        render_samples(
+            &mut output,
+            &mut consumer,
+            &volume,
+            &played,
+            &underruns,
+            &started,
+        );
+
+        assert_eq!(output, [0.0; 4]);
+        assert_eq!(played.load(Ordering::Relaxed), 0);
+        assert_eq!(underruns.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn callback_does_not_count_after_output_stops() {
+        let ring = HeapRb::<f32>::new(1);
+        let (_producer, mut consumer) = ring.split();
+        let volume = AtomicU8::new(60);
+        let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
+        let started = AtomicBool::new(true);
+        let mut output = [1.0f32; 1];
+
+        render_samples(
+            &mut output,
+            &mut consumer,
+            &volume,
+            &played,
+            &underruns,
+            &started,
+        );
+        assert_eq!(underruns.load(Ordering::Relaxed), 1);
+
+        // Drop clears this gate before CPAL stream teardown.
+        started.store(false, Ordering::Release);
+        render_samples(
+            &mut output,
+            &mut consumer,
+            &volume,
+            &played,
+            &underruns,
+            &started,
+        );
+        assert_eq!(underruns.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn callback_does_not_count_a_full_buffer_of_zero_pcm_when_muted() {
+        let ring = HeapRb::<f32>::new(4);
+        let (mut producer, mut consumer) = ring.split();
+        for _ in 0..4 {
+            producer.try_push(0.0).unwrap();
+        }
+        let volume = AtomicU8::new(0);
+        let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
+        let started = AtomicBool::new(true);
+        let mut output = [1.0f32; 4];
+
+        render_samples(
+            &mut output,
+            &mut consumer,
+            &volume,
+            &played,
+            &underruns,
+            &started,
+        );
+
+        assert_eq!(output, [0.0; 4]);
+        assert_eq!(played.load(Ordering::Relaxed), 4);
+        assert_eq!(underruns.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn callback_does_not_count_intentional_startup_silence_or_queued_zero_pcm() {
+        let ring = HeapRb::<f32>::new(4);
+        let (mut producer, mut consumer) = ring.split();
+        producer.try_push(0.0).unwrap();
+        producer.try_push(0.0).unwrap();
+        let volume = AtomicU8::new(0);
+        let played = AtomicU64::new(0);
+        let underruns = AtomicU64::new(0);
+        let started = AtomicBool::new(false);
+        let mut output = [1.0f32; 4];
+
+        render_samples(
+            &mut output,
+            &mut consumer,
+            &volume,
+            &played,
+            &underruns,
+            &started,
+        );
+
+        assert_eq!(output, [0.0; 4]);
+        assert_eq!(played.load(Ordering::Relaxed), 2);
+        assert_eq!(underruns.load(Ordering::Relaxed), 0);
+
+        started.store(true, Ordering::Relaxed);
+        let mut next_output = [1.0f32; 2];
+        render_samples(
+            &mut next_output,
+            &mut consumer,
+            &volume,
+            &played,
+            &underruns,
+            &started,
+        );
+
+        assert_eq!(next_output, [0.0; 2]);
+        assert_eq!(played.load(Ordering::Relaxed), 2);
+        assert_eq!(underruns.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn callback_underrun_counter_accumulates_across_output_attempts() {
+        let underruns = AtomicU64::new(0);
+        let started = AtomicBool::new(true);
+        let volume = AtomicU8::new(60);
+        let mut total_played = 0;
+        for _ in 0..2 {
+            let ring = HeapRb::<f32>::new(1);
+            let (_producer, mut consumer) = ring.split();
+            let played = AtomicU64::new(0);
+            let mut output = [0.0f32; 1];
+            render_samples(
+                &mut output,
+                &mut consumer,
+                &volume,
+                &played,
+                &underruns,
+                &started,
+            );
+            total_played += played.load(Ordering::Relaxed);
+        }
+
+        assert_eq!(total_played, 0);
+        assert_eq!(underruns.load(Ordering::Relaxed), 2);
     }
 
     #[test]

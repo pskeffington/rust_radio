@@ -33,11 +33,15 @@ provenance remains in the extraction notes; dated evidence is in
 | Remote CI | Linux workspace formatting, tests and strict clippy configured | Hosted runs must be checked at the tested commit |
 | Curated station release | 25 publisher-directed entries with a machine-readable `redistribution: not_authorized` policy | **Release blocked.** Current SomaFM terms reject new third-party apps (23 entries); GBH and Skylab bundle permission remains unresolved. Exclude uncleared entries or record applicable rights before shipping; see [publisher rights audit](PUBLISHER_RIGHTS_AUDIT.md). |
 
+Project scope is internet streaming radio. RF receiver code and receiver-specific
+acceptance are maintained in separate projects. Generic OS audio-device
+selection remains part of Rust Radio output support.
+
 ## November 2026 execution order
 
 The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) govern subsequent Codex passes. Do not call historical decoded streams a current live result. Mac device/output tests and physical Pi 5 acceptance remain distinct blocked or operator-run gates. See [status checkpoint](STATUS_2026-11-05.md).
 
-RR-120 commit `36e603152e1d770014e3487c056c0cd7664acd5f` removes SDR/nSDR/satellite support from this repository's code, build features, CLI/GUI, CI and current-facing guides. IP streaming, generic audio device selection and saved IP stations remain. Local locked workspace, all-feature and no-default checks pass; hosted CI and physical audio/Pi acceptance remain separate gates. Historical receiver evidence stays in dated progress entries.
+RR-120 commit `36e603152e1d770014e3487c056c0cd7664acd5f` removed receiver support from this repository's active code, build features, CLI/GUI and CI. RR-123 removes an orphaned, unreferenced FM demodulator file found in the follow-up source audit. Historical receiver evidence remains tied to its original revisions in dated progress entries.
 
 ## Next development priorities
 
@@ -49,9 +53,8 @@ RR-120 commit `36e603152e1d770014e3487c056c0cd7664acd5f` removes SDR/nSDR/satell
 3. Run the native module and Pip-Boy on the physical Pi with its intended sound
    output and display. Cross-compilation alone does not complete this gate.
 4. Keep the scope focused on IP station discovery, transport, decoding, output
-   recovery and host integration. RF receiver development is maintained in
-   separate projects. Publisher distribution review remains required before
-   public station bundles.
+   recovery and host integration. Publisher distribution review remains
+   required before public station bundles.
 
 See [embedding](EMBEDDING.md) and [native playback evidence](NATIVE_PLAYBACK_CONTRACT.md)
 for implementation contracts and reproducible commands.

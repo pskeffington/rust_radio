@@ -75,6 +75,7 @@ pub(super) struct PlaybackContext<'a> {
     pub(super) volume: Arc<AtomicU8>,
     pub(super) output_id: &'a str,
     output_progress: &'a OutputProgress,
+    underrun_callbacks: &'a Arc<AtomicU64>,
 }
 
 #[derive(Debug)]
@@ -145,6 +146,7 @@ pub struct NativeRadioEngine {
     volume: Arc<AtomicU8>,
     output_failed: Arc<AtomicBool>,
     output_progress: OutputProgress,
+    underrun_callbacks: Arc<AtomicU64>,
     worker: Option<JoinHandle<()>>,
 }
 
@@ -199,6 +201,8 @@ impl NativeRadioEngine {
         let worker_output_failed = Arc::clone(&output_failed);
         let output_progress = Arc::new(Mutex::new(None));
         let worker_output_progress = Arc::clone(&output_progress);
+        let underrun_callbacks = Arc::new(AtomicU64::new(0));
+        let worker_underrun_callbacks = Arc::clone(&underrun_callbacks);
         let selected_output = output_id.to_owned();
         let active_playback = ACTIVE_PLAYBACK_SLOT.acquire()?;
         let worker = thread::Builder::new()
@@ -216,6 +220,7 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_progress: &worker_output_progress,
+                            underrun_callbacks: &worker_underrun_callbacks,
                         },
                     ),
                     PlaybackSource::Direct(url) => play_with_recovery(
@@ -228,6 +233,7 @@ impl NativeRadioEngine {
                             volume: worker_volume,
                             output_id: &selected_output,
                             output_progress: &worker_output_progress,
+                            underrun_callbacks: &worker_underrun_callbacks,
                         },
                     ),
                 };
@@ -246,6 +252,7 @@ impl NativeRadioEngine {
             volume,
             output_failed,
             output_progress,
+            underrun_callbacks,
             worker: Some(worker),
         })
     }
@@ -255,6 +262,12 @@ impl NativeRadioEngine {
     /// offer output selection/retry only when changing devices could help.
     pub fn output_failed(&self) -> bool {
         self.output_failed.load(Ordering::Acquire)
+    }
+
+    /// Callback buffers that needed zero-fill because the PCM queue ran empty.
+    /// This session diagnostic does not prove that physical audio was audible.
+    pub fn underrun_callbacks(&self) -> u64 {
+        self.underrun_callbacks.load(Ordering::Relaxed)
     }
 
     /// A Stop has muted PCM but the owned worker is still releasing resources.
@@ -507,6 +520,7 @@ fn decode_and_play(
         Arc::clone(&context.volume),
         context.output_id,
         played_samples,
+        Arc::clone(context.underrun_callbacks),
     )
     .map_err(PlaybackFailure::Output)?;
     if context.cancelled.load(Ordering::Acquire) {
@@ -926,10 +940,21 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::new(Mutex::new(None)),
+            underrun_callbacks: Arc::new(AtomicU64::new(0)),
             worker: Some(thread::spawn(move || {
                 assert!(!panics, "Synthetic playback worker panic");
             })),
         }
+    }
+
+    #[test]
+    fn underrun_diagnostics_remain_available_after_worker_completion() {
+        let mut engine = completed_test_engine(false);
+        engine.underrun_callbacks.store(7, Ordering::Relaxed);
+
+        finish_test_engine(&mut engine);
+
+        assert_eq!(engine.underrun_callbacks(), 7);
     }
 
     #[test]
@@ -951,6 +976,7 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::clone(&output_progress),
+            underrun_callbacks: Arc::new(AtomicU64::new(0)),
             worker: None,
         };
 
@@ -1040,6 +1066,7 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::new(Mutex::new(None)),
+            underrun_callbacks: Arc::new(AtomicU64::new(0)),
             worker: Some(worker),
         };
         engine.request_stop();
@@ -1160,6 +1187,7 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed,
             output_progress: Arc::new(Mutex::new(None)),
+            underrun_callbacks: Arc::new(AtomicU64::new(0)),
             worker: Some(worker),
         };
         finish_test_engine(&mut engine);
