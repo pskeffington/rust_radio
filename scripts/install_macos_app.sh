@@ -63,8 +63,10 @@ case "$ACTION" in
     if [[ -e "$BACKUP" ]]; then mv "$BACKUP" "$APP"; fi
     exit 1
   fi
-  rm -rf "$BACKUP"
   trap - EXIT
+  if [[ -e "$BACKUP" ]] && ! rm -rf "$BACKUP"; then
+    echo "Installed successfully; old bundle backup remains at $BACKUP" >&2
+  fi
   dock_edit add
   echo "Installed $APP"
   ;;
