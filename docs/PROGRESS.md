@@ -29,7 +29,8 @@ receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
   audio output, GUI, Pi integration, publisher rights and CI; historical receiver
   entries remain marked as evidence for their earlier revisions.
 - Source baseline: `b398535d6284f2559c8772ccd627be0457bbc218` (RR-120 branch,
-  PR #14). Changed files: `docs/AGENT_PROGRESS.json`,
+  PR #14). RR-121 documentation implementation commit:
+  `2d20e713d2ce3c3efc1e49a8ddaf889df77e85a8`. Changed files: `docs/AGENT_PROGRESS.json`,
   `docs/CODEX_TASK_QUEUE.md`, `docs/PROGRESS.md`,
   `docs/STATUS_2026-11-05.md`.
 - Canonical agent_skills main: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`.
