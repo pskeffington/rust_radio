@@ -82,6 +82,17 @@ receiver hardware acceptance listed there as an open Rust Radio gate.
   integration, thermal/power behavior, or operator acceptance. RR-107 remains
   BLOCKED on the Pi 5 target and embedded-host run.
 
+## RR-108 local CI mirror and hosted startup diagnosis — 2026-11-23
+
+- Source SHA: `61870658af61dd2c9538c42bd12a14440cf32294`. `cargo fmt --all --
+  --check` PASS. `CARGO_TARGET_DIR=/private/tmp/rust-radio-ci-mirror cargo
+  clippy --workspace --all-targets --all-features --locked --offline --
+  -D warnings` PASS (12.08 seconds). These commands do not execute tests.
+- Exact-head Actions run `45215783618` ended `startup_failure`. The run has
+  zero jobs; check diagnostics report no checks, statuses, annotations, jobs or
+  logs. The failure is before repository commands execute, so the local checks
+  do not substitute for the required hosted run. Build output used `/private/tmp`.
+
 ## RR-120 streaming-only scope migration — 2026-11-23
 
 - Baseline: `4b377519b585f0ff155e7ab9146eaa3bb822e777`; implementation commit: `36e603152e1d770014e3487c056c0cd7664acd5f` on isolated Research-volume branch `codex/rr120-ip-radio-scope`.
