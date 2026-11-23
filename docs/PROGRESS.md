@@ -1,5 +1,11 @@
 # Radio development progress
 
+## Operator playback controls follow-up — 2026-11-23
+
+- Operator reports channel back/forward, Play/Stop, mute, volume, output switching, stop/restart, and audible output working in the running Rust Radio app. This is direct human/operator evidence, not an automated test result.
+- The observed running process maps an older backup app executable (`/Users/null/Applications/.Rust Radio.app.backup.20998/Contents/MacOS/rust-radio-gui`); its exact source SHA is not established by the current process inspection. The current installed bundle has not been cleanly relaunched, so these results do not qualify the current source revision.
+- Output-loss/reconnect recovery across specific physical devices, Pi acceptance, hosted CI, signing/notarization, and publisher rights remain separate open gates.
+
 ## Current scope — 2026-11-23
 
 Rust Radio is scoped to receive-only internet streaming radio: curated and
