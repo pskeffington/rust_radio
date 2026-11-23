@@ -1661,3 +1661,15 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   `45239913409`, which ended `startup_failure` before job creation with zero
   jobs. `gh pr checks 14` reported no checks. Local validation passed before
   push; hosted CI did not execute repository commands.
+- A separate release-readiness audit of exact head
+  `f3770f699ed48ee92995ecfcd35c9409a86b2488` returned **BLOCKED for
+  distribution/release**. The current `not_authorized` catalog and publisher
+  audit prevent distribution; the structural gate does not change that. No
+  signed or notarized release artifact, detached release approval, physical Mac
+  audio recovery, or Pi runtime evidence is available. The audit used canonical
+  agent_skills main `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`,
+  `release-readiness` blob
+  `e294f4434df7f69cca65e0f389024a374e69a605`.
+- Follow-up Actions run `45240046988` for exact head
+  `f3770f699ed48ee92995ecfcd35c9409a86b2488` also ended `startup_failure`
+  before job creation with zero jobs; `gh pr checks 14` reported no checks.
