@@ -11,7 +11,9 @@ The **authoritative runtime directory** is `crates/rust-radio-core/src/directory
 - A daily GitHub Actions workflow runs an opt-in bounded silent sweep and retains its JSON report for 30 days. This is point-in-time evidence only: it does not persist freshness into the runtime, block playback, or guarantee every station is fresh between sweeps. The CLI can additionally maintain a local history file with `--history PATH`; an egui host may import that snapshot through `RadioPanel::load_validation_history`.
 - Freshness refers to the last silent check. The listening view and selected-station tooltip prioritize current playback, so stale or missing historical evidence cannot contradict live audio. Other tooltips identify freshness as the last silent check.
 - The user may still add direct/custom URLs using the independent saved-stations bank. Never pass arbitrary URLs into curated allowlist checks.
-- Streams are for receiver-side listening only; no rebroadcasting or relay.
+- Streams are for end-user listening only; no rebroadcasting or relay.
+- `publisher_reference_url` is provenance for endpoint selection, not a grant to bundle a station, its metadata, its branding or its stream in this application.
+- The catalog's `redistribution: not_authorized` policy is a release gate. Do not ship curated station entries in a Rust Radio application unless the applicable publisher permission is recorded. See the current [publisher rights audit](PUBLISHER_RIGHTS_AUDIT.md).
 
 ## Validation
 
@@ -19,4 +21,4 @@ Run `cargo fmt --all -- --check` and `cargo test --workspace`. On a network-enab
 
 The SomaFM [Left Coast 70s direct stream page](https://somafm.com/seventies/directstreamlinks.html) lists `https://somafm.com/m3u/seventies.m3u` as its permanent 128 kbps MP3 M3U endpoint and states that streams are for individual personal use. Keep receiver-side playback only; do not redistribute or relay the stream.
 
-Publisher directory: https://somafm.com/listen/ (for SomaFM station provenance); publisher references for the other two stations are recorded individually.
+Publisher references for all current entries are recorded individually in the runtime directory and JSON mirror. The current catalog contains 23 SomaFM entries plus one each from GBH and Skylab Radio; none is cleared for a Rust Radio release by this audit.

@@ -41,7 +41,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 5. Bounded streaming memory, publisher endpoint validation for presets, explicit direct URLs, controlled redirects and timeouts.
 6. Keep audio output devices, Bluetooth pairing and touch UI under OS/host ownership.
 7. No RF transmit or receive path is part of this project.
-8. Any curated broadcaster inclusion requires a redistribution/embedding rights review before released bundles.
+8. Any curated broadcaster inclusion requires a redistribution/embedding rights review before released bundles; see the current [publisher rights audit](docs/PUBLISHER_RIGHTS_AUDIT.md).
 
 ## Near-term work
 

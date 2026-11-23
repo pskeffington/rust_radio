@@ -69,6 +69,41 @@ receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
   this work session; no audio device was opened.
 - Canonical `agent_skills` revision in this task record: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; registered specialist delegation/independent review for the RR-120 scope migration is recorded above. This documentation-only RR-104 reconciliation adds no claim of human GUI, audible, Pi, hosted CI, rights or release acceptance.
 
+## RR-109 publisher rights audit — 2026-11-23
+
+- Baseline: `2253fe7b7a98a5a5b1359affd441546ade8a3c1c`. The current directory
+  contains 25 entries: 23 SomaFM, one GBH/WCRB and one Skylab Radio. NPR is not
+  in the active catalog; its earlier endpoint/permission review remains a
+  separate excluded candidate.
+- First-party review found SomaFM's Terms of Service, updated 2026-09-04,
+  expressly reject new third-party clients (including noncommercial apps) and
+  require prior written permission for app embedding. The 23 SomaFM presets
+  are blocked from a Rust Radio app release absent a documented applicable
+  rights basis. GBH's official stream page lists direct URLs and Apple Music /
+  iHeart listening, while its Terms of Use restrict use/distribution of site
+  content; that does not grant this package permission. Skylab publishes a
+  direct stream link and named listening partners, while its site copyright
+  notice does not grant Rust Radio bundle rights. For GBH and Skylab, permission
+  remains unresolved. No permission was requested or inferred.
+- Added `docs/PUBLISHER_RIGHTS_AUDIT.md` with IDs, publisher-source URLs,
+  evidence status, release decision and next actions. Updated curated-feed
+  policy, roadmap, README and queue to keep the release gate explicit. No station
+  entries, endpoints or runtime behavior were changed.
+- Specialist invocation evidence: canonical `agent_skills` main
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; engineering-research skill blob
+  `f3c8f3c4ae99829d045ad918667c8b125e8d344c`; documentation-maintenance blob
+  `409db01491df686901ee5f39d5705ee61b91e117`; independent-code-review blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`. Independent research and review
+  both confirmed the inventory, publisher-specific distinction, and NPR
+  exclusion. The reviewer requested one precision edit to label Skylab's terms
+  as competition/site terms and say no stream/app reuse terms were found; that
+  edit is included. Sources were inspected on 2026-11-23; see the audit for
+  direct URLs.
+- Validation: manual source/inventory reconciliation PASS; JSON parser PASS;
+  `git diff --check` PASS. No tests were added or run for this documentation-only
+  task. Rights clearance, application release, hosted CI, audible playback,
+  device recovery, Pi acceptance and signing remain open or blocked separately.
+
 ## RR-101 Skylab IP stream repair — 2026-11-23
 
 - Baseline `1635fc7c3bb99a15d95164a51c4b629277c9e554` reproduced Skylab as
