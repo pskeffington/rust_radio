@@ -1690,6 +1690,10 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Documentation head `08de41a41052cf52ea5918f168fd9a2e930c814c` produced
   Actions run `45243194703`, again `startup_failure` with zero jobs and no PR
   checks. No repository step ran.
+- Documentation head `ec560b7fa1104799f62802f52ed0d589a399e611` produced
+  Actions run `45243715555`; `created_at` and `run_started_at` match, and the
+  completed run has zero jobs. PR #14 reports no checks, so hosted CI has not
+  executed on this evidence chain.
 
 ## RR-118 live process observation (2026-11-23)
 
