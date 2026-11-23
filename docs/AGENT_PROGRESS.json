@@ -135,14 +135,14 @@
     "interpretation": "Repeated layout-fit measurement on merged commit; not listener preference evidence"
   },
   "ci": {
-    "latest_pr_run": 40773644526,
-    "latest_pr_head": "3e4913f77bf0ecdcefd8ee1c0f17333cfca3b153",
+    "latest_pr_run": 45155794094,
+    "latest_pr_head": "ac23d9b6108fe20b84581af8aafcde0b49f9c37e",
     "latest_pr_conclusion": "startup_failure",
     "latest_pr_jobs": 0,
     "station_validation_run": 40773152365,
     "station_validation_conclusion": "startup_failure",
     "station_validation_jobs": 0,
-    "details": "Both GitHub Actions runs failed before job creation; neither run has job logs or an actionable repository-code diagnostic."
+    "details": "PR #14 exact-head run 45155794094 for ac23d9b6108fe20b84581af8aafcde0b49f9c37e ended startup_failure before job creation; jobs and logs are empty. GitHub retry API returned 403 This workflow run cannot be retried. Prior scheduled validation run 40773152365 also failed before jobs."
   },
   "remaining_gates": [
     "GitHub Actions runner startup and scheduled catalog execution",

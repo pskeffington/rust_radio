@@ -91,9 +91,8 @@ receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
   scope or code findings. The RR-101 task contract required keys, types, enums,
   patterns and no-extra-property constraints were checked against the registry
   schema with `jq`; no project dependency was added.
-- Exact-head hosted CI, audible output, device loss/recovery, Pi runtime,
-  publisher redistribution rights, signing/notarization and production release
-  remain open. Queue status is IN_REVIEW.
+- Exact-head workflow run `45155794094` for `ac23d9b6108fe20b84581af8aafcde0b49f9c37e` ended `startup_failure` before job creation; GitHub returned zero jobs and logs. The retry API returned 403 (“This workflow run cannot be retried”). RR-108 is BLOCKED on Actions runner startup; this is not a repository test failure.
+- Audible output, device loss/recovery, Pi runtime, publisher redistribution rights, signing/notarization and production release remain open. RR-101 and RR-120 are IN_REVIEW.
 
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
