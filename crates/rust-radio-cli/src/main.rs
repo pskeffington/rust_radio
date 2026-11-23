@@ -528,6 +528,16 @@ mod tests {
     }
 
     #[test]
+    fn validation_summary_uses_revma_hostname_without_signed_query() {
+        let mut report = StationValidation::unverified("skylab");
+        report.resolved_url = Some("https://n01-us2.rcs.revma.com/7vs4sr22w3bwv".into());
+        let summary = validation_summary(&report);
+        assert!(summary.contains("n01-us2.rcs.revma.com/7vs4sr22w3bwv"));
+        assert!(!summary.contains("rj-tok"));
+        assert!(!summary.contains("syntheticToken"));
+    }
+
+    #[test]
     fn json_catalog_mirrors_runtime_station_metadata_in_order() {
         let mirror: serde_json::Value =
             serde_json::from_str(include_str!("../../../catalog/curated-stations.json"))
