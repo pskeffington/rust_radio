@@ -42,7 +42,7 @@ selection remains part of Rust Radio output support.
 
 The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) govern subsequent Codex passes. Do not call historical decoded streams a current live result. Mac device/output tests and physical Pi 5 acceptance remain distinct blocked or operator-run gates. See [status checkpoint](STATUS_2026-11-05.md).
 
-RR-120 commit `36e603152e1d770014e3487c056c0cd7664acd5f` removed receiver support from this repository's active code, build features, CLI/GUI and CI. RR-123 removes an orphaned, unreferenced FM demodulator file found in the follow-up source audit. Historical receiver evidence remains tied to its original revisions in dated progress entries.
+RR-120 commit `36e603152e1d770014e3487c056c0cd7664acd5f` removed receiver support from this repository's active code, build features, CLI/GUI and CI. RR-123 removed the orphaned, unreferenced FM demodulator file in `857bdea`; current code and build configuration contain no receiver path. Historical receiver evidence remains tied to its original revisions in dated progress entries.
 
 ## Next development priorities
 

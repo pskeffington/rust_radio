@@ -105,6 +105,31 @@ they do not describe the current product scope. RR-120 tracks this migration.
   Actions run `45220851038`, also `startup_failure` with zero jobs; no PR checks
   were reported. This remains a runner-startup blocker.
 
+- RR-123 status reconciliation at exact source baseline
+  `e9e6de349a1010195131f5e2823367f8c26f7253`: `git show` confirms removal of
+  the orphan file in `857bdea8f8caec1bfd757ded4c1998cafd4f1dcc`; current
+  code/build search finds no receiver implementation references, generic USB
+  audio-output coverage remains, and dated receiver evidence is retained.
+  Queue status is DONE; no source change was needed in this follow-up.
+- Registry roles used for this RR-123 reconciliation: architecture-design
+  (`/root/rr123_architecture`, blob
+  `12c91c8040d13f618a209de24cbbf6e4f89830d1`), documentation-maintenance
+  (`/root/rr123_docs`, blob
+  `409db01491df686901ee5f39d5705ee61b91e117`), test-verification
+  (`/root/rr123_verify`, blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`), and independent-code-review
+  (`/root/rr123_review`, blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`), all from canonical registry
+  commit `42cf3196122feffa8658239fe7947c033bd39913`.
+- On this baseline, `cargo fmt --all -- --check` and `git diff --check` PASS.
+  `CARGO_TARGET_DIR=target/rr123-verify cargo test --workspace --locked
+  --offline` and `CARGO_TARGET_DIR=target/rr123-verify cargo clippy --workspace
+  --all-targets --locked --offline -- -D warnings` are BLOCKED before
+  repository checks: the SMB-mounted target cannot execute Rust proc-macro
+  build scripts (`Permission denied`, OS error 13). No build output was moved
+  off Research. Earlier passing workspace/all-feature evidence remains
+  recorded above and is not represented as a fresh rerun.
+
 `STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
 their receiver references describe their recorded revisions. Do not interpret
 receiver hardware acceptance listed there as an open Rust Radio gate.
@@ -1769,3 +1794,12 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Installed app path: `/Users/null/Applications/Rust Radio.app`; bundle ID `com.skeffington.rustradio`; `plutil -lint` PASS. Installed executable SHA-256 `9d10f96111ab37a9e14cf1de9b77c5dc455f6d173449465cc82a54c80e682dfe` matches the staged current-source bundle. Installed icon SHA-256 `917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00` matches the committed asset. Dock inventory contains exactly one tile for this app path.
 - App inventory still reports Rust Radio running. The running process is the older `241976c` build; operator-confirmed audible playback and control results therefore remain evidence for that process. Current-source playback requires a clean relaunch after the user's existing session ends.
 - Research `target/` remains 36 MB and contains the ignored prepared bundle at `target/current-source-857b/Rust Radio.app`. Signing, notarization, publisher rights, hosted CI, output-loss/reconnect recovery and Pi acceptance remain open.
+
+## RR-108 GitHub Actions API diagnosis at `e9e6de3`
+
+- Repository Actions are enabled. For run `45251960066`, GitHub returns zero
+  jobs, zero check runs, and no workflow log archive; the run and check suite
+  both began and ended at `2026-11-23T19:43:55Z`. The repository has no
+  self-hosted runners. These API results locate the failure before repository
+  commands, but do not identify its cause. No retry or configuration change
+  was made.
