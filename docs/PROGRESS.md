@@ -9,6 +9,31 @@ are removed from current source, feature flags, CI and operator documentation.
 Older entries below are historical evidence for the revisions they identify;
 they do not describe the current product scope. RR-120 tracks this migration.
 
+## RR-102 current catalog and Skylab check — 2026-11-23
+
+- Source SHA: `b034429d1656d23fffcdd1e7ae54a92fca049eb1`. At 16:44:06 UTC,
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr102-live-final cargo run --locked
+  --offline -p rust-radio-cli -- validate-all --json --history
+  /private/tmp/rust-radio-feed-history-20261123.json` exited 0. All 25 unique
+  stations reached `decoded_audio` in one attempt each. The current Skylab
+  issue did not reproduce in this silent check.
+- Focused silent checks immediately before the sweep: Skylab decoded MP3 at
+  48 kHz stereo (1,152 frames) at 16:43:32 UTC; WCRB decoded AAC at 48 kHz
+  stereo (1,024 frames) at 16:43:38 UTC. No native audio output was opened.
+- Persisted the 6,476-byte schema-v1 endpoint-free history at
+  `docs/evidence/feed-validation-history.json` (SHA-256
+  `633a4124829dfd615736fc9aa57583d1c0b46100ca81d02a55e8b4a43f03b525`, mode
+  0600). Independent validation confirmed 25 matching station IDs/statuses,
+  timestamps, stages and attempt counts, with no endpoint/query/token fields.
+  Source and history were stored on the Research volume; build outputs and the
+  full validation report stayed in `/private/tmp`.
+- `/root/rr102_live_verifier` used `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a` at registry revision
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; independent evidence review PASS.
+- This is point-in-time network and decoded-PCM evidence only; it does not
+  establish callback consumption, audible playback, publisher rights, or
+  hardware acceptance.
+
 ## RR-122 callback underrun diagnostics — 2026-11-23
 
 - Implementation/source SHA: `857bdea8f8caec1bfd757ded4c1998cafd4f1dcc`.
@@ -80,6 +105,22 @@ they do not describe the current product scope. RR-120 tracks this migration.
 `STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
 their receiver references describe their recorded revisions. Do not interpret
 receiver hardware acceptance listed there as an open Rust Radio gate.
+
+## RR-124 Windows all-feature portability check — 2026-11-23
+
+- Source SHA: `b034429d1656d23fffcdd1e7ae54a92fca049eb1`. Ran
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-windows-check cargo check --workspace
+  --all-features --locked --offline --target x86_64-pc-windows-gnu`; PASS in
+  12.96 seconds.
+- This checks dependency and source compatibility for the complete Windows GNU
+  workspace target. It does not link/run a Windows application or verify
+  Windows audio devices, GUI behavior, installer/signing or audible output.
+  Build output remained in `/private/tmp`.
+- `/root/rr124_windows_verifier` independently reran the same locked offline
+  command using `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a` at registry revision
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; PASS. Hosted CI remains blocked
+  before job creation on the current PR head.
 
 ## RR-118 macOS app package and Dock launcher — 2026-11-23
 
