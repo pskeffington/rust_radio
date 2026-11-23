@@ -1735,3 +1735,10 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - This verifies current bounded stream decoding only. It does not establish
   callback consumption, audible playback, publisher rights, or availability
   beyond the recorded timestamp.
+
+## RR-103 / RR-118 live Mac output observation — 2026-11-23
+
+- Current source/documentation checkout: `c2a339f9156e52bf2262cf0f20a077cbc0afca69` on the Research volume. The installed app inventory listed `com.skeffington.rustradio` as running. A read-only accessibility/screenshot inspection at `2026-11-23T19:17:49Z` showed the `RUST RADIO / MICRO` window with Skylab Radio (UK) selected, status `Playing`, volume 18%, output `System default`, and Stop/Mute controls visible. No control was activated.
+- During this same observed session, the operator reported: “audio out is working fine.” Record this as operator-confirmed audible output for the active session; the installed executable’s source revision was not established. This is not acoustic instrumentation or current-build provenance.
+- Exact PR #14 head `c2a339f9156e52bf2262cf0f20a077cbc0afca69` produced Actions run `45244134588`: `startup_failure` at `2026-11-23T18:59:17Z`, with zero jobs and no logs. GitHub reports no PR checks; the workflow specifies `ubuntu-latest`, and no repository step ran.
+- RR-103 remains BLOCKED for the speaker/Bluetooth/external-output loss and recovery matrix, output switching and Stop cleanup. RR-118 remains IN_REVIEW pending running-bundle provenance/clean relaunch, control-behavior acceptance, hosted CI, signing and notarization. No playback or system setting was changed by this inspection.
