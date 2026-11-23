@@ -5,7 +5,7 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | ID | Priority | Owner lane | Status | Deliverable | Acceptance |
 | --- | --- | --- | --- | --- | --- |
 | RR-101 | P0 | Transport | IN_REVIEW | Reproduce Skylab validation/listening discrepancy with structured, redacted endpoint and stage diagnostics | Distinguish DNS/TLS/HTTP/playlist/codec/callback and reproduce with a fixture; no autoplay |
-| RR-102 | P0 | Validation | IN_REVIEW | Catalog sweep with timestamped JSON/history review | Report each canonical ID, attempts, decoded stage, failures and known environmental limits; do not equate 25/25 historical decode with current availability |
+| RR-102 | P0 | Validation | DONE | Catalog sweep with timestamped JSON/history review | Current 25-station silent sweep and endpoint-free history are recorded by exact source SHA; callback/audible output and publisher rights remain separate |
 | RR-103 | P0 | Audio | BLOCKED: physical device | Mac IP-stream output loss, device-switch and stop-recovery evidence | Explicit speaker/Bluetooth/external sound-output matrix; no overlapping sessions |
 | RR-104 | P1 | GUI | DONE | 480x320 control/state regression and a human operator checklist | Offline controls/layout suite and IP-only Mac checklist are recorded; interactive, audible and physical touch acceptance remain separate |
 | RR-107 | P1 | Integration | BLOCKED: Pi 5 target | Pi runtime and Rust-Boy embedded host signoff | Pinned dependency, physical screen, native output, CPU/memory/thermal/power |

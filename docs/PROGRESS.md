@@ -50,6 +50,25 @@ receiver hardware acceptance listed there as an open Rust Radio gate.
   blocker before project checks, not a Rust failure. RR-118 remains IN_REVIEW
   pending a successful exact-head hosted run and clean-session app relaunch.
 
+## RR-102 current curated catalog sweep — 2026-11-23
+
+- Source SHA: `7a573ee6ee802d1e918da6a1fd62ed05ce62b107` (streaming-only PR #14
+  branch). At 2026-11-23 16:18 UTC, ran
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr102-current cargo run --locked
+  --offline -p rust-radio-cli -- validate-all --json --history
+  /private/tmp/rust-radio-feed-history.json`. Command exited 0; all 25 curated
+  stations reached `decoded_audio` in one attempt (25 decoded, zero failures).
+  Skylab decoded MP3 at 48 kHz stereo (1,152 frames); WCRB decoded AAC at
+  48 kHz stereo (1,024 frames).
+- Refreshed `docs/evidence/feed-validation-history.json` from this run. The
+  schema-1 file is 6,476 bytes with 25 station entries and no URL/endpoint
+  fields. JSON parsing and `git diff --check` PASS. Build output and initial
+  run report were held in `/private/tmp`; only the endpoint-free compact history
+  was copied into the Research-volume project.
+- This confirms bounded silent decode at that time only. It does not establish
+  callback-consumed PCM, human-audible playback, publisher redistribution
+  rights, or hardware/release acceptance. No audio output was opened.
+
 ## RR-120 streaming-only scope migration — 2026-11-23
 
 - Baseline: `4b377519b585f0ff155e7ab9146eaa3bb822e777`; implementation commit: `36e603152e1d770014e3487c056c0cd7664acd5f` on isolated Research-volume branch `codex/rr120-ip-radio-scope`.
