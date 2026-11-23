@@ -1689,3 +1689,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   running, matching the operator's report that Rust Radio was open. The native
   accessibility read timed out; no visual window or controls were inspected.
   No Play/Stop action, audio device, audible output, or Dock state was tested.
+
+## RR-101 Skylab and WCRB silent revalidation (2026-11-23)
+
+- Source/documentation head: `1bfdc69fc45cb57b4393996520a1e2c607fa818b`.
+- Skylab CLI validation at `2026-11-23T18:52:15Z` returned
+  `DecodedAudio`: MP3, 48 kHz, stereo, 1,152 decoded frames. The redacted
+  resolved endpoint host was `n01-us1.rcs.revma.com`; no signed query was
+  emitted. Command: `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr120-skylab-check
+  cargo run --locked --offline -p rust-radio-cli -- validate skylab`.
+- WCRB validation at `2026-11-23T18:52:23Z` returned `DecodedAudio`: AAC,
+  48 kHz, stereo, 1,024 decoded frames. Command:
+  `/private/tmp/rust-radio-rr120-skylab-check/debug/rust-radio-cli validate wcrb`.
+- Both reports explicitly state that no audio output was opened. This confirms
+  current silent stream/codec decoding only; it does not verify native callback
+  consumption, a visible listener state, or audible output. The running GUI was
+  not operated.
