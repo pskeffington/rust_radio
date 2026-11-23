@@ -43,7 +43,7 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
         country: "GB",
         genre: "Chillout / lounge / ambient",
         category: "CHILL",
-        playlist_url: "https://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited",
+        playlist_url: "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls",
         publisher_reference_url: "https://www.skylabradio.com/listen",
         third_party_player_support: true,
         rights_reviewed_date: "2026-10-28",
@@ -668,9 +668,10 @@ mod tests {
             assert!(station.playlist_url.starts_with("https://"));
             assert!(station.publisher_reference_url.starts_with("https://"));
             if station.id == "skylab" {
-                assert!(station
-                    .playlist_url
-                    .starts_with("https://uksoutha.streaming.broadcast.radio:29690/"));
+                assert_eq!(
+                    station.playlist_url,
+                    "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls"
+                );
                 assert_eq!(
                     station.publisher_reference_url,
                     "https://www.skylabradio.com/listen"
@@ -702,7 +703,7 @@ mod tests {
         );
         assert_eq!(
             station_tcp_target("skylab"),
-            Some(("uksoutha.streaming.broadcast.radio", 29690))
+            Some(("stream.rcs.revma.com", 443))
         );
         assert_eq!(station_tcp_target("unknown"), None);
         assert_eq!(station_tcp_target("https://attacker.test"), None);

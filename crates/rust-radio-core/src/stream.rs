@@ -58,10 +58,23 @@ impl From<io::Error> for StreamError {
 
 /// A checked URL bound to exactly one curated station's broadcaster.
 /// The private fields prevent accidental construction from arbitrary URLs.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ApprovedEndpoint {
     station_id: &'static str,
     url: String,
+}
+
+impl fmt::Debug for ApprovedEndpoint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let safe_url = self
+            .url
+            .split_once('?')
+            .map_or(self.url.as_str(), |(base, _)| base);
+        f.debug_struct("ApprovedEndpoint")
+            .field("station_id", &self.station_id)
+            .field("url", &safe_url)
+            .finish()
+    }
 }
 
 impl ApprovedEndpoint {
@@ -70,22 +83,21 @@ impl ApprovedEndpoint {
         if url.len() > 2048 || !url.starts_with("https://") {
             return Err(StreamError::UnsafeEndpoint);
         }
-        let (authority, path) = url[8..]
+        let (authority, path_and_query) = url[8..]
             .split_once('/')
             .ok_or(StreamError::UnsafeEndpoint)?;
+        let (path, query) = match path_and_query.split_once('?') {
+            Some((path, query)) => (path, Some(query)),
+            None => (path_and_query, None),
+        };
         if authority.is_empty()
             || path.is_empty()
             || !authority.bytes().all(|b| {
                 b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'.' || b == b'-' || b == b':'
             })
-            || path.bytes().any(|b| {
-                !b.is_ascii_graphic()
-                    || b == b'\\'
-                    || b == b'?'
-                    || b == b'#'
-                    || b == b'%'
-                    || b == b'@'
-            })
+            || path
+                .bytes()
+                .any(|b| !b.is_ascii_graphic() || b == b'\\' || b == b'#' || b == b'%' || b == b'@')
             || path.split('/').any(|part| part == "." || part == "..")
         {
             return Err(StreamError::UnsafeEndpoint);
@@ -113,6 +125,27 @@ impl ApprovedEndpoint {
             "wfmu-sheena" => "sheena",
             _ => "",
         };
+        let skylab_revma_shard = host
+            .strip_suffix(".rcs.revma.com")
+            .and_then(|shard| shard.split_once("-us"))
+            .and_then(|(node, region)| {
+                let node = node.strip_prefix('n')?;
+                (node.len() == 2
+                    && node.bytes().all(|b| b.is_ascii_digit())
+                    && region.len() == 1
+                    && region.bytes().all(|b| b.is_ascii_digit()))
+                .then_some(())
+            })
+            .is_some();
+        if let Some(query) = query {
+            if station.id != "skylab"
+                || !skylab_revma_shard
+                || path != "7vs4sr22w3bwv"
+                || !skylab_signed_query_allowed(query)
+            {
+                return Err(StreamError::UnsafeEndpoint);
+            }
+        }
         let kuaf_path = match station.id {
             "kuaf" => "kuaf1",
             "kuaf-classical" => "kuaf2",
@@ -120,8 +153,8 @@ impl ApprovedEndpoint {
             _ => "",
         };
         let allowed = if station.id == "skylab" {
-            authority == "uksoutha.streaming.broadcast.radio:29690"
-                && path.starts_with("skylab-radio-limited")
+            (host == "stream.rcs.revma.com" && path == "7vs4sr22w3bwv.pls")
+                || (skylab_revma_shard && path == "7vs4sr22w3bwv")
         } else if station.id == "wcrb" {
             authority == "wgbh-live.streamguys1.com" && path == "classical-hi/"
         } else if station.id == "gbh-news" {
@@ -175,6 +208,41 @@ impl ApprovedEndpoint {
     pub fn station_id(&self) -> &'static str {
         self.station_id
     }
+}
+
+/// Revma's exact Skylab audio path redirects across signed shard URLs. Accept
+/// only its short-lived TTL and token parameters, without logging their values.
+fn skylab_signed_query_allowed(query: &str) -> bool {
+    let mut ttl_seen = false;
+    let mut token_seen = false;
+    for pair in query.split('&') {
+        let Some((key, value)) = pair.split_once('=') else {
+            return false;
+        };
+        match key {
+            "rj-ttl" if !ttl_seen => {
+                if !(1..=5).contains(&value.len())
+                    || !value.bytes().all(|byte| byte.is_ascii_digit())
+                    || !matches!(value.parse::<u32>(), Ok(ttl) if (1..=300).contains(&ttl))
+                {
+                    return false;
+                }
+                ttl_seen = true;
+            }
+            "rj-tok" if !token_seen => {
+                if !(16..=128).contains(&value.len())
+                    || !value.bytes().all(|byte| {
+                        byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')
+                    })
+                {
+                    return false;
+                }
+                token_seen = true;
+            }
+            _ => return false,
+        }
+    }
+    ttl_seen && token_seen
 }
 
 /// A transport is responsible for TLS verification, DNS/address safety,
@@ -592,23 +660,75 @@ mod tests {
             "https://somafm.com/%2e%2e/secret",
             "https://somafm.com/../secret",
             "https://somafm.com/stream?redirect=localhost",
-            "https://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited",
+            "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls",
         ] {
             assert!(
                 ApprovedEndpoint::new("radio-paradise", url).is_err(),
                 "{url}"
             );
         }
+        assert!(
+            ApprovedEndpoint::new("skylab", "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls")
+                .is_ok()
+        );
+        assert!(
+            ApprovedEndpoint::new("skylab", "https://n06-us1.rcs.revma.com/7vs4sr22w3bwv").is_ok()
+        );
+        assert!(
+            ApprovedEndpoint::new("skylab", "https://n04-us1.rcs.revma.com/7vs4sr22w3bwv").is_ok()
+        );
+        assert!(
+            ApprovedEndpoint::new("skylab", "https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv")
+                .is_ok()
+        );
         assert!(ApprovedEndpoint::new(
             "skylab",
-            "https://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited"
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-tok=syntheticToken0123456789"
         )
         .is_ok());
+        for unsafe_url in [
+            "https://stream.evil.test/7vs4sr22w3bwv.pls",
+            "https://evil-stream.rcs.revma.com/7vs4sr22w3bwv.pls",
+            "https://stream.rcs.revma.com/other.pls",
+            "https://n06-us1.rcs.revma.com/other",
+            "https://n4-us1.rcs.revma.com/7vs4sr22w3bwv",
+            "https://n404-us1.rcs.revma.com/7vs4sr22w3bwv",
+            "https://n04-us12.rcs.revma.com/7vs4sr22w3bwv",
+            "https://n04-eu1.rcs.revma.com/7vs4sr22w3bwv",
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3",
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-ttl=4&rj-tok=syntheticToken0123456789",
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=0&rj-tok=syntheticToken0123456789",
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-tok=short",
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-tok=syntheticToken0123456789&extra=1",
+        ] {
+            assert!(
+                ApprovedEndpoint::new("skylab", unsafe_url).is_err(),
+                "{unsafe_url}"
+            );
+        }
+        assert!(ApprovedEndpoint::new(
+            "radio-paradise",
+            "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls"
+        )
+        .is_err());
         assert!(ApprovedEndpoint::new(
             "radio-paradise",
             "https://stream.radioparadise.com/mp3-128"
         )
         .is_ok());
+    }
+
+    #[test]
+    fn approved_endpoint_debug_redacts_signed_query_values() {
+        let endpoint = ApprovedEndpoint::new(
+            "skylab",
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-tok=syntheticToken0123456789",
+        )
+        .unwrap();
+        let debug = format!("{endpoint:?}");
+        assert!(debug.contains("n01-us2.rcs.revma.com/7vs4sr22w3bwv"));
+        assert!(!debug.contains("rj-tok"));
+        assert!(!debug.contains("syntheticToken0123456789"));
     }
 
     #[test]
@@ -1048,6 +1168,50 @@ mod tests {
         assert_eq!(opened.reader.read(&mut audio).unwrap(), 4);
         assert_eq!(&audio, b"efgh");
         assert_eq!(opened.reader.take_last_title(), Some("X".into()));
+    }
+
+    #[test]
+    fn skylab_official_pls_resolves_to_its_exact_https_audio_endpoint() {
+        let playlist = "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls";
+        let audio = "https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv";
+        let signed_audio =
+            "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-tok=syntheticToken0123456789";
+        let fixture = FakeHttp(vec![
+            Fixture {
+                url: playlist,
+                status: 200,
+                mime: "audio/x-scpls",
+                redirect: None,
+                metaint: None,
+                body: format!(
+                    "[playlist]\nFile1={audio}\nTitle1=Skylab Radio\nLength1=-1\nNumberOfEntries=1\nVersion=2\n"
+                )
+                .into_bytes(),
+            },
+            Fixture {
+                url: audio,
+                status: 302,
+                mime: "text/plain",
+                redirect: Some(signed_audio),
+                metaint: None,
+                body: Vec::new(),
+            },
+            Fixture {
+                url: signed_audio,
+                status: 200,
+                mime: "audio/mpeg",
+                redirect: None,
+                metaint: None,
+                body: b"mp3-frame-fixture".to_vec(),
+            },
+        ]);
+
+        let mut stream = open_station(&fixture, "skylab").unwrap();
+        assert_eq!(stream.endpoint.url(), signed_audio);
+        assert_eq!(stream.content_type.as_deref(), Some("audio/mpeg"));
+        let mut bytes = Vec::new();
+        stream.reader.read_to_end(&mut bytes).unwrap();
+        assert_eq!(bytes, b"mp3-frame-fixture");
     }
 
     #[test]

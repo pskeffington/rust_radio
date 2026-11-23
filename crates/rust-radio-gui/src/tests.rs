@@ -15,22 +15,36 @@ struct GatedHttp {
 impl RadioHttp for GatedHttp {
     type Body = Cursor<Vec<u8>>;
 
-    fn get(&self, _: &ApprovedEndpoint) -> Result<HttpResponse<Self::Body>, StreamError> {
-        self.entered.send(()).unwrap();
-        self.release
-            .lock()
-            .unwrap()
-            .recv_timeout(Duration::from_secs(5))
-            .unwrap();
-        Ok(HttpResponse {
-            status: 200,
-            content_type: Some("audio/mpeg".into()),
-            redirect_location: None,
-            icy_metaint: None,
-            body: Cursor::new(
-                include_bytes!("../../rust-radio-audio/tests/fixtures/tone.mp3").to_vec(),
-            ),
-        })
+    fn get(&self, target: &ApprovedEndpoint) -> Result<HttpResponse<Self::Body>, StreamError> {
+        if target.url() == "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls" {
+            self.entered.send(()).unwrap();
+            self.release
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(5))
+                .unwrap();
+            Ok(HttpResponse {
+                status: 200,
+                content_type: Some("audio/x-scpls".into()),
+                redirect_location: None,
+                icy_metaint: None,
+                body: Cursor::new(
+                    b"[playlist]\nFile1=https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv\nNumberOfEntries=1\nVersion=2\n".to_vec(),
+                ),
+            })
+        } else if target.url() == "https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv" {
+            Ok(HttpResponse {
+                status: 200,
+                content_type: Some("audio/mpeg".into()),
+                redirect_location: None,
+                icy_metaint: None,
+                body: Cursor::new(
+                    include_bytes!("../../rust-radio-audio/tests/fixtures/tone.mp3").to_vec(),
+                ),
+            })
+        } else {
+            Err(StreamError::TransportUnavailable)
+        }
     }
 }
 

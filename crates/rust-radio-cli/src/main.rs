@@ -1063,10 +1063,7 @@ mod tests {
         let output = station_validation_diagnostics_json(&report).unwrap();
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
         assert_eq!(json["station_id"], "skylab");
-        assert_eq!(
-            json["catalog_hostname"],
-            "uksoutha.streaming.broadcast.radio"
-        );
+        assert_eq!(json["catalog_hostname"], "stream.rcs.revma.com");
         assert_eq!(json["path"], "<redacted>");
         assert_eq!(json["diagnostics_schema_version"], 1);
         assert_eq!(json["failure_kind"], "pre_response_transport_failure");
