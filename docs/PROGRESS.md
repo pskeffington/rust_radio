@@ -1240,3 +1240,22 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The subsequent push triggered run `40772645579` on `52be452`; it again ended
   `startup_failure` with zero jobs. The latest head `1642027` has no run visible
   yet. This reproduces the runner-startup problem but still exposes no cause.
+
+
+## RR-118 macOS app packaging — 2026-11-23
+
+- Added editable phosphor receiver icon source, generated `.icns`, a reproducible
+  app-bundle script, and user-scoped install/uninstall scripts. Packaging keeps
+  generated build products in configurable `CARGO_TARGET_DIR` (default
+  `/private/tmp/rust-radio-target` for this no-exec Research volume).
+- Agent invocation: implementer, canonical `code-implementation` skill from
+  `pskeffington/agent_skills` main `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`
+  (skill blob `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`).
+- Icon authoring used `rsvg-convert`, `sips`, and `iconutil`; `iconutil` round-trip
+  validation and `plutil -lint` passed. The release GUI build completed and produced
+  `/private/tmp/rust-radio-target/release/Rust Radio.app`; its plist reports bundle
+  ID `com.skeffington.rustradio`, icon `RustRadio.icns`, and has no `LSUIElement`.
+  Both scripts pass `bash -n`; `git diff --check` passed. Installer/Dock behavior
+  and visual Dock review remain NOT RUN. App was not installed or launched.
+- Unsigned/unnotarized local app only. Signing, notarization, Gatekeeper and
+  distribution remain separate release gates.

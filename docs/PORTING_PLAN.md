@@ -59,5 +59,21 @@ See [embedding](EMBEDDING.md), [native playback evidence](NATIVE_PLAYBACK_CONTRA
 [nRSP-ST](NRSP_ST.md) and [USB SDR boundaries](SDR_RECEIVE.md) for implementation
 contracts and reproducible commands.
 
+## macOS standalone app packaging (RR-118)
+
+`scripts/package_macos_app.sh` packages the standalone `rust-radio-gui` binary as
+`Rust Radio.app` with bundle identifier `com.skeffington.rustradio`. The editable
+phosphor receiver icon is `assets/macos/RustRadio.svg`; run the explicit `icon`
+authoring action to regenerate `RustRadio.icns` with `rsvg-convert`, `sips`, and
+`iconutil`. Normal packaging consumes the committed `.icns`. Set
+`CARGO_TARGET_DIR` to choose the build output location; on the Research SMB volume
+this host requires an executable local target such as `/private/tmp/rust-radio-target`.
+`scripts/install_macos_app.sh install|uninstall` manages only the current user's
+`~/Applications/Rust Radio.app` and its Dock tile. The scripts do not launch the
+GUI or start playback. Local bundles are unsigned and unnotarized. Developer ID
+signing, notarization, Gatekeeper acceptance, and distribution packaging remain a
+separate release gate. A visual Dock check requires operator/UI evidence and is
+not inferred from the persistent Dock preference.
+
 ## Compatibility API
 Hosts should drive commands (select/play/stop/volume/output) and observe session snapshots; keep network receivers, native device discovery, publishers, and GUI outside the core. Provide versioned API and avoid cyclic dependency from rust_radio back to pip_boy.
