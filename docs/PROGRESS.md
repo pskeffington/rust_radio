@@ -1655,3 +1655,9 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   notarization, publication, hosted CI, Mac audible output and Pi acceptance
   remain separate unresolved gates. The operator reported the radio app was
   already open; this task did not launch, stop, or operate it.
+- After syncing code commit `6e1ddc919e44e306b497be8aebe8a32e2b1a1c7e` and
+  documentation commit `6e6784cb1a6737e3a4e5318b2eeae4772375909f`, exact PR
+  head `6e6784cb1a6737e3a4e5318b2eeae4772375909f` produced Actions run
+  `45239913409`, which ended `startup_failure` before job creation with zero
+  jobs. `gh pr checks 14` reported no checks. Local validation passed before
+  push; hosted CI did not execute repository commands.
