@@ -49,6 +49,26 @@ receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
   for the PR head, audible playback, Pi hardware and publisher rights remain
   unverified. Build output used `/private/tmp` because Research is no-exec.
 
+## RR-104 streaming-only GUI operator checklist — 2026-11-23
+
+- Restored an IP-radio-only Mac operator checklist after the receiver-scope
+  migration and linked it from `GUI_INTEGRATION.md`. It records explicit
+  no-autoplay, selection/keyboard, silent checks, cancellation, playback state,
+  volume/mute, Stop/Retry and output selection checks. Audible listening remains
+  a distinct human gate; physical touch and Pi rendering remain separate.
+- Corrected GUI integration text that referred to receiver setup/resources or
+  receiver cancellation. The current instructions describe IP Radio and native
+  audio playback resources only; historical receiver evidence remains in dated
+  progress entries.
+- Exact baseline: `716998bca4ce447c34bf329883298feb9f6efbf9` (RR-102 evidence
+  head). `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr104-target cargo test -p
+  rust-radio-gui --locked --offline` PASS: 28 library tests and 2 binary tests
+  passed, 0 failed; 1 native IP playback integration test ignored because it
+  requires native output and local TCP. `cargo fmt --all -- --check` and
+  `git diff --check` PASS. The interactive checklist rows remain Not run in
+  this work session; no audio device was opened.
+- Canonical `agent_skills` revision in this task record: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; registered specialist delegation/independent review for the RR-120 scope migration is recorded above. This documentation-only RR-104 reconciliation adds no claim of human GUI, audible, Pi, hosted CI, rights or release acceptance.
+
 ## RR-101 Skylab IP stream repair — 2026-11-23
 
 - Baseline `1635fc7c3bb99a15d95164a51c4b629277c9e554` reproduced Skylab as

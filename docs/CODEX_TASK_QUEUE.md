@@ -7,14 +7,14 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-101 | P0 | Transport | IN_REVIEW | Reproduce Skylab validation/listening discrepancy with structured, redacted endpoint and stage diagnostics | Distinguish DNS/TLS/HTTP/playlist/codec/callback and reproduce with a fixture; no autoplay |
 | RR-102 | P0 | Validation | IN_REVIEW | Catalog sweep with timestamped JSON/history review | Report each canonical ID, attempts, decoded stage, failures and known environmental limits; do not equate 25/25 historical decode with current availability |
 | RR-103 | P0 | Audio | BLOCKED: physical device | Mac IP-stream output loss, device-switch and stop-recovery evidence | Explicit speaker/Bluetooth/USB sound-output matrix; no overlapping sessions |
-| RR-104 | P1 | GUI | READY | 480x320 control/state regression and a human operator checklist | Long text, arrows, keyboard, volume, mute, Stop/Retry, station switches tested; physical touch remains separate |
+| RR-104 | P1 | GUI | DONE | 480x320 control/state regression and a human operator checklist | Offline controls/layout suite and IP-only Mac checklist are recorded; interactive, audible and physical touch acceptance remain separate |
 | RR-107 | P1 | Integration | BLOCKED: Pi 5 target | Pi runtime and Rust-Boy embedded host signoff | Pinned dependency, physical screen, native output, CPU/memory/thermal/power |
 | RR-108 | P1 | Validation | BLOCKED: Actions runner startup | CI status audit and exact-SHA evidence reconciliation | PR #14 head ac23d9b run 45155794094 failed before job creation (0 jobs/logs); retry API returns 403; recheck on next new run |
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
 | RR-120 | P0 | Scope | IN_REVIEW | Restrict Rust Radio to internet streaming; remove receiver code, features, docs and CI | Workspace gates pass; retained audio output and IP stream paths remain covered |
 | RR-121 | P2 | Scope | DONE | Reconcile current scope and historical evidence after receiver migration | USB SDR and nSDR code/acceptance belong to separate projects; current Rust Radio gates remain IP streaming, audio, GUI, Pi, CI and rights |
 
-## Immediate Codex order: RR-101, then RR-102
+## Immediate Codex order: RR-108 hosted CI startup diagnosis; then RR-103 physical IP audio recovery when a device is available; continue Pi/rights gates as their prerequisites become available
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
 2. Add fixture-first tests around the reproducible failure; do not infer the cause from a website response, old status, or one failed network attempt.
 3. Run silent `cargo run -p rust-radio-cli -- validate skylab`; compare with `cargo run -p rust-radio-cli -- listen skylab --seconds 30` only when audio testing is explicitly authorized.

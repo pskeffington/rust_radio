@@ -70,7 +70,7 @@ theme. See [host integration](EMBEDDING.md).
 - 480 × 320 is a logical-pixel target; high-DPI and physical touch screenshots require verification.
 - No intentional scroll in default view. Each input button opens a centered setup overlay sized for the 480 × 320 viewport. Offline egui layout tests cover the 480 × 320 bounds, including long diagnostics; Pi rendering still requires verification.
 - Curated stations plus up to 24 saved named public HTTPS or private IPv4 HTTP streams; custom URL/name entry is behind IP Radio. M3U/PLS and checked redirects are supported; HLS is reported as unsupported.
-- Output selection is disabled while the worker still owns receiver resources, including failure cleanup. Completed failed sessions release automatically; failure details remain visible and PLAY requests a fresh session.
+- Output selection is disabled while the worker still owns playback resources, including failure cleanup. Completed failed sessions release automatically; failure details remain visible and PLAY requests a fresh session.
 - Keep firmware/Pi builds optional: eframe's graphics/window stack and target platform must be validated separately; the audio engine is independent.
 - Mac rendering and mouse controls were inspected; physical touch and Pi GPU acceptance remain open.
 
@@ -78,6 +78,10 @@ Historical receiver UI evidence remains in the chronological progress record;
 it does not describe the current streaming-only interface.
 
 ## Next operator Mac acceptance
+
+Follow the task-oriented [Mac GUI operator checklist](GUI_OPERATOR_CHECKLIST.md)
+and record the commit and each interactive result there. The checklist separates
+the no-audio controls pass from the explicit audible listening step.
 
 ```sh
 cd ~/GitHub/rust_radio
@@ -88,7 +92,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
 
-Check the radio window at 480 × 320: station arrows, play/stop, volume, error text, and input setup panels must be fully tappable without body scrolling. Opening the standalone GUI may perform read-only discovery, but must emit no audio or start a receiver or station stream. CHECK STREAM should update setup details without audible output. Cancel during connection, browse to another station, and confirm the old result cannot replace its status. PLAY should produce audible Skylab reception, and STOP should terminate it. Device changes require stopping first. These native GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
+Check the radio window at 480 × 320: station arrows, play/stop, volume, error text and IP Radio setup must remain reachable without body scrolling. Opening the standalone GUI must not start station playback. CHECK STREAM should update setup details without audible output. Cancel during connection, browse to another station, and confirm the old result cannot replace its status. PLAY should reach Playing only after callback-consumed PCM; STOP should terminate it. Output changes require stopping first. These native GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
 
 ## Stop responsiveness regression
 
@@ -135,7 +139,7 @@ URLs, including query parameters; unsaved drafts remain in memory. During
 playback, edit the URL and choose APPLY STREAM to reconnect. See
 [storage and host APIs](EMBEDDING.md#ip-station-storage-and-selection).
 
-Offline tests hold a fixture transport behind a channel while rendering, stopping and changing stations, then verify cleanup and cache identity. They also cover worker panic and the 480 × 320 layout. Receiver cancellation returns a terminal I/O error: `Interrupted` would be retried by `read_exact` and could loop forever during ICY metadata. A regression test exercises Stop at that exact boundary.
+Offline tests hold a fixture transport behind a channel while rendering, stopping and changing stations, then verify cleanup and cache identity. They also cover worker panic and the 480 × 320 layout. IP stream cancellation returns a terminal I/O error: `Interrupted` would be retried by `read_exact` and could loop forever during ICY metadata. A regression test exercises Stop at that exact boundary.
 
 ## IP GUI acceptance (2026-10-28)
 
