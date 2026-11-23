@@ -13,6 +13,41 @@ they do not describe the current product scope. RR-120 tracks this migration.
 their receiver references describe their recorded revisions. Do not interpret
 receiver hardware acceptance listed there as an open Rust Radio gate.
 
+## RR-118 macOS app package and Dock launcher — 2026-11-23
+
+- Built the `rust-radio-gui` release app bundle with
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-target bash scripts/package_macos_app.sh`.
+  The build succeeded and staged `Info.plist` passed `plutil -lint`.
+- Hardened package and per-user install replacement: each stages and validates
+  the new bundle before swapping, with rollback retained through Dock update.
+  Install normalizes encoded Dock URLs and deduplicates matching tiles.
+- Installed `/Users/null/Applications/Rust Radio.app` and confirmed bundle ID
+  `com.skeffington.rustradio`, executable `rust-radio-gui`, icon `RustRadio.icns`,
+  valid property list, and exactly one Dock tile. Installed executable and icon
+  SHA-256 values match the built package. LaunchServices `open -a` succeeded;
+  playback was not started.
+- This host reports an existing `rust-radio-gui` process but blocks process
+  enumeration. The installer retained safe replacement behavior and reported
+  that the existing process must be quit and relaunched to use the new bundle.
+  A fresh-session UI interaction check is therefore NOT RUN. The app is unsigned
+  and unnotarized; distribution signing, notarization and Gatekeeper acceptance
+  remain NOT RUN. `bash -n` for both scripts and `git diff --check` passed. No
+  cargo tests were run for this packaging task.
+- Canonical `agent_skills` revision: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`;
+  implementer used `code-implementation` blob
+  `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; independent review used
+  `independent-code-review` blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`.
+  Review identified and the implementation fixed the package backup-cleanup
+  failure path; final re-review passed with no actionable findings. A Dock
+  rollback leaves its single absolute app URL pointing at the restored bundle.
+- Baseline: `0ae4d775d20e9ec6b2ebdafd237e341ed9c840d2`. On this final source,
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-target bash
+  scripts/package_macos_app.sh` PASS; installer PASS; bundle plist lint PASS;
+  executable and icon SHA-256 match packaged copies; Dock tile count is one;
+  both shell syntax checks and `git diff --check` PASS. Packaging changes are
+  staged and ready to commit. RR-118 remains IN_REVIEW pending exact-head hosted
+  CI and a clean-session app relaunch check.
+
 ## RR-120 streaming-only scope migration — 2026-11-23
 
 - Baseline: `4b377519b585f0ff155e7ab9146eaa3bb822e777`; implementation commit: `36e603152e1d770014e3487c056c0cd7664acd5f` on isolated Research-volume branch `codex/rr120-ip-radio-scope`.
