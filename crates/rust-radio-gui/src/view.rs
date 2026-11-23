@@ -1,4 +1,4 @@
-use super::{theme, RadioPanel, Segment, PANEL_HEIGHT, PANEL_WIDTH};
+use super::{theme, RadioPanel, PANEL_HEIGHT, PANEL_WIDTH};
 use eframe::egui;
 
 impl RadioPanel {
@@ -20,15 +20,7 @@ impl RadioPanel {
                 self.input_header(ui);
                 ui.separator();
                 ui.add_space(4.0);
-                ui.label(
-                    egui::RichText::new(if self.segment == Segment::Ip {
-                        "STATION"
-                    } else {
-                        "RECEIVER"
-                    })
-                    .small()
-                    .color(theme::MUTED),
-                );
+                ui.label(egui::RichText::new("STATION").small().color(theme::MUTED));
                 self.station_selector(ui);
                 self.cancel_stale_validation();
                 ui.add(
@@ -161,29 +153,6 @@ impl RadioPanel {
 
     fn input_header(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 4.0;
-            ui.spacing_mut().button_padding = egui::vec2(6.0, 3.0);
-            for segment in [Segment::Ip, Segment::Network, Segment::Usb] {
-                if theme::input_button(
-                    ui,
-                    segment.label(),
-                    self.segment_available(segment),
-                    self.segment == segment,
-                )
-                .on_hover_text(format!(
-                    "{} settings · {}",
-                    segment.label(),
-                    if self.segment_available(segment) {
-                        "available"
-                    } else {
-                        "not detected yet"
-                    }
-                ))
-                .clicked()
-                {
-                    self.select_segment(segment, true);
-                }
-            }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(
                     egui::RichText::new("RUST RADIO")

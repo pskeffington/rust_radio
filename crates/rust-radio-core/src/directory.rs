@@ -1,7 +1,4 @@
-//! Curated, receive-only internet radio fallback.
-//!
-//! Source selection is pure and testable. Actual SDR discovery and station
-//! playback are independently gated; TCP reachability is not stream validation.
+//! Curated, receive-only internet radio directory.
 
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
@@ -359,92 +356,10 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
     },
 ];
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RadioSource {
-    HardwareSdr,
-    InternetDirectory,
-    Offline,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IpReachability {
     Reachable,
     Unreachable,
     NotChecked,
-}
-
-/// Distinguish a detected hardware device from a simulation fixture.
-pub trait RadioDiscovery {
-    fn real_receiver_available(&self) -> bool;
-}
-
-/// Availability checks may resolve and connect to *approved radio provider*
-/// hosts only. Do not use untrusted remote station-provided hostnames.
-pub trait RadioConnectivity {
-    fn approved_provider_reachable(&self) -> IpReachability;
-}
-
-pub fn select_source<D: RadioDiscovery, C: RadioConnectivity>(
-    device: &D,
-    connectivity: &C,
-) -> RadioSource {
-    if device.real_receiver_available() {
-        RadioSource::HardwareSdr
-    } else if connectivity.approved_provider_reachable() == IpReachability::Reachable {
-        RadioSource::InternetDirectory
-    } else {
-        RadioSource::Offline
-    }
-}
-
-/// The core currently has no physical SDR backend. Never report the simulator
-/// as a receiver: the eventual SoapySDR enumerator replaces this implementation.
-pub struct NoHardwareEnumerator;
-
-impl RadioDiscovery for NoHardwareEnumerator {
-    fn real_receiver_available(&self) -> bool {
-        false
-    }
-}
-
-pub struct UncheckedConnectivity;
-impl RadioConnectivity for UncheckedConnectivity {
-    fn approved_provider_reachable(&self) -> IpReachability {
-        IpReachability::NotChecked
-    }
-}
-
-/// Bounded TCP connectivity check to the publisher's HTTPS endpoint.
-/// It proves only that a TCP route exists, NOT that HTTPS, the playlist,
-/// a codec or the station stream is usable.
-pub struct PublisherTcpCheck {
-    pub timeout: Duration,
-}
-
-impl Default for PublisherTcpCheck {
-    fn default() -> Self {
-        Self {
-            timeout: Duration::from_secs(2),
-        }
-    }
-}
-
-impl RadioConnectivity for PublisherTcpCheck {
-    fn approved_provider_reachable(&self) -> IpReachability {
-        let timeout = self.timeout.min(Duration::from_secs(3));
-        let Ok(addresses) = ("somafm.com", 443).to_socket_addrs() else {
-            return IpReachability::Unreachable;
-        };
-        // Bound probe time even if DNS returns multiple addresses.
-        if let Some(address) = addresses
-            .take(2)
-            .find(|address| TcpStream::connect_timeout(address, timeout).is_ok())
-        {
-            let _ = address;
-            IpReachability::Reachable
-        } else {
-            IpReachability::Unreachable
-        }
-    }
 }
 
 /// Station-specific TCP reachability probe. Host and port are fixed by curated
@@ -490,19 +405,6 @@ pub fn station_by_id(id: &str) -> Option<&'static InternetStation> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    struct MockHardware(bool);
-    impl RadioDiscovery for MockHardware {
-        fn real_receiver_available(&self) -> bool {
-            self.0
-        }
-    }
-    struct MockIp(IpReachability);
-    impl RadioConnectivity for MockIp {
-        fn approved_provider_reachable(&self) -> IpReachability {
-            self.0
-        }
-    }
-
     #[test]
     fn lookup_is_exact_and_allowlisted() {
         assert_eq!(
@@ -513,28 +415,6 @@ mod tests {
         assert_eq!(
             station_tcp_reachable("https://attacker.test", Duration::ZERO),
             None
-        );
-    }
-    #[test]
-    fn sdr_precedes_network() {
-        assert_eq!(
-            select_source(&MockHardware(true), &MockIp(IpReachability::Unreachable)),
-            RadioSource::HardwareSdr
-        );
-    }
-    #[test]
-    fn ip_fallback_requires_reachable_provider() {
-        assert_eq!(
-            select_source(&MockHardware(false), &MockIp(IpReachability::Reachable)),
-            RadioSource::InternetDirectory
-        );
-        assert_eq!(
-            select_source(&MockHardware(false), &MockIp(IpReachability::Unreachable)),
-            RadioSource::Offline
-        );
-        assert_eq!(
-            select_source(&MockHardware(false), &UncheckedConnectivity),
-            RadioSource::Offline
         );
     }
     #[test]

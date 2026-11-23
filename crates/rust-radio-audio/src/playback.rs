@@ -27,36 +27,10 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 mod ip_pcm;
-#[cfg(feature = "nrsp-native")]
-mod nrsp_native;
-#[cfg(feature = "nrsp-native")]
-pub use nrsp_native::AudioStats as NativeNrspAudioStats;
-#[cfg(feature = "nrsp-native")]
-pub use rust_radio_sdr::nrsp_native::{
-    Deemphasis as NativeFmDeemphasis, FmSettings as NativeFmSettings, Mode as NativeNrspMode,
-};
-#[cfg(feature = "sdrconnect")]
-mod sdrconnect;
-#[cfg(feature = "soapy")]
-mod soapy;
 
 enum PlaybackSource {
     Internet(String),
     Direct(String),
-    #[cfg(feature = "nrsp-native")]
-    NrspNative(
-        rust_radio_sdr::nrsp_native::Endpoint,
-        rust_radio_sdr::nrsp_native::Config,
-        Option<NativeFmSettings>,
-    ),
-    #[cfg(feature = "sdrconnect")]
-    SdrConnect(rust_radio_sdr::sdrconnect::Endpoint),
-    #[cfg(feature = "soapy")]
-    SoapyWfm {
-        id: String,
-        frequency_hz: u64,
-        deemphasis: rust_radio_core::sdr::wfm::Deemphasis,
-    },
 }
 
 struct ActivePlaybackSlot {
@@ -163,7 +137,7 @@ fn probe_failure(error: DecodeError, output_failed: bool) -> PlaybackFailure {
 }
 
 /// No direct audio output or network access occurs until the caller issues
-/// an explicit internet or SDRconnect Play command. A process-wide lease admits
+/// an explicit internet Play command. A process-wide lease admits
 /// only one playback worker, including across multiple engine instances.
 pub struct NativeRadioEngine {
     controller: Arc<Mutex<RadioController>>,
@@ -172,10 +146,6 @@ pub struct NativeRadioEngine {
     output_failed: Arc<AtomicBool>,
     output_progress: OutputProgress,
     worker: Option<JoinHandle<()>>,
-    #[cfg(feature = "nrsp-native")]
-    native_control: Option<Arc<nrsp_native::Control>>,
-    #[cfg(feature = "sdrconnect")]
-    receiver: Arc<Mutex<Option<rust_radio_sdr::sdrconnect::Status>>>,
 }
 
 impl NativeRadioEngine {
@@ -204,106 +174,6 @@ impl NativeRadioEngine {
         )
     }
 
-    /// Connect, tune and receive directly from the nRSP-ST's native service.
-    #[cfg(feature = "nrsp-native")]
-    pub fn start_nrsp_native(
-        endpoint: &str,
-        frequency_hz: u64,
-        mode: &str,
-        bandwidth_hz: u32,
-        volume_percent: u8,
-        output_id: &str,
-    ) -> Result<Self, String> {
-        use rust_radio_sdr::nrsp_native::{Config, Endpoint, Mode};
-        let endpoint = Endpoint::parse(endpoint).map_err(|e| e.to_string())?;
-        let mode = Mode::parse(mode).map_err(|e| e.to_string())?;
-        let config = Config::new(frequency_hz, mode, bandwidth_hz).map_err(|e| e.to_string())?;
-        Self::start(
-            PlaybackSource::NrspNative(endpoint, config, None),
-            volume_percent,
-            output_id,
-        )
-    }
-
-    #[cfg(feature = "nrsp-native")]
-    pub fn start_nrsp_native_fm(
-        endpoint: &str,
-        frequency_hz: u64,
-        bandwidth_hz: u32,
-        settings: NativeFmSettings,
-        volume_percent: u8,
-        output_id: &str,
-    ) -> Result<Self, String> {
-        use rust_radio_sdr::nrsp_native::{Config, Endpoint, Mode};
-        settings.validate().map_err(|e| e.to_string())?;
-        let endpoint = Endpoint::parse(endpoint).map_err(|e| e.to_string())?;
-        let config =
-            Config::new(frequency_hz, Mode::Wfm, bandwidth_hz).map_err(|e| e.to_string())?;
-        Self::start(
-            PlaybackSource::NrspNative(endpoint, config, Some(settings)),
-            volume_percent,
-            output_id,
-        )
-    }
-
-    /// Explicit native playback of SDRconnect's selected primary receiver.
-    /// Starts reception if stopped and control is allowed. Missing startup
-    /// confirmation requires explicit retry; Stop leaves shared reception running.
-    /// Device selection, refresh, tuning and recording remain SDRconnect actions.
-    #[cfg(feature = "sdrconnect")]
-    pub fn start_sdrconnect(
-        endpoint: &str,
-        volume_percent: u8,
-        output_id: &str,
-    ) -> Result<Self, String> {
-        let endpoint =
-            rust_radio_sdr::sdrconnect::Endpoint::parse(endpoint).map_err(|e| e.to_string())?;
-        Self::start(
-            PlaybackSource::SdrConnect(endpoint),
-            volume_percent,
-            output_id,
-        )
-    }
-
-    /// Start mono broadcast FM from an explicitly selected SoapySDR receiver.
-    /// The driver must support channelized 240 ksample/s CS16 I/Q; no SDRconnect
-    /// process is used. Stop releases the owned receive stream and audio output.
-    #[cfg(feature = "soapy")]
-    pub fn start_soapy_wfm(
-        receiver_id: &str,
-        frequency_hz: u64,
-        deemphasis: rust_radio_core::sdr::wfm::Deemphasis,
-        volume_percent: u8,
-        output_id: &str,
-    ) -> Result<Self, String> {
-        if !receiver_id.starts_with("soapy-")
-            || receiver_id.len() != 22
-            || !receiver_id[6..]
-                .bytes()
-                .all(|byte| byte.is_ascii_hexdigit())
-            || frequency_hz == 0
-        {
-            return Err("Use a discovered SoapySDR receiver ID and positive frequency".into());
-        }
-        Self::start(
-            PlaybackSource::SoapyWfm {
-                id: receiver_id.to_owned(),
-                frequency_hz,
-                deemphasis,
-            },
-            volume_percent,
-            output_id,
-        )
-    }
-
-    #[cfg(feature = "sdrconnect")]
-    pub fn receiver_status(&self) -> Option<rust_radio_sdr::sdrconnect::Status> {
-        self.receiver
-            .lock()
-            .expect("receiver state mutex poisoned")
-            .clone()
-    }
-
     fn start(source: PlaybackSource, volume_percent: u8, output_id: &str) -> Result<Self, String> {
         if volume_percent > 100 {
             return Err("Volume must be between 0 and 100".into());
@@ -317,12 +187,6 @@ impl NativeRadioEngine {
                 station_id: station_id.clone(),
             },
             PlaybackSource::Direct(_) => RadioCommand::PlayStream,
-            #[cfg(feature = "nrsp-native")]
-            PlaybackSource::NrspNative(..) => RadioCommand::PlaySdr,
-            #[cfg(feature = "sdrconnect")]
-            PlaybackSource::SdrConnect(_) => RadioCommand::PlaySdr,
-            #[cfg(feature = "soapy")]
-            PlaybackSource::SoapyWfm { .. } => RadioCommand::PlaySdr,
         };
         let generation = controller.apply(command).map_err(|e| format!("{e:?}"))?;
         let controller = Arc::new(Mutex::new(controller));
@@ -335,19 +199,6 @@ impl NativeRadioEngine {
         let worker_output_failed = Arc::clone(&output_failed);
         let output_progress = Arc::new(Mutex::new(None));
         let worker_output_progress = Arc::clone(&output_progress);
-        #[cfg(feature = "sdrconnect")]
-        let receiver = Arc::new(Mutex::new(None));
-        #[cfg(feature = "sdrconnect")]
-        let worker_receiver = Arc::clone(&receiver);
-        #[cfg(feature = "nrsp-native")]
-        let native_control = match &source {
-            PlaybackSource::NrspNative(_, config, fm) => {
-                Some(Arc::new(nrsp_native::Control::new(*config, *fm)))
-            }
-            _ => None,
-        };
-        #[cfg(feature = "nrsp-native")]
-        let worker_native = native_control.clone();
         let selected_output = output_id.to_owned();
         let active_playback = ACTIVE_PLAYBACK_SLOT.acquire()?;
         let worker = thread::Builder::new()
@@ -379,72 +230,6 @@ impl NativeRadioEngine {
                             output_progress: &worker_output_progress,
                         },
                     ),
-                    #[cfg(feature = "nrsp-native")]
-                    PlaybackSource::NrspNative(endpoint, _, _) => {
-                        let control = worker_native.as_ref().expect("native controls present");
-                        recover_nrsp_attempts(
-                            generation,
-                            &worker_controller,
-                            &worker_cancelled,
-                            control,
-                            |config, fm, reconnecting| {
-                                nrsp_native::play(
-                                    (endpoint, config, fm),
-                                    PlaybackContext {
-                                        generation,
-                                        controller: &worker_controller,
-                                        cancelled: &worker_cancelled,
-                                        volume: Arc::clone(&worker_volume),
-                                        output_id: &selected_output,
-                                        output_progress: &worker_output_progress,
-                                    },
-                                    control,
-                                    reconnecting,
-                                )
-                            },
-                            || clear_output_attempt(&worker_output_progress),
-                            |delay| interruptible_wait(&worker_cancelled, delay),
-                        )
-                    }
-                    #[cfg(feature = "sdrconnect")]
-                    PlaybackSource::SdrConnect(endpoint) => recover_attempts(
-                        generation,
-                        &worker_controller,
-                        &worker_cancelled,
-                        || {
-                            let context = PlaybackContext {
-                                generation,
-                                controller: &worker_controller,
-                                cancelled: &worker_cancelled,
-                                volume: Arc::clone(&worker_volume),
-                                output_id: &selected_output,
-                                output_progress: &worker_output_progress,
-                            };
-                            sdrconnect::play(endpoint, &context, &worker_receiver).map_err(
-                                |error| {
-                                    clear_output_attempt(&worker_output_progress);
-                                    error
-                                },
-                            )
-                        },
-                        |delay| interruptible_wait(&worker_cancelled, delay),
-                    ),
-                    #[cfg(feature = "soapy")]
-                    PlaybackSource::SoapyWfm {
-                        id,
-                        frequency_hz,
-                        deemphasis,
-                    } => soapy::play(
-                        (&id, frequency_hz, deemphasis),
-                        PlaybackContext {
-                            generation,
-                            controller: &worker_controller,
-                            cancelled: &worker_cancelled,
-                            volume: worker_volume,
-                            output_id: &selected_output,
-                            output_progress: &worker_output_progress,
-                        },
-                    ),
                 };
                 record_worker_result(
                     result,
@@ -462,87 +247,7 @@ impl NativeRadioEngine {
             output_failed,
             output_progress,
             worker: Some(worker),
-            #[cfg(feature = "nrsp-native")]
-            native_control,
-            #[cfg(feature = "sdrconnect")]
-            receiver,
         })
-    }
-
-    /// Queue an explicit tune on the current native session. The bounded slot
-    /// keeps only the latest request; observed status updates after device response.
-    #[cfg(feature = "nrsp-native")]
-    pub fn tune_nrsp_native(
-        &self,
-        frequency_hz: u64,
-        mode: &str,
-        bandwidth_hz: u32,
-    ) -> Result<(), String> {
-        use rust_radio_sdr::nrsp_native::{Config, Mode};
-        let mode = Mode::parse(mode).map_err(|e| e.to_string())?;
-        let config = Config::new(frequency_hz, mode, bandwidth_hz).map_err(|e| e.to_string())?;
-        if self.cancelled.load(Ordering::Acquire) || self.status().state != PlaybackState::Playing {
-            return Err("Start the native receiver before tuning".into());
-        }
-        let control = self
-            .native_control
-            .as_ref()
-            .ok_or("The active source is not a direct nRSP-ST")?;
-        let mut pending = control
-            .pending
-            .lock()
-            .expect("native controls mutex poisoned");
-        control.set_desired_config(config);
-        control
-            .desired_mode
-            .store(config.mode as u32, Ordering::Release);
-        *pending = Some(config);
-        Ok(())
-    }
-    #[cfg(feature = "nrsp-native")]
-    pub fn set_nrsp_native_fm(&self, settings: NativeFmSettings) -> Result<(), String> {
-        settings.validate().map_err(|e| e.to_string())?;
-        if self.cancelled.load(Ordering::Acquire) || self.status().state != PlaybackState::Playing {
-            return Err("Start the native receiver before changing FM settings".into());
-        }
-        let control = self
-            .native_control
-            .as_ref()
-            .ok_or("The active source is not a direct nRSP-ST")?;
-        if control.desired_mode.load(Ordering::Acquire) != NativeNrspMode::Wfm as u32 {
-            return Err("FM audio controls require WFM mode".into());
-        }
-        if settings.stereo
-            && control
-                .observed
-                .lock()
-                .expect("native status mutex poisoned")
-                .as_ref()
-                .is_some_and(|status| !status.stereo_allowed)
-        {
-            return Err("Receiver does not permit stereo FM".into());
-        }
-        *control
-            .pending_fm
-            .lock()
-            .expect("native FM controls mutex poisoned") = Some(settings);
-        control.set_desired_fm(settings);
-        Ok(())
-    }
-
-    #[cfg(feature = "nrsp-native")]
-    pub fn nrsp_native_status(&self) -> Option<rust_radio_sdr::nrsp_native::Status> {
-        self.native_control
-            .as_ref()?
-            .observed
-            .lock()
-            .expect("native status mutex poisoned")
-            .clone()
-    }
-
-    #[cfg(feature = "nrsp-native")]
-    pub fn nrsp_native_audio_stats(&self) -> Option<NativeNrspAudioStats> {
-        Some(self.native_control.as_ref()?.stats())
     }
 
     /// True after an audio-device failure, including after worker completion.
@@ -774,40 +479,6 @@ fn recover_attempts(
             RecoveryAction::SelectOutput | RecoveryAction::Fail => return Err(error),
         }
     }
-}
-
-#[cfg(feature = "nrsp-native")]
-fn recover_nrsp_attempts(
-    generation: u64,
-    controller: &Arc<Mutex<RadioController>>,
-    cancelled: &AtomicBool,
-    control: &nrsp_native::Control,
-    mut attempt: impl FnMut(
-        rust_radio_sdr::nrsp_native::Config,
-        Option<NativeFmSettings>,
-        bool,
-    ) -> Result<(), PlaybackFailure>,
-    mut clear_output: impl FnMut(),
-    wait: impl FnMut(Duration) -> bool,
-) -> Result<(), PlaybackFailure> {
-    let mut reconnecting = false;
-    recover_attempts(
-        generation,
-        controller,
-        cancelled,
-        || {
-            let (config, fm) = control.desired_settings();
-            let result = attempt(config, fm, reconnecting);
-            if let Err(error) = &result {
-                if matches!(error, PlaybackFailure::Network(_)) {
-                    reconnecting = true;
-                }
-                clear_output();
-            }
-            result
-        },
-        wait,
-    )
 }
 
 fn interruptible_wait(cancelled: &AtomicBool, delay: Duration) -> bool {
@@ -1242,96 +913,6 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "nrsp-native")]
-    #[test]
-    fn nrsp_reconnect_fixture_retries_with_latest_tuning_and_fm_settings() {
-        let (controller, generation) = recovery_controller();
-        let cancelled = AtomicBool::new(false);
-        let initial =
-            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
-                .unwrap();
-        let control = nrsp_native::Control::new(initial, None);
-        let requested =
-            rust_radio_sdr::nrsp_native::Config::new(99_200_000, NativeNrspMode::Wfm, 180_000)
-                .unwrap();
-        let fm = NativeFmSettings::default();
-        let mut calls = Vec::new();
-        let mut waits = Vec::new();
-        let mut output_attempts_cleared = 0;
-        let mut attempt_count = 0;
-
-        let result = recover_nrsp_attempts(
-            generation,
-            &controller,
-            &cancelled,
-            &control,
-            |config, settings, reconnecting| {
-                calls.push((config, settings, reconnecting));
-                attempt_count += 1;
-                if attempt_count == 1 {
-                    control.set_desired_config(requested);
-                    control.set_desired_fm(fm);
-                    Err(PlaybackFailure::Network("receiver stream timed out".into()))
-                } else {
-                    Ok(())
-                }
-            },
-            || output_attempts_cleared += 1,
-            |delay| {
-                waits.push(delay);
-                true
-            },
-        );
-
-        assert!(result.is_ok());
-        assert_eq!(attempt_count, 2);
-        assert_eq!(output_attempts_cleared, 1);
-        assert_eq!(waits, [Duration::from_secs(1)]);
-        assert_eq!(calls, [(initial, None, false), (requested, Some(fm), true)]);
-    }
-
-    #[cfg(feature = "nrsp-native")]
-    #[test]
-    fn nrsp_reconnect_fixture_stops_after_terminal_setup_failure() {
-        let (controller, generation) = recovery_controller();
-        let cancelled = AtomicBool::new(false);
-        let initial =
-            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
-                .unwrap();
-        let control = nrsp_native::Control::new(initial, None);
-        let mut reconnect_states = Vec::new();
-        let mut waits = Vec::new();
-        let mut output_attempts_cleared = 0;
-
-        let error = recover_nrsp_attempts(
-            generation,
-            &controller,
-            &cancelled,
-            &control,
-            |_config, _fm, reconnecting| {
-                reconnect_states.push(reconnecting);
-                if reconnecting {
-                    Err(PlaybackFailure::Permanent(
-                        "receiver rejected reconnect setup".into(),
-                    ))
-                } else {
-                    Err(PlaybackFailure::Network("receiver stream timed out".into()))
-                }
-            },
-            || output_attempts_cleared += 1,
-            |delay| {
-                waits.push(delay);
-                true
-            },
-        )
-        .unwrap_err();
-
-        assert_eq!(error.class(), FailureClass::Permanent);
-        assert_eq!(reconnect_states, [false, true]);
-        assert_eq!(waits, [Duration::from_secs(1)]);
-        assert_eq!(output_attempts_cleared, 2);
-    }
-
     fn completed_test_engine(panics: bool) -> NativeRadioEngine {
         let mut controller = RadioController::default();
         controller
@@ -1345,10 +926,6 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::new(Mutex::new(None)),
-            #[cfg(feature = "nrsp-native")]
-            native_control: None,
-            #[cfg(feature = "sdrconnect")]
-            receiver: Arc::new(Mutex::new(None)),
             worker: Some(thread::spawn(move || {
                 assert!(!panics, "Synthetic playback worker panic");
             })),
@@ -1375,10 +952,6 @@ mod tests {
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::clone(&output_progress),
             worker: None,
-            #[cfg(feature = "nrsp-native")]
-            native_control: None,
-            #[cfg(feature = "sdrconnect")]
-            receiver: Arc::new(Mutex::new(None)),
         };
 
         assert_eq!(engine.status().state, PlaybackState::Buffering);
@@ -1405,31 +978,6 @@ mod tests {
 
         engine.request_stop();
         assert_eq!(engine.status().state, PlaybackState::Stopped);
-    }
-
-    #[test]
-    fn status_reconciles_delayed_callback_progress_for_sdr_playback() {
-        let mut controller = RadioController::default();
-        let generation = controller.apply(RadioCommand::PlaySdr).unwrap();
-        assert!(controller.event(generation, PlaybackEvent::Connected));
-        assert!(controller.event(generation, PlaybackEvent::Buffered));
-        let callback_samples = Arc::new(AtomicU64::new(0));
-        let engine = NativeRadioEngine {
-            controller: Arc::new(Mutex::new(controller)),
-            cancelled: Arc::new(AtomicBool::new(false)),
-            volume: Arc::new(AtomicU8::new(60)),
-            output_failed: Arc::new(AtomicBool::new(false)),
-            output_progress: Arc::new(Mutex::new(Some(Arc::clone(&callback_samples)))),
-            worker: None,
-            #[cfg(feature = "nrsp-native")]
-            native_control: None,
-            #[cfg(feature = "sdrconnect")]
-            receiver: Arc::new(Mutex::new(None)),
-        };
-
-        assert_eq!(engine.status().state, PlaybackState::Buffering);
-        callback_samples.store(1, Ordering::Release);
-        assert_eq!(engine.status().state, PlaybackState::Playing);
     }
 
     fn finish_test_engine(engine: &mut NativeRadioEngine) {
@@ -1493,10 +1041,6 @@ mod tests {
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::new(Mutex::new(None)),
             worker: Some(worker),
-            #[cfg(feature = "nrsp-native")]
-            native_control: None,
-            #[cfg(feature = "sdrconnect")]
-            receiver: Arc::new(Mutex::new(None)),
         };
         engine.request_stop();
         assert!(engine.cancelled.load(Ordering::Acquire));
@@ -1617,10 +1161,6 @@ mod tests {
             output_failed,
             output_progress: Arc::new(Mutex::new(None)),
             worker: Some(worker),
-            #[cfg(feature = "nrsp-native")]
-            native_control: None,
-            #[cfg(feature = "sdrconnect")]
-            receiver: Arc::new(Mutex::new(None)),
         };
         finish_test_engine(&mut engine);
         assert!(engine.output_failed());
@@ -1659,44 +1199,6 @@ mod tests {
         let cancelled_session = controller.lock().unwrap().state().clone();
         assert_eq!(cancelled_session.state, PlaybackState::Connecting);
         assert!(cancelled_session.last_error.is_none());
-    }
-
-    #[cfg(feature = "nrsp-native")]
-    #[test]
-    fn fm_controls_follow_the_latest_tuning_mode_without_stopping_audio() {
-        let mut engine = completed_test_engine(false);
-        let mut controller = RadioController::default();
-        let generation = controller.apply(RadioCommand::PlaySdr).unwrap();
-        for event in [
-            PlaybackEvent::Connected,
-            PlaybackEvent::Buffered,
-            PlaybackEvent::PlaybackStarted,
-        ] {
-            assert!(controller.event(generation, event));
-        }
-        engine.controller = Arc::new(Mutex::new(controller));
-        let initial =
-            rust_radio_sdr::nrsp_native::Config::new(99_100_000, NativeNrspMode::Wfm, 200_000)
-                .unwrap();
-        engine.native_control = Some(Arc::new(nrsp_native::Control::new(initial, None)));
-        engine.tune_nrsp_native(99_100_000, "nfm", 12_000).unwrap();
-        assert!(engine
-            .set_nrsp_native_fm(NativeFmSettings::default())
-            .is_err());
-        assert_eq!(engine.status().state, PlaybackState::Playing);
-        engine.tune_nrsp_native(99_100_000, "wfm", 200_000).unwrap();
-        engine
-            .set_nrsp_native_fm(NativeFmSettings::default())
-            .unwrap();
-        let (desired_config, desired_fm) =
-            engine.native_control.as_ref().unwrap().desired_settings();
-        assert_eq!(desired_config.mode, NativeNrspMode::Wfm);
-        assert_eq!(desired_config.frequency_hz, 99_100_000);
-        assert_eq!(desired_fm, Some(NativeFmSettings::default()));
-        engine.request_stop();
-        assert!(engine
-            .set_nrsp_native_fm(NativeFmSettings::default())
-            .is_err());
     }
 
     #[test]

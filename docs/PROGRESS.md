@@ -1,5 +1,14 @@
 # Radio development progress
 
+## Current scope — 2026-11-23
+
+Rust Radio is scoped to receive-only internet streaming radio: curated and
+custom IP streams, MP3/AAC decode, native audio output, CLI and compact GUI.
+USB SDR and nSDR receiver implementations have moved to separate projects and
+are removed from current source, feature flags, CI and operator documentation.
+Older entries below are historical evidence for the revisions they identify;
+they do not describe the current product scope. RR-120 tracks this migration.
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.

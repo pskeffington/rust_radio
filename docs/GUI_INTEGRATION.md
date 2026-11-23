@@ -48,35 +48,9 @@ not start playback at launch. Selecting an IP station queues a debounced silent
 check of its actual HTTP audio endpoint. Tap PLAY to start native playback. STOP requests cancellation without joining on the UI
 thread. Queued PCM is muted immediately. STOPPING remains visible until worker
 cleanup finishes; PLAY and output changes remain locked during playback cleanup.
-Drag volume while playing. The top input buttons open their setup panels; IP
-Radio includes URL/station storage, silent checks and output selection. Stop
-before changing outputs. Station selection stays enabled during IP playback.
-
-For direct nRSP-ST control and audio, use `--features nrsp-native`, click
-**nSDR**, select a discovered receiver or enter `IP:9001`, and configure frequency,
-mode and bandwidth. PLAY starts reception; APPLY TUNING changes it live.
-
-For the optional SDRconnect bridge instead, enable:
-
-```sh
-cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
-```
-
-Select **nRSP-ST / SDRconnect** in the source selector, then set SDRconnect's
-private-LAN or loopback API `IP:port` behind the **nSDR** button. The default is
-`127.0.0.1:5454`; the address is held in panel memory and is not saved. Refresh
-and select the receiver in SDRconnect first. Explicit PLAY uses the shared
-native engine, including its selected-receiver startup and timeout behavior;
-STOP unsubscribes and leaves shared reception running. IP station validation is
-unavailable for the SDR source. Switching sources while a check is running
-cancels that check before another session can begin.
-
-For the optional USB mono-FM source, launch with `--features soapy-sdr` and
-click **USB**, run SCAN INPUTS and choose the detected device and frequency in
-its setup panel. The GUI
-uses 75 µs de-emphasis; the CLI also supports 50 µs. This path needs SoapySDR,
-an installed device driver and a receiver supporting 240 ksample/s CS16. It has
-synthetic coverage but has not yet been tested with a physical dongle.
+Drag volume while playing. IP Radio setup includes URL/station storage, silent
+checks and output selection. Stop before changing outputs. Station selection
+stays enabled during IP playback.
 
 ## Embed in an egui host
 Add the package (pinned to an approved commit for repeatability):
@@ -85,11 +59,10 @@ rust-radio-gui = { git = "https://github.com/pskeffington/rust_radio", rev = "<r
 ```
 In a struct owned by the host GUI, create `radio: rust_radio_gui::RadioPanel::new()`. Inside the host's existing `egui::Ui`, call `self.radio.show(ui)`. The host controls mount/unmount, navigation, and lifetime. Drop synchronously stops and joins owned workers. To avoid blocking the host UI on dismount, call `radio.stop()`, retain the panel, and continue calling `radio.poll_shutdown()` until it returns true before dropping it. `is_active()` includes both playback and station validation and stays true during cleanup.
 
-Pip-Boy's HTML/JavaScript HUD already embeds the headless `rust-radio` library
-through thin adapters and a pinned Git dependency. It owns its presentation,
-preferences and optional nRSP-ST selector. The standalone egui panel uses the
-same native engine and remains an optional interface for egui hosts. Enable both
-facade features `gui` and `sdrconnect` to include the SDR source in the panel.
+Pip-Boy's HTML/JavaScript HUD embeds the headless `rust-radio` library through
+thin adapters and a pinned Git dependency. It owns its presentation and
+preferences. The standalone egui panel uses the same native engine and remains
+an optional interface for egui hosts.
 The panel applies its skin locally rather than changing the host's global egui
 theme. See [host integration](EMBEDDING.md).
 
@@ -101,12 +74,8 @@ theme. See [host integration](EMBEDDING.md).
 - Keep firmware/Pi builds optional: eframe's graphics/window stack and target platform must be validated separately; the audio engine is independent.
 - Mac rendering and mouse controls were inspected; physical touch and Pi GPU acceptance remain open.
 
-On 2026-10-27, the SDR-enabled panel and themed settings were visually inspected
-at the Mac's 480×320 logical window size. A local synthetic SDRconnect receiver
-reached Playing through the native output callback at zero volume, and STOP
-completed cleanup. The real nRSP-ST reported started but its separate 500 ms
-audio capture returned zero PCM pairs, so a fresh live SDR GUI audio check remains
-open. This inspection does not establish physical touch or Pi acceptance.
+Historical receiver UI evidence remains in the chronological progress record;
+it does not describe the current streaming-only interface.
 
 ## Next operator Mac acceptance
 
@@ -167,47 +136,6 @@ playback, edit the URL and choose APPLY STREAM to reconnect. See
 [storage and host APIs](EMBEDDING.md#ip-station-storage-and-selection).
 
 Offline tests hold a fixture transport behind a channel while rendering, stopping and changing stations, then verify cleanup and cache identity. They also cover worker panic and the 480 × 320 layout. Receiver cancellation returns a terminal I/O error: `Interrupted` would be retried by `read_exact` and could loop forever during ICY metadata. A regression test exercises Stop at that exact boundary.
-
-## Input buttons and discovery
-
-The header uses **IP Radio | nSDR | USB**. Available inputs glow green;
-unavailable/unknown inputs are dim. The selected input is underlined. Clicking
-an input opens its own setup panel; the main view has selection, Play/Stop,
-volume and a short status message. USB setup uses discovered device names.
-
-Standalone startup opts into discovery, with idle refreshes every 30 seconds.
-Scanning never starts RF or opens audio output. The first scan prefers a ready
-network receiver, then USB, then IP. Explicit source choices are preserved even when discovery cannot verify them, and active playback is never switched by discovery. SCAN INPUTS is
-available in each setup panel. IP glow reflects a recent HTTPS reachability
-check or current playback; station availability can still vary independently.
-
-`RadioPanel::new()` remains offline. Embedded hosts can call `scan_inputs()`
-explicitly or `enable_input_discovery()` to opt into the standalone behavior.
-`is_active()` includes an in-flight scan; Stop cancels it, and `poll_shutdown()`
-reaps/discards cancelled results. GUI rendering never waits on discovery.
-The reusable worker is `rust_radio::discovery::InputScan`.
-
-The `receivers` GUI feature enables both direct nRSP-ST and SoapySDR USB paths.
-USB detection needs a supported installed driver; it does not validate RF or
-open a receive stream. Native network scanning validates the Hello protocol on
-port 9001, with 16 concurrent probes, up to 512 addresses and a ten-second LAN
-deadline. It uses up to two local private /24-sized neighborhoods, excluding
-network/broadcast/self; larger networks are capped to the local /24. A manually
-entered private receiver endpoint is also checked. Enter an address manually
-when the receiver is across a routed subnet or VPN beyond those neighborhoods.
-
-## Native FM tuning panels
-
-The direct nSDR setup uses Tune / FM Audio / Presets / Device tabs to stay within
-480 × 320. Tune supports Hz, kHz and MHz with exact integer conversion, step
-selection and live arrows; the main nSDR arrows use the same step. FM Audio
-contains stereo, de-emphasis, filters and limiter plus receiver-reported PLL lock.
-A settings-sent indicator distinguishes queued local edits from the last sent
-choices. Presets recall full FM settings, and the standalone host saves them
-locally on a dedicated file worker. Embedded panel users own import/export.
-No preset read or stopped-state recall starts reception. Tests cover all tabs,
-long preset names, full banks, invalid files and frequency-step boundaries.
-
 
 ## IP GUI acceptance (2026-10-28)
 

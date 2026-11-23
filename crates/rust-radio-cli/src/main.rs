@@ -12,15 +12,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, process};
 
 mod feed_history;
-mod nrsp;
-mod nrsp_native;
-mod sdr;
-mod sdrconnect;
 
 #[derive(Debug, PartialEq, Eq)]
 struct ListenArgs<'a> {
     station: &'a str,
-    sdrconnect: bool,
     direct: bool,
     seconds: Option<u64>,
     output: &'a str,
@@ -32,15 +27,7 @@ fn usage() {
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
     );
-    eprintln!("Input discovery: inputs (enable nrsp-native and/or soapy-sdr for receiver scans)");
-    eprintln!("Interactive listen commands: status | volume N | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
-    eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
-    eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
-    eprintln!("Direct nRSP-ST control/audio: nrsp-native-status IP:9001 | nrsp-listen IP:9001 FREQ_HZ MODE [--seconds N] [--volume N] [--output ID] (enable nrsp-native)");
-    eprintln!("FM options: --stereo auto|mono --deemphasis 50|75|off --low-cut Hz --high-cut Hz --bandwidth Hz");
-    eprintln!("Direct nRSP-ST reachability: nrsp-status PRIVATE_IPV4 (enable sdr)");
-    eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
-    eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!("Interactive listen commands: status | volume N | stop");
 }
 
 const VALIDATION_WORKERS: usize = 4;
@@ -199,20 +186,12 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
     if args.len() < 2 {
         return Err("missing listen source");
     }
-    let sdrconnect = args[0] == "sdrconnect-listen";
     let direct = args[0] == "stream-listen";
-    if sdrconnect {
-        #[cfg(feature = "sdrconnect")]
-        rust_radio::receiver::sdrconnect::Endpoint::parse(&args[1])
-            .map_err(|_| "invalid SDRconnect peer")?;
-        #[cfg(not(feature = "sdrconnect"))]
-        return Err("enable the sdrconnect feature for native nRSP-ST audio");
-    } else if !direct && (args[0] != "listen" || station_by_id(&args[1]).is_none()) {
+    if !direct && (args[0] != "listen" || station_by_id(&args[1]).is_none()) {
         return Err("unknown curated station");
     }
     let mut parsed = ListenArgs {
         station: &args[1],
-        sdrconnect,
         direct,
         seconds: None,
         output: "system",
@@ -263,16 +242,7 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
 }
 
 fn listen(args: ListenArgs<'_>) -> Result<(), String> {
-    let engine = if args.sdrconnect {
-        #[cfg(feature = "sdrconnect")]
-        {
-            NativeRadioEngine::start_sdrconnect(args.station, args.volume, args.output)?
-        }
-        #[cfg(not(feature = "sdrconnect"))]
-        {
-            return Err("enable the sdrconnect feature".into());
-        }
-    } else if args.direct {
+    let engine = if args.direct {
         NativeRadioEngine::start_stream(args.station, args.volume, args.output)?
     } else {
         NativeRadioEngine::start_internet(args.station, args.volume, args.output)?
@@ -336,77 +306,6 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                 break Ok(());
             } else if command == "status" {
                 println!("RADIO {:?} / {:?}", snapshot.state, snapshot.last_error);
-                #[cfg(feature = "nrsp-native")]
-                if let Some(status) = engine.nrsp_native_status() {
-                    println!("NATIVE STATUS {status:?}");
-                    println!("NATIVE AUDIO {:?}", engine.nrsp_native_audio_stats());
-                }
-            } else if let Some(value) = command.strip_prefix("tune ") {
-                #[cfg(feature = "nrsp-native")]
-                {
-                    let result = (|| {
-                        let values: Vec<_> = value.split_whitespace().collect();
-                        if !(2..=3).contains(&values.len()) {
-                            return Err("Use tune FREQ_HZ MODE [BANDWIDTH_HZ]".to_owned());
-                        }
-                        let frequency = values[0].parse().map_err(|_| "Invalid frequency")?;
-                        let mode = rust_radio::receiver::nrsp_native::Mode::parse(values[1])
-                            .map_err(|e| e.to_string())?;
-                        let bandwidth = if values.len() == 3 {
-                            values[2].parse().map_err(|_| "Invalid bandwidth")?
-                        } else {
-                            mode.default_bandwidth()
-                        };
-                        engine.tune_nrsp_native(frequency, values[1], bandwidth)
-                    })();
-                    match result {
-                        Ok(()) => println!("NATIVE TUNING REQUESTED"),
-                        Err(error) => eprintln!("{error}"),
-                    }
-                }
-                #[cfg(not(feature = "nrsp-native"))]
-                {
-                    let _ = value;
-                    eprintln!("Enable nrsp-native for tuning");
-                }
-            } else if let Some(value) = command.strip_prefix("fm ") {
-                #[cfg(feature = "nrsp-native")]
-                {
-                    let result = (|| {
-                        use rust_radio::playback::{NativeFmDeemphasis, NativeFmSettings};
-                        let values: Vec<_> = value.split_whitespace().collect();
-                        if values.len() != 4 {
-                            return Err("Use fm auto|mono 50|75|off LOW_HZ HIGH_HZ".to_owned());
-                        }
-                        let stereo = match values[0] {
-                            "auto" => true,
-                            "mono" => false,
-                            _ => return Err("Use auto|mono".into()),
-                        };
-                        let deemphasis = match values[1] {
-                            "50" => NativeFmDeemphasis::Us50,
-                            "75" => NativeFmDeemphasis::Us75,
-                            "off" => NativeFmDeemphasis::Off,
-                            _ => return Err("Use 50|75|off".into()),
-                        };
-                        engine.set_nrsp_native_fm(NativeFmSettings {
-                            stereo,
-                            deemphasis,
-                            low_cut_hz: values[2].parse().map_err(|_| "Invalid low cut")?,
-                            high_cut_hz: values[3].parse().map_err(|_| "Invalid high cut")?,
-                            ..Default::default()
-                        })
-                    })();
-                    match result {
-                        Ok(()) => println!("FM AUDIO REQUESTED"),
-                        Err(error) => eprintln!("{error}"),
-                    }
-                }
-                #[cfg(not(feature = "nrsp-native"))]
-                {
-                    let _ = value;
-                    eprintln!("Enable nrsp-native for FM controls");
-                }
             } else if let Some(value) = command.strip_prefix("volume ") {
                 match value.parse::<u8>() {
                     Ok(value) if value <= 100 => {
@@ -416,7 +315,7 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
                     _ => eprintln!("volume must be 0..100"),
                 }
             } else {
-                eprintln!("Commands: status | volume N | tune FREQ_HZ MODE [BW_HZ] | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
+                eprintln!("Commands: status | volume N | stop");
             }
         }
         thread::sleep(Duration::from_millis(50));
@@ -429,7 +328,7 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
 fn run(args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
         Some("inputs") if args.len() == 1 => {
-            let mut scan = rust_radio::discovery::InputScan::start(None)?;
+            let mut scan = rust_radio::discovery::InputScan::start()?;
             let deadline = Instant::now() + Duration::from_secs(12);
             loop {
                 if let Some(result) = scan.try_finish() {
@@ -442,18 +341,6 @@ fn run(args: &[String]) -> Result<(), String> {
                             "offline or not verified"
                         }
                     );
-                    println!(
-                        "nSDR / {} found / {}",
-                        report.network.len(),
-                        report.network_note
-                    );
-                    for device in report.network {
-                        println!("{} / {} / ready={}", device.id, device.label, device.ready);
-                    }
-                    println!("USB / {} found / {}", report.usb.len(), report.usb_note);
-                    for device in report.usb {
-                        println!("{} / {}", device.id, device.label);
-                    }
                     return Ok(());
                 }
                 if Instant::now() >= deadline {
@@ -495,13 +382,7 @@ fn run(args: &[String]) -> Result<(), String> {
             println!("{report}");
             Ok(())
         }
-        Some("listen" | "stream-listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
-        Some("sdr-devices") if args.len() == 1 => sdr::devices(),
-        Some("sdr-capture") => sdr::capture(args),
-        Some("sdr-listen") => sdr::listen(args),
-        Some("nrsp-status") => nrsp::status(args),
-        Some("nrsp-native-status" | "nrsp-listen") => nrsp_native::run(args),
-        Some("sdrconnect-status" | "sdrconnect-capture") => sdrconnect::run(args),
+        Some("listen" | "stream-listen") => listen(parse_listen(args)?),
         _ => {
             usage();
             Err("invalid command".into())
@@ -585,27 +466,6 @@ mod tests {
         assert_eq!(parse_listen(&parsed).unwrap().volume, 25);
         assert_eq!(parse_listen(&parsed).unwrap().seconds, Some(30));
         assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
-    }
-
-    #[cfg(feature = "sdrconnect")]
-    #[test]
-    fn native_sdr_listen_validates_peer_and_limits_before_resources() {
-        for raw in [
-            vec!["sdrconnect-listen", "8.8.8.8:5454"],
-            vec!["sdrconnect-listen", "127.0.0.1:9", "--volume", "101"],
-            vec!["sdrconnect-listen", "127.0.0.1:9", "--seconds", "0"],
-        ] {
-            assert!(parse_listen(&options(&raw)).is_err());
-        }
-        let args = options(&[
-            "sdrconnect-listen",
-            "127.0.0.1:5454",
-            "--seconds",
-            "3",
-            "--volume",
-            "10",
-        ]);
-        assert!(parse_listen(&args).unwrap().sdrconnect);
     }
 
     #[test]

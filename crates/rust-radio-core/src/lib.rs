@@ -1,19 +1,8 @@
-//! Portable radio domain types. No network, audio device or RF I/O on construction.
-//! Backend implementations belong behind opt-in features.
+//! Portable internet radio domain types. No network or audio device I/O on construction.
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Source {
-    Internet {
-        station_id: String,
-    },
-    Sdr {
-        device_id: String,
-        frequency_hz: u64,
-    },
-    Satellite {
-        receiver_id: String,
-        frequency_hz: u64,
-    },
+    Internet { station_id: String },
 }
 
 /// Shared state vocabulary for source-neutral and native playback controllers.
@@ -77,10 +66,9 @@ impl RadioController {
     }
 
     pub fn request_start(&mut self, source: Source) -> Result<u64, RadioError> {
-        if let Source::Internet { ref station_id } = source {
-            if directory::station_by_id(station_id).is_none() {
-                return Err(RadioError::UnknownStation);
-            }
+        let Source::Internet { ref station_id } = source;
+        if directory::station_by_id(station_id).is_none() {
+            return Err(RadioError::UnknownStation);
         }
         if self.snapshot.state != SessionState::Stopped
             && self.snapshot.state != SessionState::Failed
@@ -221,9 +209,6 @@ pub mod controller;
 pub mod directory;
 /// Bounded, host-neutral parser for persisted curated station health.
 pub mod feed_history;
-/// Hardware-independent receive-only tuner contract and explicit simulation.
-#[cfg(feature = "sdr")]
-pub mod sdr;
 /// Bounded HTTPS stream-response, playlist and ICY parser (network-free).
 pub mod stream;
 /// Station-validation evidence, independent of transport, decoder and GUI.

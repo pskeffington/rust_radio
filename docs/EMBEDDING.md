@@ -10,35 +10,9 @@ rust-radio = { git = "https://github.com/pskeffington/rust_radio", rev = "<revie
 ```
 
 Default features include the headless IP transport, MP3/AAC decoder and native
-output. `default-features = false` gives only pure control/catalog APIs; `sdr`
-adds the receive-only tuner contract and explicit simulator. `gui` is optional
-and adds `RadioPanel` for egui hosts. Hardware reception is a separate adapter
-and acceptance gate; simulated IQ is never evidence of received RF.
-
-`soapy-sdr` adds the optional SDK-backed receive adapter through
-`rust_radio::receiver`, including explicit discovery, device open and bounded
-I/Q capture. See [SDR receive limits and acceptance](SDR_RECEIVE.md). This feature
-requires the native SDK and Rust 1.85; it adds no dependency to the default IP
-or pure-control builds.
-
-With default audio plus `soapy-sdr`, `NativeRadioEngine::start_soapy_wfm()`
-starts the initial 240 ksample/s mono broadcast-FM path on a selected device.
-Enable `gui` and `soapy-sdr` together for its optional panel controls. Synthetic
-checks have passed; physical USB audio is not yet accepted.
-
-`sdrconnect` adds the SDK-independent network API for the selected SDRplay
-nRSP-ST through `rust_radio::receiver::sdrconnect`. It is independent of
-`soapy-sdr` and the GUI, and requires Rust 1.85 or newer. See
-[nRSP-ST setup and current limits](NRSP_ST.md).
-
-The lighter `sdr` feature also exports `receiver::nrsp::Host` for explicit,
-read-only checks of the nRSP-ST's direct web and device services. This path has
-no SDRconnect or USB SDK dependency and does not yet receive audio or I/Q.
-
-Enable `gui` together with `sdrconnect` to include the nRSP-ST source and local
-API address field in the optional `RadioPanel`. Its phosphor skin is scoped to
-the panel and settings window, leaving the host's global egui style intact.
-Selecting a source or editing its address does not start a connection.
+output. `default-features = false` gives pure control/catalog APIs. `gui` is
+optional and adds `RadioPanel` for egui hosts. This crate handles internet radio
+streams only; RF receivers and USB/nSDR hardware belong to their own projects.
 
 ```rust
 use rust_radio::NativeRadioEngine;
@@ -86,72 +60,13 @@ same core controller types. `rust-radio-core::SessionState` is the same playback
 state type, so source selection and output-recovery policy cannot drift from the
 native worker's state vocabulary.
 
-With default IP/audio features plus `sdrconnect`, the same `NativeRadioEngine`
-also accepts `start_sdrconnect(peer, volume, output)`. Its status uses
-`InputKind::Sdr`; `receiver_status()` exposes the last server-reported tuning
-snapshot without network I/O. Stop/reaping and output ownership follow the same
-contract as IP playback. A control-only `sdrconnect` dependency still links no
-native audio or USB SDR SDK.
-
-Explicit `start_sdrconnect()` playback starts the selected receiver if stopped
-and SDRconnect grants control. It waits for confirmation before opening native
-output. A three-second startup confirmation failure is terminal (`StartTimeout`),
-so network recovery does not repeat activation; the host can offer explicit Play
-again after setup is corrected. Transport failures retain bounded recovery.
-Status and capture remain passive, and local Stop leaves shared reception running.
-
-For the Pi target, the headless receiver dependency can be checked without audio
-or SDK libraries:
-
-```sh
-rustup target add aarch64-unknown-linux-gnu
-cargo check --locked -p rust-radio --no-default-features --features sdrconnect \
-  --target aarch64-unknown-linux-gnu
-```
-
-This checks compilation only. See the [roadmap](PORTING_PLAN.md) and
-[progress notes](PROGRESS.md) for remaining physical acceptance.
-
-## Direct nRSP-ST feature
-
-Enable `nrsp-native` to use the receiver directly over its own port 9001. The
-headless `receiver::nrsp_native::Client` has no audio or vendor SDK dependency.
-With default IP/audio features, `NativeRadioEngine::start_nrsp_native(peer,
-frequency_hz, mode, bandwidth_hz, volume, output)` starts native Opus playback.
-`tune_nrsp_native` queues the latest validated live tuning request in a bounded
-slot; `nrsp_native_status` returns observed receiver state and
-`nrsp_native_audio_stats` reports decoded frames and signal peak. Neither read
-performs I/O. Keep one engine and continue calling `try_finish` after Stop.
-
-Enable `gui` as well for the optional direct receiver controls in `RadioPanel`.
-The host owns address/preferences; runtime session state and keys are not saved.
-See [receiver setup and limits](NRSP_ST.md#direct-native-control-and-audio).
-
 ## Input availability
 
-`rust_radio::discovery::InputScan` runs explicit read-only internet, network
-receiver and supported USB descriptor discovery on background workers. Poll
-`try_finish()` and use the returned availability/device lists to enable input
-controls. No receiver or output starts during discovery. `cancel()` discards
+`rust_radio::discovery::InputScan` runs an explicit read-only internet
+reachability check on a background worker. Poll `try_finish()` for its status.
+No audio output starts during discovery. `cancel()` discards
 late results. For the embedded egui panel, use `scan_inputs()` explicitly or
 opt into startup/idle scanning with `enable_input_discovery()`.
-
-## FM tuning and presets
-
-With `nrsp-native`, the native engine also exposes
-`start_nrsp_native_fm(peer, frequency_hz, bandwidth_hz, settings, volume, output)`
-and `set_nrsp_native_fm(settings)`. `NativeFmSettings` contains stereo,
-`NativeFmDeemphasis`, audio filter cutoffs/enables and limiter. Updates are
-validated and queued on the existing worker. `nrsp_native_status()` distinguishes
-last-sent FM choices from the optional receiver-reported `stereo_locked` value.
-
-The panel exposes `load_fm_presets(json)`, `take_fm_presets_update()` and
-`report_fm_presets_saved(result)`. Hosts should persist exported updates away
-from the render/audio thread. Construction and preference import remain offline;
-recall prepares tuning when stopped and queues it only for active playback.
-The standalone binary provides its own bounded atomic file writer. Preset JSON
-is versioned, at most 16 KiB / 16 entries, and contains tuning/audio choices only.
-
 
 ### IP station storage and selection
 

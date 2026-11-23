@@ -1,13 +1,11 @@
 use eframe::egui;
 use rust_radio_gui::{RadioPanel, PANEL_HEIGHT, PANEL_WIDTH};
 
-mod presets_file;
+mod station_file;
 
 struct StandaloneRadio {
     radio: RadioPanel,
-    stations: presets_file::PresetFile,
-    #[cfg(feature = "nrsp-native")]
-    presets: presets_file::PresetFile,
+    stations: station_file::StationFile,
 }
 
 impl eframe::App for StandaloneRadio {
@@ -16,8 +14,6 @@ impl eframe::App for StandaloneRadio {
             .frame(egui::Frame::new().fill(egui::Color32::BLACK))
             .show(ctx, |ui| self.radio.show(ui));
         self.stations.poll(&mut self.radio);
-        #[cfg(feature = "nrsp-native")]
-        self.presets.poll(&mut self.radio);
     }
 }
 
@@ -35,15 +31,8 @@ fn main() -> eframe::Result<()> {
         Box::new(|_cc| {
             let mut radio = RadioPanel::new();
             radio.enable_input_discovery();
-            let stations = presets_file::PresetFile::load_ip(&mut radio);
-            #[cfg(feature = "nrsp-native")]
-            let presets = presets_file::PresetFile::load(&mut radio);
-            Ok(Box::new(StandaloneRadio {
-                radio,
-                stations,
-                #[cfg(feature = "nrsp-native")]
-                presets,
-            }))
+            let stations = station_file::StationFile::load(&mut radio);
+            Ok(Box::new(StandaloneRadio { radio, stations }))
         }),
     )
 }
