@@ -11,7 +11,7 @@ they do not describe the current product scope. RR-120 tracks this migration.
 
 `STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
 their receiver references describe their recorded revisions. Do not interpret
-receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
+receiver hardware acceptance listed there as an open Rust Radio gate.
 
 ## RR-120 streaming-only scope migration — 2026-11-23
 

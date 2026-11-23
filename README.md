@@ -1,6 +1,6 @@
 # rust_radio
 
-Portable, **receive-only** internet radio designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. It supports curated and custom IP audio streams, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. USB and nSDR reception are maintained in separate projects.
+Portable, **receive-only** internet radio designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. It supports curated and custom IP audio streams, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. This project handles streaming radio; radio-frequency receiver development lives in separate projects.
 
 ## Status (2026-11-23)
 
@@ -52,6 +52,21 @@ Follow the [roadmap](docs/PORTING_PLAN.md) for streaming-radio platform acceptan
 ```sh
 cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
+
+## Install the macOS app
+
+Build an app bundle with the committed icon and install it into the current
+user's Applications folder and Dock:
+
+```sh
+CARGO_TARGET_DIR=/private/tmp/rust-radio-target ./scripts/package_macos_app.sh
+./scripts/install_macos_app.sh install /private/tmp/rust-radio-target/release/Rust\ Radio.app
+```
+
+The installer replaces only a bundle with identifier
+`com.skeffington.rustradio`; it keeps a recoverable backup while swapping the
+app and avoids duplicate Dock entries. This local app is unsigned and
+unnotarized; public distribution still requires the separate release gates.
 
 The listening screen gives the station name priority, with a short genre line,
 one Play/Stop/Retry control, the current listening state, a wide volume slider

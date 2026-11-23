@@ -27,7 +27,7 @@ provenance remains in the extraction notes; dated evidence is in
 | --- | --- | --- |
 | Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host; core exposes bounded typed feed-history parsing | Release/tag decision after CI and platform gates |
 | IP playback | Native MP3/AAC, curated presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported; playlist playback uses the first entry |
-| Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
+| Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and external audio-output loss/reconnect; Windows output |
 | Compact GUI | Optional 480×320 egui panel with phosphor skin, passive internet reachability check, asynchronous station checks, saved public/LAN streams, keyboard menus and layout/lifecycle coverage | Physical touch and Pi rendering |
 | Raspberry Pi | Portable IP streaming library and native audio output | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |
 | Remote CI | Linux workspace formatting, tests and strict clippy configured | Hosted runs must be checked at the tested commit |

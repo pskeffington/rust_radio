@@ -12,7 +12,7 @@ rust-radio = { git = "https://github.com/pskeffington/rust_radio", rev = "<revie
 Default features include the headless IP transport, MP3/AAC decoder and native
 output. `default-features = false` gives pure control/catalog APIs. `gui` is
 optional and adds `RadioPanel` for egui hosts. This crate handles internet radio
-streams only; RF receivers and USB/nSDR hardware belong to their own projects.
+streams only; radio-frequency receiver development belongs to separate projects.
 
 ```rust
 use rust_radio::NativeRadioEngine;
