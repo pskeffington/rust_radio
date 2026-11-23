@@ -40,13 +40,15 @@ receiver hardware acceptance listed there as an open Rust Radio gate.
   Review identified and the implementation fixed the package backup-cleanup
   failure path; final re-review passed with no actionable findings. A Dock
   rollback leaves its single absolute app URL pointing at the restored bundle.
-- Baseline: `0ae4d775d20e9ec6b2ebdafd237e341ed9c840d2`. On this final source,
+- Baseline: `0ae4d775d20e9ec6b2ebdafd237e341ed9c840d2`; implementation commit:
+  `241976c063a24bafb49e390187d9a7158c5f8d37`. On this source,
   `CARGO_TARGET_DIR=/private/tmp/rust-radio-target bash
   scripts/package_macos_app.sh` PASS; installer PASS; bundle plist lint PASS;
   executable and icon SHA-256 match packaged copies; Dock tile count is one;
-  both shell syntax checks and `git diff --check` PASS. Packaging changes are
-  staged and ready to commit. RR-118 remains IN_REVIEW pending exact-head hosted
-  CI and a clean-session app relaunch check.
+  both shell syntax checks and `git diff --check` PASS. Exact-head Actions run
+  `45214437722` ended `startup_failure` with zero jobs; this is a runner startup
+  blocker before project checks, not a Rust failure. RR-118 remains IN_REVIEW
+  pending a successful exact-head hosted run and clean-session app relaunch.
 
 ## RR-120 streaming-only scope migration — 2026-11-23
 
