@@ -1,6 +1,6 @@
 //! Operator-triggered standalone test harness. No automatic network or audio I/O.
 use rust_radio::directory::{curated_stations, station_by_id};
-use rust_radio::feed_history::{parse_feed_history, FeedHistoryHealth};
+use rust_radio::feed_history::{feed_history_health_at, parse_feed_history, FeedHistoryHealth};
 use rust_radio::output::available_outputs;
 use rust_radio::validation::validate_station;
 use rust_radio::validation_types::{StationValidation, ValidationStage, ValidationStatus};
@@ -316,7 +316,9 @@ fn eligibility_json(
         let Some(record) = parsed.stations.get(station.id) else {
             continue;
         };
-        match record.history_health_at(now) {
+        // Eligibility reports describe the age of the last known-good decode.
+        // A cancelled or unverified recheck must not erase that evidence.
+        match feed_history_health_at(ValidationStatus::Decoded, record.last_decoded_at, now) {
             FeedHistoryHealth::Fresh => {
                 eligible.push(station.id);
                 strict_eligible.push(station.id);
@@ -1578,7 +1580,7 @@ mod tests {
             ("wpr-news", now_unix - 12 * 60 * 60, "degraded"),
             ("wfmu", now_unix - 25 * 60 * 60, "stale"),
         ];
-        let stations: serde_json::Map<_, _> = records
+        let mut stations: serde_json::Map<_, _> = records
             .iter()
             .map(|(id, checked, health)| {
                 (
@@ -1595,6 +1597,42 @@ mod tests {
                 )
             })
             .collect();
+        stations.insert(
+            "wpr-music".to_owned(),
+            serde_json::json!({
+                "last_checked_at_unix": now_unix - 60 * 60,
+                "last_status": "cancelled",
+                "last_stage": "not_checked",
+                "attempts": 1,
+                "last_decoded_at_unix": now_unix - 3 * 60 * 60,
+                "consecutive_failures": 0,
+                "health": "unverified",
+            }),
+        );
+        stations.insert(
+            "kunc".to_owned(),
+            serde_json::json!({
+                "last_checked_at_unix": now_unix - 60 * 60,
+                "last_status": "unverified",
+                "last_stage": "not_checked",
+                "attempts": 1,
+                "last_decoded_at_unix": now_unix - 8 * 60 * 60,
+                "consecutive_failures": 0,
+                "health": "unverified",
+            }),
+        );
+        stations.insert(
+            "radio-paradise".to_owned(),
+            serde_json::json!({
+                "last_checked_at_unix": now_unix - 60 * 60,
+                "last_status": "cancelled",
+                "last_stage": "not_checked",
+                "attempts": 1,
+                "last_decoded_at_unix": null,
+                "consecutive_failures": 0,
+                "health": "unverified",
+            }),
+        );
         let history = serde_json::json!({
             "schema_version": 2,
             "updated_at_unix": now_unix,
@@ -1611,14 +1649,16 @@ mod tests {
         )
         .unwrap();
         assert_eq!(output["status"], "verified");
-        assert_eq!(
-            output["eligible_station_ids"],
-            serde_json::json!(["skylab", "wpr-news"])
-        );
-        assert_eq!(
-            output["strict_eligible_station_ids"],
-            serde_json::json!(["skylab"])
-        );
+        let eligible = output["eligible_station_ids"].as_array().unwrap();
+        for station_id in ["skylab", "wpr-news", "wpr-music", "kunc"] {
+            assert!(eligible.contains(&serde_json::json!(station_id)));
+        }
+        assert_eq!(eligible.len(), 4);
+        let strict_eligible = output["strict_eligible_station_ids"].as_array().unwrap();
+        for station_id in ["skylab", "wpr-music"] {
+            assert!(strict_eligible.contains(&serde_json::json!(station_id)));
+        }
+        assert_eq!(strict_eligible.len(), 2);
     }
 
     #[test]
