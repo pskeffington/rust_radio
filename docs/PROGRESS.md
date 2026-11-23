@@ -1255,7 +1255,19 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   validation and `plutil -lint` passed. The release GUI build completed and produced
   `/private/tmp/rust-radio-target/release/Rust Radio.app`; its plist reports bundle
   ID `com.skeffington.rustradio`, icon `RustRadio.icns`, and has no `LSUIElement`.
-  Both scripts pass `bash -n`; `git diff --check` passed. Installer/Dock behavior
-  and visual Dock review remain NOT RUN. App was not installed or launched.
+- Both scripts pass `bash -n`; `git diff --check` passed. Dock add/remove/add fixture
+  simulation retained one tile and preserved unrelated Dock settings. Independent
+  review of installer replacement/rollback and Dock logic passed at
+  `4697b3555fe2f5d8047406d1649760785f74b609`; reviewer read the registered skill
+  blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`, but its local registry checkout
+  was `5a7fca5` and could not verify that blob against canonical `d17f0f0`.
+- Installed to `/Users/null/Applications/Rust Radio.app`. The bundle ID was checked;
+  Dock preferences contain exactly one matching tile. `open -a` followed by
+  LaunchServices inspection confirmed the GUI running from that installed bundle.
+  No playback was started. Visual Dock inspection remains NOT RUN.
+- RR-118 commits `f3bff851091dde9b91c03cdda9a32984d516e08e`,
+  `04748c3`, and `4697b3555fe2f5d8047406d1649760785f74b609` are synced to
+  `codex/rr118-macos-launch`; draft PR #12 is open. Signing, notarization,
+  Gatekeeper and distribution remain separate release gates.
 - Unsigned/unnotarized local app only. Signing, notarization, Gatekeeper and
   distribution remain separate release gates.

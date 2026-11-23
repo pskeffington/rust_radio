@@ -75,5 +75,11 @@ signing, notarization, Gatekeeper acceptance, and distribution packaging remain 
 separate release gate. A visual Dock check requires operator/UI evidence and is
 not inferred from the persistent Dock preference.
 
+Local verification on 2026-11-23: installed to the current user's
+`~/Applications/Rust Radio.app`; LaunchServices confirmed a GUI-only launch and
+Dock preferences held exactly one matching tile. Playback was not started.
+Visual Dock inspection and hosted CI remain NOT RUN; signing and distribution
+gates remain open. See [RR-118 evidence](PROGRESS.md#rr-118-macos-app-packaging--2026-11-23).
+
 ## Compatibility API
 Hosts should drive commands (select/play/stop/volume/output) and observe session snapshots; keep network receivers, native device discovery, publishers, and GUI outside the core. Provide versioned API and avoid cyclic dependency from rust_radio back to pip_boy.
