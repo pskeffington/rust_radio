@@ -1742,3 +1742,11 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - During this same observed session, the operator reported: “audio out is working fine.” Record this as operator-confirmed audible output for the active session; the installed executable’s source revision was not established. This is not acoustic instrumentation or current-build provenance.
 - Exact PR #14 head `c2a339f9156e52bf2262cf0f20a077cbc0afca69` produced Actions run `45244134588`: `startup_failure` at `2026-11-23T18:59:17Z`, with zero jobs and no logs. GitHub reports no PR checks; the workflow specifies `ubuntu-latest`, and no repository step ran.
 - RR-103 remains BLOCKED for the speaker/Bluetooth/external-output loss and recovery matrix, output switching and Stop cleanup. RR-118 remains IN_REVIEW pending running-bundle provenance/clean relaunch, control-behavior acceptance, hosted CI, signing and notarization. No playback or system setting was changed by this inspection.
+
+
+## RR-103 / RR-104 / RR-118 operator control check — 2026-11-23
+
+- At 2026-11-23 19:27 UTC, the operator reported that Stop/restart and output switching both worked. The operator also reported that channel back/forward navigation, Play/Stop, Mute and volume worked, and that channels were working so far. This is operator-reported behavior from the running app, not a fresh automated test.
+- Combined with the earlier read-only window observation and audible-output confirmation, this provides current interactive evidence for the operator's app session. The running executable's source revision and exact output device path remain unknown.
+- RR-103 remains BLOCKED for the speaker/Bluetooth/external output-loss and reconnect matrix and verified cleanup under device loss. RR-104's user controls have live operator confirmation; physical touch remains unverified. RR-118 remains IN_REVIEW pending running-bundle provenance/clean relaunch, hosted CI, signing and notarization.
+- Exact PR #14 head `cd7822a17672656461d447e780603346cfe69dfb` produced Actions run `45248110348`, `startup_failure` at `2026-11-23T19:21:36Z` with zero jobs; GitHub reported no PR checks.
