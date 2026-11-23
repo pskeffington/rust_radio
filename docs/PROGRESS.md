@@ -9,6 +9,10 @@ are removed from current source, feature flags, CI and operator documentation.
 Older entries below are historical evidence for the revisions they identify;
 they do not describe the current product scope. RR-120 tracks this migration.
 
+`STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
+their receiver references describe their recorded revisions. Do not interpret
+receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
+
 ## RR-120 streaming-only scope migration — 2026-11-23
 
 - Baseline: `4b377519b585f0ff155e7ab9146eaa3bb822e777`; implementation commit: `36e603152e1d770014e3487c056c0cd7664acd5f` on isolated Research-volume branch `codex/rr120-ip-radio-scope`.
@@ -16,7 +20,33 @@ they do not describe the current product scope. RR-120 tracks this migration.
 - Kept curated/custom IP streaming, native audio output and device selection (including OS-managed USB/Bluetooth sound devices), host integration, and standalone saved IP-station persistence. The persistence helper retains bounded reads/writes, atomic replacement, existing path override and Unix 0600 permissions.
 - Canonical `agent_skills` main: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`. Architect `/root/rr120_scope_audit` used `architecture-design` blob `12c91c8040d13f618a209de24cbbf6e4f89830d1`; implementer `/root/rr120_scope_impl` used `code-implementation` blob `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; verifier `/root/rr120_scope_verifier` used `test-verification` blob `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`; reviewer `/root/rr120_scope_review` used `independent-code-review` blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`. Architecture, implementation, verification and independent review passed. Skills were read from the exact canonical registry revision; the local checkout is behind.
 - Validation: `cargo fmt --all -- --check` PASS; `cargo test --workspace --locked --offline` PASS (**148 passed, 0 failed, 1 ignored**); strict workspace Clippy PASS; all-feature workspace tests and strict Clippy PASS (**148 passed, 0 failed, 1 ignored**); `cargo check --locked -p rust-radio --no-default-features` PASS; `git diff --check` PASS. One native GUI playback test is ignored because it needs hardware and local TCP. All build outputs used `/private/tmp` due the Research SMB no-exec mount.
-- Active source, workflow and current-facing documentation search found no receiver APIs/features; remaining USB/nSDR wording identifies the scope boundary or generic sound-output devices. No physical audio was opened or tested. Hosted CI and physical audio/Pi acceptance remain open. Queue status is READY until the draft PR is created.
+- Active source, workflow and current-facing documentation search found no receiver APIs/features; remaining USB/nSDR wording identifies the scope boundary or generic sound-output devices. No physical audio was opened or tested. Hosted CI and physical audio/Pi acceptance remain open. PR #14 is open as a draft and mergeable; exact-head hosted CI has no successful status checks. RR-120 queue status is IN_REVIEW.
+
+## RR-121 scope and checkpoint reconciliation — 2026-11-23
+
+- Task RR-121 makes receiver migration status explicit: USB SDR and nSDR work
+  belongs to separate projects. Current Rust Radio gates now cover IP streaming,
+  audio output, GUI, Pi integration, publisher rights and CI; historical receiver
+  entries remain marked as evidence for their earlier revisions.
+- Source baseline: `b398535d6284f2559c8772ccd627be0457bbc218` (RR-120 branch,
+  PR #14). Changed files: `docs/AGENT_PROGRESS.json`,
+  `docs/CODEX_TASK_QUEUE.md`, `docs/PROGRESS.md`,
+  `docs/STATUS_2026-11-05.md`.
+- Canonical agent_skills main: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`.
+  The test-verification role used skill blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a` and reported PASS;
+  independent-code-review used `e44217c9f0c2492087f8b16da94f3ca80eae4555`
+  and reported PASS with no actionable findings. Both roles reviewed the exact
+  four-file documentation diff at baseline `b398535d6284f2559c8772ccd627be0457bbc218`.
+- Validation on the documentation diff: `cargo fmt --all -- --check` PASS;
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr121-target cargo test --workspace
+  --locked --offline` PASS (**148 passed, 0 failed, 1 ignored**);
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr121-target cargo clippy --workspace
+  --all-targets --locked --offline -- -D warnings` PASS; `python3 -m json.tool
+  docs/AGENT_PROGRESS.json` PASS; `git diff --check` PASS. The ignored GUI test
+  requires local TCP and physical audio. No audio device was opened. Hosted CI
+  for the PR head, audible playback, Pi hardware and publisher rights remain
+  unverified. Build output used `/private/tmp` because Research is no-exec.
 
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
