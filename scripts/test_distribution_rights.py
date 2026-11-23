@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+"""Offline regression coverage for the macOS distribution rights preflight."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from typing import Any
+
+SCRIPTS = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS))
+
+import check_distribution_rights as gate  # noqa: E402
+
+
+class DistributionRightsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory(prefix="rust-radio-rights-")
+        self.root = Path(self.temp.name) / "repo"
+        self.catalog_path = self.root / "catalog/curated-stations.json"
+        self.runtime_path = self.root / "crates/rust-radio-core/src/directory.rs"
+        self.root.mkdir()
+        self.catalog_path.parent.mkdir(parents=True)
+        self.runtime_path.parent.mkdir(parents=True)
+        self.write_runtime([("alpha", "Alpha Radio"), ("beta", "Beta Radio")])
+        self.write_catalog([("alpha", "Alpha Radio"), ("beta", "Beta Radio")])
+        self.manifest_path = Path(self.temp.name) / "approvals.json"
+        self.write_manifest(self.approvals())
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def write_runtime(self, stations: list[tuple[str, str]]) -> None:
+        entries = []
+        for station_id, publisher in stations:
+            entries.append(
+                "    InternetStation {\n"
+                f'        id: "{station_id}",\n'
+                f'        broadcaster: "{publisher}",\n'
+                "    }"
+            )
+        body = ",\n".join(entries)
+        self.runtime_path.write_text(
+            f"pub const CURATED_STATIONS: [InternetStation; {len(stations)}] = [\n{body}\n];\n",
+            encoding="utf-8",
+        )
+
+    def write_catalog(
+        self, stations: list[tuple[str, str]], redistribution: Any = "authorized", include_policy: bool = True
+    ) -> None:
+        catalog: dict[str, Any] = {
+            "schema_version": 1,
+            "stations": [{"id": station_id, "broadcaster": publisher} for station_id, publisher in stations],
+        }
+        if include_policy:
+            catalog["policy"] = {"redistribution": redistribution}
+        self.catalog_path.write_text(json.dumps(catalog, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+
+    def approvals(self) -> list[dict[str, str]]:
+        return [
+            {
+                "station_id": station_id,
+                "publisher": publisher,
+                "scope": "app_distribution",
+                "evidence_ref": f"https://rights.example.test/{station_id}",
+            }
+            for station_id, publisher in (("alpha", "Alpha Radio"), ("beta", "Beta Radio"))
+        ]
+
+    def manifest(self, approvals: list[dict[str, str]]) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "catalog_sha256": hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            "runtime_source_sha256": hashlib.sha256(self.runtime_path.read_bytes()).hexdigest(),
+            "approvals": approvals,
+        }
+
+    def write_manifest(self, approvals: list[dict[str, str]]) -> None:
+        self.manifest_path.write_text(json.dumps(self.manifest(approvals), sort_keys=True) + "\n", encoding="utf-8")
+
+    def assert_blocked(self) -> None:
+        with self.assertRaises(gate.GateError):
+            gate.validate(self.root, self.manifest_path)
+
+    def test_complete_current_approval_fixture_passes(self) -> None:
+        gate.validate(self.root, self.manifest_path)
+
+    def test_missing_unknown_and_denied_redistribution_policy_fail(self) -> None:
+        for value, include in ((None, False), ("pending", True), ("not_authorized", True)):
+            with self.subTest(policy=value):
+                self.write_catalog(
+                    [("alpha", "Alpha Radio"), ("beta", "Beta Radio")],
+                    redistribution=value,
+                    include_policy=include,
+                )
+                self.write_manifest(self.approvals())
+                self.assert_blocked()
+
+    def test_missing_manifest_fails(self) -> None:
+        with self.assertRaises(gate.GateError):
+            gate.validate(self.root, self.manifest_path.with_name("absent.json"))
+
+    def test_partial_duplicate_and_extra_approval_sets_fail(self) -> None:
+        cases = (
+            self.approvals()[:1],
+            self.approvals() + [self.approvals()[0]],
+            self.approvals() + [{**self.approvals()[0], "station_id": "extra"}],
+        )
+        for approvals in cases:
+            with self.subTest(approvals=approvals):
+                self.write_manifest(approvals)
+                self.assert_blocked()
+
+    def test_malformed_approval_and_invalid_evidence_reference_fail(self) -> None:
+        malformed = self.approvals()
+        malformed[0]["unreviewed"] = "extra"
+        self.write_manifest(malformed)
+        self.assert_blocked()
+        malformed = self.approvals()
+        malformed[0]["evidence_ref"] = "https://rights.example.test/alpha?token=secret"
+        self.write_manifest(malformed)
+        self.assert_blocked()
+
+    def test_publisher_scope_and_current_source_digests_are_enforced(self) -> None:
+        approvals = self.approvals()
+        approvals[0]["publisher"] = "Different Publisher"
+        self.write_manifest(approvals)
+        self.assert_blocked()
+        approvals = self.approvals()
+        approvals[0]["scope"] = "personal_listening"
+        self.write_manifest(approvals)
+        self.assert_blocked()
+        self.write_manifest(self.approvals())
+        self.runtime_path.write_text(self.runtime_path.read_text(encoding="utf-8") + "// changed\n", encoding="utf-8")
+        self.assert_blocked()
+
+    def test_catalog_and_compiled_station_mirror_must_match(self) -> None:
+        self.write_catalog([("alpha", "Alpha Radio"), ("different", "Beta Radio")])
+        self.write_manifest(self.approvals())
+        self.assert_blocked()
+
+    def test_repository_catalog_matches_compiled_station_ids_and_publishers(self) -> None:
+        project_root = SCRIPTS.parent
+        catalog = json.loads((project_root / "catalog/curated-stations.json").read_text(encoding="utf-8"))
+        runtime = (project_root / "crates/rust-radio-core/src/directory.rs").read_text(encoding="utf-8")
+        catalog_stations = {item["id"]: item["broadcaster"] for item in catalog["stations"]}
+        runtime_stations = gate._runtime_stations(runtime)
+        self.assertEqual(len(runtime_stations), 25)
+        self.assertEqual(
+            catalog_stations,
+            {station_id: station["broadcaster"] for station_id, station in runtime_stations.items()},
+        )
+
+    def test_duplicate_json_keys_fail_closed(self) -> None:
+        self.manifest_path.write_text(
+            '{"schema_version":1,"schema_version":1,"catalog_sha256":"x",'
+            '"runtime_source_sha256":"y","approvals":[]}\n',
+            encoding="utf-8",
+        )
+        self.assert_blocked()
+
+    def test_rejected_packaging_does_not_run_cargo_or_mutate_target(self) -> None:
+        package_script = SCRIPTS / "package_macos_app.sh"
+        with tempfile.TemporaryDirectory(prefix="rust-radio-package-smoke-") as temp_dir:
+            temp = Path(temp_dir)
+            fake_bin = temp / "bin"
+            fake_bin.mkdir()
+            cargo_marker = temp / "cargo-invoked"
+            fake_cargo = fake_bin / "cargo"
+            fake_cargo.write_text(f"#!/bin/sh\nprintf invoked > {cargo_marker}\n", encoding="utf-8")
+            fake_cargo.chmod(0o755)
+            env = os.environ.copy()
+            env["PATH"] = f"{fake_bin}{os.pathsep}{env.get('PATH', '')}"
+
+            missing_target = temp / "missing-target"
+            env["CARGO_TARGET_DIR"] = str(missing_target)
+            rejected = subprocess.run(
+                ["bash", str(package_script), "distribution", str(temp / "unused-approvals.json")],
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertFalse(missing_target.exists())
+            self.assertFalse(cargo_marker.exists())
+
+            existing_target = temp / "existing-target"
+            app_payload = existing_target / "release/Rust Radio.app/Contents/app-payload"
+            app_payload.parent.mkdir(parents=True)
+            app_payload.write_bytes(b"existing-app-must-remain-byte-identical")
+            before = app_payload.read_bytes()
+            env["CARGO_TARGET_DIR"] = str(existing_target)
+            rejected = subprocess.run(
+                ["bash", str(package_script), "distribution", str(temp / "unused-approvals.json")],
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertEqual(app_payload.read_bytes(), before)
+            self.assertFalse(cargo_marker.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

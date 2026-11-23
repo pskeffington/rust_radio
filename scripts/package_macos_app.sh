@@ -6,8 +6,8 @@ APP="$TARGET_DIR/release/Rust Radio.app"
 STAGE="$TARGET_DIR/release/.Rust Radio.app.stage.$$"
 BACKUP="$TARGET_DIR/release/.Rust Radio.app.backup.$$"
 ICONSET="$TARGET_DIR/macos-icon.iconset"
-mkdir -p "$TARGET_DIR"
 make_icon() {
+  mkdir -p "$TARGET_DIR"
   command -v rsvg-convert >/dev/null || { echo 'rsvg-convert is required' >&2; exit 1; }
   command -v sips >/dev/null || { echo 'sips is required' >&2; exit 1; }
   command -v iconutil >/dev/null || { echo 'iconutil is required' >&2; exit 1; }
@@ -20,10 +20,21 @@ make_icon() {
   iconutil -c icns "$ICONSET" -o "$ROOT/assets/macos/RustRadio.icns"
 }
 case "${1:-app}" in
- icon) make_icon; exit 0 ;;
- app) ;;
- *) echo "usage: $0 [app|icon]" >&2; exit 2 ;;
+ icon)
+  [[ "$#" -eq 1 ]] || { echo "usage: $0 [app|icon|distribution APPROVAL_MANIFEST]" >&2; exit 2; }
+  make_icon
+  exit 0
+  ;;
+ app)
+  [[ "$#" -le 1 ]] || { echo "usage: $0 [app|icon|distribution APPROVAL_MANIFEST]" >&2; exit 2; }
+  ;;
+ distribution)
+  [[ "$#" -eq 2 && -n "$2" ]] || { echo "usage: $0 distribution APPROVAL_MANIFEST" >&2; exit 2; }
+  PYTHONDONTWRITEBYTECODE=1 python3 "$ROOT/scripts/check_distribution_rights.py" --root "$ROOT" --manifest "$2"
+  ;;
+ *) echo "usage: $0 [app|icon|distribution APPROVAL_MANIFEST]" >&2; exit 2 ;;
 esac
+mkdir -p "$TARGET_DIR"
 [[ -f "$ROOT/assets/macos/RustRadio.icns" ]] || { echo "Missing committed icon; run $0 icon first." >&2; exit 1; }
 CARGO_TARGET_DIR="$TARGET_DIR" cargo build --release -p rust-radio-gui --bin rust-radio-gui
 if [[ -e "$APP" ]]; then
