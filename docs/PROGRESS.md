@@ -1684,6 +1684,9 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Documentation head `1bfdc69fc45cb57b4393996520a1e2c607fa818b` produced
   Actions run `45242622210`, again `startup_failure` with zero jobs and no PR
   checks. This runner failure occurred before repository steps.
+- Documentation head `5dfa28c05af8149b3d659a79c51ab7f66836ed46` produced
+  Actions run `45243064442` with the same `startup_failure` before job creation
+  and zero jobs. Hosted checks remain absent.
 
 ## RR-118 live process observation (2026-11-23)
 
