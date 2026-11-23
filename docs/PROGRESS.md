@@ -1761,3 +1761,11 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The staged-bundle documentation commit `d48015e30845c10458d3b7c2f320b70ba4a4e425` produced run `45251225912`: `startup_failure` at `2026-11-23T19:39:35Z`, also with zero jobs and no PR checks.
 - Rebuilt the same source bundle and staged it on Research at `target/current-source-857b/Rust Radio.app` (ignored by Git). Staged executable SHA-256 matches `9d10f96111ab37a9e14cf1de9b77c5dc455f6d173449465cc82a54c80e682dfe`; its icon matches the committed asset; Info.plist lint passes. The 556 MB temporary compiler target was removed after the copy; Research `target/` is now 36 MB.
 - The app inventory still reports `com.skeffington.rustradio` running. The staged bundle was not installed or launched, and the live session was not touched. Current-source playback, device-loss recovery, hosted CI, signing, notarization, distribution rights and Pi acceptance remain open.
+
+
+## RR-118 current-source macOS installation — 2026-11-23
+
+- At `2026-11-23T19:42Z`, installed the staged `857bdea` bundle with `bash scripts/install_macos_app.sh install "target/current-source-857b/Rust Radio.app"`. The installer completed and reported the previous process remains mapped to its older executable. No Stop, Play, launch, or relaunch action was performed.
+- Installed app path: `/Users/null/Applications/Rust Radio.app`; bundle ID `com.skeffington.rustradio`; `plutil -lint` PASS. Installed executable SHA-256 `9d10f96111ab37a9e14cf1de9b77c5dc455f6d173449465cc82a54c80e682dfe` matches the staged current-source bundle. Installed icon SHA-256 `917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00` matches the committed asset. Dock inventory contains exactly one tile for this app path.
+- App inventory still reports Rust Radio running. The running process is the older `241976c` build; operator-confirmed audible playback and control results therefore remain evidence for that process. Current-source playback requires a clean relaunch after the user's existing session ends.
+- Research `target/` remains 36 MB and contains the ignored prepared bundle at `target/current-source-857b/Rust Radio.app`. Signing, notarization, publisher rights, hosted CI, output-loss/reconnect recovery and Pi acceptance remain open.
