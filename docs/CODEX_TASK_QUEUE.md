@@ -11,7 +11,7 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-107 | P1 | Integration | BLOCKED: Pi 5 target | Pi runtime and Rust-Boy embedded host signoff | Pinned dependency, physical screen, native output, CPU/memory/thermal/power |
 | RR-108 | P1 | Validation | READY | CI status audit and exact-SHA evidence reconciliation | Distinguish startup_failure from test failure and verify hosted jobs before completion |
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
-| RR-120 | P0 | Scope | READY | Restrict Rust Radio to internet streaming; remove receiver code, features, docs and CI | Workspace gates pass; retained audio output and IP stream paths remain covered |
+| RR-120 | P0 | Scope | IN_REVIEW | Restrict Rust Radio to internet streaming; remove receiver code, features, docs and CI | Workspace gates pass; retained audio output and IP stream paths remain covered |
 
 ## Immediate Codex order: RR-101, then RR-102
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
