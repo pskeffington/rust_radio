@@ -94,6 +94,25 @@ receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
 - Exact-head workflow run `45155794094` for `ac23d9b6108fe20b84581af8aafcde0b49f9c37e` ended `startup_failure` before job creation; GitHub returned zero jobs and logs. The retry API returned 403 (“This workflow run cannot be retried”). RR-108 is BLOCKED on Actions runner startup; this is not a repository test failure.
 - Audible output, device loss/recovery, Pi runtime, publisher redistribution rights, signing/notarization and production release remain open. RR-101 and RR-120 are IN_REVIEW.
 
+## RR-102 curated catalog sweep — 2026-11-23
+
+- Source revision: `ff5fe0a9e962e5b440c7745f15176708b738a032` (RR-120 branch,
+  PR #14), including the RR-101 Skylab route repair.
+- At 2026-11-23 10:28:16 UTC, `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr121-target
+  cargo run --locked --offline -p rust-radio-cli -- validate-all --json
+  --history docs/evidence/feed-validation-history.json` exited 0. All 25 curated
+  stations reached `decoded_audio` in one attempt each (25 decoded, zero
+  failures). Skylab decoded MP3 at 48 kHz stereo (1,152 frames); WCRB decoded
+  AAC at 48 kHz stereo (1,024 frames).
+- The persisted history is 6,476 bytes with 25 station entries. The report
+  contains no endpoint or resolved-URL fields. JSON parsing and `git diff --check`
+  passed. The initial save attempt was denied by the Research mount; the same
+  bounded sweep completed with authorized Research-volume write access.
+- This is point-in-time silent decode evidence. It does not establish
+  callback-consumed PCM, human-audible output, publisher redistribution rights,
+  or hardware/release acceptance. Hosted Actions remains blocked before job
+  creation as recorded in RR-108.
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.
