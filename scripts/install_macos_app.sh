@@ -29,7 +29,8 @@ def url(x):
 matches=[i for i,x in enumerate(apps) if normalize(url(x))==path]
 if mode=='add':
     if len(matches)>1:
-        for i in reversed(matches[1:]): apps.pop(i)
+        for i in reversed(matches): apps.pop(i)
+        apps.append({'tile-data':{'file-data':{'_CFURLString':pathlib.Path(path).as_uri(),'_CFURLStringType':15},'file-label':'Rust Radio'},'tile-type':'file-tile'})
     if not matches:
         apps.append({'tile-data':{'file-data':{'_CFURLString':pathlib.Path(path).as_uri(),'_CFURLStringType':15},'file-label':'Rust Radio'},'tile-type':'file-tile'})
 elif mode=='remove':
@@ -51,8 +52,19 @@ case "$ACTION" in
   if [[ -e "$APP" ]]; then check_bundle "$APP"; fi
   pgrep -x rust-radio-gui >/dev/null && { echo 'Quit Rust Radio before updating it.' >&2; exit 1; } || true
   mkdir -p "$HOME/Applications"
-  if [[ -e "$APP" ]]; then rm -rf "$APP"; fi
-  ditto "$SOURCE" "$APP"
+  STAGE="$HOME/Applications/.Rust Radio.app.$$"
+  BACKUP="$HOME/Applications/.Rust Radio.app.backup.$$"
+  trap 'rm -rf "$STAGE"; if [[ -e "$BACKUP" && ! -e "$APP" ]]; then mv "$BACKUP" "$APP"; fi' EXIT
+  rm -rf "$STAGE" "$BACKUP"
+  ditto "$SOURCE" "$STAGE"
+  check_bundle "$STAGE"
+  if [[ -e "$APP" ]]; then mv "$APP" "$BACKUP"; fi
+  if ! mv "$STAGE" "$APP"; then
+    if [[ -e "$BACKUP" ]]; then mv "$BACKUP" "$APP"; fi
+    exit 1
+  fi
+  rm -rf "$BACKUP"
+  trap - EXIT
   dock_edit add
   echo "Installed $APP"
   ;;
