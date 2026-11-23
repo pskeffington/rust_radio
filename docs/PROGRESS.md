@@ -1677,3 +1677,15 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   produced Actions run `45240372774`, again `startup_failure` before job
   creation with zero jobs. No PR checks are reported. This failure did not run
   repository tests.
+- Exact head `ead9b74b7cab0b878aaf94dc52c70b0eeae9c676` produced Actions run
+  `45240548604`, also `startup_failure` with zero jobs and no PR checks. The
+  sanitized observation was submitted to FACTORY-002 at
+  [issue comment 7110710904](https://github.com/pskeffington/agent_skills/issues/14#issuecomment-7110710904).
+
+## RR-118 live process observation (2026-11-23)
+
+- At source/documentation head `ead9b74b7cab0b878aaf94dc52c70b0eeae9c676`,
+  the local Mac app inventory listed bundle ID `com.skeffington.rustradio` as
+  running, matching the operator's report that Rust Radio was open. The native
+  accessibility read timed out; no visual window or controls were inspected.
+  No Play/Stop action, audio device, audible output, or Dock state was tested.
