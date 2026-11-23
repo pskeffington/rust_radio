@@ -150,6 +150,6 @@
     "Raspberry Pi native audio, display and touch acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
-  "next_priority": "Reconcile GitHub Actions startup failures and exact-head CI for the streaming-only branch; then continue bounded IP station validation, native audio recovery, GUI and Pi acceptance when hardware is available. Keep publisher distribution permissions open.",
+  "next_priority": "Run the bounded RR-102 catalog sweep with per-station results; reconcile exact-head GitHub Actions startup failures; continue physical audio/output, GUI, Pi and publisher-rights gates as available.",
   "current_scope_note": "As of RR-120 implementation commit 36e603152e1d770014e3487c056c0cd7664acd5f, this repository covers receive-only IP streaming radio only. Historical receiver entries in this file describe earlier revisions; USB SDR and nSDR work has moved to separate projects."
 }

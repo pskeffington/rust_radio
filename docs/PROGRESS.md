@@ -49,6 +49,52 @@ receiver hardware or USB SDR acceptance listed there as an open Rust Radio gate.
   for the PR head, audible playback, Pi hardware and publisher rights remain
   unverified. Build output used `/private/tmp` because Research is no-exec.
 
+## RR-101 Skylab IP stream repair — 2026-11-23
+
+- Baseline `1635fc7c3bb99a15d95164a51c4b629277c9e554` reproduced Skylab as
+  `Unavailable/NotChecked/TransportUnavailable` while WCRB reached decoded
+  AAC. `NotChecked` did not identify a station-side failure. The implementation
+  commit is `f7bcae8c732141fa264f49b5a23f498bd8ab694e` on the RR-120 branch,
+  PR #14.
+- The official [Skylab listen page](https://www.skylabradio.com/listen) links
+  “High Quality Stream (Opens up External player)” to the PLS playlist
+  `https://stream.rcs.revma.com/7vs4sr22w3bwv.pls`. The PLS is publisher-linked;
+  this does not grant redistribution rights.
+- Updated the curated/runtime station catalog to that PLS. The checked endpoint
+  admits only that exact playlist host/path, the observed Revma `nNN-usN` shard
+  pattern on the exact audio path, and bounded unique `rj-ttl`/`rj-tok` query
+  fields. Signed query values are stripped from validation reports and endpoint
+  Debug output. Offline fixtures cover playlist resolution, redirect, allow and
+  deny cases, and token redaction. Generic IP streaming remains the only product
+  scope; no receiver code or features were restored.
+- Post-change silent validation at 2026-11-23 10:08 UTC decoded Skylab as MP3,
+  48 kHz stereo, 1,152 frames; WCRB decoded as AAC, 48 kHz stereo, 1,024 frames.
+  Skylab's printed endpoint omitted the signed query. These results prove
+  decoded audio only; no audio device was opened and no playback was heard.
+- Validation at this source tree: formatting PASS; default and all-feature
+  workspace tests PASS (**152 passed, 0 failed, 1 ignored** in each); strict
+  default and all-feature Clippy PASS; focused core/audio/GUI/CLI regressions
+  PASS; catalog JSON parse, task-contract schema assertions via `jq`, and
+  `git diff --check` PASS. Build output was under `/private/tmp` for the
+  Research no-exec volume. The ignored GUI playback test requires local TCP and
+  physical audio.
+- Workflow roles at canonical `agent_skills` main
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`: architect
+  `/root/rr122_stack_architecture` used `architecture-design` blob
+  `12c91c8040d13f618a209de24cbbf6e4f89830d1`; audio implementer
+  `/root/rr122_audio_impl` used `audio-systems-engineering` blob
+  `20b5652c462ebc0032e9f282491a14f41adc90d2`; independent verifier
+  `/root/rr101_revmaverifier` used `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`; independent reviewer
+  `/root/rr101_revmareview` used `independent-code-review` blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`. All four reported PASS with no
+  scope or code findings. The RR-101 task contract required keys, types, enums,
+  patterns and no-extra-property constraints were checked against the registry
+  schema with `jq`; no project dependency was added.
+- Exact-head hosted CI, audible output, device loss/recovery, Pi runtime,
+  publisher redistribution rights, signing/notarization and production release
+  remain open. Queue status is IN_REVIEW.
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.

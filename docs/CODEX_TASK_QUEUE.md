@@ -4,7 +4,7 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 
 | ID | Priority | Owner lane | Status | Deliverable | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| RR-101 | P0 | Transport | READY | Reproduce Skylab validation/listening discrepancy with structured, redacted endpoint and stage diagnostics | Distinguish DNS/TLS/HTTP/playlist/codec/callback and reproduce with a fixture; no autoplay |
+| RR-101 | P0 | Transport | IN_REVIEW | Reproduce Skylab validation/listening discrepancy with structured, redacted endpoint and stage diagnostics | Distinguish DNS/TLS/HTTP/playlist/codec/callback and reproduce with a fixture; no autoplay |
 | RR-102 | P0 | Validation | READY | Catalog sweep with timestamped JSON/history review | Report each canonical ID, attempts, decoded stage, failures and known environmental limits; do not equate 25/25 historical decode with current availability |
 | RR-103 | P0 | Audio | BLOCKED: physical device | Mac IP-stream output loss, device-switch and stop-recovery evidence | Explicit speaker/Bluetooth/USB sound-output matrix; no overlapping sessions |
 | RR-104 | P1 | GUI | READY | 480x320 control/state regression and a human operator checklist | Long text, arrows, keyboard, volume, mute, Stop/Retry, station switches tested; physical touch remains separate |
