@@ -1604,3 +1604,54 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The subsequent push triggered run `40772645579` on `52be452`; it again ended
   `startup_failure` with zero jobs. The latest head `1642027` has no run visible
   yet. This reproduces the runner-startup problem but still exposes no cause.
+
+## RR-126 macOS distribution rights preflight (2026-11-23)
+
+- Baseline: streaming-only PR #14 source head
+  `b5bf6e2cff0f931efbc16b3dd118cd79f5e26d81`. Code commit:
+  `6e1ddc919e44e306b497be8aebe8a32e2b1a1c7e`.
+- Added opt-in `scripts/package_macos_app.sh distribution APPROVAL_MANIFEST`.
+  It runs a read-only Python preflight before creating the target directory,
+  invoking Cargo, staging files, or replacing an existing app. Local `app` and
+  `icon` modes and runtime listening are unchanged.
+- The preflight requires catalog `policy.redistribution == "authorized"`,
+  strict bounded JSON, catalog/runtime station-ID and publisher parity, current
+  catalog and Rust-source SHA-256 values, and exactly one approval per compiled
+  station. Each approval must match its publisher, use the fixed
+  `app_distribution` scope, and include a credential-free HTTPS evidence
+  reference. Duplicate JSON keys, malformed, stale, missing, extra, or unknown
+  entries fail closed. A passing preflight is structural validation only, not
+  proof of rights or permission to publish.
+- Focused regression command
+  `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts.test_distribution_rights -v`
+  passed 10/10. Coverage includes missing/unknown/not-authorized policy,
+  absent/partial/duplicate/extra/malformed approvals, publisher/scope and digest
+  mismatch, catalog/runtime drift, and a packaging smoke test proving rejection
+  invokes no Cargo, creates no missing target, and preserves existing bundle
+  bytes. `bash -n scripts/package_macos_app.sh` and `git diff --check` passed.
+- Independent verification used
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr126-verifier`:
+  `cargo fmt --all -- --check` PASS;
+  `cargo test --workspace --locked --offline --quiet` PASS (158 passed, 1
+  ignored); strict default Clippy PASS;
+  `cargo test --workspace --all-features --locked --offline --quiet` PASS (158
+  passed, 1 ignored); strict all-feature Clippy PASS; and
+  `cargo check --workspace --all-features --locked --offline` PASS. The ignored
+  GUI playback integration requires native audio and local TCP. No audio device
+  or GUI playback was exercised.
+- Architecture `/root/rr126_architecture` used `architecture-design` blob
+  `12c91c8040d13f618a209de24cbbf6e4f89830d1`; implementation
+  `/root/rr126_implementation` used `code-implementation` blob
+  `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; independent verifier
+  `/root/rr126_test_verifier` used `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`; independent reviewer
+  `/root/rr126_independent_review` used `independent-code-review` blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`. All skills are from canonical
+  agent_skills main `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`. Architecture
+  and independent code review passed; review found no actionable defect and
+  emphasized that evidence references do not establish permission.
+- Current catalog policy remains `not_authorized`; RR-109 therefore remains
+  BLOCKED. Distribution packaging was not run to completion. Signing,
+  notarization, publication, hosted CI, Mac audible output and Pi acceptance
+  remain separate unresolved gates. The operator reported the radio app was
+  already open; this task did not launch, stop, or operate it.

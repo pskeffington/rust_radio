@@ -32,6 +32,7 @@ provenance remains in the extraction notes; dated evidence is in
 | Raspberry Pi | Portable IP streaming library and native audio output; headless AArch64 Linux API compile checked on the current PR source | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |
 | Remote CI | Linux workspace formatting, tests and strict clippy configured | Hosted runs must be checked at the tested commit |
 | Curated station release | 25 publisher-directed entries with a machine-readable `redistribution: not_authorized` policy | **Release blocked.** Current SomaFM terms reject new third-party apps (23 entries); GBH and Skylab bundle permission remains unresolved. Exclude uncleared entries or record applicable rights before shipping; see [publisher rights audit](PUBLISHER_RIGHTS_AUDIT.md). |
+| macOS distribution packaging | Opt-in preflight validates catalog policy, catalog/runtime station identity parity, current source digests, and per-station evidence references before building | Preflight is structural only. Current `not_authorized` policy blocks distribution mode; rights review, signing, notarization, and publication remain separate gates. Local app packaging remains available. |
 
 Project scope is internet streaming radio. RF receiver code and receiver-specific
 acceptance are maintained in separate projects. Generic OS audio-device
@@ -55,6 +56,10 @@ RR-120 commit `36e603152e1d770014e3487c056c0cd7664acd5f` removed receiver suppor
 4. Keep the scope focused on IP station discovery, transport, decoding, output
    recovery and host integration. Publisher distribution review remains
    required before public station bundles.
+5. Keep the RR-126 distribution preflight fail-closed. Do not treat a valid
+   manifest shape or HTTPS evidence reference as publisher permission; RR-109
+   remains blocked until applicable rights are established or uncleared presets
+   are excluded by an explicit product decision.
 
 See [embedding](EMBEDDING.md) and [native playback evidence](NATIVE_PLAYBACK_CONTRACT.md)
 for implementation contracts and reproducible commands.
