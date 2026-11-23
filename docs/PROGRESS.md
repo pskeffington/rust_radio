@@ -1687,6 +1687,9 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - Documentation head `5dfa28c05af8149b3d659a79c51ab7f66836ed46` produced
   Actions run `45243064442` with the same `startup_failure` before job creation
   and zero jobs. Hosted checks remain absent.
+- Documentation head `08de41a41052cf52ea5918f168fd9a2e930c814c` produced
+  Actions run `45243194703`, again `startup_failure` with zero jobs and no PR
+  checks. No repository step ran.
 
 ## RR-118 live process observation (2026-11-23)
 
@@ -1711,3 +1714,20 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   current silent stream/codec decoding only; it does not verify native callback
   consumption, a visible listener state, or audible output. The running GUI was
   not operated.
+
+## RR-102 live catalog sweep and history refresh (2026-11-23)
+
+- On source head `1bfdc69fc45cb57b4393996520a1e2c607fa818b`, a bounded
+  `validate-all --json --history docs/evidence/feed-validation-history.json`
+  completed at `2026-11-23T18:54:57Z`. It decoded all 25 catalog IDs as
+  `decoded_audio`, one attempt each. Report schema version 1 matched the catalog
+  exactly, with unique IDs and no endpoint/query/token fields. No audio output
+  was opened.
+- The persisted endpoint-free history remains schema v1, 25 stations, 6,476
+  bytes, SHA-256
+  `4d54323a15eef0ce5c8139960483f9dfb3f678c00cde6778c8c68552e159a95d`. The
+  JSON report itself was kept in temporary storage; the repository history is
+  the durable evidence artifact.
+- This verifies current bounded stream decoding only. It does not establish
+  callback consumption, audible playback, publisher rights, or availability
+  beyond the recorded timestamp.
