@@ -11,6 +11,9 @@ they do not describe the current product scope. RR-120 tracks this migration.
 
 ## RR-122 callback underrun diagnostics — 2026-11-23
 
+- Implementation/source SHA: `857bdea8f8caec1bfd757ded4c1998cafd4f1dcc`.
+  Verification commands below ran against this exact source tree before commit;
+  the subsequent documentation-only log update does not change the code SHA.
 - Task contract: `RR-122-AUDIO-UNDERRUN-01`, validated against the canonical
   task-contract schema at registry commit `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`.
   RR-122 adds a session-lifetime `NativeRadioEngine::underrun_callbacks()`
