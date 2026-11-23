@@ -29,7 +29,9 @@ receiver hardware acceptance listed there as an open Rust Radio gate.
 - This host reports an existing `rust-radio-gui` process but blocks process
   enumeration. The installer retained safe replacement behavior and reported
   that the existing process must be quit and relaunched to use the new bundle.
-  A fresh-session UI interaction check is therefore NOT RUN. The app is unsigned
+  A subsequent `open -n -a "/Users/null/Applications/Rust Radio.app"` returned
+  successfully. Codex computer-use inventory exposes no native app windows, so
+  visible UI and controls remain NOT VERIFIED. The app is unsigned
   and unnotarized; distribution signing, notarization and Gatekeeper acceptance
   remain NOT RUN. `bash -n` for both scripts and `git diff --check` passed. No
   cargo tests were run for this packaging task.
