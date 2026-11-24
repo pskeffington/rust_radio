@@ -1,5 +1,26 @@
 # Radio development progress
 
+## RR-118 runtime macOS icon identity — 2026-11-24
+
+- Baseline `cf40b5d05b9dbc5a459eb46d038f18a6b5e84f63`, isolated branch
+  `codex/macos-icon-identity`; the unrelated audio-output edit in the original
+  checkout remains untouched.
+- Fixed the framework icon replacing the bundle icon after launch. The standalone
+  binary explicitly selects the OS icon on macOS, preserving the existing
+  multi-resolution `RustRadio.icns`. Window and application-menu title now use
+  `Rust Radio`. No artwork, bundle ID, Dock registration, playback or embedding
+  change is involved.
+- Local gates passed: default workspace 176 tests; all-feature workspace 232;
+  strict Clippy in both configurations, formatting and all-feature check. The
+  targeted macOS launch regression and independent verification/review passed.
+- Release package rebuilt and plist/icon/executable consistency checked. Installing
+  it is pending closure of the running app; the guarded installer refused to
+  overwrite it. Native visual inspection is BLOCKED by accessibility timeouts,
+  so live Dock/focus/Play/Stop appearance is not certified. Signing/notarization,
+  physical audio/Pi and receiver gates remain open.
+- Skill revisions, exact source identity, commands, outcomes and open gates are
+  in [the RR-118 evidence record](reviews/RR118_ICON_IDENTITY_2026-11-24.md).
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.

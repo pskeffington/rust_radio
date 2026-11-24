@@ -61,6 +61,15 @@ contracts and reproducible commands.
 
 ## macOS standalone app packaging (RR-118)
 
+The standalone macOS launcher explicitly keeps the OS-provided bundle icon;
+leaving the icon option unset would let eframe replace it after launch. Window,
+menu and bundle presentation use `Rust Radio`. This stays in the binary so an
+embedded `RadioPanel` never changes its host's identity. Direct `cargo run` is an
+unbundled development process; use the packaged app for native icon acceptance.
+See [runtime icon evidence](reviews/RR118_ICON_IDENTITY_2026-11-24.md) for the
+2026-11-24 fix and outstanding operator relaunch/visual check.
+
+
 `scripts/package_macos_app.sh` packages the standalone `rust-radio-gui` binary as
 `Rust Radio.app` with bundle identifier `com.skeffington.rustradio`. The editable
 phosphor receiver icon is `assets/macos/RustRadio.svg`; run the explicit `icon`
