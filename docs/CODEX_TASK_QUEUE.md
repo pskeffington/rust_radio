@@ -13,7 +13,7 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-107 | P1 | Integration | BLOCKED: Pi 5 target | Pi runtime and Rust-Boy embedded host signoff | Pinned dependency, physical screen, native output, CPU/memory/thermal/power |
 | RR-108 | P1 | Validation | READY | CI status audit and exact-SHA evidence reconciliation | Distinguish startup_failure from test failure and verify hosted jobs before completion |
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
-| RR-118 | P1 | Integration | IN_REVIEW | macOS app icon, reproducible bundle, and reversible per-user Applications/Dock launcher | Existing bundle and launcher verified; runtime framework-icon override fixed and locally tested on 2026-11-24, update/relaunch pending current app closure; unsigned local build stays separate from distribution signing/notarization; visual Dock check remains operator evidence |
+| RR-118 | P1 | Integration | IN_REVIEW | macOS app icon, reproducible bundle, and reversible per-user Applications/Dock launcher | Existing bundle and launcher verified; runtime framework-icon override fixed, locally tested and installed on 2026-11-24; window/menu title verified, Dock appearance awaiting operator confirmation; unsigned local build stays separate from distribution signing/notarization; visual Dock check remains operator evidence |
 
 ## Immediate Codex order: RR-101, then RR-102
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.

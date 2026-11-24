@@ -13,11 +13,12 @@
 - Local gates passed: default workspace 176 tests; all-feature workspace 232;
   strict Clippy in both configurations, formatting and all-feature check. The
   targeted macOS launch regression and independent verification/review passed.
-- Release package rebuilt and plist/icon/executable consistency checked. Installing
-  it is pending closure of the running app; the guarded installer refused to
-  overwrite it. Native visual inspection is BLOCKED by accessibility timeouts,
-  so live Dock/focus/Play/Stop appearance is not certified. Signing/notarization,
-  physical audio/Pi and receiver gates remain open.
+- Release package rebuilt and plist/icon/executable consistency checked. The
+  installer first refused while the old app ran, then installed successfully
+  after the operator closed it. Installed hashes match the tested build.
+- Inspected the rebuilt window and app-menu title during operator playback.
+  Dock accessibility still times out; operator icon confirmation is pending.
+  Signing/notarization, physical audio/Pi and receiver gates remain open.
 - Skill revisions, exact source identity, commands, outcomes and open gates are
   in [the RR-118 evidence record](reviews/RR118_ICON_IDENTITY_2026-11-24.md).
 

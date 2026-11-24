@@ -67,7 +67,7 @@ menu and bundle presentation use `Rust Radio`. This stays in the binary so an
 embedded `RadioPanel` never changes its host's identity. Direct `cargo run` is an
 unbundled development process; use the packaged app for native icon acceptance.
 See [runtime icon evidence](reviews/RR118_ICON_IDENTITY_2026-11-24.md) for the
-2026-11-24 fix and outstanding operator relaunch/visual check.
+2026-11-24 installed fix and outstanding visual Dock check.
 
 
 `scripts/package_macos_app.sh` packages the standalone `rust-radio-gui` binary as

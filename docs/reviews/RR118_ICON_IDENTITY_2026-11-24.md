@@ -24,7 +24,11 @@ Use the documented `IconData::default()` sentinel on macOS: eframe interprets it
 - **PASS — required local gates:** `cargo fmt --all -- --check`; `CARGO_TARGET_DIR=/private/tmp/rust-radio-target cargo test --workspace --locked` (176 passed, 1 hardware test ignored); default strict Clippy; all-feature workspace tests (232 passed, 2 manual/live tests ignored); all-feature strict Clippy and check. Tests that bind local sockets ran with the required local-network permission.
 - **PASS — package:** `CARGO_TARGET_DIR=/private/tmp/rust-radio-target bash scripts/package_macos_app.sh app`; plist lint; source/executable and source/packaged-icon hashes match. Output: `/private/tmp/rust-radio-target/release/Rust Radio.app`.
 - **PASS — artwork unchanged:** `RustRadio.icns` SHA-256 `917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00`.
-- **BLOCKED — native visual acceptance:** both installed-app and Dock accessibility inspection timed out (`-10005: timeoutReached`). No visual launch/focus/Play/Stop pass is claimed.
-- **PENDING — installation/relaunch:** the existing guarded installer reported `Quit Rust Radio before updating it.` The operator was asked to close the current session. The installed app and persistent Dock registration have not been changed by this pass.
+- **PASS — guarded installation/relaunch:** the initial installer correctly refused while the old app ran. After the operator confirmed closure, `bash scripts/install_macos_app.sh install '/private/tmp/rust-radio-target/release/Rust Radio.app'` installed the update in `~/Applications`. Installed executable and icon hashes match the verified package. Bundle ID is unchanged; no new Dock tile or Dock restart was needed.
+- **PASS — native window/menu presentation:** the new installed app opens with window and application-menu title `Rust Radio`; its 480×320 listening screen was inspected during operator playback. This is visual/state evidence, not a new audible-output certification.
+- **PENDING — visual Dock icon acceptance:** installed-app inspection recovered after relaunch, but Dock accessibility still reports `-10005: timeoutReached`. Operator confirmation of the radio artwork during playback/focus has been requested. No automatic Dock screenshot/focus-cycle pass is claimed.
 - **NOT RUN — hosted CI, signing/notarization, physical audio/Pi/receiver acceptance.** Existing release gates remain open. No signing, new permissions, Dock restart, or Dock tile rewrite is required by this fix.
 - **NOT RUN — public registry feedback:** no external issue message was sent; implementation evidence is retained in this repository and the review PR.
+
+
+Installed executable SHA-256: `82f9c94a1ca4c8a9fd3a1930592b0a8bb7df3ae9e372b474be9755e560169dfc`.
