@@ -1,5 +1,9 @@
 # rust_radio
 
+[![Local Rust gates: passing](https://img.shields.io/badge/Local%20Rust%20gates-passing-brightgreen)](docs/PROGRESS.md)
+
+Recorded local Rust gates passed at merge `5568fb3` (2026-10-28); historical evidence, not current-head CI. The latest station-validation workflow reported startup_failure. On 2026-11-25 the operator reported the native radio UI live and supplied a screenshot; audible output and exact running revision were not independently verified.
+
 Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. Optional SoapySDR supports raw I/Q and a mono-FM audio path; direct nRSP-ST service checks are also available. Direct nRSP-ST control and Opus audio are available through `nrsp-native`; USB FM awaits physical hardware acceptance.
 
 ## Status (2026-10-28)
