@@ -4,6 +4,8 @@ use std::time::{Duration, SystemTime};
 
 /// Maximum age for decoded-audio evidence before a station must be checked again.
 pub const FEED_FRESHNESS_TTL: Duration = Duration::from_secs(6 * 60 * 60);
+/// Maximum age at which a previous decode can soften a later failed check.
+pub const FEED_DEGRADED_GRACE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FeedHealth {

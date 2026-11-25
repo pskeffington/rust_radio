@@ -27,6 +27,8 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 mod ip_pcm;
+#[cfg(any(feature = "nrsp-native", feature = "sdrconnect", feature = "soapy"))]
+const NON_IP_PREBUFFER: Duration = Duration::from_millis(200);
 #[cfg(feature = "nrsp-native")]
 mod nrsp_native;
 #[cfg(feature = "nrsp-native")]
@@ -100,7 +102,76 @@ pub(super) struct PlaybackContext<'a> {
     pub(super) cancelled: &'a Arc<AtomicBool>,
     pub(super) volume: Arc<AtomicU8>,
     pub(super) output_id: &'a str,
+    pub(super) output_underruns: Arc<AtomicU64>,
+    buffer_ready_latency_observed: Arc<Mutex<Option<Duration>>>,
+    prebuffer_fill_latency_observed: Arc<Mutex<Option<Duration>>>,
+    playback_started_at: Instant,
+    ip_prebuffer: Duration,
     output_progress: &'a OutputProgress,
+}
+
+/// The original bounded IP-radio buffering profiles retained for API
+/// compatibility. Existing start methods retain the resilient profile.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IpBufferingProfile {
+    LowLatency,
+    #[default]
+    Resilient,
+}
+
+impl IpBufferingProfile {
+    pub const fn prebuffer_ms(self) -> u16 {
+        match self {
+            Self::LowLatency => 200,
+            Self::Resilient => 500,
+        }
+    }
+}
+
+/// Additive IP buffering choices for hosts that want the measured 350 ms
+/// compromise as well as the original low-latency and resilient settings.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IpBufferingPreset {
+    LowLatency,
+    Balanced,
+    #[default]
+    Resilient,
+}
+
+impl IpBufferingPreset {
+    pub const fn prebuffer_ms(self) -> u16 {
+        match self {
+            Self::LowLatency => 200,
+            Self::Balanced => 350,
+            Self::Resilient => 500,
+        }
+    }
+
+    const fn duration(self) -> Duration {
+        Duration::from_millis(self.prebuffer_ms() as u64)
+    }
+}
+
+impl From<IpBufferingProfile> for IpBufferingPreset {
+    fn from(profile: IpBufferingProfile) -> Self {
+        match profile {
+            IpBufferingProfile::LowLatency => Self::LowLatency,
+            IpBufferingProfile::Resilient => Self::Resilient,
+        }
+    }
+}
+
+/// Read-only output measurements from one native playback session. First-play
+/// latency is observed by `status()` polling, so it includes the host polling interval.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NativePlaybackDiagnostics {
+    pub underrun_samples: u64,
+    /// Worker-measured time until the selected IP prebuffer threshold is met.
+    /// This is recorded when the paused output is started, outside the audio callback.
+    pub buffer_ready_latency_observed: Option<Duration>,
+    /// Worker-measured elapsed time from the first decoded PCM to the prebuffer threshold.
+    pub prebuffer_fill_latency_observed: Option<Duration>,
+    pub first_play_latency_observed: Option<Duration>,
 }
 
 #[derive(Debug)]
@@ -148,17 +219,60 @@ impl From<TransportError> for PlaybackFailure {
     }
 }
 
-fn probe_failure(error: DecodeError, output_failed: bool) -> PlaybackFailure {
-    if output_failed {
-        return PlaybackFailure::Output(
-            "Native audio output failed while detecting stream format".into(),
-        );
+fn probe_failure(error: DecodeError, output_failure: Option<String>) -> PlaybackFailure {
+    if let Some(detail) = output_failure {
+        return PlaybackFailure::Output(detail);
     }
     match error {
         DecodeError::IoError(error) => PlaybackFailure::Network(format!(
             "Radio stream interrupted during format detection: {error}"
         )),
         error => PlaybackFailure::Permanent(format!("Unsupported radio stream format: {error}")),
+    }
+}
+
+fn probe_if_active<T>(
+    cancelled: &AtomicBool,
+    probe: impl FnOnce() -> Result<T, DecodeError>,
+    output_failure: impl FnOnce() -> Option<String>,
+) -> Result<Option<T>, PlaybackFailure> {
+    if cancelled.load(Ordering::Acquire) {
+        return Ok(None);
+    }
+    match probe() {
+        Ok(_) if cancelled.load(Ordering::Acquire) => Ok(None),
+        Ok(probed) => Ok(Some(probed)),
+        Err(_) if cancelled.load(Ordering::Acquire) => Ok(None),
+        Err(error) => Err(probe_failure(error, output_failure())),
+    }
+}
+
+fn start_resource_if_active<T, E>(
+    cancelled: &AtomicBool,
+    start: impl FnOnce() -> Result<T, E>,
+    on_cancel: impl FnOnce(),
+) -> Result<Option<T>, E> {
+    if cancelled.load(Ordering::Acquire) {
+        on_cancel();
+        return Ok(None);
+    }
+    let resource = match start() {
+        Ok(resource) => resource,
+        Err(error) => {
+            on_cancel();
+            return if cancelled.load(Ordering::Acquire) {
+                Ok(None)
+            } else {
+                Err(error)
+            };
+        }
+    };
+    if cancelled.load(Ordering::Acquire) {
+        drop(resource);
+        on_cancel();
+        Ok(None)
+    } else {
+        Ok(Some(resource))
     }
 }
 
@@ -171,6 +285,11 @@ pub struct NativeRadioEngine {
     volume: Arc<AtomicU8>,
     output_failed: Arc<AtomicBool>,
     output_progress: OutputProgress,
+    output_underruns: Arc<AtomicU64>,
+    playback_started_at: Instant,
+    buffer_ready_latency_observed: Arc<Mutex<Option<Duration>>>,
+    prebuffer_fill_latency_observed: Arc<Mutex<Option<Duration>>>,
+    first_play_latency_observed: Mutex<Option<Duration>>,
     worker: Option<JoinHandle<()>>,
     #[cfg(feature = "nrsp-native")]
     native_control: Option<Arc<nrsp_native::Control>>,
@@ -184,6 +303,35 @@ impl NativeRadioEngine {
         volume_percent: u8,
         output_id: &str,
     ) -> Result<Self, String> {
+        Self::start_internet_with_buffering(
+            station_id,
+            volume_percent,
+            output_id,
+            IpBufferingProfile::Resilient,
+        )
+    }
+
+    pub fn start_internet_with_buffering(
+        station_id: &str,
+        volume_percent: u8,
+        output_id: &str,
+        profile: IpBufferingProfile,
+    ) -> Result<Self, String> {
+        Self::start_internet_with_buffering_preset(
+            station_id,
+            volume_percent,
+            output_id,
+            profile.into(),
+        )
+    }
+
+    /// Start a curated station with one of the bounded IP buffering presets.
+    pub fn start_internet_with_buffering_preset(
+        station_id: &str,
+        volume_percent: u8,
+        output_id: &str,
+        preset: IpBufferingPreset,
+    ) -> Result<Self, String> {
         if station_by_id(station_id).is_none() {
             return Err("Unknown curated internet radio station".into());
         }
@@ -191,16 +339,43 @@ impl NativeRadioEngine {
             PlaybackSource::Internet(station_id.to_owned()),
             volume_percent,
             output_id,
+            preset.duration(),
         )
     }
 
     /// Play an explicitly selected direct MP3 or AAC stream URL.
     pub fn start_stream(url: &str, volume_percent: u8, output_id: &str) -> Result<Self, String> {
+        Self::start_stream_with_buffering(
+            url,
+            volume_percent,
+            output_id,
+            IpBufferingProfile::Resilient,
+        )
+    }
+
+    /// Play a direct stream with one of the bounded IP-radio buffering profiles.
+    pub fn start_stream_with_buffering(
+        url: &str,
+        volume_percent: u8,
+        output_id: &str,
+        profile: IpBufferingProfile,
+    ) -> Result<Self, String> {
+        Self::start_stream_with_buffering_preset(url, volume_percent, output_id, profile.into())
+    }
+
+    /// Play a direct stream with one of the bounded IP buffering presets.
+    pub fn start_stream_with_buffering_preset(
+        url: &str,
+        volume_percent: u8,
+        output_id: &str,
+        preset: IpBufferingPreset,
+    ) -> Result<Self, String> {
         radio_net::validate_direct_url(url)?;
         Self::start(
             PlaybackSource::Direct(url.to_owned()),
             volume_percent,
             output_id,
+            preset.duration(),
         )
     }
 
@@ -222,6 +397,7 @@ impl NativeRadioEngine {
             PlaybackSource::NrspNative(endpoint, config, None),
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -243,6 +419,7 @@ impl NativeRadioEngine {
             PlaybackSource::NrspNative(endpoint, config, Some(settings)),
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -262,6 +439,7 @@ impl NativeRadioEngine {
             PlaybackSource::SdrConnect(endpoint),
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -293,6 +471,7 @@ impl NativeRadioEngine {
             },
             volume_percent,
             output_id,
+            NON_IP_PREBUFFER,
         )
     }
 
@@ -304,7 +483,12 @@ impl NativeRadioEngine {
             .clone()
     }
 
-    fn start(source: PlaybackSource, volume_percent: u8, output_id: &str) -> Result<Self, String> {
+    fn start(
+        source: PlaybackSource,
+        volume_percent: u8,
+        output_id: &str,
+        ip_prebuffer: Duration,
+    ) -> Result<Self, String> {
         if volume_percent > 100 {
             return Err("Volume must be between 0 and 100".into());
         }
@@ -335,6 +519,13 @@ impl NativeRadioEngine {
         let worker_output_failed = Arc::clone(&output_failed);
         let output_progress = Arc::new(Mutex::new(None));
         let worker_output_progress = Arc::clone(&output_progress);
+        let output_underruns = Arc::new(AtomicU64::new(0));
+        let worker_output_underruns = Arc::clone(&output_underruns);
+        let playback_started_at = Instant::now();
+        let buffer_ready_latency_observed = Arc::new(Mutex::new(None));
+        let worker_buffer_ready_latency_observed = Arc::clone(&buffer_ready_latency_observed);
+        let prebuffer_fill_latency_observed = Arc::new(Mutex::new(None));
+        let worker_prebuffer_fill_latency_observed = Arc::clone(&prebuffer_fill_latency_observed);
         #[cfg(feature = "sdrconnect")]
         let receiver = Arc::new(Mutex::new(None));
         #[cfg(feature = "sdrconnect")]
@@ -364,6 +555,15 @@ impl NativeRadioEngine {
                             cancelled: &worker_cancelled,
                             volume: worker_volume,
                             output_id: &selected_output,
+                            output_underruns: Arc::clone(&worker_output_underruns),
+                            buffer_ready_latency_observed: Arc::clone(
+                                &worker_buffer_ready_latency_observed,
+                            ),
+                            prebuffer_fill_latency_observed: Arc::clone(
+                                &worker_prebuffer_fill_latency_observed,
+                            ),
+                            playback_started_at,
+                            ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
                     ),
@@ -376,6 +576,15 @@ impl NativeRadioEngine {
                             cancelled: &worker_cancelled,
                             volume: worker_volume,
                             output_id: &selected_output,
+                            output_underruns: Arc::clone(&worker_output_underruns),
+                            buffer_ready_latency_observed: Arc::clone(
+                                &worker_buffer_ready_latency_observed,
+                            ),
+                            prebuffer_fill_latency_observed: Arc::clone(
+                                &worker_prebuffer_fill_latency_observed,
+                            ),
+                            playback_started_at,
+                            ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
                     ),
@@ -396,6 +605,15 @@ impl NativeRadioEngine {
                                         cancelled: &worker_cancelled,
                                         volume: Arc::clone(&worker_volume),
                                         output_id: &selected_output,
+                                        output_underruns: Arc::clone(&worker_output_underruns),
+                                        buffer_ready_latency_observed: Arc::clone(
+                                            &worker_buffer_ready_latency_observed,
+                                        ),
+                                        prebuffer_fill_latency_observed: Arc::clone(
+                                            &worker_prebuffer_fill_latency_observed,
+                                        ),
+                                        playback_started_at,
+                                        ip_prebuffer,
                                         output_progress: &worker_output_progress,
                                     },
                                     control,
@@ -418,6 +636,15 @@ impl NativeRadioEngine {
                                 cancelled: &worker_cancelled,
                                 volume: Arc::clone(&worker_volume),
                                 output_id: &selected_output,
+                                output_underruns: Arc::clone(&worker_output_underruns),
+                                buffer_ready_latency_observed: Arc::clone(
+                                    &worker_buffer_ready_latency_observed,
+                                ),
+                                prebuffer_fill_latency_observed: Arc::clone(
+                                    &worker_prebuffer_fill_latency_observed,
+                                ),
+                                playback_started_at,
+                                ip_prebuffer,
                                 output_progress: &worker_output_progress,
                             };
                             sdrconnect::play(endpoint, &context, &worker_receiver).map_err(
@@ -442,6 +669,15 @@ impl NativeRadioEngine {
                             cancelled: &worker_cancelled,
                             volume: worker_volume,
                             output_id: &selected_output,
+                            output_underruns: Arc::clone(&worker_output_underruns),
+                            buffer_ready_latency_observed: Arc::clone(
+                                &worker_buffer_ready_latency_observed,
+                            ),
+                            prebuffer_fill_latency_observed: Arc::clone(
+                                &worker_prebuffer_fill_latency_observed,
+                            ),
+                            playback_started_at,
+                            ip_prebuffer,
                             output_progress: &worker_output_progress,
                         },
                     ),
@@ -461,6 +697,11 @@ impl NativeRadioEngine {
             volume,
             output_failed,
             output_progress,
+            output_underruns,
+            playback_started_at,
+            buffer_ready_latency_observed,
+            prebuffer_fill_latency_observed,
+            first_play_latency_observed: Mutex::new(None),
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]
             native_control,
@@ -569,7 +810,7 @@ impl NativeRadioEngine {
             let session = controller.state();
             (session.state, session.generation)
         };
-        let played = state == PlaybackState::Buffering
+        let played = matches!(state, PlaybackState::Buffering | PlaybackState::Playing)
             && self
                 .output_progress
                 .lock()
@@ -577,9 +818,53 @@ impl NativeRadioEngine {
                 .as_ref()
                 .is_some_and(|samples| samples.load(Ordering::Relaxed) > 0);
         if played {
-            controller.event(generation, PlaybackEvent::PlaybackStarted);
+            let mut latency = self
+                .first_play_latency_observed
+                .lock()
+                .expect("first-play latency mutex poisoned");
+            if latency.is_none() {
+                *latency = Some(self.playback_started_at.elapsed());
+            }
+            if state == PlaybackState::Buffering {
+                controller.event(generation, PlaybackEvent::PlaybackStarted);
+            }
         }
         controller.state().clone()
+    }
+
+    /// Return per-session output measurements. First-play latency is sampled
+    /// when this host polls status after the native callback consumes PCM.
+    pub fn diagnostics(&self) -> NativePlaybackDiagnostics {
+        let _ = self.status();
+        let first_play_latency_observed = *self
+            .first_play_latency_observed
+            .lock()
+            .expect("first-play latency mutex poisoned");
+        NativePlaybackDiagnostics {
+            underrun_samples: self.output_underruns.load(Ordering::Relaxed),
+            buffer_ready_latency_observed: *self
+                .buffer_ready_latency_observed
+                .lock()
+                .expect("buffer-ready latency mutex poisoned"),
+            prebuffer_fill_latency_observed: *self
+                .prebuffer_fill_latency_observed
+                .lock()
+                .expect("prebuffer-fill latency mutex poisoned"),
+            first_play_latency_observed,
+        }
+    }
+
+    /// Return the PCM sample count consumed by the current native output
+    /// callback attempt. For uninterrupted sessions, combine it with
+    /// `NativePlaybackDiagnostics::underrun_samples` to compare missing-sample
+    /// share across runs with different startup times. The underrun counter is
+    /// session-cumulative while this count resets when output recovery begins.
+    pub fn output_samples_consumed(&self) -> u64 {
+        self.output_progress
+            .lock()
+            .expect("output progress mutex poisoned")
+            .as_ref()
+            .map_or(0, |samples| samples.load(Ordering::Relaxed))
     }
 
     pub fn set_volume(&self, percent: u8) -> Result<(), String> {
@@ -695,6 +980,27 @@ pub(super) fn begin_output_attempt(progress: &OutputProgress) -> Arc<AtomicU64> 
 
 pub(super) fn clear_output_attempt(progress: &OutputProgress) {
     *progress.lock().expect("output progress mutex poisoned") = None;
+}
+
+fn record_buffer_ready_latency(observed: &Mutex<Option<Duration>>, playback_started_at: Instant) {
+    let mut latency = observed
+        .lock()
+        .expect("buffer-ready latency mutex poisoned");
+    if latency.is_none() {
+        *latency = Some(playback_started_at.elapsed());
+    }
+}
+
+fn record_prebuffer_fill_latency(
+    observed: &Mutex<Option<Duration>>,
+    first_decoded_audio_at: Instant,
+) {
+    let mut latency = observed
+        .lock()
+        .expect("prebuffer-fill latency mutex poisoned");
+    if latency.is_none() {
+        *latency = Some(first_decoded_audio_at.elapsed());
+    }
 }
 
 /// Retry typed connection and stream I/O failures. Device loss and invalid
@@ -831,16 +1137,24 @@ fn decode_and_play(
     context: &PlaybackContext<'_>,
 ) -> Result<(), PlaybackFailure> {
     // Establish an audio device before opening a remote broadcaster.
-    let played_samples = begin_output_attempt(context.output_progress);
-    let mut output = NativeAudioOutput::open_with_progress(
-        Arc::clone(&context.volume),
-        context.output_id,
-        played_samples,
+    let Some(mut output) = start_resource_if_active(
+        context.cancelled,
+        || {
+            let played_samples = begin_output_attempt(context.output_progress);
+            NativeAudioOutput::open_ip_with_progress(
+                Arc::clone(&context.volume),
+                context.output_id,
+                played_samples,
+                Arc::clone(&context.output_underruns),
+                context.ip_prebuffer,
+            )
+        },
+        || clear_output_attempt(context.output_progress),
     )
-    .map_err(PlaybackFailure::Output)?;
-    if context.cancelled.load(Ordering::Acquire) {
+    .map_err(PlaybackFailure::Output)?
+    else {
         return Ok(());
-    }
+    };
     let (stream, _network_guard) = if direct {
         radio_net::open_direct_classified(station_id, Arc::clone(context.cancelled))?
     } else {
@@ -874,14 +1188,21 @@ fn decode_and_play(
             Default::default(),
         )
     };
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            media,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .map_err(|error| probe_failure(error, output.has_failed()))?;
+    let Some(probed) = probe_if_active(
+        context.cancelled,
+        || {
+            symphonia::default::get_probe().format(
+                &hint,
+                media,
+                &FormatOptions::default(),
+                &MetadataOptions::default(),
+            )
+        },
+        || output.failure_detail(),
+    )?
+    else {
+        return Ok(());
+    };
     let mut format = probed.format;
     let track = format
         .tracks()
@@ -895,11 +1216,14 @@ fn decode_and_play(
     let mut converter: Option<PcmConverter> = None;
     let mut previous_format: Option<(u32, usize)> = None;
     let mut sink_state = ip_pcm::SinkState::default();
+    let mut first_decoded_audio_at = None;
 
     while !context.cancelled.load(Ordering::Acquire) {
         if output.has_failed() {
             return Err(PlaybackFailure::Output(
-                "Native audio output device disconnected or failed".into(),
+                output
+                    .failure_detail()
+                    .unwrap_or_else(|| "Native audio output device disconnected or failed".into()),
             ));
         }
         let packet = match format.next_packet() {
@@ -910,7 +1234,9 @@ fn decode_and_play(
                 }
                 if output.has_failed() {
                     return Err(PlaybackFailure::Output(
-                        "Native audio output disconnected during radio stream".into(),
+                        output.failure_detail().unwrap_or_else(|| {
+                            "Native audio output disconnected during radio stream".into()
+                        }),
                     ));
                 }
                 return Err(PlaybackFailure::Network(format!(
@@ -941,6 +1267,7 @@ fn decode_and_play(
         if decoded.frames() == 0 {
             continue;
         }
+        let first_decoded_audio_at = *first_decoded_audio_at.get_or_insert_with(Instant::now);
         startup.decoded();
         let spec = *decoded.spec();
         let source_channels = spec.channels.count();
@@ -968,12 +1295,26 @@ fn decode_and_play(
             samples.samples(),
             &mut output,
             context.cancelled,
-            |event| signal(context.controller, context.generation, event),
+            |event| {
+                if event == PlaybackEvent::Buffered {
+                    record_buffer_ready_latency(
+                        &context.buffer_ready_latency_observed,
+                        context.playback_started_at,
+                    );
+                    record_prebuffer_fill_latency(
+                        &context.prebuffer_fill_latency_observed,
+                        first_decoded_audio_at,
+                    );
+                }
+                signal(context.controller, context.generation, event)
+            },
         )?;
         if !keep_going {
             if output.has_failed() && !context.cancelled.load(Ordering::Acquire) {
                 return Err(PlaybackFailure::Output(
-                    "Native audio output stopped consuming samples".into(),
+                    output
+                        .failure_detail()
+                        .unwrap_or_else(|| "Native audio output stopped consuming samples".into()),
                 ));
             }
             return Ok(());
@@ -1171,6 +1512,44 @@ mod tests {
     }
 
     #[test]
+    fn stop_racing_with_transient_failure_skips_retry_and_recovery_event() {
+        let (controller, generation) = recovery_controller();
+        let cancelled = AtomicBool::new(false);
+        let mut attempts = 0;
+        let mut waits = 0;
+        recover_attempts(
+            generation,
+            &controller,
+            &cancelled,
+            || {
+                attempts += 1;
+                cancelled.store(true, Ordering::Release);
+                controller
+                    .lock()
+                    .unwrap()
+                    .apply(RadioCommand::Stop)
+                    .unwrap();
+                Err(TransportError::Network("connection dropped".into()).into())
+            },
+            |_| {
+                waits += 1;
+                true
+            },
+        )
+        .unwrap();
+
+        assert_eq!(attempts, 1);
+        assert_eq!(waits, 0);
+        let mut controller = controller.lock().unwrap();
+        assert_eq!(controller.state().state, PlaybackState::Stopped);
+        assert!(!controller.event(generation, PlaybackEvent::ConnectionLost));
+        assert!(!controller.event(
+            generation,
+            PlaybackEvent::Error("stale retry failure".into())
+        ));
+    }
+
+    #[test]
     fn stop_during_retry_prevents_another_attempt_and_stale_events() {
         let (controller, generation) = recovery_controller();
         let cancelled = AtomicBool::new(false);
@@ -1205,7 +1584,7 @@ mod tests {
         for error in [
             PlaybackFailure::from(TransportError::Permanent("HTTP 403".into())),
             PlaybackFailure::Output("speaker unavailable".into()),
-            probe_failure(DecodeError::Unsupported("unsupported codec"), false),
+            probe_failure(DecodeError::Unsupported("unsupported codec"), None),
         ] {
             let (controller, generation) = recovery_controller();
             let mut error = Some(error);
@@ -1224,7 +1603,7 @@ mod tests {
                     io::ErrorKind::UnexpectedEof,
                     "network disconnected during probe",
                 )),
-                false,
+                None,
             )
             .class(),
             FailureClass::NetworkTransient
@@ -1235,11 +1614,161 @@ mod tests {
                     io::ErrorKind::UnexpectedEof,
                     "probe interrupted after audio device loss",
                 )),
-                true,
+                Some("backend device lost during probe".into()),
             )
             .class(),
             FailureClass::OutputUnavailable
         );
+        assert_eq!(
+            probe_failure(
+                DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "probe interrupted after audio device loss",
+                )),
+                Some("Native audio output stream error: device disappeared".into()),
+            )
+            .message(),
+            "Native audio output stream error: device disappeared"
+        );
+    }
+
+    #[test]
+    fn cancellation_before_format_probe_skips_the_probe_work() {
+        let cancelled = AtomicBool::new(true);
+        let probe_started = AtomicBool::new(false);
+        let result = probe_if_active(
+            &cancelled,
+            || {
+                probe_started.store(true, Ordering::Release);
+                Err::<(), _>(DecodeError::Unsupported("probe should not run"))
+            },
+            || None,
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(!probe_started.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn stop_during_format_probe_suppresses_transient_io_failure() {
+        let cancelled = AtomicBool::new(false);
+        let output_failure_read = AtomicBool::new(false);
+        let result = probe_if_active(
+            &cancelled,
+            || {
+                cancelled.store(true, Ordering::Release);
+                Err::<(), _>(DecodeError::IoError(io::Error::new(
+                    io::ErrorKind::ConnectionAborted,
+                    "Radio stopped",
+                )))
+            },
+            || {
+                output_failure_read.store(true, Ordering::Release);
+                None
+            },
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(!output_failure_read.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn stop_before_output_start_skips_factory_and_clears_stale_progress() {
+        let cancelled = AtomicBool::new(true);
+        let progress = Arc::new(Mutex::new(Some(Arc::new(AtomicU64::new(5)))));
+        let factory_called = AtomicBool::new(false);
+        let result = start_resource_if_active(
+            &cancelled,
+            || {
+                factory_called.store(true, Ordering::Release);
+                Ok::<_, ()>(())
+            },
+            || clear_output_attempt(&progress),
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(!factory_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn stop_during_output_start_drops_resource_and_clears_callback_progress() {
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let callback_samples_weak = Arc::downgrade(&callback_samples);
+        let cleanup_called = AtomicBool::new(false);
+        let result = start_resource_if_active(
+            &cancelled,
+            || {
+                *progress.lock().unwrap() = Some(Arc::clone(&callback_samples));
+                cancelled.store(true, Ordering::Release);
+                Ok::<_, ()>(Arc::clone(&callback_samples))
+            },
+            || {
+                clear_output_attempt(&progress);
+                cleanup_called.store(true, Ordering::Release);
+            },
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(cleanup_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
+        drop(callback_samples);
+        assert!(callback_samples_weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn stop_racing_with_output_start_failure_clears_progress_and_suppresses_error() {
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let cleanup_called = AtomicBool::new(false);
+        let result = start_resource_if_active(
+            &cancelled,
+            || {
+                *progress.lock().unwrap() = Some(Arc::clone(&callback_samples));
+                cancelled.store(true, Ordering::Release);
+                Err::<(), _>("native output failed while Stop was requested")
+            },
+            || {
+                clear_output_attempt(&progress);
+                cleanup_called.store(true, Ordering::Release);
+            },
+        )
+        .unwrap();
+
+        assert!(result.is_none());
+        assert!(cleanup_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn output_start_failure_clears_progress_and_preserves_error_when_active() {
+        let cancelled = AtomicBool::new(false);
+        let progress = Arc::new(Mutex::new(None));
+        let callback_samples = Arc::new(AtomicU64::new(0));
+        let cleanup_called = AtomicBool::new(false);
+        let error = start_resource_if_active(
+            &cancelled,
+            || {
+                *progress.lock().unwrap() = Some(Arc::clone(&callback_samples));
+                Err::<(), _>("native output device unavailable")
+            },
+            || {
+                clear_output_attempt(&progress);
+                cleanup_called.store(true, Ordering::Release);
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, "native output device unavailable");
+        assert!(cleanup_called.load(Ordering::Acquire));
+        assert!(progress.lock().unwrap().is_none());
     }
 
     #[cfg(feature = "nrsp-native")]
@@ -1332,6 +1861,28 @@ mod tests {
         assert_eq!(output_attempts_cleared, 2);
     }
 
+    #[test]
+    fn buffer_ready_latency_records_first_worker_observation_once() {
+        let started_at = Instant::now();
+        let observed = Mutex::new(None);
+        record_buffer_ready_latency(&observed, started_at);
+        let first = observed.lock().unwrap().unwrap();
+        thread::sleep(Duration::from_millis(2));
+        record_buffer_ready_latency(&observed, started_at);
+        assert_eq!(*observed.lock().unwrap(), Some(first));
+    }
+
+    #[test]
+    fn prebuffer_fill_latency_records_first_decoded_audio_observation_once() {
+        let first_decoded_audio_at = Instant::now();
+        let observed = Mutex::new(None);
+        record_prebuffer_fill_latency(&observed, first_decoded_audio_at);
+        let first = observed.lock().unwrap().unwrap();
+        thread::sleep(Duration::from_millis(2));
+        record_prebuffer_fill_latency(&observed, first_decoded_audio_at);
+        assert_eq!(*observed.lock().unwrap(), Some(first));
+    }
+
     fn completed_test_engine(panics: bool) -> NativeRadioEngine {
         let mut controller = RadioController::default();
         controller
@@ -1345,6 +1896,11 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::new(Mutex::new(None)),
+            output_underruns: Arc::new(AtomicU64::new(0)),
+            playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
+            prebuffer_fill_latency_observed: Arc::new(Mutex::new(None)),
+            first_play_latency_observed: Mutex::new(None),
             #[cfg(feature = "nrsp-native")]
             native_control: None,
             #[cfg(feature = "sdrconnect")]
@@ -1368,12 +1924,18 @@ mod tests {
         let controller = Arc::new(Mutex::new(controller));
         let output_progress = Arc::new(Mutex::new(None));
         let callback_samples = begin_output_attempt(&output_progress);
+        let output_underruns = Arc::new(AtomicU64::new(0));
         let engine = NativeRadioEngine {
             controller,
             cancelled: Arc::new(AtomicBool::new(false)),
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::clone(&output_progress),
+            output_underruns: Arc::clone(&output_underruns),
+            playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
+            prebuffer_fill_latency_observed: Arc::new(Mutex::new(None)),
+            first_play_latency_observed: Mutex::new(None),
             worker: None,
             #[cfg(feature = "nrsp-native")]
             native_control: None,
@@ -1382,8 +1944,14 @@ mod tests {
         };
 
         assert_eq!(engine.status().state, PlaybackState::Buffering);
+        assert_eq!(engine.diagnostics().first_play_latency_observed, None);
         callback_samples.store(1, Ordering::Release);
         assert_eq!(engine.status().state, PlaybackState::Playing);
+        assert_eq!(engine.output_samples_consumed(), 1);
+        output_underruns.store(37, Ordering::Release);
+        let diagnostics = engine.diagnostics();
+        assert_eq!(diagnostics.underrun_samples, 37);
+        assert!(diagnostics.first_play_latency_observed.is_some());
 
         assert!(engine
             .controller
@@ -1391,6 +1959,7 @@ mod tests {
             .unwrap()
             .event(generation, PlaybackEvent::ConnectionLost));
         clear_output_attempt(&output_progress);
+        assert_eq!(engine.output_samples_consumed(), 0);
         assert_eq!(engine.status().state, PlaybackState::Recovering);
 
         let next_attempt_samples = begin_output_attempt(&output_progress);
@@ -1420,6 +1989,11 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::new(Mutex::new(Some(Arc::clone(&callback_samples)))),
+            output_underruns: Arc::new(AtomicU64::new(0)),
+            playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
+            prebuffer_fill_latency_observed: Arc::new(Mutex::new(None)),
+            first_play_latency_observed: Mutex::new(None),
             worker: None,
             #[cfg(feature = "nrsp-native")]
             native_control: None,
@@ -1492,6 +2066,11 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed: Arc::new(AtomicBool::new(false)),
             output_progress: Arc::new(Mutex::new(None)),
+            output_underruns: Arc::new(AtomicU64::new(0)),
+            playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
+            prebuffer_fill_latency_observed: Arc::new(Mutex::new(None)),
+            first_play_latency_observed: Mutex::new(None),
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]
             native_control: None,
@@ -1616,6 +2195,11 @@ mod tests {
             volume: Arc::new(AtomicU8::new(60)),
             output_failed,
             output_progress: Arc::new(Mutex::new(None)),
+            output_underruns: Arc::new(AtomicU64::new(0)),
+            playback_started_at: Instant::now(),
+            buffer_ready_latency_observed: Arc::new(Mutex::new(None)),
+            prebuffer_fill_latency_observed: Arc::new(Mutex::new(None)),
+            first_play_latency_observed: Mutex::new(None),
             worker: Some(worker),
             #[cfg(feature = "nrsp-native")]
             native_control: None,

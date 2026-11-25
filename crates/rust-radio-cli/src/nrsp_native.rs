@@ -45,7 +45,7 @@ pub(super) fn run(args: &[String]) -> Result<(), String> {
         )?
     };
     println!("NATIVE nRSP-ST / {frequency} Hz / {mode:?} / bandwidth {bandwidth} Hz");
-    super::monitor(engine, listen.seconds)
+    super::monitor(engine, listen.seconds, 200)
 }
 #[cfg(not(feature = "nrsp-native"))]
 pub(super) fn run(_: &[String]) -> Result<(), String> {

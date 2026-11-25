@@ -146,7 +146,7 @@ fn saved_validation_history_is_bounded_freshness_checked_and_not_live_state() {
 }
 
 #[test]
-fn saved_validation_history_expires_after_the_shared_feed_ttl() {
+fn saved_validation_history_degrades_after_the_shared_feed_ttl() {
     let old = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -170,7 +170,7 @@ fn saved_validation_history_expires_after_the_shared_feed_ttl() {
     .to_string();
     let mut panel = RadioPanel::new();
     panel.load_validation_history(&history).unwrap();
-    assert_eq!(panel.validation_label("skylab"), "SAVED / STALE");
+    assert_eq!(panel.validation_label("skylab"), "SAVED / DEGRADED / RETRY");
 }
 
 #[test]
@@ -1035,4 +1035,44 @@ fn setup_preserves_six_hour_feed_freshness_without_blocking_playback() {
     assert!(panel.stream_check_summary().contains("over 6 hours old"));
     assert_eq!(panel.validation_label("skylab"), "STALE / RECHECK");
     assert!(!panel.is_active());
+}
+
+#[test]
+fn failed_live_recheck_keeps_recent_saved_decode_as_degraded_retry() {
+    let now = SystemTime::now();
+    let mut panel = RadioPanel::new();
+    panel.saved_validations.insert(
+        "skylab",
+        SavedFeedValidation {
+            status: ValidationStatus::Decoded,
+            last_decoded_at: Some(now),
+        },
+    );
+    let mut failed = StationValidation::unverified("skylab");
+    failed.status = ValidationStatus::Unavailable;
+    failed.stage = rust_radio_core::validation::ValidationStage::EndpointReached;
+    failed.checked_at = Some(now);
+    panel.validations.insert("skylab", failed);
+    assert_eq!(panel.validation_label("skylab"), "DEGRADED / RETRY");
+    assert!(panel
+        .stream_check_summary()
+        .contains("recent decoded audio"));
+    assert!(panel.engine.is_none());
+    assert!(!panel.is_active());
+}
+
+#[test]
+fn live_success_proof_is_preserved_when_a_following_check_fails() {
+    let decoded_at = SystemTime::now();
+    let mut panel = RadioPanel::new();
+    panel.remember_live_success("skylab", Some(decoded_at));
+    let mut failed = StationValidation::unverified("skylab");
+    failed.status = ValidationStatus::InvalidStream;
+    failed.checked_at = Some(decoded_at + Duration::from_secs(1));
+    panel.validations.insert("skylab", failed);
+    assert_eq!(
+        panel.saved_validations["skylab"].last_decoded_at,
+        Some(decoded_at)
+    );
+    assert_eq!(panel.validation_label("skylab"), "DEGRADED / RETRY");
 }

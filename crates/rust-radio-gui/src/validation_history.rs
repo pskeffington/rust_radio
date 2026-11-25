@@ -1,7 +1,9 @@
 //! Import bounded host-persisted health summaries without performing file or network I/O.
 
-use rust_radio_core::feed_history::parse_feed_history;
-use rust_radio_core::validation::{ValidationStatus, FEED_FRESHNESS_TTL};
+use rust_radio_core::feed_history::{
+    feed_history_health_at, parse_feed_history, FeedHistoryHealth,
+};
+use rust_radio_core::validation::ValidationStatus;
 use std::collections::BTreeMap;
 use std::time::SystemTime;
 
@@ -31,19 +33,26 @@ pub(super) fn parse_history(
 }
 
 pub(super) fn label(validation: SavedFeedValidation, now: SystemTime) -> &'static str {
-    match validation.status {
-        ValidationStatus::Decoded => match validation
-            .last_decoded_at
-            .and_then(|time| now.duration_since(time).ok())
-        {
-            Some(age) if age <= FEED_FRESHNESS_TTL => "SAVED / FRESH",
-            _ => "SAVED / STALE",
+    match feed_history_health_at(validation.status, validation.last_decoded_at, now) {
+        FeedHistoryHealth::Fresh => "SAVED / FRESH",
+        FeedHistoryHealth::Degraded => "SAVED / DEGRADED / RETRY",
+        FeedHistoryHealth::Stale => "SAVED / STALE",
+        FeedHistoryHealth::Unverified => "SAVED / UNVERIFIED",
+        FeedHistoryHealth::Failed => match validation.status {
+            ValidationStatus::Unavailable => "SAVED / UNAVAILABLE",
+            ValidationStatus::InvalidStream => "SAVED / INVALID STREAM",
+            ValidationStatus::Unsupported => "SAVED / UNSUPPORTED",
+            _ => "SAVED / UNAVAILABLE",
         },
-        ValidationStatus::Unavailable => "SAVED / UNAVAILABLE",
-        ValidationStatus::InvalidStream => "SAVED / INVALID STREAM",
-        ValidationStatus::Unsupported => "SAVED / UNSUPPORTED",
-        ValidationStatus::Cancelled | ValidationStatus::Unverified => "SAVED / UNVERIFIED",
     }
+}
+
+pub(super) fn health_after_failure(
+    validation: SavedFeedValidation,
+    status: ValidationStatus,
+    now: SystemTime,
+) -> FeedHistoryHealth {
+    feed_history_health_at(status, validation.last_decoded_at, now)
 }
 
 #[cfg(test)]
@@ -79,11 +88,14 @@ mod tests {
         assert_eq!(label(fresh["skylab"], now), "SAVED / FRESH");
         let stale_at = 1_000_000 - 7 * 60 * 60;
         let stale = parse_history(&history("decoded", Some(stale_at), stale_at)).unwrap();
-        assert_eq!(label(stale["skylab"], now), "SAVED / STALE");
+        assert_eq!(label(stale["skylab"], now), "SAVED / DEGRADED / RETRY");
         let failed = parse_history(&history("unavailable", Some(999_999), 1_000_000)).unwrap();
-        assert_eq!(label(failed["skylab"], now), "SAVED / UNAVAILABLE");
+        assert_eq!(label(failed["skylab"], now), "SAVED / DEGRADED / RETRY");
         let check_error = parse_history(&history("check_error", Some(999_999), 1_000_000)).unwrap();
-        assert_eq!(label(check_error["skylab"], now), "SAVED / UNAVAILABLE");
+        assert_eq!(
+            label(check_error["skylab"], now),
+            "SAVED / DEGRADED / RETRY"
+        );
     }
 
     #[test]

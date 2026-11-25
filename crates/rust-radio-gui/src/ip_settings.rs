@@ -163,6 +163,30 @@ impl RadioPanel {
             } else {
                 self.validations.get(self.selected_station().id)
             };
+            let degraded_after_failure = !self.direct_selected
+                && report
+                    .and_then(|report| {
+                        let saved = self.saved_validations.get(self.selected_station().id)?;
+                        matches!(
+                            report.status,
+                            rust_radio_core::validation::ValidationStatus::Unavailable
+                                | rust_radio_core::validation::ValidationStatus::InvalidStream
+                                | rust_radio_core::validation::ValidationStatus::Unsupported
+                        )
+                        .then(|| {
+                            super::validation_history::health_after_failure(
+                                *saved,
+                                report.status,
+                                std::time::SystemTime::now(),
+                            )
+                        })
+                    })
+                    .is_some_and(|health| {
+                        health == rust_radio_core::feed_history::FeedHistoryHealth::Degraded
+                    });
+            if degraded_after_failure {
+                return "The last check failed, but recent decoded audio was verified. Retry the check.";
+            }
             match report.map(|report| report.health_at(std::time::SystemTime::now())) {
                 Some(rust_radio_core::validation::FeedHealth::Fresh) => {
                     "Stream check passed. Press Play to listen."

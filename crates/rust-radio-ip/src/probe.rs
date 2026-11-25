@@ -21,6 +21,20 @@ use std::time::{Duration, Instant};
 /// One deadline covers every playlist/redirect hop and the final audio body.
 pub const PROBE_DEADLINE: Duration = Duration::from_secs(18);
 
+fn classify_request_error_flags(is_timeout: bool, is_connect: bool) -> StreamError {
+    if is_timeout {
+        StreamError::TransportTimeout
+    } else if is_connect {
+        StreamError::TransportConnectionFailed
+    } else {
+        StreamError::TransportUnavailable
+    }
+}
+
+fn classify_request_error(error: &reqwest::Error) -> StreamError {
+    classify_request_error_flags(error.is_timeout(), error.is_connect())
+}
+
 #[derive(Debug)]
 struct ProbeCancelled;
 
@@ -115,7 +129,7 @@ impl RadioHttp for NativeRadioHttp {
             .deadline
             .checked_duration_since(Instant::now())
             .filter(|duration| !duration.is_zero())
-            .ok_or(StreamError::TransportUnavailable)?;
+            .ok_or(StreamError::TransportTimeout)?;
         // ApprovedEndpoint checks curated station ownership and HTTPS before
         // the request is built; reqwest performs normal certificate validation.
         let response = self
@@ -124,7 +138,7 @@ impl RadioHttp for NativeRadioHttp {
             .timeout(remaining)
             .header("Icy-MetaData", "1")
             .send()
-            .map_err(|_| StreamError::TransportUnavailable)?;
+            .map_err(|error| classify_request_error(&error))?;
         check_probe(self.deadline, &self.cancelled)?;
         let status = response.status().as_u16();
         let content_type = header_value(&response, CONTENT_TYPE)?;
@@ -183,7 +197,7 @@ pub fn internet_available(cancelled: &AtomicBool) -> bool {
         .dns_resolver(SafeResolver::public_only())
         .timeout(Duration::from_secs(3))
         .build()
-        .and_then(|client| client.head("https://somafm.com/").send());
+        .and_then(|client| client.head("https://www.wgbh.org/").send());
     !cancelled.load(Ordering::Acquire)
         && result.is_ok_and(|response| response.status().is_success())
 }
@@ -191,6 +205,66 @@ pub fn internet_available(cancelled: &AtomicBool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+    use std::thread;
+
+    #[test]
+    fn request_failures_have_safe_transport_categories() {
+        assert!(matches!(
+            classify_request_error_flags(true, true),
+            StreamError::TransportTimeout
+        ));
+        assert!(matches!(
+            classify_request_error_flags(false, true),
+            StreamError::TransportConnectionFailed
+        ));
+        assert!(matches!(
+            classify_request_error_flags(false, false),
+            StreamError::TransportUnavailable
+        ));
+    }
+
+    #[test]
+    fn reqwest_response_timeout_is_classified_without_echoing_error_text() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (_connection, _) = listener.accept().unwrap();
+            thread::sleep(Duration::from_millis(300));
+        });
+        let client = Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_millis(100))
+            .build()
+            .unwrap();
+        let error = client.get(format!("http://{address}/")).send().unwrap_err();
+        assert!(error.is_timeout());
+        let classified = classify_request_error(&error);
+        assert!(matches!(&classified, StreamError::TransportTimeout));
+        assert_eq!(classified.to_string(), "Radio validation request timed out");
+        assert!(!classified.to_string().contains(&address.to_string()));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn reqwest_connect_refusal_is_classified_without_echoing_error_text() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let client = Client::builder().no_proxy().build().unwrap();
+        let error = client.get(format!("http://{address}/")).send().unwrap_err();
+        assert!(error.is_connect());
+        let classified = classify_request_error(&error);
+        assert!(matches!(
+            &classified,
+            StreamError::TransportConnectionFailed
+        ));
+        assert_eq!(
+            classified.to_string(),
+            "Radio stream connection failed before a response"
+        );
+        assert!(!classified.to_string().contains(&address.to_string()));
+    }
 
     #[test]
     fn native_tls_probe_can_initialize_without_network() {
@@ -202,7 +276,8 @@ mod tests {
         let mut client = NativeRadioHttp::for_probe().unwrap();
         client.deadline = Instant::now() - Duration::from_secs(1);
         let endpoint =
-            ApprovedEndpoint::new("groovesalad", "https://somafm.com/groovesalad.pls").unwrap();
+            ApprovedEndpoint::new("radio-paradise", "https://stream.radioparadise.com/mp3-128")
+                .unwrap();
         assert!(matches!(
             client.get(&endpoint),
             Err(StreamError::Io(error)) if error.kind() == io::ErrorKind::TimedOut
@@ -219,7 +294,8 @@ mod tests {
         let client = NativeRadioHttp::for_cancellable_probe(Arc::clone(&cancelled)).unwrap();
         cancelled.store(true, Ordering::Release);
         let endpoint =
-            ApprovedEndpoint::new("groovesalad", "https://somafm.com/groovesalad.pls").unwrap();
+            ApprovedEndpoint::new("radio-paradise", "https://stream.radioparadise.com/mp3-128")
+                .unwrap();
         assert!(
             matches!(client.get(&endpoint), Err(StreamError::Io(error)) if probe_was_cancelled(&error))
         );
