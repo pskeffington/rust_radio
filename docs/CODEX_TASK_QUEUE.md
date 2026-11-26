@@ -14,7 +14,23 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 | RR-108 | P1 | Validation | READY | CI status audit and exact-SHA evidence reconciliation | Distinguish startup_failure from test failure and verify hosted jobs before completion |
 | RR-109 | P2 | Research | BLOCKED: publisher permission | Broadcaster rights/approved stream audit, NPR candidate review | Source-linked provenance and license/embedding approvals before distributable preset changes |
 
-## Immediate Codex order: RR-101, then RR-102
+## Priority override — SiriusXM and main-panel simplification (2026-11-26)
+
+Owner: Linux Operations / Codex. Status: READY; implementation and runtime tests NOT RUN. Execute RR-110 first, then RR-111; preserve existing tasks.
+
+| ID | Priority | Deliverable | Acceptance |
+| --- | --- | --- | --- |
+| RR-110 | P0 | Remove nSDR and USB buttons from standalone main listening panel; move existing receiver entry points into Settings > Receivers | Main panel has neither button nor empty hit targets; receiver functionality and feature flags remain intact; 480x320 screenshot and keyboard navigation pass |
+| RR-111 | P0 | Review external-provider architecture and explicitly revise existing no-browser-launch invariant for user-initiated standalone provider only | Document rights/platform review, no autoplay, no embedded-host behavior changes, explicit user action; stop if provider terms prohibit integration |
+| RR-112 | P0 | Add SiriusXM button opening official HTTPS player in system browser | Click launches https://player.siriusxm.com/; browser owns login/MFA/cookies; no credentials, tokens, browser profile reads, scraping or debugging interfaces; user can return manually |
+| RR-113 | P1 | Generic external audio provider and PipeWire session controls on Arch | Explicitly associate correct media session; volume/mute/output controls only where supported; never control unrelated browser tabs; native playback and external playback do not overlap; fail closed if ambiguous |
+| RR-114 | P1 | Optional MPRIS transport/metadata capability discovery | Only supported controls exposed; no private API or DRM bypass; no recording, capture, redistribution; distinguish external playback state from native PCM callback evidence |
+| RR-115 | P1 | Regression and physical acceptance | fmt, workspace tests, clippy, feature builds, screenshot, real subscriber-driven playback and return-to-UI test; redacted evidence with exact SHA; update README, progress and roadmap |
+
+### Execution contract
+Inspect AGENTS.md, GUI source and current porting plan before changes. Keep IP Radio as the default; place SiriusXM alongside it without expanding the main panel footprint. Receiver settings remain reachable but must not autoplay. No automatic login or callback is assumed. Browser launch success is not authentication or playback success. If session isolation or supported controls cannot be verified, retain a launch-only integration and label limitations. Preserve native headless API and Pip-Boy dependency pin. Use mock launcher/session fixtures; test real login only by user interaction on target machine. No credentials in tests, logs, screenshots or Git. Roll back individual changes if existing playback regresses. Record each gate separately and open a PR before implementation merge.
+
+## Previous Codex order: RR-101, then RR-102 (resume after priority override or when blocked)
 1. Fetch latest main and inspect actual station definition and stream path. Document the exact commit being tested.
 2. Add fixture-first tests around the reproducible failure; do not infer the cause from a website response, old status, or one failed network attempt.
 3. Run silent `cargo run -p rust-radio-cli -- validate skylab`; compare with `cargo run -p rust-radio-cli -- listen skylab --seconds 30` only when audio testing is explicitly authorized.
