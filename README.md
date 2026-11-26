@@ -44,7 +44,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Required integration invariants
 
-1. No external media-app launching, web browser audio or autoplay.
+1. No external media-app launching, browser audio inside the native engine, or autoplay. The only proposed exception is an explicitly requested standalone link to the official external provider's browser player, subject to [RR-111 review](docs/EXTERNAL_PROVIDER_CONTRACT.md). No browser integration is implemented by this policy proposal.
 2. Resource access requires an explicit host command. Construction, browsing and preference reads do not autoplay; validation never opens audio output or activates a receiver.
 3. One active session; generation-tagged state and real worker cancellation.
 4. `Playing` requires samples consumed by the native output callback; audible listening is verified separately.

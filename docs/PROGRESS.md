@@ -1,5 +1,10 @@
 # Radio development progress
 
+## RR-111 external-provider design — 2026-11-26
+
+- Added [external provider contract](EXTERNAL_PROVIDER_CONTRACT.md) and proposed narrow standalone link exception; exact design baseline `3d55494d6b7287719d07334c747a6e2f2a4d1e49` in PR #17. Official provider documentation reviewed. Browser owns all authentication/playback; no native API or Linux compatibility verified. No runtime changes or tests. RR-111 IN REVIEW; RR-113/114 BLOCKED pending permitted, isolated media control.
+- Previous exact-head Actions run `45801654813` completed `startup_failure`, zero jobs. PR #17 remains unmerged; RR-110 runtime acceptance remains open. Registry revision `e07de9c76ce5bf53a665945fa641b036f85ce1aa` and exact skill references are recorded in the contract. Independent agent review BLOCKED-AGENT; no release claim.
+
 ## RR-110 standalone UI candidate — 2026-11-26
 
 - Baseline: `03b000ffd330b053efda628bb9a3f8b40db7132a`; review branch `codex/rr110-standalone-controls`. The candidate adds an opt-in standalone constructor, moves receiver selection behind Settings, preserves the embedded header and stops discovery from selecting receivers automatically in standalone mode.
