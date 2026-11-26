@@ -88,6 +88,8 @@ pub struct RadioPanel {
     engine: Option<NativeRadioEngine>,
     note: String,
     settings_open: bool,
+    standalone_layout: bool,
+    source_settings_open: bool,
     stopping: bool,
     last_session: Option<RadioSession>,
     validation: Option<StationValidationTask>,
@@ -154,6 +156,8 @@ impl Default for RadioPanel {
             engine: None,
             note: "READY / SELECT STATION AND PRESS PLAY".into(),
             settings_open: false,
+            standalone_layout: false,
+            source_settings_open: false,
             stopping: false,
             last_session: None,
             validation: None,
@@ -166,6 +170,16 @@ impl Default for RadioPanel {
 impl RadioPanel {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Standalone listener layout. Embedded hosts retain the original source
+    /// controls through `new` and `Default`. Discovery does not change the
+    /// standalone source until the listener explicitly selects it.
+    pub fn new_standalone() -> Self {
+        Self {
+            standalone_layout: true,
+            ..Self::default()
+        }
     }
 
     /// Load a bounded, host-persisted silent-check snapshot without file or

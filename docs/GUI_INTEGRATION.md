@@ -1,11 +1,13 @@
 # R8 — Standalone Rust Radio micro-GUI and embedded panel
 
 ## Goal
-A standalone desktop GUI using exactly the same Rust `RadioPanel` instance API that another Rust app can mount. No browser, external media player, local web server, or new audio backend. Display target: **480 × 320 logical pixels**. An embedded host chooses the allocated region and owns the top-level event loop.
+A standalone desktop GUI using exactly the same Rust `RadioPanel` instance API that another Rust app can mount. No browser or external media player in the embedded/native playback path, no local web server or new audio backend. A standalone-only external link is proposed separately in [RR-111](EXTERNAL_PROVIDER_CONTRACT.md); this does not establish a browser playback backend. Display target: **480 × 320 logical pixels**. An embedded host chooses the allocated region and owns the top-level event loop.
 
 Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `settings.rs` (overlay), and `tests.rs`. Selection uses a direct catalog index while playback, validation and cached reports retain canonical station IDs. Catalog display order, including Skylab first, is preserved.
 
 ## Listening interface
+
+The standalone binary uses `RadioPanel::new_standalone()` to present IP Radio and Settings. The Settings source chooser opens existing IP, nSDR or USB setup windows. Discovery reports hardware without choosing it automatically; source changes wait for active work to stop. Embedded hosts continue to use `RadioPanel::new()` or `Default` and retain the three input buttons. This is a candidate layout pending regression and physical acceptance.
 
 The station selector fills the available width between previous/next controls;
 station rows pair each curated station name with its category; `CLASSICAL` is

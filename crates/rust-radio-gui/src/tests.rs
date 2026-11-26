@@ -1036,3 +1036,102 @@ fn setup_preserves_six_hour_feed_freshness_without_blocking_playback() {
     assert_eq!(panel.validation_label("skylab"), "STALE / RECHECK");
     assert!(!panel.is_active());
 }
+
+#[test]
+fn standalone_discovery_keeps_ip_default_and_preserves_explicit_selection() {
+    use rust_radio_audio::discovery::InputDevice;
+    let mut panel = RadioPanel::new_standalone();
+    let report = || InputReport {
+        internet: true,
+        network: vec![InputDevice {
+            id: "127.0.0.1:9001".into(),
+            label: "Fixture network radio".into(),
+            ready: true,
+        }],
+        usb: vec![InputDevice {
+            id: "soapy-fixture".into(),
+            label: "Fixture USB radio".into(),
+            ready: true,
+        }],
+        ..Default::default()
+    };
+    panel.apply_inputs(report());
+    assert_eq!(panel.segment, Segment::Ip);
+    assert!(panel.segment_available(Segment::Network));
+    assert!(panel.segment_available(Segment::Usb));
+    panel.select_segment(Segment::Network, false);
+    panel.apply_inputs(report());
+    assert_eq!(panel.segment, Segment::Network);
+    panel.select_segment(Segment::Ip, false);
+    assert_eq!(panel.segment, Segment::Ip);
+    assert!(!panel.is_active());
+}
+
+#[test]
+fn standalone_source_switch_cannot_replace_a_pending_play_request() {
+    let mut panel = RadioPanel::new_standalone();
+    panel.restart_pending = true;
+    panel.select_segment(Segment::Usb, true);
+    assert_eq!(panel.segment, Segment::Ip);
+    assert!(panel.restart_pending);
+    assert!(!panel.settings_open);
+}
+
+#[test]
+fn standalone_header_hides_receiver_buttons_but_settings_remains_reachable() {
+    fn collect_text(shape: &egui::epaint::Shape, result: &mut Vec<String>) {
+        match shape {
+            egui::epaint::Shape::Text(text) => result.push(text.galley.job.text.clone()),
+            egui::epaint::Shape::Vec(shapes) => {
+                for shape in shapes {
+                    collect_text(shape, result);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for standalone in [false, true] {
+        let mut panel = if standalone {
+            RadioPanel::new_standalone()
+        } else {
+            RadioPanel::new()
+        };
+        let ctx = egui::Context::default();
+        let screen =
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+        let output = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| panel.show(ui));
+            },
+        );
+        let mut labels = Vec::new();
+        for shape in output.shapes {
+            collect_text(&shape.shape, &mut labels);
+        }
+        assert_eq!(labels.iter().any(|label| label == "nSDR"), !standalone);
+        assert_eq!(labels.iter().any(|label| label == "USB"), !standalone);
+        assert_eq!(labels.iter().any(|label| label == "Settings"), standalone);
+        if standalone {
+            panel.source_settings_open = true;
+            let mut bounds = None;
+            for _ in 0..2 {
+                let _ = ctx.run(
+                    egui::RawInput {
+                        screen_rect: Some(screen),
+                        ..Default::default()
+                    },
+                    |ctx| {
+                        bounds = panel.show_source_settings(ctx);
+                    },
+                );
+            }
+            assert!(screen.contains_rect(bounds.unwrap()));
+            assert!(!panel.is_active());
+        }
+    }
+}

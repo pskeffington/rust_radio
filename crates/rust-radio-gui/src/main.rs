@@ -33,7 +33,7 @@ fn main() -> eframe::Result<()> {
         "Rust Radio",
         options,
         Box::new(|_cc| {
-            let mut radio = RadioPanel::new();
+            let mut radio = RadioPanel::new_standalone();
             radio.enable_input_discovery();
             let stations = presets_file::PresetFile::load_ip(&mut radio);
             #[cfg(feature = "nrsp-native")]

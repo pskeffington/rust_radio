@@ -2,6 +2,39 @@ use super::{theme, RadioPanel, Segment};
 use eframe::egui;
 
 impl RadioPanel {
+    /// Standalone-only source chooser. The existing source-specific setup
+    /// remains a separate window so receiver controls keep their full space.
+    pub(super) fn show_source_settings(&mut self, ctx: &egui::Context) -> Option<egui::Rect> {
+        egui::Window::new("Settings")
+            .id(egui::Id::new("rust_radio_source_settings"))
+            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+            .resizable(false)
+            .collapsible(false)
+            .show(ctx, |ui| {
+                theme::apply(ui);
+                ui.label("Select source / Receivers");
+                for segment in [Segment::Ip, Segment::Network, Segment::Usb] {
+                    let enabled = !self.is_active() || self.segment == segment;
+                    if ui
+                        .add_enabled(
+                            enabled,
+                            egui::Button::new(segment.label()).selected(self.segment == segment),
+                        )
+                        .clicked()
+                    {
+                        self.select_segment(segment, true);
+                    }
+                }
+                if self.is_active() {
+                    ui.label("Stop playback or wait for checks before switching.");
+                }
+                if ui.button("CLOSE").clicked() {
+                    self.source_settings_open = false;
+                }
+            })
+            .map(|response| response.response.rect)
+    }
+
     pub(super) fn show_settings(&mut self, ctx: &egui::Context) -> Option<egui::Rect> {
         egui::Window::new(
             egui::RichText::new(format!("{} / SETUP", self.segment.label()))

@@ -44,7 +44,9 @@ impl RadioPanel {
                 self.volume_controls(ui);
                 ui.add_space(2.0);
                 self.listening_feedback(ui, &listening);
-                if self.settings_open {
+                if self.source_settings_open {
+                    self.show_source_settings(ui.ctx());
+                } else if self.settings_open {
                     self.show_settings(ui.ctx());
                 }
                 ui.ctx()
@@ -163,7 +165,12 @@ impl RadioPanel {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             ui.spacing_mut().button_padding = egui::vec2(6.0, 3.0);
-            for segment in [Segment::Ip, Segment::Network, Segment::Usb] {
+            let segments: &[Segment] = if self.standalone_layout {
+                &[Segment::Ip]
+            } else {
+                &[Segment::Ip, Segment::Network, Segment::Usb]
+            };
+            for &segment in segments {
                 if theme::input_button(
                     ui,
                     segment.label(),
@@ -183,6 +190,15 @@ impl RadioPanel {
                 {
                     self.select_segment(segment, true);
                 }
+            }
+            if self.standalone_layout
+                && ui
+                    .button("Settings")
+                    .on_hover_text("Select IP Radio or configure receivers")
+                    .clicked()
+            {
+                self.settings_open = false;
+                self.source_settings_open = true;
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(
