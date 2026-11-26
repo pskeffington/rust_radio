@@ -1,5 +1,27 @@
 # Radio development progress
 
+## RR-118 runtime macOS icon identity — 2026-11-24
+
+- Baseline `cf40b5d05b9dbc5a459eb46d038f18a6b5e84f63`, isolated branch
+  `codex/macos-icon-identity`; the unrelated audio-output edit in the original
+  checkout remains untouched.
+- Fixed the framework icon replacing the bundle icon after launch. The standalone
+  binary explicitly selects the OS icon on macOS, preserving the existing
+  multi-resolution `RustRadio.icns`. Window and application-menu title now use
+  `Rust Radio`. No artwork, bundle ID, Dock registration, playback or embedding
+  change is involved.
+- Local gates passed: default workspace 176 tests; all-feature workspace 232;
+  strict Clippy in both configurations, formatting and all-feature check. The
+  targeted macOS launch regression and independent verification/review passed.
+- Release package rebuilt and plist/icon/executable consistency checked. The
+  installer first refused while the old app ran, then installed successfully
+  after the operator closed it. Installed hashes match the tested build.
+- Inspected the rebuilt window and app-menu title during operator playback.
+  Dock accessibility still times out; operator icon confirmation is pending.
+  Signing/notarization, physical audio/Pi and receiver gates remain open.
+- Skill revisions, exact source identity, commands, outcomes and open gates are
+  in [the RR-118 evidence record](reviews/RR118_ICON_IDENTITY_2026-11-24.md).
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.
@@ -1240,3 +1262,34 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The subsequent push triggered run `40772645579` on `52be452`; it again ended
   `startup_failure` with zero jobs. The latest head `1642027` has no run visible
   yet. This reproduces the runner-startup problem but still exposes no cause.
+
+
+## RR-118 macOS app packaging — 2026-11-23
+
+- Added editable phosphor receiver icon source, generated `.icns`, a reproducible
+  app-bundle script, and user-scoped install/uninstall scripts. Packaging keeps
+  generated build products in configurable `CARGO_TARGET_DIR` (default
+  `/private/tmp/rust-radio-target` for this no-exec Research volume).
+- Agent invocation: implementer, canonical `code-implementation` skill from
+  `pskeffington/agent_skills` main `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`
+  (skill blob `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`).
+- Icon authoring used `rsvg-convert`, `sips`, and `iconutil`; `iconutil` round-trip
+  validation and `plutil -lint` passed. The release GUI build completed and produced
+  `/private/tmp/rust-radio-target/release/Rust Radio.app`; its plist reports bundle
+  ID `com.skeffington.rustradio`, icon `RustRadio.icns`, and has no `LSUIElement`.
+- Both scripts pass `bash -n`; `git diff --check` passed. Dock add/remove/add fixture
+  simulation retained one tile and preserved unrelated Dock settings. Independent
+  review of installer replacement/rollback and Dock logic passed at
+  `4697b3555fe2f5d8047406d1649760785f74b609`; reviewer read the registered skill
+  blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`, but its local registry checkout
+  was `5a7fca5` and could not verify that blob against canonical `d17f0f0`.
+- Installed to `/Users/null/Applications/Rust Radio.app`. The bundle ID was checked;
+  Dock preferences contain exactly one matching tile. `open -a` followed by
+  LaunchServices inspection confirmed the GUI running from that installed bundle.
+  No playback was started. Visual Dock inspection remains NOT RUN.
+- RR-118 commits `f3bff851091dde9b91c03cdda9a32984d516e08e`,
+  `04748c3`, and `4697b3555fe2f5d8047406d1649760785f74b609` are synced to
+  `codex/rr118-macos-launch`; draft PR #12 is open. Signing, notarization,
+  Gatekeeper and distribution remain separate release gates.
+- Unsigned/unnotarized local app only. Signing, notarization, Gatekeeper and
+  distribution remain separate release gates.

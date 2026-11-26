@@ -26,6 +26,7 @@ IP radio and nRSP-ST PCM have reached native output callbacks in standalone and 
 - [Development agent instructions](AGENTS.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
 - [Native GUI and embedding](docs/GUI_INTEGRATION.md)
+- [macOS app packaging and per-user Dock launcher](docs/PORTING_PLAN.md#macos-standalone-app-packaging-rr-118)
 - [Standalone acceptance](docs/STANDALONE_ACCEPTANCE.md)
 - [Existing Rust-Boy radio engineering roadmap](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_NATIVE_ROADMAP.md)
 - [Existing Rust-Boy SDR contract](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_SDR.md)
