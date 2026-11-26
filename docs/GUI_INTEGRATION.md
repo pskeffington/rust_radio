@@ -7,6 +7,8 @@ Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `set
 
 ## Listening interface
 
+The standalone binary uses `RadioPanel::new_standalone()` to present IP Radio and Settings. The Settings source chooser opens existing IP, nSDR or USB setup windows. Discovery reports hardware without choosing it automatically; source changes wait for active work to stop. Embedded hosts continue to use `RadioPanel::new()` or `Default` and retain the three input buttons. This is a candidate layout pending regression and physical acceptance.
+
 The station selector fills the available width between previous/next controls;
 station rows pair each curated station name with its category; `CLASSICAL` is
 shortened to `CLASS` in the row, while the full genre remains on hover. The line below

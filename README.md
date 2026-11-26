@@ -69,7 +69,7 @@ cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
 cargo run -p rust-radio-gui --features soapy-sdr --bin rust-radio-gui
 ```
 
-With `nrsp-native`, click **nSDR** for the receiver address (`IP:9001`), frequency, mode and bandwidth. PLAY starts the session; APPLY TUNING changes the active receiver; STOP releases it. See [direct receiver setup and verification](docs/NRSP_ST.md#direct-native-control-and-audio).
+With `nrsp-native`, open **Settings → nSDR** for the receiver address (`IP:9001`), frequency, mode and bandwidth. PLAY starts the session; APPLY TUNING changes the active receiver; STOP releases it. See [direct receiver setup and verification](docs/NRSP_ST.md#direct-native-control-and-audio).
 
 The listening screen gives the station name priority, with a short genre line,
 one Play/Stop/Retry control, the current listening state, a wide volume slider
@@ -79,9 +79,9 @@ checks and technical details stay in setup. Errors remain beside Retry in a
 bounded, readable area. The phosphor theme uses softer scanlines and quieter
 secondary text.
 
-The top-left **IP Radio | nSDR | USB** buttons are input selectors and setup entry points. Green glow means the input is available; dim means unavailable or not checked. The underline marks the selected input. For example, with no internet and only a supported USB receiver attached, only USB glows. More than one input can glow when several are available.
+The standalone header presents **IP Radio | Settings**. Open Settings to select nSDR or USB and enter its existing setup; embedded panels retain **IP Radio | nSDR | USB**. Green glow means the input is available; dim means unavailable or not checked. The underline marks the selected input. For example, with no internet and only a supported USB receiver attached, only USB glows. More than one input can glow when several are available.
 
-The standalone GUI scans on startup and every 30 seconds while idle. It checks HTTPS reachability, identifies native nRSP-ST receivers on local private IPv4 neighborhoods, and enumerates supported SoapySDR USB drivers. It selects detected hardware controls without starting reception; PLAY starts the radio. Click an input button for its output and source settings, detected-device selection, stream URL or tuning controls. SCAN INPUTS refreshes availability. Switching input types requires stopping playback first. Receiver settings and runtime receiver addresses stay in memory; explicitly saved IP stations are persisted locally.
+The standalone GUI scans on startup and every 30 seconds while idle. It checks HTTPS reachability, identifies native nRSP-ST receivers on local private IPv4 neighborhoods, and enumerates supported SoapySDR USB drivers. It reports detected hardware without automatically switching the standalone source; PLAY starts the explicitly selected radio. Select an input in Settings (or use the embedded input button) for its output and source settings, detected-device selection, stream URL or tuning controls. SCAN INPUTS refreshes availability. Switching input types requires stopping playback first. Receiver settings and runtime receiver addresses stay in memory; explicitly saved IP stations are persisted locally.
 
 ```sh
 # Network and USB receiver discovery and controls (SoapySDR SDK required):
@@ -94,7 +94,7 @@ Curated stations and public HTTPS inputs resolve through an address filter that 
 
 nSDR setup is divided into **Tune**, **FM Audio**, **Presets** and **Device**. Tune accepts Hz/kHz/MHz, offers 1/10/50/100/200 kHz steps and RF bandwidth; the main arrows also step the live nSDR. FM Audio offers stereo/mono, 50/75 µs de-emphasis, low/high audio cuts and a limiter. Stereo lock comes from receiver reports; requesting stereo alone does not indicate a lock. Presets include frequency, RF bandwidth and FM audio choices, with WCRB Boston 99.5 MHz included. The standalone app saves favorites locally; embedded hosts retain storage ownership. Device contains receiver/output selection and discovery.
 
- USB contains the detected device picker and mono-FM frequency. USB playback requires a compatible driver supporting 240 ksample/s CS16; physical USB acceptance is still open. Builds without an optional receiver feature show its button dim and explain the missing support in setup. The headless and IP-only defaults remain independent of native SDR SDKs.
+ USB contains the detected device picker and mono-FM frequency. USB playback requires a compatible driver supporting 240 ksample/s CS16; physical USB acceptance is still open. Builds without an optional receiver feature explain the missing support in its setup. The headless and IP-only defaults remain independent of native SDR SDKs.
 
 ```sh
 cargo run -p rust-radio-cli --features nrsp-native,soapy-sdr -- inputs

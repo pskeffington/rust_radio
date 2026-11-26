@@ -61,3 +61,7 @@ contracts and reproducible commands.
 
 ## Compatibility API
 Hosts should drive commands (select/play/stop/volume/output) and observe session snapshots; keep network receivers, native device discovery, publishers, and GUI outside the core. Provide versioned API and avoid cyclic dependency from rust_radio back to pip_boy.
+
+## RR-110 standalone navigation (2026-11-26 candidate)
+
+The standalone constructor opts into an IP-first layout; receiver selection moves behind Settings. Embedded construction keeps its existing presentation and discovery behavior. Receiver APIs and feature flags are unchanged. Source selection is blocked while another source owns active work. Compilation, keyboard/pointer verification, physical playback, and review are pending. External provider policy and the SiriusXM launch action remain separate gates RR-111/RR-112. Do not conflate this narrow change with draft PR #14's broader SDR removal.

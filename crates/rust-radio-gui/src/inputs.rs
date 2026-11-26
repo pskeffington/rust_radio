@@ -85,6 +85,7 @@ impl RadioPanel {
             && self.validation.is_none()
             && !self.restart_pending
             && !self.source_user_selected
+            && !self.standalone_layout
         {
             let selected = if self.inputs.network_available() {
                 Segment::Network
@@ -149,7 +150,9 @@ impl RadioPanel {
         }
     }
     pub(super) fn select_segment(&mut self, segment: Segment, setup: bool) {
-        if self.engine.is_some() && self.segment != segment {
+        if self.segment != segment
+            && (self.engine.is_some() || (self.standalone_layout && self.is_active()))
+        {
             self.note = "STOP BEFORE SWITCHING INPUTS".into();
             return;
         }
@@ -182,6 +185,7 @@ impl RadioPanel {
         }
         if setup {
             self.source_user_selected = true;
+            self.source_settings_open = false;
             self.settings_open = true;
             self.refresh_outputs();
         }

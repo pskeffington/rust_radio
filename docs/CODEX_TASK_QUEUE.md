@@ -20,7 +20,7 @@ Owner: Linux Operations / Codex. Status: READY; implementation and runtime tests
 
 | ID | Priority | Deliverable | Acceptance |
 | --- | --- | --- | --- |
-| RR-110 | P0 | Remove nSDR and USB buttons from standalone main listening panel; move existing receiver entry points into Settings > Receivers | Main panel has neither button nor empty hit targets; receiver functionality and feature flags remain intact; 480x320 screenshot and keyboard navigation pass |
+| RR-110 | P0 | REVIEW: standalone main-panel cleanup implemented on `codex/rr110-standalone-controls`; tests NOT RUN. Move existing receiver entry points into Settings > Receivers | Main panel has neither button nor empty hit targets; receiver functionality and feature flags remain intact; 480x320 screenshot and keyboard navigation pass |
 | RR-111 | P0 | Review external-provider architecture and explicitly revise existing no-browser-launch invariant for user-initiated standalone provider only | Document rights/platform review, no autoplay, no embedded-host behavior changes, explicit user action; stop if provider terms prohibit integration |
 | RR-112 | P0 | Add SiriusXM button opening official HTTPS player in system browser | Click launches https://player.siriusxm.com/; browser owns login/MFA/cookies; no credentials, tokens, browser profile reads, scraping or debugging interfaces; user can return manually |
 | RR-113 | P1 | Generic external audio provider and PipeWire session controls on Arch | Explicitly associate correct media session; volume/mute/output controls only where supported; never control unrelated browser tabs; native playback and external playback do not overlap; fail closed if ambiguous |

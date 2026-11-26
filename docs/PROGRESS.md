@@ -1,5 +1,12 @@
 # Radio development progress
 
+## RR-110 standalone UI candidate — 2026-11-26
+
+- Baseline: `03b000ffd330b053efda628bb9a3f8b40db7132a`; review branch `codex/rr110-standalone-controls`. The candidate adds an opt-in standalone constructor, moves receiver selection behind Settings, preserves the embedded header and stops discovery from selecting receivers automatically in standalone mode.
+- Three regression tests were authored: discovery/default selection, pending-play switch guard, and rendered header/settings bounds. Compilation, formatting, Clippy, test execution, visual/keyboard checks, and physical audio are **NOT RUN** in this connector pass. Independent agent execution/review is **BLOCKED-AGENT** until a configured runtime executes those checks. This is not a release or build claim.
+- Canonical `agent_skills` revision `0321b0383b226d5f3dc25fef04f758d9e67b3661`: audio UI `9245aff3f93768cd31da115d38b47a127f0b5487`, audio systems `20b5652c462ebc0032e9f282491a14f41adc90d2`, architecture `12c91c8040d13f618a209de24cbbf6e4f89830d1`, implementation `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`, verification `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`, independent review `e44217c9f0c2492087f8b16da94f3ca80eae4555` inspected; procedures applied for the source candidate, not separate agent invocations.
+- Draft PR #14 proposes removing SDR code entirely. RR-110 is deliberately limited to layout and retains receiver APIs. Do not merge overlapping branches without scope reconciliation and revalidation. Browser launch policy unchanged; RR-111 and RR-112 remain pending.
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.
