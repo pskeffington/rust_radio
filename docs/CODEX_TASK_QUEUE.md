@@ -27,6 +27,18 @@ Owner: Linux Operations / Codex. RR-110 and RR-111 are IN REVIEW; RR-112 is IN P
 | RR-114 | P1 | BLOCKED: permitted and attributable capability not established; optional MPRIS discovery | Only supported controls exposed; no private API or DRM bypass; no recording, capture, redistribution; distinguish external playback state from native PCM callback evidence |
 | RR-115 | P1 | Regression and physical acceptance | fmt, workspace tests, clippy, feature builds, screenshot, real subscriber-driven playback and return-to-UI test; redacted evidence with exact SHA; update README, progress and roadmap |
 
+## SiriusXM channel-browsing continuation (2026-11-27)
+
+The current candidate is only an external website handoff. Follow the phased SX-0–SX-4 gates in [the provider contract](EXTERNAL_PROVIDER_CONTRACT.md#siriusxm-channel-browsing-roadmap--proposed-gates). Prioritize SX-1 source discovery and a browse UI model; do not display fixture content as real channels. SX-1 cannot use consumer-player scraping or account endpoints. SX-2 requires a documented or provider-approved channel deep-link contract. SX-3/4 remain optional and blocked absent official provider interfaces, written scope approval, and security/licensing acceptance.
+
+| ID | Priority | Status | Deliverable | Acceptance |
+| --- | --- | --- | --- | --- |
+| SX-0 | P0 | IN REVIEW with RR-112; macOS app launch remains unverified | Honest browser handoff | Explicit one-shot action; UI explains browsing/playback happen in browser; platform launch and manual return verified |
+| SX-1 | P0 | BLOCKED: no verified authorized catalog source | Searchable in-app channel browser with provenance/freshness | Source use/display terms approved; stable IDs and fields documented; fixture UI tests; no credentials or stream URLs |
+| SX-2 | P1 | BLOCKED: no verified provider deep-link contract | Open selected channel in official player | Documented/approved mapping, safe URL construction and real subscriber confirmation |
+| SX-3 | P2 | OPTIONAL / BLOCKED: no documented authorized API | Account-aware availability/metadata | Provider client approval, least-scope auth, OS token storage, security/privacy review and revoke tests |
+| SX-4 | P2 | OUT OF SCOPE pending explicit rights | Native in-app playback | Licensed playback SDK/API, DRM/support obligations, provider sandbox and release approval |
+
 ### Execution contract
 Inspect AGENTS.md, GUI source and current porting plan before changes. Keep IP Radio as the default; place SiriusXM alongside it without expanding the main panel footprint. Receiver settings remain reachable but must not autoplay. No automatic login or callback is assumed. Browser launch success is not authentication or playback success. If session isolation or supported controls cannot be verified, retain a launch-only integration and label limitations. Preserve native headless API and Pip-Boy dependency pin. Use mock launcher/session fixtures; test real login only by user interaction on target machine. No credentials in tests, logs, screenshots or Git. Roll back individual changes if existing playback regresses. Record each gate separately and open a PR before implementation merge.
 
