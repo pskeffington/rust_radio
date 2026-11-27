@@ -12,15 +12,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, process};
 
 mod feed_history;
-mod nrsp;
-mod nrsp_native;
-mod sdr;
-mod sdrconnect;
 
 #[derive(Debug, PartialEq, Eq)]
 struct ListenArgs<'a> {
     station: &'a str,
-    sdrconnect: bool,
     direct: bool,
     seconds: Option<u64>,
     output: &'a str,
@@ -32,15 +27,7 @@ fn usage() {
     eprintln!(
         "Direct stream: stream-listen URL [--seconds 1..300] [--output ID] [--volume 0..100]"
     );
-    eprintln!("Input discovery: inputs (enable nrsp-native and/or soapy-sdr for receiver scans)");
-    eprintln!("Interactive listen commands: status | volume N | fm auto|mono 50|75|off LOW_HZ HIGH_HZ | stop");
-    eprintln!("Optional SDR: sdr-devices | sdr-capture DEVICE_ID FREQ_HZ RATE_HZ [--milliseconds 1..5000] (enable soapy-sdr)");
-    eprintln!("USB mono FM: sdr-listen DEVICE_ID FREQ_HZ [--seconds 1..300] [--volume 0..100] [--output ID] [--deemphasis 50|75] (enable soapy-sdr)");
-    eprintln!("Direct nRSP-ST control/audio: nrsp-native-status IP:9001 | nrsp-listen IP:9001 FREQ_HZ MODE [--seconds N] [--volume N] [--output ID] (enable nrsp-native)");
-    eprintln!("FM options: --stereo auto|mono --deemphasis 50|75|off --low-cut Hz --high-cut Hz --bandwidth Hz");
-    eprintln!("Direct nRSP-ST reachability: nrsp-status PRIVATE_IPV4 (enable sdr)");
-    eprintln!("nRSP-ST via SDRconnect: sdrconnect-status IP:PORT | sdrconnect-capture IP:PORT iq|audio --milliseconds 1..5000 (enable sdrconnect)");
-    eprintln!("Native SDR audio: sdrconnect-listen IP:PORT [--seconds 1..300] [--output ID] [--volume 0..100]");
+    eprintln!("Interactive listen commands: status | volume N | stop");
 }
 
 const VALIDATION_WORKERS: usize = 4;
@@ -199,20 +186,12 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
     if args.len() < 2 {
         return Err("missing listen source");
     }
-    let sdrconnect = args[0] == "sdrconnect-listen";
     let direct = args[0] == "stream-listen";
-    if sdrconnect {
-        #[cfg(feature = "sdrconnect")]
-        rust_radio::receiver::sdrconnect::Endpoint::parse(&args[1])
-            .map_err(|_| "invalid SDRconnect peer")?;
-        #[cfg(not(feature = "sdrconnect"))]
-        return Err("enable the sdrconnect feature for native nRSP-ST audio");
-    } else if !direct && (args[0] != "listen" || station_by_id(&args[1]).is_none()) {
+    if !direct && (args[0] != "listen" || station_by_id(&args[1]).is_none()) {
         return Err("unknown curated station");
     }
     let mut parsed = ListenArgs {
         station: &args[1],
-        sdrconnect,
         direct,
         seconds: None,
         output: "system",
@@ -263,16 +242,7 @@ fn parse_listen(args: &[String]) -> Result<ListenArgs<'_>, &'static str> {
 }
 
 fn listen(args: ListenArgs<'_>) -> Result<(), String> {
-    let engine = if args.sdrconnect {
-        #[cfg(feature = "sdrconnect")]
-        {
-            NativeRadioEngine::start_sdrconnect(args.station, args.volume, args.output)?
-        }
-        #[cfg(not(feature = "sdrconnect"))]
-        {
-            return Err("enable the sdrconnect feature".into());
-        }
-    } else if args.direct {
+    let engine = if args.direct {
         NativeRadioEngine::start_stream(args.station, args.volume, args.output)?
     } else {
         NativeRadioEngine::start_internet(args.station, args.volume, args.output)?
@@ -428,41 +398,6 @@ fn monitor(mut engine: NativeRadioEngine, seconds: Option<u64>) -> Result<(), St
 
 fn run(args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
-        Some("inputs") if args.len() == 1 => {
-            let mut scan = rust_radio::discovery::InputScan::start(None)?;
-            let deadline = Instant::now() + Duration::from_secs(12);
-            loop {
-                if let Some(result) = scan.try_finish() {
-                    let report = result?.ok_or("Input scan cancelled")?;
-                    println!(
-                        "IP Radio / {}",
-                        if report.internet {
-                            "available"
-                        } else {
-                            "offline or not verified"
-                        }
-                    );
-                    println!(
-                        "nSDR / {} found / {}",
-                        report.network.len(),
-                        report.network_note
-                    );
-                    for device in report.network {
-                        println!("{} / {} / ready={}", device.id, device.label, device.ready);
-                    }
-                    println!("USB / {} found / {}", report.usb.len(), report.usb_note);
-                    for device in report.usb {
-                        println!("{} / {}", device.id, device.label);
-                    }
-                    return Ok(());
-                }
-                if Instant::now() >= deadline {
-                    scan.cancel();
-                    return Err("Input scan deadline expired".into());
-                }
-                thread::sleep(Duration::from_millis(10));
-            }
-        }
         Some("stations") if args.len() == 1 => {
             for station in curated_stations() {
                 println!("{}\t{}\t{}", station.id, station.name, station.category);
@@ -495,13 +430,7 @@ fn run(args: &[String]) -> Result<(), String> {
             println!("{report}");
             Ok(())
         }
-        Some("listen" | "stream-listen" | "sdrconnect-listen") => listen(parse_listen(args)?),
-        Some("sdr-devices") if args.len() == 1 => sdr::devices(),
-        Some("sdr-capture") => sdr::capture(args),
-        Some("sdr-listen") => sdr::listen(args),
-        Some("nrsp-status") => nrsp::status(args),
-        Some("nrsp-native-status" | "nrsp-listen") => nrsp_native::run(args),
-        Some("sdrconnect-status" | "sdrconnect-capture") => sdrconnect::run(args),
+        Some("listen" | "stream-listen") => listen(parse_listen(args)?),
         _ => {
             usage();
             Err("invalid command".into())

@@ -2,6 +2,10 @@
 
 ## Current station and provider decision (2026-11-27)
 
+## Product scope update (2026-11-27)
+
+Rust Radio is the internet streaming app only. nSDR/network receivers, USB SDR, SoapySDR, SDRconnect, satellite reception, and their discovery/tuning workflows have moved to their own repositories. They are not delivery targets or roadmap gates for this repository. Remove their selectors, commands, dependencies, and app integration as the streaming-only cleanup proceeds; keep any historical evidence clearly labeled as history. Native audio output device selection remains in scope because it serves internet streams.
+
 The SiriusXM browser-launch draft is closed unmerged because no supported development API was identified; `origin/main` never carried that draft into production. The active starter catalog is limited to GBH 89.7 (`gbh897`) and WCRB Classical (`wcrb`). Both need fresh silent stream validation, Mac operator playback and written publisher permission for intended product distribution. SomaFM was removed because its current terms bar new third-party clients without prior written permission. Skylab remains excluded pending affirmative app-client permission. Production channel distribution is gated on publisher rights.
 
 Implementation roadmap originally updated 2026-10-27; documentation reconciliation 2026-11-05. The standalone library is integrated into
@@ -32,9 +36,8 @@ provenance remains in the extraction notes; dated evidence is in
 | Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host; core exposes bounded typed feed-history parsing | Release/tag decision after CI and platform gates |
 | IP playback | Native MP3/AAC, GBH 89.7/WCRB presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported; playlist playback uses the first entry |
 | Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
-| Compact GUI | Optional 480×320 egui panel with phosphor skin, availability-driven IP/nSDR/USB setup buttons, passive input discovery, direct nRSP-ST and USB controls, asynchronous station checks, saved public/LAN streams, keyboard menus and layout/lifecycle coverage | Physical touch and Pi rendering; fresh real-receiver GUI audio |
-| nRSP-ST | Direct native handshake, activation, live frequency/mode/bandwidth and FM stereo/de-emphasis/filter controls, real stereo-lock reports, presets, Opus playback and owned session Stop; optional SDRconnect adapter | Native authenticated login, extended link interruption/reconnect, other demodulator/antenna field checks, physical Pi client and raw I/Q |
-| USB SDR | Optional SoapySDR discovery, bounded RawIq capture and initial 240 ksample/s mono-FM/native audio path; synthetic DSP and callback evidence | Supported physical receiver/driver, audible RF, unplug/replug and GUI hardware validation; stereo/AM/SSB remain unimplemented |
+| Compact GUI | Optional 480×320 egui streaming panel, curated and custom IP stations, asynchronous station checks, saved streams, keyboard menus and native output controls | Physical touch and platform rendering; operator playback acceptance |
+| Receiver products | nSDR, SDRconnect, USB SDR, SoapySDR, and satellite workflows belong to separate repositories | No implementation, release, or acceptance scope in Rust Radio |
 | Raspberry Pi | Headless SDRconnect AArch64 Linux compile check, also configured in CI | Physical audio/HUD, CPU/memory, thermal/power and touch acceptance |
 | Remote CI | Linux core/native/receiver checks and ARM64 compile check configured | GitHub runs currently fail at startup before any jobs are created |
 
@@ -44,24 +47,15 @@ The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) 
 
 ## Next development priorities
 
-1. Keep recovery source-aware: terminal receiver setup failures require explicit
-   retry; transient transport failures retain bounded recovery. Add regression
-   evidence for demonstrated faults before expanding features.
-2. Exercise output loss/recovery and the standalone micro-GUI on actual hardware,
-   preserving the confirmed Mac speaker and Pip-Boy playback paths.
-3. Run the native module and Pip-Boy on the physical Pi with its intended sound
-   output and display. Cross-compilation alone does not complete this gate.
-4. Develop a validated direct nRSP-ST audio/control path without depending on
-   SDRconnect. Fides Supra's proven direct work currently covers reachability
-   and display frames, not audio or tuning. Resolve the Full IQ firmware
-   prerequisite before accepting raw I/Q. Keep USB/Soapy acceptance separate.
-5. Defer satellite adapters and additional DSP until the playback and platform
-   gates above are stable. Publisher distribution review remains required before
-   public station bundles.
+1. Complete the streaming-only repository cleanup: remove receiver selectors,
+   discovery, CLI routes, feature flags, and build dependencies from the app.
+2. Keep the starter catalog small and rights-gated; refresh silent feed validation
+   and obtain written permission for product distribution before release.
+3. Exercise station browsing, stream playback, Stop/retry, and output selection on
+   the rebuilt Mac app. Keep callback evidence distinct from audible acceptance.
+4. Reconcile exact-head CI and remaining supported platform checks before release.
 
-See [embedding](EMBEDDING.md), [native playback evidence](NATIVE_PLAYBACK_CONTRACT.md),
-[nRSP-ST](NRSP_ST.md) and [USB SDR boundaries](SDR_RECEIVE.md) for implementation
-contracts and reproducible commands.
+See [embedding](EMBEDDING.md) and [native playback evidence](NATIVE_PLAYBACK_CONTRACT.md) for the active streaming contracts. Receiver documents are historical migration records only and do not define this app’s scope.
 
 ## Compatibility API
 Hosts should drive commands (select/play/stop/volume/output) and observe session snapshots; keep network receivers, native device discovery, publishers, and GUI outside the core. Provide versioned API and avoid cyclic dependency from rust_radio back to pip_boy.

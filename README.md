@@ -1,113 +1,30 @@
-# rust_radio
+# Rust Radio
 
-[![Local Rust gates: passing](https://img.shields.io/badge/Local%20Rust%20gates-passing-brightgreen)](docs/PROGRESS.md)
+Rust Radio is a streaming radio app for curated and user-supplied internet stations. The app provides station browsing, explicit playback controls, local audio output selection, and bounded stream validation. It does not autoplay.
 
-Recorded local Rust gates passed at merge `5568fb3` (2026-10-28); historical evidence, not current-head CI. The latest station-validation workflow reported startup_failure. The current branch narrows the curated catalog to two GBH feeds; runtime stream checks and distribution rights remain open. On 2026-11-25 the operator reported the native radio UI live and supplied a screenshot; audible output and exact running revision were not independently verified.
+nSDR/network receivers, USB SDR, SDRconnect, SoapySDR, and satellite reception are separate products maintained in their own repositories. They are outside this repository's app, build, and release scope. Older receiver notes under `docs/` are historical records and do not define the current product.
 
-Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. Optional SoapySDR supports raw I/Q and a mono-FM audio path; direct nRSP-ST service checks are also available. Direct nRSP-ST control and Opus audio are available through `nrsp-native`; USB FM awaits physical hardware acceptance.
+## Current station catalog
 
-## Status (2026-10-28)
+The starter catalog contains two GBH streams: GBH 89.7 (`gbh897`) and WCRB Classical (`wcrb`). Inclusion in the catalog does not establish current feed availability or permission for third-party product distribution. Written publisher permission and fresh stream checks remain release gates. SiriusXM was removed from the roadmap because no supported development API was identified.
 
-The standalone module provides bounded internet and private-LAN streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
+## Workspace
 
-IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. Direct native nRSP-ST control and Opus playback have also reached Mac native callbacks without using SDRconnect: live frequency/mode changes and session cleanup passed. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
+- `rust-radio-core`: station metadata, playback state, stream parsing, and validation types.
+- `rust-radio-ip`: bounded internet stream and probe transports.
+- `rust-radio-audio`: internet stream decoding and native audio output.
+- `rust-radio-gui`: compact station browsing and playback interface.
+- `rust-radio-cli`: operator-triggered catalog, validation, and stream-listen commands.
+- `rust-radio`: host-facing facade.
 
-## Navigation
-
-- [Standalone module and embedding API](docs/EMBEDDING.md)
-- [Optional SDR receive adapter and hardware gates](docs/SDR_RECEIVE.md)
-- [SDRplay nRSP-ST native and SDRconnect access](docs/NRSP_ST.md)
-- [Direct nRSP-ST service status](docs/NRSP_ST.md#direct-device-status)
-- [Literature and architecture matrix](docs/LITERATURE_MATRIX.md)
-- [Roadmap and component ownership](docs/PORTING_PLAN.md)
-- [Progress notes and verification evidence](docs/PROGRESS.md)
-- [November 2026 status checkpoint](docs/STATUS_2026-11-05.md)
-- [Codex task queue](docs/CODEX_TASK_QUEUE.md)
-- [Development agent instructions](AGENTS.md)
-- [Core Rust interface](crates/rust-radio-core/src/lib.rs)
-- [Native GUI and embedding](docs/GUI_INTEGRATION.md)
-- [Standalone acceptance](docs/STANDALONE_ACCEPTANCE.md)
-- [Existing Rust-Boy radio engineering roadmap](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_NATIVE_ROADMAP.md)
-- [Existing Rust-Boy SDR contract](https://github.com/pskeffington/pip_boy/blob/main/docs/RADIO_SDR.md)
-
-## Develop
+## Build and run
 
 ```sh
-cargo fmt --all -- --check
-cargo test --workspace
-cargo clippy --workspace --all-targets -- -D warnings
+cargo run -p rust-radio-gui
 ```
 
-For control-only testing, use `cargo test -p rust-radio-core`; it requires no network receiver, sound card, USB SDR or native audio libraries. Workspace builds include CPAL and eframe and need platform development libraries (on Linux, `libasound2-dev` and `pkg-config`). The local verification record is linked from the embedding documentation; remote CI and physical hardware acceptance are separate checks.
+The CLI supports station listing, silent validation, output listing, and explicit stream listening. Run it without arguments for current usage. Workspace builds include CPAL and eframe and need the platform's audio and windowing development libraries.
 
-Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so Git-aware source searches and indexes skip generated files.
+## Product and release gates
 
-## Required integration invariants
-
-1. No external media-app launching, web browser audio or autoplay.
-2. Resource access requires an explicit host command. Construction, browsing and preference reads do not autoplay; validation never opens audio output or activates a receiver.
-3. One active session; generation-tagged state and real worker cancellation.
-4. `Playing` requires samples consumed by the native output callback; audible listening is verified separately.
-5. Bounded streaming memory, publisher endpoint validation for presets, explicit direct URLs, controlled redirects and timeouts.
-6. Keep audio output devices, Bluetooth pairing and touch UI under OS/host ownership.
-7. No RF transmit path. Satellite reception is research-stage only.
-8. Any curated broadcaster inclusion requires a redistribution/embedding rights review before released bundles.
-
-## Near-term work
-
-Follow the [roadmap](docs/PORTING_PLAN.md) for platform and receiver acceptance. The next field checks cover output loss/recovery, standalone GUI controls and the actual Pi audio/HUD runtime. Raw I/Q needs the SDRconnect Full IQ firmware prerequisite resolved before it can be accepted. The separate SoapySDR USB adapter still needs a supported device and driver.
-
-## Run the native radio
-
-```sh
-cargo run -p rust-radio-gui --bin rust-radio-gui
-# Direct nRSP-ST controls and audio:
-cargo run -p rust-radio-gui --features nrsp-native --bin rust-radio-gui
-# Optional nRSP-ST source through SDRconnect:
-cargo run -p rust-radio-gui --features sdrconnect --bin rust-radio-gui
-# Optional USB SDR mono-FM source through SoapySDR:
-cargo run -p rust-radio-gui --features soapy-sdr --bin rust-radio-gui
-```
-
-With `nrsp-native`, click **nSDR** for the receiver address (`IP:9001`), frequency, mode and bandwidth. PLAY starts the session; APPLY TUNING changes the active receiver; STOP releases it. See [direct receiver setup and verification](docs/NRSP_ST.md#direct-native-control-and-audio).
-
-The listening screen gives the station name priority, with a short genre line,
-one Play/Stop/Retry control, the current listening state, a wide volume slider
-and Mute (which restores the previous volume). Live playback never shows an
-unverified badge. Audio-output names replace decoder diagnostics; connection
-checks and technical details stay in setup. Errors remain beside Retry in a
-bounded, readable area. The phosphor theme uses softer scanlines and quieter
-secondary text.
-
-The top-left **IP Radio | nSDR | USB** buttons are input selectors and setup entry points. Green glow means the input is available; dim means unavailable or not checked. The underline marks the selected input. For example, with no internet and only a supported USB receiver attached, only USB glows. More than one input can glow when several are available.
-
-The standalone GUI scans on startup and every 30 seconds while idle. It checks HTTPS reachability, identifies native nRSP-ST receivers on local private IPv4 neighborhoods, and enumerates supported SoapySDR USB drivers. It selects detected hardware controls without starting reception; PLAY starts the radio. Click an input button for its output and source settings, detected-device selection, stream URL or tuning controls. SCAN INPUTS refreshes availability. Switching input types requires stopping playback first. Receiver settings and runtime receiver addresses stay in memory; explicitly saved IP stations are persisted locally.
-
-```sh
-# Network and USB receiver discovery and controls (SoapySDR SDK required):
-cargo run -p rust-radio-gui --features receivers --bin rust-radio-gui
-```
-
-IP Radio contains curated and saved stations, silent endpoint checks and custom MP3/AAC stream URLs. Station selection while stopped checks the actual stream asynchronously; selection during playback cancels and mutes the old session, waits for cleanup, then starts only the latest selection. PLAY reports Connecting → Buffering → Playing only after decoded samples reach native output. Failures show a readable message and RETRY. The dropdown supports scrolling, long-name tooltips and keyboard navigation (Tab/Enter, arrows, Home/End, Escape). Connection/output settings stay behind **IP Radio**. Save up to 24 named public or LAN stations there; Save stores the URL, including query parameters. The current small curated set contains **GBH 89.7 News Radio (Boston)** and **WCRB Classical (Boston)**, using the direct stream URLs listed by [GBH](https://www.wgbh.org/help/how-to-access-live-radio-streams). Both remain candidates pending live decode validation and permission for bundled product distribution. Direct input accepts HTTPS and literal private/loopback IPv4 HTTP, rejects non-public HTTPS literal-IP targets, credentials and fragments, and follows up to five checked request hops through redirects and M3U/PLS playlists. Relative locations and entries are supported; HTTPS cannot downgrade to HTTP. HLS remains unsupported. Protect query tokens, including from shell history when using the CLI.
-
-Curated stations and public HTTPS inputs resolve through an address filter that rejects private, loopback, link-local, reserved and documentation ranges, then returns the checked addresses to the HTTP client so a second DNS lookup cannot rebind the target. A user-entered private IPv4 HTTP stream may use that exact private origin by explicit choice; redirects and playlist entries to other private addresses and private DNS answers remain blocked.
-
-nSDR setup is divided into **Tune**, **FM Audio**, **Presets** and **Device**. Tune accepts Hz/kHz/MHz, offers 1/10/50/100/200 kHz steps and RF bandwidth; the main arrows also step the live nSDR. FM Audio offers stereo/mono, 50/75 µs de-emphasis, low/high audio cuts and a limiter. Stereo lock comes from receiver reports; requesting stereo alone does not indicate a lock. Presets include frequency, RF bandwidth and FM audio choices, with WCRB Boston 99.5 MHz included. The standalone app saves favorites locally; embedded hosts retain storage ownership. Device contains receiver/output selection and discovery.
-
- USB contains the detected device picker and mono-FM frequency. USB playback requires a compatible driver supporting 240 ksample/s CS16; physical USB acceptance is still open. Builds without an optional receiver feature show its button dim and explain the missing support in setup. The headless and IP-only defaults remain independent of native SDR SDKs.
-
-```sh
-cargo run -p rust-radio-cli --features nrsp-native,soapy-sdr -- inputs
-cargo run -p rust-radio-cli -- listen wcrb --seconds 30
-cargo run -p rust-radio-cli -- stream-listen 'https://example.org/live.mp3' --seconds 30
-```
-
-Curated transport resolves bounded M3U and PLS playlists using publisher-approved URLs. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. Curated endpoints are limited to the two exact GBH stream URLs. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
-
-Check a station without opening an audio device:
-
-```sh
-cargo run -p rust-radio-cli -- validate wcrb
-```
-
-Validation records its timestamp, resolved endpoint, furthest verified stage and MP3/AAC decode evidence. It shares one 18-second HTTP deadline across all playlist/redirect hops, reads at most 256 KiB of audio and examines at most 64 packets. Only decoded finite PCM produces a successful exit status; HTTP success and catalog inclusion alone do not. CLI checks are explicit; the GUI also checks operator station selections silently. Public network checks are separate from fixture CI. The CLI uses its 18-second probe path. GUI selection checks use the cancellable playback transport with a 35-second startup budget, 8-second header timeout, 3-second read timeout, 256 KiB decode limit and no automatic retry. CLI reports last for that invocation; GUI reports are retained per station for the panel's lifetime. `validate-all --json --history PATH` optionally persists bounded local evidence, and egui hosts can import it through `RadioPanel::load_validation_history`; runtime checks and playback remain authoritative. Check cancellation prevents subsequent reads/hops and discards late results; an already-blocked request may wait for the remaining HTTP deadline while the GUI keeps repainting.
+See [the streaming roadmap](docs/PORTING_PLAN.md), [the task queue](docs/CODEX_TASK_QUEUE.md), [embedding](docs/EMBEDDING.md), and [native playback evidence](docs/NATIVE_PLAYBACK_CONTRACT.md). Silent validation, decoded audio, callback-consumed audio, human-audible playback, publisher authorization, and release approval are separate evidence gates.

@@ -1,3 +1,12 @@
+# Progress checkpoint — streaming-only scope (2026-11-27)
+
+- Product scope is now internet station browsing and streaming playback only. nSDR/network receiver, USB SDR, SDRconnect, SoapySDR, and satellite work belongs to separate repositories.
+- Updated the mission, active roadmap, task queue, and README to make that boundary explicit. Added RR-119 for source/build integration cleanup and RR-120 for Mac station browsing acceptance.
+- Removed the nSDR and USB selector controls from the active GUI header and disabled automatic receiver discovery on app startup. Removed receiver commands from CLI help and dispatch. The visible app and CLI entry points now present streaming only.
+- The receiver implementation still exists in legacy-gated source paths; the package/API cleanup is not complete. Do not describe the repository as fully purged until those paths and their build graph are removed and the workspace is checked.
+- SiriusXM remains out of scope; the starter station catalog is GBH 89.7 and WCRB, subject to fresh feed checks and publisher distribution permission.
+- Local verification: `cargo fmt --all`, `git diff --check`, `cargo check --workspace`, and `cargo build --release -p rust-radio-gui` passed. Cargo reports `unexpected_cfgs` warnings and GUI dead-code warnings because receiver-gated internal implementation remains after public features and entry points were removed. Tests were not run.
+
 # Radio development progress
 
 ## Documentation reconciliation — 2026-11-05 (documentation-only)

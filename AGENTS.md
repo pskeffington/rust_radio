@@ -18,7 +18,7 @@
 # Rust Radio project-specific operating rules
 
 ## Mission
-Develop a portable, receive-only, host-neutral native Rust radio system with reliable IP audio, optional SDR reception and a compact operator interface. Integrate with Rust-Boy through a pinned API; never couple core audio to the HUD.
+Develop a portable, receive-only, streaming radio app for curated and user-supplied internet stations, with reliable IP audio and a compact operator interface. SDR, nSDR, USB receiver, and satellite products live in separate repositories and are out of scope here. Keep this repository focused on streaming stations and native audio output.
 
 ## Instructions for Codex and delegated agents
 1. Read this file, README.md, docs/STATUS_2026-11-05.md, docs/PORTING_PLAN.md, docs/PROGRESS.md, docs/EMBEDDING.md and relevant subsystem contract before changing code.
@@ -34,7 +34,7 @@ Develop a portable, receive-only, host-neutral native Rust radio system with rel
 - Transport: redirects, playlist parsing, timeouts, DNS rebinding and codec validation.
 - Audio: native device selection, output callbacks, ring buffering, cancellation and recovery.
 - GUI: egui 480x320 accessibility, station selection, clear state and input/output lifecycle.
-- SDR: direct nRSP-ST, SDRconnect and USB SoapySDR, independently feature gated.
+- Streaming: curated internet stations, secure user-supplied stream URLs, playback lifecycle, native output, and station browsing.
 - Integration: pinned host API, Pi 5 and cross-platform portability.
 - Validation: independent review of tests, evidence provenance, regression and CI.
 

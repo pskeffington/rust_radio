@@ -1,3 +1,5 @@
+> **Historical integration notes.** Receiver selectors, nSDR/USB discovery, and receiver controls described below were part of an earlier product scope. Rust Radio is now an internet streaming app; receiver products live in separate repositories. These instructions are not current app functionality.
+
 # R8 — Standalone Rust Radio micro-GUI and embedded panel
 
 ## Goal

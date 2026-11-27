@@ -2568,7 +2568,6 @@ dependencies = [
  "rust-radio-core",
  "rust-radio-gui",
  "rust-radio-ip",
- "rust-radio-sdr",
 ]
 
 [[package]]

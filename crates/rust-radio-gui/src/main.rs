@@ -34,7 +34,6 @@ fn main() -> eframe::Result<()> {
         options,
         Box::new(|_cc| {
             let mut radio = RadioPanel::new();
-            radio.enable_input_discovery();
             let stations = presets_file::PresetFile::load_ip(&mut radio);
             #[cfg(feature = "nrsp-native")]
             let presets = presets_file::PresetFile::load(&mut radio);
