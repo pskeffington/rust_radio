@@ -1137,6 +1137,88 @@ fn standalone_header_hides_receiver_buttons_but_settings_remains_reachable() {
     }
 }
 
+fn render_siriusxm_header(
+    context: &egui::Context,
+    panel: &mut RadioPanel,
+    events: Vec<egui::Event>,
+) -> egui::Response {
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
+    let mut provider_button = None;
+    let _ = context.run(
+        egui::RawInput {
+            screen_rect: Some(screen),
+            events,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                theme::apply(ui);
+                provider_button = panel.input_header(ui);
+            });
+        },
+    );
+    provider_button.expect("standalone header exposes its SiriusXM action")
+}
+
+#[test]
+fn siriusxm_header_pointer_click_emits_one_launch_intent() {
+    let context = egui::Context::default();
+    let mut panel = RadioPanel::new_standalone();
+    let initial = render_siriusxm_header(&context, &mut panel, Vec::new());
+    let position = initial.rect.center();
+    let press = vec![
+        egui::Event::PointerMoved(position),
+        egui::Event::PointerButton {
+            pos: position,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: egui::Modifiers::NONE,
+        },
+    ];
+    render_siriusxm_header(&context, &mut panel, press);
+    let release = vec![
+        egui::Event::PointerMoved(position),
+        egui::Event::PointerButton {
+            pos: position,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: egui::Modifiers::NONE,
+        },
+    ];
+    render_siriusxm_header(&context, &mut panel, release);
+    assert_eq!(
+        panel.take_external_provider_intent(),
+        Some(ExternalProvider::SiriusXm)
+    );
+    assert!(panel.take_external_provider_intent().is_none());
+}
+
+#[test]
+fn siriusxm_header_keyboard_activation_emits_one_launch_intent() {
+    let context = egui::Context::default();
+    let mut panel = RadioPanel::new_standalone();
+    let button = render_siriusxm_header(&context, &mut panel, Vec::new());
+    context.memory_mut(|memory| memory.request_focus(button.id));
+    for pressed in [true, false] {
+        render_siriusxm_header(
+            &context,
+            &mut panel,
+            vec![egui::Event::Key {
+                key: egui::Key::Enter,
+                physical_key: Some(egui::Key::Enter),
+                pressed,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+    }
+    assert_eq!(
+        panel.take_external_provider_intent(),
+        Some(ExternalProvider::SiriusXm)
+    );
+    assert!(panel.take_external_provider_intent().is_none());
+}
+
 #[test]
 fn siriusxm_handoff_is_one_shot_standalone_only_and_requires_manual_return() {
     let mut embedded = RadioPanel::new();

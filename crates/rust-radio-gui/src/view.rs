@@ -185,7 +185,8 @@ impl RadioPanel {
         }
     }
 
-    fn input_header(&mut self, ui: &mut egui::Ui) {
+    pub(super) fn input_header(&mut self, ui: &mut egui::Ui) -> Option<egui::Response> {
+        let mut provider_button = None;
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             ui.spacing_mut().button_padding = egui::vec2(6.0, 3.0);
@@ -225,15 +226,7 @@ impl RadioPanel {
                 self.source_settings_open = true;
             }
             if self.standalone_layout {
-                let button = ui
-                    .add_enabled(
-                        !self.external_provider_active,
-                        egui::Button::new("SiriusXM"),
-                    )
-                    .on_hover_text("Open the official player in your system browser");
-                if button.clicked() {
-                    self.request_external_provider(super::ExternalProvider::SiriusXm);
-                }
+                provider_button = Some(self.siriusxm_action_button(ui));
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(
@@ -243,5 +236,19 @@ impl RadioPanel {
                 );
             });
         });
+        provider_button
+    }
+
+    pub(super) fn siriusxm_action_button(&mut self, ui: &mut egui::Ui) -> egui::Response {
+        let response = ui
+            .add_enabled(
+                !self.external_provider_active,
+                egui::Button::new("SiriusXM"),
+            )
+            .on_hover_text("Open the official player in your system browser");
+        if response.clicked() {
+            self.request_external_provider(super::ExternalProvider::SiriusXm);
+        }
+        response
     }
 }
