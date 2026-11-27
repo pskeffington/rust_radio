@@ -1,6 +1,6 @@
 # Codex execution queue — Rust Radio (2026-11-05)
 
-Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN_REVIEW = PR exists; DONE = implementation and evidence verified. These are proposed tasks, **not** reports of executed tests. Follow AGENTS.md.
+Status meanings: READY = scoped, not started; IN_PROGRESS = implementation underway; BLOCKED = missing prerequisite; IN_REVIEW = PR exists; DONE = implementation and evidence verified. These are proposed tasks, **not** reports of executed tests. Follow AGENTS.md.
 
 | ID | Priority | Owner lane | Status | Deliverable | Acceptance |
 | --- | --- | --- | --- | --- | --- |
@@ -20,8 +20,8 @@ Product boundary: this repository builds an internet streaming radio app. nSDR, 
 
 | ID | Priority | Owner lane | Status | Deliverable | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| RR-119 | P0 | Integration | IN_REVIEW | Remove receiver discovery, selectors, CLI paths, optional feature wiring, and receiver build dependencies from Rust Radio | GUI and CLI expose streaming only; workspace package graph contains no receiver crate |
-| RR-120 | P1 | GUI | READY | Finish and inspect streaming station browsing on the rebuilt Mac app | Browse curated/custom internet stations, play/stop, choose output; no receiver segments or scan actions |
+| RR-119 | P0 | Integration | IN_PROGRESS | Remove receiver discovery, selectors, CLI paths, optional feature wiring, and receiver build dependencies from Rust Radio | GUI and CLI expose streaming only; workspace package graph contains no receiver crate |
+| RR-120 | P1 | GUI | IN_PROGRESS | Finish and inspect streaming station browsing on the rebuilt Mac app | Browse curated/custom internet stations, play/stop, choose output; no receiver segments or scan actions |
 
 ## Current priority — curated station usability (2026-11-27)
 
