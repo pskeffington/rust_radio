@@ -1,8 +1,6 @@
 # rust_radio
 
-[![Local Rust gates: passing](https://img.shields.io/badge/Local%20Rust%20gates-passing-brightgreen)](docs/PROGRESS.md)
-
-Recorded local Rust gates passed at merge `5568fb3` (2026-10-28); historical evidence, not current-head CI. The latest station-validation workflow reported startup_failure. On 2026-11-25 the operator reported the native radio UI live and supplied a screenshot; audible output and exact running revision were not independently verified.
+Historical verification: six local Rust gates passed at `5568fb3` on 2026-10-28. Hosted Actions run [40773152365](https://github.com/pskeffington/rust_radio/actions/runs/40773152365) ended before job execution. Current-head and physical audio acceptance remain unverified. See [verification records](docs/PROGRESS.md).
 
 Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. IP playback runs independently. Optional SoapySDR supports raw I/Q and a mono-FM audio path; direct nRSP-ST service checks are also available. Direct nRSP-ST control and Opus audio are available through `nrsp-native`; USB FM awaits physical hardware acceptance.
 
@@ -10,7 +8,7 @@ Portable, **receive-only**, Rust radio subsystem designed to plug into [Rust-Boy
 
 The standalone module provides bounded internet and private-LAN streaming, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. Pip-Boy embeds the headless library through a pinned Git dependency and owns its HUD and preferences.
 
-IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. Direct native nRSP-ST control and Opus playback have also reached Mac native callbacks without using SDRconnect: live frequency/mode changes and session cleanup passed. The operator confirmed audible radio on MacBook Air speakers through the system default output. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
+IP radio and nRSP-ST PCM have reached native output callbacks in standalone and Pip-Boy runs. Direct native nRSP-ST control and Opus playback have also reached Mac native callbacks without using SDRconnect: live frequency/mode changes and session cleanup passed. Explicit SDRconnect Play can start the selected receiver when control is allowed; missing startup confirmation fails after three seconds and requires explicit retry. The headless SDRconnect module cross-compiles for AArch64 Linux. Physical Pi runtime, Bluetooth recovery, raw I/Q and standalone GUI field acceptance remain open.
 
 ## Navigation
 
@@ -22,8 +20,6 @@ IP radio and nRSP-ST PCM have reached native output callbacks in standalone and 
 - [Roadmap and component ownership](docs/PORTING_PLAN.md)
 - [Progress notes and verification evidence](docs/PROGRESS.md)
 - [November 2026 status checkpoint](docs/STATUS_2026-11-05.md)
-- [Codex task queue](docs/CODEX_TASK_QUEUE.md)
-- [Development agent instructions](AGENTS.md)
 - [Core Rust interface](crates/rust-radio-core/src/lib.rs)
 - [Native GUI and embedding](docs/GUI_INTEGRATION.md)
 - [Standalone acceptance](docs/STANDALONE_ACCEPTANCE.md)
