@@ -58,7 +58,7 @@ mod tests {
             "schema_version": 1,
             "updated_at_unix": checked_at,
             "stations": {
-                "skylab": {
+                "gbh897": {
                     "last_checked_at_unix": checked_at,
                     "last_status": last_status,
                     "last_stage": if last_status == "decoded" { "decoded_audio" } else { "endpoint_reached" },
@@ -76,14 +76,14 @@ mod tests {
     fn saved_success_expires_and_saved_failure_never_claims_freshness() {
         let now = UNIX_EPOCH + Duration::from_secs(1_000_000);
         let fresh = parse_history(&history("decoded", Some(999_999), 999_999)).unwrap();
-        assert_eq!(label(fresh["skylab"], now), "SAVED / FRESH");
+        assert_eq!(label(fresh["gbh897"], now), "SAVED / FRESH");
         let stale_at = 1_000_000 - 7 * 60 * 60;
         let stale = parse_history(&history("decoded", Some(stale_at), stale_at)).unwrap();
-        assert_eq!(label(stale["skylab"], now), "SAVED / STALE");
+        assert_eq!(label(stale["gbh897"], now), "SAVED / STALE");
         let failed = parse_history(&history("unavailable", Some(999_999), 1_000_000)).unwrap();
-        assert_eq!(label(failed["skylab"], now), "SAVED / UNAVAILABLE");
+        assert_eq!(label(failed["gbh897"], now), "SAVED / UNAVAILABLE");
         let check_error = parse_history(&history("check_error", Some(999_999), 1_000_000)).unwrap();
-        assert_eq!(label(check_error["skylab"], now), "SAVED / UNAVAILABLE");
+        assert_eq!(label(check_error["gbh897"], now), "SAVED / UNAVAILABLE");
     }
 
     #[test]
@@ -93,7 +93,7 @@ mod tests {
         assert!(parse_history(&history("decoded", None, 1_000_000)).is_err());
         let mut wrong_stage: Value =
             serde_json::from_str(&history("decoded", Some(1_000_000), 1_000_000)).unwrap();
-        wrong_stage["stations"]["skylab"]["last_stage"] = Value::String("endpoint_reached".into());
+        wrong_stage["stations"]["gbh897"]["last_stage"] = Value::String("endpoint_reached".into());
         assert!(parse_history(&wrong_stage.to_string()).is_err());
         let mut future_update: Value =
             serde_json::from_str(&history("decoded", Some(1_000_000), 1_000_000)).unwrap();
@@ -105,6 +105,6 @@ mod tests {
     fn gui_imports_shared_cli_history_and_recomputes_stale_health() {
         let history = include_str!("../../../testdata/feed-health-v1.json");
         let parsed = parse_history(history).unwrap();
-        assert_eq!(label(parsed["skylab"], SystemTime::now()), "SAVED / STALE");
+        assert_eq!(label(parsed["gbh897"], SystemTime::now()), "SAVED / STALE");
     }
 }

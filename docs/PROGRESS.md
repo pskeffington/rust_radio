@@ -1240,3 +1240,30 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The subsequent push triggered run `40772645579` on `52be452`; it again ended
   `startup_failure` with zero jobs. The latest head `1642027` has no run visible
   yet. This reproduces the runner-startup problem but still exposes no cause.
+
+# 2026-11-27 — Curated GBH starter catalog and SiriusXM removal
+
+- Work branch: `codex/curated-wgbh-stations`, based on `origin/main` at
+  `03b000ffd330b053efda628bb9a3f8b40db7132a`.
+- The SiriusXM browser-launch draft PR #18 was closed unmerged; the feature is
+  absent from `origin/main`. No supported development API was found, so it is
+  removed from the active product roadmap.
+- The runtime and mirrored catalog now contain two direct GBH candidates:
+  `gbh897` and `wcrb`. SomaFM endpoints/allowlisting were removed. Skylab is
+  also excluded until app-client permission is established. Endpoint checks
+  accept only each candidate's exact HTTPS URL.
+- GBH's official help page identifies the two station feeds for radio apps.
+  This does not establish permission for Rust Radio bundling or commercial
+  distribution. Written publisher permission, live silent decode validation,
+  Mac operator playback and current-head CI remain open.
+- Local repository instructions consulted: `AGENTS.md` at central registry
+  revision `e07de9c76ce5bf53a665945fa641b036f85ce1aa`. The required
+  transport/audio/GUI specialist skill bodies and registered workflow roles
+  were not available in that checkout; record **BLOCKED-AGENT**. Do not claim
+  specialist skill compliance. No tests were run in this pass. `cargo fmt --all`,
+  `git diff --check`, and `cargo check --workspace` completed successfully. An
+  independent read-only review confirmed the catalog and history migration; no
+  actionable issue remains.
+- The original `/Users/null/GitHub/rust_radio` checkout's unrelated dirty
+  audio-output edit was not touched; work occurred in the isolated remote
+  worktree.

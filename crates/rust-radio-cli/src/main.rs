@@ -537,7 +537,7 @@ mod tests {
     fn recovery_check(station_id: &str) -> Result<StationValidation, String> {
         let mut report = StationValidation::unverified(station_id);
         report.checked_at = Some(SystemTime::now());
-        if station_id == "skylab" {
+        if station_id == "gbh897" {
             if RECOVERY_CHECKS.fetch_add(1, Ordering::SeqCst) == 0 {
                 report.status = ValidationStatus::Unavailable;
                 report.stage = ValidationStage::EndpointReached;
@@ -563,18 +563,18 @@ mod tests {
     #[test]
     fn invalid_listen_args_fail_before_device_or_network_access() {
         for args in [
-            vec!["listen", "skylab", "--seconds", "0"],
+            vec!["listen", "gbh897", "--seconds", "0"],
             vec!["listen", "unknown", "--seconds", "30"],
-            vec!["listen", "skylab", "--seconds", "301"],
-            vec!["listen", "skylab", "--volume", "101"],
-            vec!["listen", "skylab", "--output", "https://localhost"],
-            vec!["listen", "skylab", "--volume", "60", "--volume", "70"],
+            vec!["listen", "gbh897", "--seconds", "301"],
+            vec!["listen", "gbh897", "--volume", "101"],
+            vec!["listen", "gbh897", "--output", "https://localhost"],
+            vec!["listen", "gbh897", "--volume", "60", "--volume", "70"],
         ] {
             assert!(parse_listen(&options(&args)).is_err(), "{:?}", args);
         }
         let parsed = options(&[
             "listen",
-            "skylab",
+            "gbh897",
             "--seconds",
             "30",
             "--volume",
@@ -584,7 +584,7 @@ mod tests {
         ]);
         assert_eq!(parse_listen(&parsed).unwrap().volume, 25);
         assert_eq!(parse_listen(&parsed).unwrap().seconds, Some(30));
-        assert!(parse_listen(&options(&["listen", "skylab"])).is_ok());
+        assert!(parse_listen(&options(&["listen", "gbh897"])).is_ok());
     }
 
     #[cfg(feature = "sdrconnect")]
@@ -654,7 +654,7 @@ mod tests {
         let stations = json["results"].as_array().unwrap();
         let recovered = stations
             .iter()
-            .find(|station| station["station_id"] == "skylab")
+            .find(|station| station["station_id"] == "gbh897")
             .unwrap();
         assert_eq!(recovered["attempts"].as_u64(), Some(2));
         assert_eq!(recovered["recovered"].as_bool(), Some(true));
@@ -722,7 +722,7 @@ mod tests {
             vec!["validate"],
             vec!["validate", "unknown-station"],
             vec!["validate", "https://localhost/admin"],
-            vec!["validate", "skylab", "unexpected"],
+            vec!["validate", "gbh897", "unexpected"],
         ] {
             assert!(run(&options(&args)).is_err());
         }

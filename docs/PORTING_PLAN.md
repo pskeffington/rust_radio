@@ -1,5 +1,9 @@
 # Radio module roadmap and ownership
 
+## Current station and provider decision (2026-11-27)
+
+The SiriusXM browser-launch draft is closed unmerged because no supported development API was identified; `origin/main` never carried that draft into production. The active starter catalog is limited to GBH 89.7 (`gbh897`) and WCRB Classical (`wcrb`). Both need fresh silent stream validation, Mac operator playback and written publisher permission for intended product distribution. SomaFM was removed because its current terms bar new third-party clients without prior written permission. Skylab remains excluded pending affirmative app-client permission. Production channel distribution is gated on publisher rights.
+
 Implementation roadmap originally updated 2026-10-27; documentation reconciliation 2026-11-05. The standalone library is integrated into
 [Pip-Boy](https://github.com/pskeffington/pip_boy) through a pinned Git dependency.
 The next work strengthens playback and completes platform acceptance. Source
@@ -26,7 +30,7 @@ provenance remains in the extraction notes; dated evidence is in
 | Area | Delivered | Remaining acceptance |
 | --- | --- | --- |
 | Standalone library and Pip-Boy | Headless facade, shared controller, thin host adapters and pinned dependency; preferences/HUD stay in the host; core exposes bounded typed feed-history parsing | Release/tag decision after CI and platform gates |
-| IP playback | Native MP3/AAC, WCRB/Skylab presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported; playlist playback uses the first entry |
+| IP playback | Native MP3/AAC, GBH 89.7/WCRB presets, explicit public HTTPS and private IPv4 HTTP direct streams, checked redirects and bounded curated/custom M3U/PLS and ICY, cancellation, native callback checks and serialized GUI station switching | Live DNS/TLS cancellation, long-running network and LAN hardware tests; HLS remains unsupported; playlist playback uses the first entry |
 | Audio outputs | System/default and selected outputs, local volume, output-loss classification, asynchronous Stop | Physical Bluetooth and USB loss/reconnect; Windows output |
 | Compact GUI | Optional 480×320 egui panel with phosphor skin, availability-driven IP/nSDR/USB setup buttons, passive input discovery, direct nRSP-ST and USB controls, asynchronous station checks, saved public/LAN streams, keyboard menus and layout/lifecycle coverage | Physical touch and Pi rendering; fresh real-receiver GUI audio |
 | nRSP-ST | Direct native handshake, activation, live frequency/mode/bandwidth and FM stereo/de-emphasis/filter controls, real stereo-lock reports, presets, Opus playback and owned session Stop; optional SDRconnect adapter | Native authenticated login, extended link interruption/reconnect, other demodulator/antenna field checks, physical Pi client and raw I/Q |
@@ -36,7 +40,7 @@ provenance remains in the extraction notes; dated evidence is in
 
 ## November 2026 execution order
 
-The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) govern subsequent Codex passes. Start with RR-101 (Skylab root-cause reproduction), RR-102 (fresh silent catalog evidence), and RR-108 (exact-head CI review). Do not call historical 25/25 decoded streams a current live result. Mac device/output tests, physical Pi 5 and SDR hardware acceptance remain distinct blocked or operator-run gates. See [status checkpoint](STATUS_2026-11-05.md).
+The [scoped task queue](CODEX_TASK_QUEUE.md) and [agent doctrine](../AGENTS.md) govern subsequent Codex passes. Start with RR-109 (written publisher permission), RR-110 (fresh silent validation of both current candidates), and RR-108 (exact-head CI review). Historical feed results do not establish current availability or distribution rights. Mac device/output tests, physical Pi 5 and SDR hardware acceptance remain distinct blocked or operator-run gates. See [status checkpoint](STATUS_2026-11-05.md).
 
 ## Next development priorities
 

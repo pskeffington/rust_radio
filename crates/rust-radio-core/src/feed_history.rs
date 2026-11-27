@@ -13,6 +13,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const FEED_HISTORY_SCHEMA_VERSION: u64 = 1;
 pub const MAX_FEED_HISTORY_BYTES: usize = 64 * 1024;
 const MAX_CONSECUTIVE_FAILURES: u64 = 1_000_000;
+const MAX_HISTORY_STATIONS: usize = 64;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FeedHistory {
@@ -66,16 +67,18 @@ pub fn parse_feed_history(json: &str) -> Result<FeedHistory, String> {
     let stations = value["stations"]
         .as_object()
         .ok_or_else(|| "Feed validation history has no stations object".to_owned())?;
-    if stations.len() > curated_stations().len() {
+    if stations.len() > MAX_HISTORY_STATIONS {
         return Err("Feed validation history contains too many stations".into());
     }
 
     let mut parsed = BTreeMap::new();
     for (id, record) in stations {
-        let station = curated_stations()
-            .iter()
-            .find(|station| station.id == id)
-            .ok_or_else(|| format!("Unknown curated station in feed history: {id}"))?;
+        // Older v1 history can contain stations removed from the current
+        // curated catalog. Ignore those records so upgrades remain readable;
+        // only current IDs are returned and can be written back by hosts.
+        let Some(station) = curated_stations().iter().find(|station| station.id == id) else {
+            continue;
+        };
         let checked_at = epoch(record["last_checked_at_unix"].as_u64(), "last check")?;
         if checked_at > updated_at {
             return Err(format!("Future station check in feed history for {id}"));
@@ -199,7 +202,7 @@ mod tests {
     fn shared_contract_parses_without_io_and_recomputes_health() {
         let history =
             parse_feed_history(include_str!("../../../testdata/feed-health-v1.json")).unwrap();
-        let station = history.stations["skylab"];
+        let station = history.stations["gbh897"];
         assert_eq!(station.status, ValidationStatus::Decoded);
         assert_eq!(station.stage, ValidationStage::DecodedAudio);
         assert_eq!(station.attempts, 1);
@@ -217,16 +220,29 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unknown_and_inconsistent_saved_evidence() {
+    fn ignores_retired_ids_and_rejects_inconsistent_current_evidence() {
         let source = include_str!("../../../testdata/feed-health-v1.json");
         let mut invalid: Value = serde_json::from_str(source).unwrap();
-        invalid["stations"]["skylab"]["last_stage"] = json!("endpoint_reached");
+        invalid["stations"]["gbh897"]["last_stage"] = json!("endpoint_reached");
         assert!(parse_feed_history(&invalid.to_string()).is_err());
-        invalid["stations"]["skylab"]["last_stage"] = json!("decoded_audio");
-        invalid["stations"]["skylab"]["health"] = json!("failed");
+        invalid["stations"]["gbh897"]["last_stage"] = json!("decoded_audio");
+        invalid["stations"]["gbh897"]["health"] = json!("failed");
         assert!(parse_feed_history(&invalid.to_string()).is_err());
-        invalid["stations"]["not-a-station"] = invalid["stations"]["skylab"].clone();
-        assert!(parse_feed_history(&invalid.to_string()).is_err());
+        invalid["stations"]["not-a-station"] = invalid["stations"]["gbh897"].clone();
+        let migrated = parse_feed_history(&invalid.to_string()).unwrap();
+        assert!(!migrated.stations.contains_key("not-a-station"));
+        let mut prior_catalog: Value = serde_json::from_str(source).unwrap();
+        for index in 0..23 {
+            let id = format!("retired-{index}");
+            prior_catalog["stations"][id] = prior_catalog["stations"]["gbh897"].clone();
+        }
+        assert_eq!(
+            parse_feed_history(&prior_catalog.to_string())
+                .unwrap()
+                .stations
+                .len(),
+            2
+        );
         assert!(parse_feed_history(&" ".repeat(MAX_FEED_HISTORY_BYTES + 1)).is_err());
 
         let mut future_update: Value = serde_json::from_str(source).unwrap();

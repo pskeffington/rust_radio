@@ -7,8 +7,8 @@ The `rust-radio-cli` crate is a directly runnable host for the extracted radio e
 ```sh
 cargo run -p rust-radio-cli -- stations
 cargo run -p rust-radio-cli -- outputs
-cargo run -p rust-radio-cli -- validate skylab
-cargo run -p rust-radio-cli -- listen skylab --seconds 30
+cargo run -p rust-radio-cli -- validate wcrb
+cargo run -p rust-radio-cli -- listen wcrb --seconds 30
 cargo test --workspace
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
@@ -36,12 +36,17 @@ On 2026-10-27, explicit live `validate` checks decoded PCM from all ten curated 
 After the prior Mac 30-second Skylab audible pass, the CLI now supports:
 
 ```sh
-cargo run -p rust-radio-cli -- listen skylab --seconds 30 --volume 25
+cargo run -p rust-radio-cli -- listen wcrb --seconds 30 --volume 25
 cargo run -p rust-radio-cli -- outputs
-cargo run -p rust-radio-cli -- listen skylab --seconds 30 --output system
-cargo run -p rust-radio-cli -- listen skylab --volume 50
+cargo run -p rust-radio-cli -- listen wcrb --seconds 30 --output system
+cargo run -p rust-radio-cli -- listen wcrb --volume 50
 ```
 
 For a named `--output`, copy an ID from the most recent `outputs` listing. Index/name-bound identifiers can change when devices reconnect and must be refreshed. Interactive mode accepts `status`, `volume N`, `stop` or `q`. Output selection is made at start; mid-session output hot-switching is a separate gate.
 
 These CLI additions have **not** been re-tested on hardware in this pass. The earlier operator-confirmed 30-second Skylab pass applies to the prior CLI implementation. Run formatting, tests, Clippy and playback regression on the exact new commit before release. Test stop during connecting and buffering, and verify that all worker resources close. In interactive mode the stdin thread is detached and is not itself a hardware resource; graceful cancellation of a pending stdin read is still a future cleanup.
+
+
+## Current curated catalog (2026-11-27)
+
+The current candidate contains `gbh897` and `wcrb` only. Historical Skylab and SomaFM observations above apply to prior catalog revisions and do not establish current membership, current availability, or permission to distribute. Current live validation, Mac operator playback and publisher rights authorization remain NOT RUN / BLOCKED as recorded in the task queue.

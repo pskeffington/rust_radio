@@ -86,7 +86,7 @@ fn render_panel(panel: &mut RadioPanel) -> egui::Rect {
 fn pending_check_keeps_rendering_and_blocks_duplicate_checks_and_playback() {
     let mut panel = RadioPanel::new();
     let release = hold_check(&mut panel);
-    assert_eq!(panel.validation_label("skylab"), "CHECKING");
+    assert_eq!(panel.validation_label("gbh897"), "CHECKING");
     assert!(!panel.poll_shutdown());
     panel.start_validation();
     panel.play();
@@ -95,13 +95,13 @@ fn pending_check_keeps_rendering_and_blocks_duplicate_checks_and_playback() {
     render_panel(&mut panel);
     panel.stop();
     assert!(panel.is_active());
-    assert_eq!(panel.validation_label("skylab"), "CANCELLING");
+    assert_eq!(panel.validation_label("gbh897"), "CANCELLING");
     assert!(!panel.poll_shutdown());
     panel.stop();
     release.send(()).unwrap();
     finish_panel(&mut panel);
     assert!(panel.validations.is_empty());
-    assert_eq!(panel.validation_label("skylab"), "UNVERIFIED");
+    assert_eq!(panel.validation_label("gbh897"), "UNVERIFIED");
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn saved_validation_history_is_bounded_freshness_checked_and_not_live_state() {
         "schema_version": 1,
         "updated_at_unix": now,
         "stations": {
-            "skylab": {
+            "gbh897": {
                 "last_checked_at_unix": now,
                 "last_status": "decoded",
                 "last_stage": "decoded_audio",
@@ -128,21 +128,48 @@ fn saved_validation_history_is_bounded_freshness_checked_and_not_live_state() {
     .to_string();
     let mut panel = RadioPanel::new();
     assert_eq!(panel.load_validation_history(&history).unwrap(), 1);
-    assert_eq!(panel.validation_label("skylab"), "SAVED / FRESH");
+    assert_eq!(panel.validation_label("gbh897"), "SAVED / FRESH");
     assert!(panel.validations.is_empty());
     assert!(panel.engine.is_none());
 
-    let invalid = r#"{"schema_version":1,"stations":{"unknown":{"last_checked_at_unix":1}}}"#;
-    assert!(panel.load_validation_history(invalid).is_err());
-    assert_eq!(panel.validation_label("skylab"), "SAVED / FRESH");
+    let legacy = serde_json::json!({
+        "schema_version": 1,
+        "updated_at_unix": now,
+        "stations": {
+            "retired-station": {
+                "last_checked_at_unix": now,
+                "last_status": "decoded",
+                "last_stage": "decoded_audio",
+                "attempts": 1,
+                "last_decoded_at_unix": now,
+                "consecutive_failures": 0,
+                "health": "fresh"
+            },
+            "gbh897": {
+                "last_checked_at_unix": now,
+                "last_status": "decoded",
+                "last_stage": "decoded_audio",
+                "attempts": 1,
+                "last_decoded_at_unix": now,
+                "consecutive_failures": 0,
+                "health": "fresh"
+            }
+        }
+    })
+    .to_string();
+    assert_eq!(panel.load_validation_history(&legacy).unwrap(), 1);
+    let retired_only =
+        r#"{"schema_version":1,"updated_at_unix":1,"stations":{"retired-station":{}}}"#;
+    assert_eq!(panel.load_validation_history(retired_only).unwrap(), 0);
+    assert_eq!(panel.validation_label("gbh897"), "UNVERIFIED");
 
-    let mut live = StationValidation::unverified("skylab");
+    let mut live = StationValidation::unverified("gbh897");
     live.status = ValidationStatus::Decoded;
     live.stage = ValidationStage::DecodedAudio;
     live.decoded_frames = 1;
     live.checked_at = Some(SystemTime::now());
-    panel.validations.insert("skylab", live);
-    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
+    panel.validations.insert("gbh897", live);
+    assert_eq!(panel.validation_label("gbh897"), "FRESH / DECODED");
 }
 
 #[test]
@@ -156,7 +183,7 @@ fn saved_validation_history_expires_after_the_shared_feed_ttl() {
         "schema_version": 1,
         "updated_at_unix": old,
         "stations": {
-            "skylab": {
+            "gbh897": {
                 "last_checked_at_unix": old,
                 "last_status": "decoded",
                 "last_stage": "decoded_audio",
@@ -170,7 +197,7 @@ fn saved_validation_history_expires_after_the_shared_feed_ttl() {
     .to_string();
     let mut panel = RadioPanel::new();
     panel.load_validation_history(&history).unwrap();
-    assert_eq!(panel.validation_label("skylab"), "SAVED / STALE");
+    assert_eq!(panel.validation_label("gbh897"), "SAVED / STALE");
 }
 
 #[test]
@@ -178,7 +205,7 @@ fn changing_station_cancels_and_discards_the_previous_check() {
     let mut panel = RadioPanel::new();
     let release = hold_check(&mut panel);
     panel.step_station(1);
-    assert_ne!(panel.selected_station().id, "skylab");
+    assert_ne!(panel.selected_station().id, "gbh897");
     assert!(panel.validation.as_ref().unwrap().cancellation_requested());
     assert_eq!(
         panel.validation_label(panel.selected_station().id),
@@ -196,9 +223,9 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     let release = hold_check(&mut panel);
     release.send(()).unwrap();
     finish_panel(&mut panel);
-    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
-    assert!(panel.validations["skylab"].is_decoded());
-    let evidence = panel.validations["skylab"].clone();
+    assert_eq!(panel.validation_label("gbh897"), "FRESH / DECODED");
+    assert!(panel.validations["gbh897"].is_decoded());
+    let evidence = panel.validations["gbh897"].clone();
     panel.step_station(1);
     assert_eq!(
         panel.validation_label(panel.selected_station().id),
@@ -209,8 +236,8 @@ fn finished_checks_belong_to_the_checked_station_and_cancel_preserves_evidence()
     panel.stop();
     release.send(()).unwrap();
     finish_panel(&mut panel);
-    assert_eq!(panel.validations["skylab"], evidence);
-    assert_eq!(panel.validation_label("skylab"), "FRESH / DECODED");
+    assert_eq!(panel.validations["gbh897"], evidence);
+    assert_eq!(panel.validation_label("gbh897"), "FRESH / DECODED");
 }
 
 #[test]
@@ -223,12 +250,12 @@ fn station_status_and_long_diagnostics_fit_the_micro_viewport() {
         ValidationStatus::Unsupported,
         ValidationStatus::InvalidStream,
     ] {
-        let mut report = StationValidation::unverified("skylab");
+        let mut report = StationValidation::unverified("gbh897");
         report.status = status;
         report.checked_at = Some(SystemTime::now());
         report.detail = "Long diagnostic text ".repeat(100);
         panel.note = report.detail.clone();
-        panel.validations.insert("skylab", report);
+        panel.validations.insert("gbh897", report);
         render_panel(&mut panel);
         let mut settings = None;
         // egui measures a new Window before its final anchored placement.
@@ -284,7 +311,7 @@ fn stopping_an_idle_panel_is_immediate_and_idempotent() {
 fn panel_constructs_without_starting_radio() {
     let panel = RadioPanel::new();
     assert!(!panel.is_active());
-    assert_eq!(panel.selected_station().id, "skylab");
+    assert_eq!(panel.selected_station().id, "gbh897");
 }
 
 #[test]
@@ -738,7 +765,7 @@ fn public_and_lan_saved_stations_roundtrip_without_autoplay_or_partial_import() 
         assert_eq!(loaded.ip_station_name(), "LAN music");
     }
     loaded.select_ip_station(0);
-    assert!(loaded.take_ip_stations_update().unwrap().contains("skylab"));
+    assert!(loaded.take_ip_stations_update().unwrap().contains("gbh897"));
     assert_eq!(loaded.direct_url, "http://192.168.1.12:8000/live.m3u");
 }
 
@@ -874,9 +901,9 @@ fn switching_input_types_preserves_the_last_saved_ip_station_without_connecting(
 #[test]
 fn listener_status_uses_playback_state_instead_of_cached_verification() {
     let mut panel = RadioPanel::new();
-    let mut report = StationValidation::unverified("skylab");
+    let mut report = StationValidation::unverified("gbh897");
     report.status = ValidationStatus::Unavailable;
-    panel.validations.insert("skylab", report);
+    panel.validations.insert("gbh897", report);
     for (state, label, working, failed) in [
         (PlaybackState::Stopped, "Ready to listen", false, false),
         (PlaybackState::Connecting, "Connecting", true, false),
@@ -1020,19 +1047,19 @@ fn stream_errors_offer_listener_actions_with_original_diagnostics_retained() {
 #[test]
 fn setup_preserves_six_hour_feed_freshness_without_blocking_playback() {
     let mut panel = RadioPanel::new();
-    let mut report = StationValidation::unverified("skylab");
+    let mut report = StationValidation::unverified("gbh897");
     report.status = ValidationStatus::Decoded;
     report.stage = rust_radio_core::validation::ValidationStage::DecodedAudio;
     report.decoded_frames = 256;
     report.checked_at = Some(SystemTime::now());
-    panel.validations.insert("skylab", report);
+    panel.validations.insert("gbh897", report);
     assert!(panel.stream_check_summary().contains("passed"));
-    panel.validations.get_mut("skylab").unwrap().checked_at = Some(
+    panel.validations.get_mut("gbh897").unwrap().checked_at = Some(
         SystemTime::now()
             - rust_radio_core::validation::FEED_FRESHNESS_TTL
             - Duration::from_secs(1),
     );
     assert!(panel.stream_check_summary().contains("over 6 hours old"));
-    assert_eq!(panel.validation_label("skylab"), "STALE / RECHECK");
+    assert_eq!(panel.validation_label("gbh897"), "STALE / RECHECK");
     assert!(!panel.is_active());
 }

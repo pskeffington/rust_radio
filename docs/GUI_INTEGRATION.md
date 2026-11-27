@@ -3,7 +3,7 @@
 ## Goal
 A standalone desktop GUI using exactly the same Rust `RadioPanel` instance API that another Rust app can mount. No browser, external media player, local web server, or new audio backend. Display target: **480 × 320 logical pixels**. An embedded host chooses the allocated region and owns the top-level event loop.
 
-Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `settings.rs` (overlay), and `tests.rs`. Selection uses a direct catalog index while playback, validation and cached reports retain canonical station IDs. Catalog display order, including Skylab first, is preserved.
+Source is split into `lib.rs` (panel lifecycle), `view.rs` (main controls), `settings.rs` (overlay), and `tests.rs`. Selection uses a direct catalog index while playback, validation and cached reports retain canonical station IDs. Catalog display order, with GBH 89.7 first, is preserved.
 
 ## Listening interface
 
@@ -31,10 +31,10 @@ UI tests cover each playback state, stale validation during Playing, absence of
 decoder diagnostics on the listening surface, volume restoration and long error
 messages at 480×320. The station popup rows use up to 340 pixels of available
 width. A measured 14-point monospace label A/B/C with 20 pixels total horizontal
-button padding found full category labels fit 24/25 stations, names alone 25/25,
-and compact category labels 25/25 at 295 pixels; all fit at 340 pixels. Shortening
-only `CLASSICAL` to `CLASS` preserves the category cue and saves 32 pixels for
-WCRB. Native
+button padding was run against the former 25-station catalog. Those fit counts
+do not describe the current two-station catalog; repeat the visual/layout check
+on the current candidate before claiming GUI acceptance. The compact label still
+shortens `CLASSICAL` to `CLASS`. Native
 muted acceptance checks
 Receiving audio now against actual playback, including switching/failure
 responsiveness. Physical touch and Pi rendering still need acceptance.
@@ -119,7 +119,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo run -p rust-radio-gui --bin rust-radio-gui
 ```
 
-Check the radio window at 480 × 320: station arrows, play/stop, volume, error text, and input setup panels must be fully tappable without body scrolling. Opening the standalone GUI may perform read-only discovery, but must emit no audio or start a receiver or station stream. CHECK STREAM should update setup details without audible output. Cancel during connection, browse to another station, and confirm the old result cannot replace its status. PLAY should produce audible Skylab reception, and STOP should terminate it. Device changes require stopping first. These native GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
+Check the radio window at 480 × 320: station arrows, play/stop, volume, error text, and input setup panels must be fully tappable without body scrolling. Opening the standalone GUI may perform read-only discovery, but must emit no audio or start a receiver or station stream. CHECK STREAM should update setup details without audible output. Cancel during connection, browse to another station, and confirm the old result cannot replace its status. PLAY should produce audible reception from the selected GBH station, and STOP should terminate it. Device changes require stopping first. These native GUI acceptance steps are pending operator testing; the prior CLI macOS acceptance does not certify the GUI.
 
 ## Stop responsiveness regression
 
@@ -218,7 +218,7 @@ render calls remained below the 250 ms regression threshold throughout. Local
 transport fixtures independently cover M3U, oversized/unsafe/nested playlists,
 HLS rejection, HTTP 404/503, hop loops, timeout and cancellation. Headless GUI
 tests cover long 24-entry banks, keyboard selection/closing and 480×320 layouts.
-WCRB and Skylab live streams reached Playing through native output at volume 0.
+WCRB and GBH 89.7 live streams reached Playing through native output at volume 0.
 The main panel, station popup and IP editor were visually inspected on macOS.
 No external LAN broadcaster was supplied; private-stream playback was verified
 with a local HTTP fixture. Physical touch, Pi graphics, audible quality and
