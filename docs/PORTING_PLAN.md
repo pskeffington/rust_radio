@@ -69,3 +69,7 @@ The standalone constructor opts into an IP-first layout; receiver selection move
 ## RR-111 external-provider design (2026-11-26)
 
 See [credential-isolated external provider contract](EXTERNAL_PROVIDER_CONTRACT.md). Proposed narrow standalone fixed-URL browser handoff, no in-engine browser audio or credential path. RR-112 implementation follows design review; RR-113/114 remain blocked until permitted, unambiguous session controls are established. RR-110 and all runtime, independent-review and release gates remain open.
+
+## RR-112 SiriusXM browser handoff (2026-11-27 candidate)
+
+The standalone header now has a SiriusXM action that emits a closed, one-shot provider intent. Only the standalone executable dispatches the fixed official HTTPS URL through the OS handler (`xdg-open` on Linux, `open` on macOS); other platforms remain disabled. The app polls handler completion without blocking the UI and distinguishes dispatch failure from success. A successful handler exit means only that the URL was handed to the OS, not that login or playback succeeded. During the handoff, native Play and volume controls stay unavailable until the user confirms browser playback has stopped. This is an operator assertion, not session isolation. Embedded defaults and the native engine remain unchanged. Local Rust gates pass; hosted CI, pointer/keyboard review, target screenshot, and subscriber-driven playback remain open. See the contract acceptance matrix and dated progress entry.

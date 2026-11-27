@@ -47,11 +47,11 @@ Only research ordinary OS media controls for an explicitly selected, uniquely at
 | Gate | Observable check | Status |
 | --- | --- | --- |
 | RR-111-D | Source-backed contract and explicit proposed invariant exception; owner/independent review | IN REVIEW |
-| RR-112-A | Mock receives exactly one constant URL for explicit activation; zero calls on startup/repaint/restore/discovery/embedded mode | NOT RUN |
-| RR-112-B | Block native active/pending restart, handle launch failure, explicit retry and manual return without auto-playing | NOT RUN |
-| RR-112-C | No credential fields/files, cookies, browser automation, arbitrary URL or shell; provider URL absent from catalog and native engine | NOT RUN |
-| RR-112-D | 480×320 layout, keyboard/pointer, focus return, no nSDR/USB main header buttons; embedded regression | NOT RUN |
-| RR-112-E | fmt, locked workspace tests, strict Clippy, applicable feature/platform builds | NOT RUN |
+| RR-112-A | Mock receives exactly one constant URL for explicit activation; one-shot intent and embedded isolation covered | PASS in local unit tests |
+| RR-112-B | Block native active/pending work, poll handler exit without blocking UI, report spawn/nonzero failure, and require manual return without auto-playing | PASS in local tests; physical overlap unverified |
+| RR-112-C | No credential fields/files, cookies, browser automation, arbitrary URL or shell; provider URL absent from catalog and native engine | PASS by code review/static inspection |
+| RR-112-D | 480×320 render bounds, standalone-only button, no nSDR/USB standalone header buttons; keyboard/pointer and focus-return test | PARTIAL: render bounds and labels pass; keyboard/pointer/focus checks NOT RUN |
+| RR-112-E | fmt, locked workspace tests, strict Clippy, applicable feature/platform builds | PASS locally on macOS; hosted CI NOT RUN |
 | RR-112-F | Human subscriber launches official browser, authenticates independently, selects/plays channel, returns to UI; stops in browser | NOT RUN |
 | RR-113/114 | Permitted, unambiguous external-session controls; no unrelated media or media extraction | BLOCKED pending platform/policy review |
 | Release | Publisher/branding review if distributed, required checks, independent review and human approval | BLOCKED |

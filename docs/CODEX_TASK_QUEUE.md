@@ -16,13 +16,13 @@ Status meanings: READY = scoped, not started; BLOCKED = missing prerequisite; IN
 
 ## Priority override — SiriusXM and main-panel simplification (2026-11-26)
 
-Owner: Linux Operations / Codex. Status: READY; implementation and runtime tests NOT RUN. Execute RR-110 first, then RR-111; preserve existing tasks.
+Owner: Linux Operations / Codex. RR-110 and RR-111 are IN REVIEW; RR-112 is IN PROGRESS on a branch stacked on RR-110. Local Rust gates pass on the current candidate; hosted CI and human UI/provider acceptance remain NOT RUN. Keep RR-113/114 blocked pending separate platform and policy evidence.
 
 | ID | Priority | Deliverable | Acceptance |
 | --- | --- | --- | --- |
 | RR-110 | P0 | REVIEW: standalone main-panel cleanup implemented on `codex/rr110-standalone-controls`; tests NOT RUN. Move existing receiver entry points into Settings > Receivers | Main panel has neither button nor empty hit targets; receiver functionality and feature flags remain intact; 480x320 screenshot and keyboard navigation pass |
 | RR-111 | P0 | IN REVIEW: [credential-isolated browser handoff contract](EXTERNAL_PROVIDER_CONTRACT.md) and narrow proposed policy exception | Document rights/platform review, no autoplay, no embedded-host behavior changes, explicit user action; stop if provider terms prohibit integration |
-| RR-112 | P0 | READY for implementation after design review: fixed-URL standalone SiriusXM button; merge gated by RR-110/RR-111 review | Click launches https://player.siriusxm.com/; browser owns login/MFA/cookies; no credentials, tokens, browser profile reads, scraping or debugging interfaces; user can return manually |
+| RR-112 | P0 | IN PROGRESS: fixed-URL standalone SiriusXM button and one-shot system-browser handoff, stacked on `codex/rr110-standalone-controls`; merge gated by RR-110/RR-111 review | Click launches https://player.siriusxm.com/; browser owns login/MFA/cookies; no credentials, tokens, browser profile reads, scraping or debugging interfaces; user can return manually |
 | RR-113 | P1 | BLOCKED: permitted and uniquely attributable external session not yet established; research PipeWire controls on Arch | Explicitly associate correct media session; volume/mute/output controls only where supported; never control unrelated browser tabs; native playback and external playback do not overlap; fail closed if ambiguous |
 | RR-114 | P1 | BLOCKED: permitted and attributable capability not established; optional MPRIS discovery | Only supported controls exposed; no private API or DRM bypass; no recording, capture, redistribution; distinguish external playback state from native PCM callback evidence |
 | RR-115 | P1 | Regression and physical acceptance | fmt, workspace tests, clippy, feature builds, screenshot, real subscriber-driven playback and return-to-UI test; redacted evidence with exact SHA; update README, progress and roadmap |

@@ -44,7 +44,7 @@ Cargo build output (`target/`) and macOS metadata (`.DS_Store`) are ignored so G
 
 ## Required integration invariants
 
-1. No external media-app launching, browser audio inside the native engine, or autoplay. The only proposed exception is an explicitly requested standalone link to the official external provider's browser player, subject to [RR-111 review](docs/EXTERNAL_PROVIDER_CONTRACT.md). No browser integration is implemented by this policy proposal.
+1. Browser playback stays outside the native engine, CLI and embedded host; nothing launches or autoplays without an explicit action. The standalone SiriusXM button dispatches only the fixed official HTTPS player URL through the OS handler. The browser owns sign-in and playback; a successful handoff does not prove authentication or audio. Native Play stays unavailable until the user confirms browser playback has stopped. See the [external provider contract](docs/EXTERNAL_PROVIDER_CONTRACT.md).
 2. Resource access requires an explicit host command. Construction, browsing and preference reads do not autoplay; validation never opens audio output or activates a receiver.
 3. One active session; generation-tagged state and real worker cancellation.
 4. `Playing` requires samples consumed by the native output callback; audible listening is verified separately.
@@ -79,7 +79,7 @@ checks and technical details stay in setup. Errors remain beside Retry in a
 bounded, readable area. The phosphor theme uses softer scanlines and quieter
 secondary text.
 
-The standalone header presents **IP Radio | Settings**. Open Settings to select nSDR or USB and enter its existing setup; embedded panels retain **IP Radio | nSDR | USB**. Green glow means the input is available; dim means unavailable or not checked. The underline marks the selected input. For example, with no internet and only a supported USB receiver attached, only USB glows. More than one input can glow when several are available.
+The standalone header presents **IP Radio | Settings | SiriusXM**. Open Settings to select nSDR or USB and enter its existing setup; embedded panels retain **IP Radio | nSDR | USB**. SiriusXM opens the official player in the system browser on supported Linux and macOS builds. Sign in, select a channel, control audio, and stop playback in the browser; return manually and confirm it has stopped before using native radio. Rust Radio does not receive account, channel, or playback data. Green glow means an input is available; dim means unavailable or not checked. The underline marks the selected input.
 
 The standalone GUI scans on startup and every 30 seconds while idle. It checks HTTPS reachability, identifies native nRSP-ST receivers on local private IPv4 neighborhoods, and enumerates supported SoapySDR USB drivers. It reports detected hardware without automatically switching the standalone source; PLAY starts the explicitly selected radio. Select an input in Settings (or use the embedded input button) for its output and source settings, detected-device selection, stream URL or tuning controls. SCAN INPUTS refreshes availability. Switching input types requires stopping playback first. Receiver settings and runtime receiver addresses stay in memory; explicitly saved IP stations are persisted locally.
 

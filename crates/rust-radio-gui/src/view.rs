@@ -41,7 +41,9 @@ impl RadioPanel {
                 let listening = self.listening_status();
                 self.playback_controls(ui, &listening);
                 ui.add_space(6.0);
-                self.volume_controls(ui);
+                if !self.external_provider_active {
+                    self.volume_controls(ui);
+                }
                 ui.add_space(2.0);
                 self.listening_feedback(ui, &listening);
                 if self.source_settings_open {
@@ -58,6 +60,19 @@ impl RadioPanel {
         ui: &mut egui::Ui,
         status: &super::presentation::ListeningStatus,
     ) {
+        if self.external_provider_active {
+            ui.horizontal(|ui| {
+                ui.label("External player — sign in / play in browser");
+                if ui
+                    .button("RETURN TO RUST RADIO")
+                    .on_hover_text("Stop playback in the browser first, then confirm here")
+                    .clicked()
+                {
+                    self.confirm_external_provider_stopped();
+                }
+            });
+            return;
+        }
         ui.horizontal(|ui| {
             let label = if status.stop_action {
                 "■  STOP"
@@ -69,7 +84,10 @@ impl RadioPanel {
             let enabled = if status.stop_action {
                 !self.stopping || self.restart_pending
             } else {
-                self.engine.is_none() && !self.stopping && self.segment_supported()
+                self.engine.is_none()
+                    && !self.stopping
+                    && !self.external_provider_active
+                    && self.segment_supported()
             };
             let action = egui::Button::new(egui::RichText::new(label).strong())
                 .fill(theme::ACTION)
@@ -135,6 +153,12 @@ impl RadioPanel {
     }
 
     fn listening_feedback(&self, ui: &mut egui::Ui, status: &super::presentation::ListeningStatus) {
+        if let Some(notice) = self.external_provider_notice {
+            ui.add(
+                egui::Label::new(egui::RichText::new(notice).small().color(theme::MUTED)).wrap(),
+            );
+            return;
+        }
         if status.failed {
             let detail = self.listener_error_detail();
             egui::ScrollArea::vertical()
@@ -199,6 +223,17 @@ impl RadioPanel {
             {
                 self.settings_open = false;
                 self.source_settings_open = true;
+            }
+            if self.standalone_layout {
+                let button = ui
+                    .add_enabled(
+                        !self.external_provider_active,
+                        egui::Button::new("SiriusXM"),
+                    )
+                    .on_hover_text("Open the official player in your system browser");
+                if button.clicked() {
+                    self.request_external_provider(super::ExternalProvider::SiriusXm);
+                }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(

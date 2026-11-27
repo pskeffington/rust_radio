@@ -9,6 +9,22 @@ use rust_radio_core::validation::{FeedHealth, StationValidation, ValidationStatu
 use std::collections::BTreeMap;
 use std::time::SystemTime;
 
+/// A user-selected provider that the standalone host may open externally.
+/// This is intentionally closed: panels cannot submit arbitrary URLs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExternalProvider {
+    SiriusXm,
+}
+
+impl ExternalProvider {
+    /// Official HTTPS player URL. Never append account or launch parameters.
+    pub const fn official_url(self) -> &'static str {
+        match self {
+            Self::SiriusXm => "https://player.siriusxm.com/",
+        }
+    }
+}
+
 #[cfg(feature = "nrsp-native")]
 mod fm_presets;
 mod inputs;
@@ -90,6 +106,9 @@ pub struct RadioPanel {
     settings_open: bool,
     standalone_layout: bool,
     source_settings_open: bool,
+    external_provider_intent: Option<ExternalProvider>,
+    external_provider_active: bool,
+    external_provider_notice: Option<&'static str>,
     stopping: bool,
     last_session: Option<RadioSession>,
     validation: Option<StationValidationTask>,
@@ -158,6 +177,9 @@ impl Default for RadioPanel {
             settings_open: false,
             standalone_layout: false,
             source_settings_open: false,
+            external_provider_intent: None,
+            external_provider_active: false,
+            external_provider_notice: None,
             stopping: false,
             last_session: None,
             validation: None,
@@ -296,7 +318,52 @@ impl RadioPanel {
             || self.restart_pending
     }
 
+    /// Consume a one-shot external-provider launch intent from the standalone
+    /// host. Embedded hosts do not receive an intent unless they explicitly
+    /// opt into the standalone UI.
+    pub fn take_external_provider_intent(&mut self) -> Option<ExternalProvider> {
+        self.external_provider_intent.take()
+    }
+
+    /// Tell the panel that the fixed OS URL dispatch could not be started.
+    /// The message is deliberately generic and contains no subprocess output.
+    pub fn external_provider_launch_failed(&mut self) {
+        self.external_provider_active = false;
+        self.external_provider_notice =
+            Some("Could not open the player. Select SiriusXM to retry.");
+        self.note = "Could not open the external player. Retry from SiriusXM.".into();
+    }
+
+    fn request_external_provider(&mut self, provider: ExternalProvider) {
+        if !self.standalone_layout {
+            return;
+        }
+        if self.is_active() || self.engine.is_some() || self.stopping {
+            self.external_provider_notice =
+                Some("Stop radio and wait for checks before opening the external player.");
+            self.note = "STOP RADIO AND WAIT FOR CHECKS BEFORE OPENING THE EXTERNAL PLAYER".into();
+            return;
+        }
+        self.selection_check_pending = None;
+        self.external_provider_intent = Some(provider);
+        self.external_provider_active = true;
+        self.external_provider_notice = None;
+        self.note = "EXTERNAL PLAYER / SIGN IN AND PLAY IN BROWSER".into();
+    }
+
+    /// Confirm by explicit user action that browser playback has stopped.
+    /// This is an operator assertion, not a detected browser/session state.
+    pub fn confirm_external_provider_stopped(&mut self) {
+        self.external_provider_active = false;
+        self.external_provider_notice = None;
+        self.note = "EXTERNAL PLAYER STOPPED / READY TO LISTEN".into();
+    }
+
     fn play(&mut self) {
+        if self.external_provider_active {
+            self.note = "STOP EXTERNAL PLAYBACK IN THE BROWSER BEFORE USING NATIVE RADIO".into();
+            return;
+        }
         self.selection_check_pending = None;
         if self.engine.is_some() || self.restart_pending {
             return;

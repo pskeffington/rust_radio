@@ -12,6 +12,25 @@ pub(super) struct ListeningStatus {
 }
 impl RadioPanel {
     pub(super) fn listening_status(&self) -> ListeningStatus {
+        if self.external_provider_active {
+            return ListeningStatus {
+                label: "External player",
+                hint:
+                    "Sign in and control playback in the browser. Stop it there before returning.",
+                working: false,
+                failed: false,
+                stop_action: false,
+            };
+        }
+        if let Some(hint) = self.external_provider_notice.filter(|_| !self.is_active()) {
+            return ListeningStatus {
+                label: "SiriusXM",
+                hint,
+                working: false,
+                failed: false,
+                stop_action: false,
+            };
+        }
         let state = self
             .engine
             .as_ref()

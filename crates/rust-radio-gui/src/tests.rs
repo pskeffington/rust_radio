@@ -1116,6 +1116,7 @@ fn standalone_header_hides_receiver_buttons_but_settings_remains_reachable() {
         assert_eq!(labels.iter().any(|label| label == "nSDR"), !standalone);
         assert_eq!(labels.iter().any(|label| label == "USB"), !standalone);
         assert_eq!(labels.iter().any(|label| label == "Settings"), standalone);
+        assert_eq!(labels.iter().any(|label| label == "SiriusXM"), standalone);
         if standalone {
             panel.source_settings_open = true;
             let mut bounds = None;
@@ -1134,4 +1135,51 @@ fn standalone_header_hides_receiver_buttons_but_settings_remains_reachable() {
             assert!(!panel.is_active());
         }
     }
+}
+
+#[test]
+fn siriusxm_handoff_is_one_shot_standalone_only_and_requires_manual_return() {
+    let mut embedded = RadioPanel::new();
+    embedded.request_external_provider(ExternalProvider::SiriusXm);
+    assert!(embedded.take_external_provider_intent().is_none());
+
+    let mut standalone = RadioPanel::new_standalone();
+    standalone.request_external_provider(ExternalProvider::SiriusXm);
+    assert_eq!(
+        standalone.take_external_provider_intent(),
+        Some(ExternalProvider::SiriusXm)
+    );
+    assert!(standalone.take_external_provider_intent().is_none());
+    assert!(standalone.external_provider_active);
+
+    standalone.play();
+    assert!(standalone.engine.is_none());
+    assert!(standalone.external_provider_active);
+
+    standalone.confirm_external_provider_stopped();
+    assert!(!standalone.external_provider_active);
+    assert!(standalone.engine.is_none());
+}
+
+#[test]
+fn siriusxm_handoff_is_blocked_while_native_work_is_active() {
+    let mut standalone = RadioPanel::new_standalone();
+    let release = hold_check(&mut standalone);
+    standalone.request_external_provider(ExternalProvider::SiriusXm);
+    assert!(standalone.take_external_provider_intent().is_none());
+    assert!(!standalone.external_provider_active);
+    assert_eq!(standalone.listening_status().label, "Checking station");
+    assert!(standalone.external_provider_notice.is_some());
+    release.send(()).unwrap();
+    finish_panel(&mut standalone);
+}
+
+#[test]
+fn blocked_siriusxm_request_preserves_native_stop_action() {
+    let mut standalone = RadioPanel::new_standalone();
+    standalone.restart_pending = true;
+    standalone.request_external_provider(ExternalProvider::SiriusXm);
+    assert!(standalone.listening_status().stop_action);
+    assert!(standalone.external_provider_notice.is_some());
+    assert!(standalone.take_external_provider_intent().is_none());
 }
