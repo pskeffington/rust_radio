@@ -160,7 +160,7 @@ mod tests {
         let mut radio = RadioController::default();
         radio
             .apply(RadioCommand::PlayInternet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         assert_eq!(radio.state().state, PlaybackState::Connecting);
@@ -188,7 +188,7 @@ mod tests {
         let mut radio = RadioController::default();
         let old = radio
             .apply(RadioCommand::PlayInternet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         assert!(radio.event(old, PlaybackEvent::Connected));
@@ -202,7 +202,7 @@ mod tests {
         let mut radio = RadioController::default();
         let generation = radio
             .apply(RadioCommand::PlayInternet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         assert!(radio.event(generation, PlaybackEvent::ConnectionLost));

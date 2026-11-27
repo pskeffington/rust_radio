@@ -146,7 +146,7 @@ mod tests {
         let mut control = RadioController::default();
         let generation = control
             .request_start(Source::Internet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         control.request_stop();
@@ -161,7 +161,7 @@ mod tests {
         let mut control = RadioController::default();
         let generation = control
             .request_start(Source::Internet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         assert_eq!(
@@ -191,19 +191,19 @@ mod tests {
         );
         assert_eq!(control.snapshot().generation, 0);
         assert_eq!(control.snapshot().state, SessionState::Stopped);
-        assert!(control.request_internet_station("skylab").is_ok());
+        assert!(control.request_internet_station("gbh897").is_ok());
     }
     #[test]
     fn cannot_start_second_session() {
         let mut control = RadioController::default();
         control
             .request_start(Source::Internet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         assert_eq!(
             control.request_start(Source::Internet {
-                station_id: "groovesalad".into(),
+                station_id: "wcrb".into(),
             }),
             Err(RadioError::AlreadyActive)
         );

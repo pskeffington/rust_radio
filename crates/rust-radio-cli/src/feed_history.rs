@@ -199,7 +199,7 @@ mod tests {
         let results: Vec<_> = rust_radio::directory::curated_stations()
             .iter()
             .map(|station| {
-                if station.id == "skylab" {
+                if station.id == "gbh897" {
                     json!({
                         "station_id": station.id,
                         "status": status,
@@ -234,13 +234,13 @@ mod tests {
         update_file(&path, &report(1_000_100, "unavailable", false)).unwrap();
         let saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(saved["schema_version"].as_u64(), Some(1));
-        assert_eq!(saved["stations"]["skylab"]["last_status"], "unavailable");
+        assert_eq!(saved["stations"]["gbh897"]["last_status"], "unavailable");
         assert_eq!(
-            saved["stations"]["skylab"]["last_decoded_at_unix"],
+            saved["stations"]["gbh897"]["last_decoded_at_unix"],
             1_000_000
         );
-        assert_eq!(saved["stations"]["skylab"]["consecutive_failures"], 1);
-        assert_eq!(saved["stations"]["skylab"]["health"], "failed");
+        assert_eq!(saved["stations"]["gbh897"]["consecutive_failures"], 1);
+        assert_eq!(saved["stations"]["gbh897"]["health"], "failed");
         let _ = fs::remove_file(path);
     }
 
@@ -258,7 +258,7 @@ mod tests {
         let path = temp_path();
         let mut invalid: Value =
             serde_json::from_str(include_str!("../../../testdata/feed-health-v1.json")).unwrap();
-        invalid["stations"]["skylab"]["last_stage"] = json!("endpoint_reached");
+        invalid["stations"]["gbh897"]["last_stage"] = json!("endpoint_reached");
         fs::write(&path, serde_json::to_vec(&invalid).unwrap()).unwrap();
         assert!(update_file(&path, &report(1_700_000_100, "unavailable", false)).is_err());
         assert_eq!(
@@ -275,26 +275,26 @@ mod tests {
             .as_array_mut()
             .unwrap()
             .iter_mut()
-            .find(|result| result["station_id"] == "skylab")
+            .find(|result| result["station_id"] == "gbh897")
             .unwrap();
         result.as_object_mut().unwrap().remove("stage");
         result.as_object_mut().unwrap().remove("checked_at_unix");
 
         let updated = merge(None, &report).unwrap();
-        assert_eq!(updated["stations"]["skylab"]["last_status"], "check_error");
-        assert_eq!(updated["stations"]["skylab"]["last_stage"], "not_checked");
-        assert_eq!(updated["stations"]["skylab"]["health"], "failed");
+        assert_eq!(updated["stations"]["gbh897"]["last_status"], "check_error");
+        assert_eq!(updated["stations"]["gbh897"]["last_stage"], "not_checked");
+        assert_eq!(updated["stations"]["gbh897"]["health"], "failed");
     }
 
     #[test]
     fn cli_merges_the_shared_v1_history_fixture() {
         let previous = include_str!("../../../testdata/feed-health-v1.json");
         let updated = merge(Some(previous), &report(1_700_000_100, "unavailable", false)).unwrap();
-        assert_eq!(updated["stations"]["skylab"]["last_status"], "unavailable");
+        assert_eq!(updated["stations"]["gbh897"]["last_status"], "unavailable");
         assert_eq!(
-            updated["stations"]["skylab"]["last_decoded_at_unix"],
+            updated["stations"]["gbh897"]["last_decoded_at_unix"],
             1_700_000_000
         );
-        assert_eq!(updated["stations"]["skylab"]["consecutive_failures"], 1);
+        assert_eq!(updated["stations"]["gbh897"]["consecutive_failures"], 1);
     }
 }

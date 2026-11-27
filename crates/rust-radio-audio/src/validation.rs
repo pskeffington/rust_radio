@@ -401,15 +401,14 @@ mod tests {
     #[test]
     fn background_worker_panics_and_wrong_station_results_are_reported_once() {
         let mut panicked =
-            StationValidationTask::spawn("skylab", |_| panic!("synthetic failure")).unwrap();
+            StationValidationTask::spawn("gbh897", |_| panic!("synthetic failure")).unwrap();
         assert!(finish_task(&mut panicked)
             .unwrap_err()
             .contains("unexpectedly"));
         assert!(panicked.try_finish().is_none());
-        let mut wrong_station = StationValidationTask::spawn("skylab", |_| {
-            Ok(StationValidation::unverified("groovesalad"))
-        })
-        .unwrap();
+        let mut wrong_station =
+            StationValidationTask::spawn("gbh897", |_| Ok(StationValidation::unverified("wcrb")))
+                .unwrap();
         assert!(finish_task(&mut wrong_station)
             .unwrap_err()
             .contains("different station"));
@@ -420,10 +419,10 @@ mod tests {
     #[test]
     fn cancellation_takes_priority_over_a_late_success_without_blocking_poll() {
         let (release, pending) = std::sync::mpsc::channel();
-        let mut task = StationValidationTask::spawn("skylab", move |_| {
+        let mut task = StationValidationTask::spawn("gbh897", move |_| {
             pending.recv_timeout(Duration::from_secs(3)).unwrap();
             Ok(finish(
-                StationValidation::unverified("skylab"),
+                StationValidation::unverified("gbh897"),
                 ValidationStatus::Decoded,
                 "late success",
             ))
@@ -459,7 +458,7 @@ mod tests {
         body[..10].copy_from_slice(b"ID3\x04\x00\x00\x00\x20\x00\x00");
         let bytes = Arc::new(AtomicU64::new(0));
         let report = decode_response(
-            StationValidation::unverified("skylab"),
+            StationValidation::unverified("gbh897"),
             CountedReader {
                 source: io::Cursor::new(body),
                 bytes: Arc::clone(&bytes),

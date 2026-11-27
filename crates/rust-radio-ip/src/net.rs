@@ -868,7 +868,7 @@ mod tests {
             Err(TransportError::Permanent(_))
         ));
         assert!(matches!(
-            open_station_classified("skylab", Arc::new(AtomicBool::new(true))),
+            open_station_classified("gbh897", Arc::new(AtomicBool::new(true))),
             Err(TransportError::Cancelled)
         ));
         let source = Cursor::new([1u8, 2u8]);

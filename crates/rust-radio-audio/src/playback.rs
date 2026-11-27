@@ -1068,7 +1068,7 @@ mod tests {
         let mut controller = RadioController::default();
         let generation = controller
             .apply(RadioCommand::PlayInternet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         (Arc::new(Mutex::new(controller)), generation)
@@ -1097,7 +1097,7 @@ mod tests {
     fn public_playback_entry_points_refuse_a_second_worker_before_opening_resources() {
         let _active = ACTIVE_PLAYBACK_SLOT.acquire().unwrap();
         for result in [
-            NativeRadioEngine::start_internet("skylab", 60, "system"),
+            NativeRadioEngine::start_internet("gbh897", 60, "system"),
             NativeRadioEngine::start_stream("https://example.com/live.mp3", 60, "system"),
         ] {
             let error = match result {
@@ -1336,7 +1336,7 @@ mod tests {
         let mut controller = RadioController::default();
         controller
             .apply(RadioCommand::PlayInternet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         NativeRadioEngine {
@@ -1360,7 +1360,7 @@ mod tests {
         let mut controller = RadioController::default();
         let generation = controller
             .apply(RadioCommand::PlayInternet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         assert!(controller.event(generation, PlaybackEvent::Connected));
@@ -1478,7 +1478,7 @@ mod tests {
         let mut controller = RadioController::default();
         let generation = controller
             .apply(RadioCommand::PlayInternet {
-                station_id: "skylab".into(),
+                station_id: "gbh897".into(),
             })
             .unwrap();
         let controller = Arc::new(Mutex::new(controller));
@@ -1702,7 +1702,7 @@ mod tests {
     #[test]
     fn refuses_unapproved_stream_without_opening_audio() {
         assert!(NativeRadioEngine::start_internet("untrusted", 50, "system").is_err());
-        assert!(NativeRadioEngine::start_internet("skylab", 101, "system").is_err());
+        assert!(NativeRadioEngine::start_internet("gbh897", 101, "system").is_err());
     }
 
     #[test]
@@ -1711,7 +1711,7 @@ mod tests {
         assert!(validate_demo_duration(Some(301)).is_err());
         assert!(validate_demo_duration(Some(30)).is_ok());
         assert!(validate_demo_duration(None).is_ok());
-        assert!(run_demo("skylab", Some(0)).is_err());
+        assert!(run_demo("gbh897", Some(0)).is_err());
     }
 
     #[test]

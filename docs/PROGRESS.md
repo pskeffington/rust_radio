@@ -1,3 +1,12 @@
+# Progress checkpoint — streaming-only scope (2026-11-27)
+
+- Product scope is now internet station browsing and streaming playback only. nSDR/network receiver, USB SDR, SDRconnect, SoapySDR, and satellite work belongs to separate repositories.
+- Updated the mission, active roadmap, task queue, and README to make that boundary explicit. Added RR-119 for source/build integration cleanup and RR-120 for Mac station browsing acceptance.
+- Removed the nSDR and USB selector controls from the active GUI header and disabled automatic receiver discovery on app startup. Removed receiver commands from CLI help and dispatch. The visible app and CLI entry points now present streaming only.
+- The receiver implementation still exists in legacy-gated source paths; the package/API cleanup is not complete. Do not describe the repository as fully purged until those paths and their build graph are removed and the workspace is checked.
+- SiriusXM remains out of scope; the starter station catalog is GBH 89.7 and WCRB, subject to fresh feed checks and publisher distribution permission.
+- Local verification: `cargo fmt --all`, `git diff --check`, `cargo check --workspace`, and `cargo build --release -p rust-radio-gui` passed. Cargo reports `unexpected_cfgs` warnings and GUI dead-code warnings because receiver-gated internal implementation remains after public features and entry points were removed. Tests were not run.
+
 # Radio development progress
 
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
@@ -1240,3 +1249,30 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The subsequent push triggered run `40772645579` on `52be452`; it again ended
   `startup_failure` with zero jobs. The latest head `1642027` has no run visible
   yet. This reproduces the runner-startup problem but still exposes no cause.
+
+# 2026-11-27 — Curated GBH starter catalog and SiriusXM removal
+
+- Work branch: `codex/curated-wgbh-stations`, based on `origin/main` at
+  `03b000ffd330b053efda628bb9a3f8b40db7132a`.
+- The SiriusXM browser-launch draft PR #18 was closed unmerged; the feature is
+  absent from `origin/main`. No supported development API was found, so it is
+  removed from the active product roadmap.
+- The runtime and mirrored catalog now contain two direct GBH candidates:
+  `gbh897` and `wcrb`. SomaFM endpoints/allowlisting were removed. Skylab is
+  also excluded until app-client permission is established. Endpoint checks
+  accept only each candidate's exact HTTPS URL.
+- GBH's official help page identifies the two station feeds for radio apps.
+  This does not establish permission for Rust Radio bundling or commercial
+  distribution. Written publisher permission, live silent decode validation,
+  Mac operator playback and current-head CI remain open.
+- Local repository instructions consulted: `AGENTS.md` at central registry
+  revision `e07de9c76ce5bf53a665945fa641b036f85ce1aa`. The required
+  transport/audio/GUI specialist skill bodies and registered workflow roles
+  were not available in that checkout; record **BLOCKED-AGENT**. Do not claim
+  specialist skill compliance. No tests were run in this pass. `cargo fmt --all`,
+  `git diff --check`, and `cargo check --workspace` completed successfully. An
+  independent read-only review confirmed the catalog and history migration; no
+  actionable issue remains.
+- The original `/Users/null/GitHub/rust_radio` checkout's unrelated dirty
+  audio-output edit was not touched; work occurred in the isolated remote
+  worktree.
