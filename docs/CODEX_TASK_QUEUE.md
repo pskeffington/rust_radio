@@ -29,7 +29,7 @@ Owner: Linux Operations / Codex. RR-110 and RR-111 are IN REVIEW; RR-112 is IN P
 
 ## SiriusXM channel-browsing continuation (2026-11-27)
 
-The current candidate is only an external website handoff. Follow the phased SX-0–SX-4 gates in [the provider contract](EXTERNAL_PROVIDER_CONTRACT.md#siriusxm-channel-browsing-roadmap--proposed-gates). Prioritize SX-1 source discovery and a browse UI model; do not display fixture content as real channels. SX-1 cannot use consumer-player scraping or account endpoints. SX-2 requires a documented or provider-approved channel deep-link contract. SX-3/4 remain optional and blocked absent official provider interfaces, written scope approval, and security/licensing acceptance.
+The current candidate is only an external website handoff. Follow the phased SX-0–SX-4 gates in [the provider contract](EXTERNAL_PROVIDER_CONTRACT.md#siriusxm-channel-browsing-roadmap--proposed-gates). Research found an official consumer channel guide but no public developer API/OAuth, playback SDK, supported deep-link contract, or catalog reuse license in reviewed sources. The next unblock is an official SiriusXM partner/developer inquiry for written catalog, deep-link and (if pursued) playback permissions. Do not display fixture content as real channels or use consumer-player scraping/account endpoints. SX-3/4 remain optional and blocked absent official provider interfaces, written scope approval, and security/licensing acceptance.
 
 | ID | Priority | Status | Deliverable | Acceptance |
 | --- | --- | --- | --- | --- |
