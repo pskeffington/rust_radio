@@ -13,6 +13,36 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const FEED_HISTORY_SCHEMA_VERSION: u64 = 1;
 pub const MAX_FEED_HISTORY_BYTES: usize = 64 * 1024;
 const MAX_CONSECUTIVE_FAILURES: u64 = 1_000_000;
+const RETIRED_STATION_IDS: [&str; 28] = [
+    "groovesalad",
+    "secretagent",
+    "lush",
+    "dronezone",
+    "deepspaceone",
+    "spacestation",
+    "beatblender",
+    "defcon",
+    "u80s",
+    "indiepop",
+    "folkfwd",
+    "metal",
+    "bootliquor",
+    "sonicuniverse",
+    "bossa",
+    "reggae",
+    "thistle",
+    "fluid",
+    "cliqhop",
+    "thetrip",
+    "poptron",
+    "leftcoast70s",
+    "illstreet",
+    "kusc",
+    "colorado-sound",
+    "kuaf",
+    "kuaf-classical",
+    "kuaf-jazz",
+];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FeedHistory {
@@ -66,16 +96,18 @@ pub fn parse_feed_history(json: &str) -> Result<FeedHistory, String> {
     let stations = value["stations"]
         .as_object()
         .ok_or_else(|| "Feed validation history has no stations object".to_owned())?;
-    if stations.len() > curated_stations().len() {
+    if stations.len() > curated_stations().len() + RETIRED_STATION_IDS.len() {
         return Err("Feed validation history contains too many stations".into());
     }
 
     let mut parsed = BTreeMap::new();
     for (id, record) in stations {
-        let station = curated_stations()
-            .iter()
-            .find(|station| station.id == id)
-            .ok_or_else(|| format!("Unknown curated station in feed history: {id}"))?;
+        let Some(station) = curated_stations().iter().find(|station| station.id == id) else {
+            if RETIRED_STATION_IDS.contains(&id.as_str()) {
+                continue;
+            }
+            return Err(format!("Unknown curated station in feed history: {id}"));
+        };
         let checked_at = epoch(record["last_checked_at_unix"].as_u64(), "last check")?;
         if checked_at > updated_at {
             return Err(format!("Future station check in feed history for {id}"));
@@ -237,5 +269,19 @@ mod tests {
             + 60;
         future_update["updated_at_unix"] = json!(future);
         assert!(parse_feed_history(&future_update.to_string()).is_err());
+    }
+
+    #[test]
+    fn migrates_known_retired_station_history_and_rejects_other_ids() {
+        let source = include_str!("../../../testdata/feed-health-v1.json");
+        let mut history: Value = serde_json::from_str(source).unwrap();
+        let retired_record = history["stations"]["skylab"].clone();
+        history["stations"]["groovesalad"] = retired_record.clone();
+        history["stations"]["kusc"] = retired_record;
+        let parsed = parse_feed_history(&history.to_string()).unwrap();
+        assert!(!parsed.stations.contains_key("groovesalad"));
+        assert!(!parsed.stations.contains_key("kusc"));
+        history["stations"]["made-up"] = history["stations"]["skylab"].clone();
+        assert!(parse_feed_history(&history.to_string()).is_err());
     }
 }

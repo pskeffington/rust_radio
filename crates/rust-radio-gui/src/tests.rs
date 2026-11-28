@@ -15,22 +15,36 @@ struct GatedHttp {
 impl RadioHttp for GatedHttp {
     type Body = Cursor<Vec<u8>>;
 
-    fn get(&self, _: &ApprovedEndpoint) -> Result<HttpResponse<Self::Body>, StreamError> {
-        self.entered.send(()).unwrap();
-        self.release
-            .lock()
-            .unwrap()
-            .recv_timeout(Duration::from_secs(5))
-            .unwrap();
-        Ok(HttpResponse {
-            status: 200,
-            content_type: Some("audio/mpeg".into()),
-            redirect_location: None,
-            icy_metaint: None,
-            body: Cursor::new(
-                include_bytes!("../../rust-radio-audio/tests/fixtures/tone.mp3").to_vec(),
-            ),
-        })
+    fn get(&self, target: &ApprovedEndpoint) -> Result<HttpResponse<Self::Body>, StreamError> {
+        if target.url() == "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls" {
+            self.entered.send(()).unwrap();
+            self.release
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(5))
+                .unwrap();
+            Ok(HttpResponse {
+                status: 200,
+                content_type: Some("audio/x-scpls".into()),
+                redirect_location: None,
+                icy_metaint: None,
+                body: Cursor::new(
+                    b"[playlist]\nFile1=https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv\nNumberOfEntries=1\nVersion=2\n".to_vec(),
+                ),
+            })
+        } else if target.url() == "https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv" {
+            Ok(HttpResponse {
+                status: 200,
+                content_type: Some("audio/mpeg".into()),
+                redirect_location: None,
+                icy_metaint: None,
+                body: Cursor::new(
+                    include_bytes!("../../rust-radio-audio/tests/fixtures/tone.mp3").to_vec(),
+                ),
+            })
+        } else {
+            Err(StreamError::TransportUnavailable)
+        }
     }
 }
 
@@ -253,7 +267,7 @@ fn station_status_and_long_diagnostics_fit_the_micro_viewport() {
 }
 
 #[test]
-fn completed_failure_stays_visible_without_retaining_an_active_receiver() {
+fn completed_failure_stays_visible_without_retaining_an_active_worker() {
     let mut panel = RadioPanel::new();
     panel.last_session = Some(RadioSession {
         state: PlaybackState::Failed,
@@ -267,7 +281,7 @@ fn completed_failure_stays_visible_without_retaining_an_active_receiver() {
     assert_eq!(session.last_error.as_deref(), Some("Speaker disconnected"));
     panel.stop();
     assert!(panel.last_session.is_none());
-    assert_eq!(panel.note, "RECEIVER STOPPED");
+    assert_eq!(panel.note, "STOPPED");
 }
 
 #[test]
@@ -326,11 +340,7 @@ fn changing_station_is_offline() {
 fn station_indexes_preserve_catalog_order_and_wrap_in_both_directions() {
     let mut panel = RadioPanel::new();
     let stations = curated_stations();
-    let count = stations.len()
-        + usize::from(cfg!(feature = "sdrconnect"))
-        + usize::from(cfg!(feature = "soapy-sdr"))
-        + 1
-        + usize::from(cfg!(feature = "nrsp-native"));
+    let count = stations.len() + 1;
     for index in 0..count {
         assert_eq!(panel.source_index(), index);
         if index < stations.len() {
@@ -349,11 +359,7 @@ fn station_indexes_preserve_catalog_order_and_wrap_in_both_directions() {
 #[test]
 fn large_station_steps_remain_in_bounds_without_overflow() {
     let mut panel = RadioPanel::new();
-    let count = curated_stations().len()
-        + usize::from(cfg!(feature = "sdrconnect"))
-        + usize::from(cfg!(feature = "soapy-sdr"))
-        + 1
-        + usize::from(cfg!(feature = "nrsp-native"));
+    let count = curated_stations().len() + 1;
     for direction in [isize::MIN, isize::MAX, -100, -1, 0, 1, 100] {
         panel.select_source(count - 1);
         let expected = ((count as i128 - 1) + direction as i128).rem_euclid(count as i128) as usize;
@@ -366,101 +372,10 @@ fn large_station_steps_remain_in_bounds_without_overflow() {
     assert!(!panel.is_active());
 }
 
-#[cfg(feature = "soapy-sdr")]
-#[test]
-fn usb_selection_is_offline_and_invalid_configuration_does_not_start_a_worker() {
-    let mut panel = RadioPanel::new();
-    panel.select_source(curated_stations().len() + usize::from(cfg!(feature = "sdrconnect")));
-    assert!(panel.is_usb_selected());
-    panel.start_validation();
-    assert!(panel.validation.is_none());
-    panel.play();
-    assert!(!panel.is_active());
-    assert!(panel.note.contains("discovered SoapySDR receiver ID"));
-    panel.usb_id = "soapy-0000000000000000".into();
-    panel.usb_frequency = "invalid".into();
-    panel.play();
-    assert!(!panel.is_active());
-    assert!(panel.note.contains("frequency"));
-    render_panel(&mut panel);
-    let context = egui::Context::default();
-    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
-    let mut bounds = None;
-    for _ in 0..2 {
-        let _ = context.run(
-            egui::RawInput {
-                screen_rect: Some(screen),
-                ..Default::default()
-            },
-            |ctx| {
-                bounds = panel.show_settings(ctx);
-            },
-        );
-    }
-    assert!(screen.contains_rect(bounds.unwrap()));
-}
-
-#[cfg(feature = "sdrconnect")]
-#[test]
-fn sdr_selection_is_offline_and_invalid_endpoint_fails_before_start() {
-    let mut panel = RadioPanel::new();
-    panel.select_source(curated_stations().len());
-    assert!(panel.is_sdr_selected());
-    assert_eq!(panel.sdr_endpoint, "127.0.0.1:5454");
-    assert!(!panel.is_active());
-    panel.start_validation();
-    assert!(panel.validation.is_none());
-    panel.last_session = Some(RadioSession {
-        state: PlaybackState::Failed,
-        last_error: Some("Earlier receiver failure".into()),
-        ..Default::default()
-    });
-    panel.sdr_endpoint = "8.8.8.8:5454".into();
-    panel.play();
-    assert!(!panel.is_active());
-    assert_eq!(
-        panel.last_session.as_ref().unwrap().state,
-        PlaybackState::Failed
-    );
-    assert!(panel.note.contains("private-LAN or loopback"));
-    render_panel(&mut panel);
-    assert!(panel.note.contains("private-LAN or loopback"));
-    let context = egui::Context::default();
-    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
-    let mut bounds = None;
-    for _ in 0..2 {
-        let _ = context.run(
-            egui::RawInput {
-                screen_rect: Some(screen),
-                ..Default::default()
-            },
-            |ctx| {
-                bounds = panel.show_settings(ctx);
-            },
-        );
-    }
-    assert!(screen.contains_rect(bounds.unwrap()));
-}
-
-#[cfg(feature = "sdrconnect")]
-#[test]
-fn selecting_sdr_cancels_an_in_flight_station_check() {
-    let mut panel = RadioPanel::new();
-    let release = hold_check(&mut panel);
-    panel.select_source(curated_stations().len());
-    assert!(panel.validation.as_ref().unwrap().cancellation_requested());
-    release.send(()).unwrap();
-    finish_panel(&mut panel);
-    assert!(panel.validations.is_empty());
-    assert!(panel.is_sdr_selected());
-}
-
 #[test]
 fn direct_selection_and_validation_are_offline() {
     let mut panel = RadioPanel::new();
-    let index = curated_stations().len()
-        + usize::from(cfg!(feature = "sdrconnect"))
-        + usize::from(cfg!(feature = "soapy-sdr"));
+    let index = curated_stations().len();
     panel.select_source(index);
     assert!(panel.direct_selected);
     panel.direct_url = "http://example.com/stream".into();
@@ -470,238 +385,14 @@ fn direct_selection_and_validation_are_offline() {
     assert!(!panel.direct_selected);
 }
 
-#[cfg(feature = "nrsp-native")]
-#[test]
-fn native_receiver_configuration_is_offline_and_fits_the_viewport() {
-    let mut panel = RadioPanel::new();
-    let index = curated_stations().len()
-        + usize::from(cfg!(feature = "sdrconnect"))
-        + usize::from(cfg!(feature = "soapy-sdr"))
-        + 1;
-    panel.select_source(index);
-    assert!(panel.is_native_selected());
-    assert!(panel.is_receiver_selected());
-    panel.native_endpoint = "8.8.8.8:9001".into();
-    panel.play();
-    assert!(!panel.is_active());
-    panel.native_endpoint = "127.0.0.1:9001".into();
-    panel.native_frequency = "invalid".into();
-    panel.play();
-    assert!(!panel.is_active());
-    panel.apply_native_tuning();
-    assert!(!panel.is_active());
-    render_panel(&mut panel);
-    let ctx = egui::Context::default();
-    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
-    let mut bounds = None;
-    for _ in 0..2 {
-        let _ = ctx.run(
-            egui::RawInput {
-                screen_rect: Some(screen),
-                ..Default::default()
-            },
-            |ctx| {
-                bounds = panel.show_settings(ctx);
-            },
-        );
-    }
-    assert!(
-        screen.contains_rect(bounds.unwrap()),
-        "Native settings must fit the micro viewport"
-    );
-    panel.select_source(0);
-    assert!(!panel.is_native_selected());
-}
-
-#[test]
-fn input_glow_tracks_availability_independently_of_selection() {
-    use rust_radio_audio::discovery::{InputDevice, InputReport};
-    for (internet, network, usb) in [
-        (false, false, true),
-        (false, true, false),
-        (true, false, false),
-        (true, true, true),
-        (false, false, false),
-    ] {
-        let mut panel = RadioPanel::new();
-        panel.apply_inputs(InputReport {
-            internet,
-            network: if network {
-                vec![InputDevice {
-                    id: "127.0.0.1:9001".into(),
-                    label: "Fixture network radio".into(),
-                    ready: true,
-                }]
-            } else {
-                vec![]
-            },
-            usb: if usb {
-                vec![InputDevice {
-                    id: "soapy-0000000000000000".into(),
-                    label: "Fixture USB radio".into(),
-                    ready: true,
-                }]
-            } else {
-                vec![]
-            },
-            ..Default::default()
-        });
-        assert_eq!(panel.segment_available(Segment::Ip), internet);
-        assert_eq!(panel.segment_available(Segment::Network), network);
-        assert_eq!(panel.segment_available(Segment::Usb), usb);
-        assert_eq!(
-            panel.segment,
-            if network {
-                Segment::Network
-            } else if usb {
-                Segment::Usb
-            } else {
-                Segment::Ip
-            }
-        );
-        assert!(!panel.is_active(), "Detection never starts reception");
-        render_panel(&mut panel);
-    }
-}
-#[test]
-fn input_setup_buttons_preserve_explicit_choice_and_stay_offline() {
-    use rust_radio_audio::discovery::InputReport;
-    let mut panel = RadioPanel::new();
-    panel.select_segment(Segment::Ip, false);
-    panel.apply_inputs(InputReport {
-        internet: true,
-        ..Default::default()
-    });
-    assert_eq!(panel.segment, Segment::Ip);
-    for segment in [Segment::Ip, Segment::Network, Segment::Usb] {
-        panel.select_segment(segment, false);
-        assert_eq!(panel.segment, segment);
-        assert!(!panel.is_active());
-        panel.settings_open = true;
-        let ctx = egui::Context::default();
-        let screen =
-            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
-        let mut bounds = None;
-        for _ in 0..2 {
-            let _ = ctx.run(
-                egui::RawInput {
-                    screen_rect: Some(screen),
-                    ..Default::default()
-                },
-                |ctx| {
-                    bounds = panel.show_settings(ctx);
-                },
-            );
-        }
-        assert!(
-            screen.contains_rect(bounds.unwrap()),
-            "{} setup must fit viewport",
-            segment.label()
-        );
-    }
-}
-
 #[test]
 fn opening_ip_setup_preserves_the_selected_direct_stream() {
     let mut panel = RadioPanel::new();
-    panel.select_source(
-        curated_stations().len()
-            + usize::from(cfg!(feature = "sdrconnect"))
-            + usize::from(cfg!(feature = "soapy-sdr")),
-    );
+    panel.select_source(curated_stations().len());
     panel.direct_url = "https://example.org/live.aac".into();
-    panel.select_segment(Segment::Ip, false);
     assert!(panel.direct_selected);
     assert_eq!(panel.direct_url, "https://example.org/live.aac");
     assert!(!panel.is_active());
-}
-
-#[cfg(feature = "nrsp-native")]
-#[test]
-fn advanced_fm_tabs_fit_and_presets_do_not_autoplay() {
-    use crate::fm_presets::{frequency_hz, PresetBank};
-    let mut panel = RadioPanel::new();
-    panel.select_segment(Segment::Network, false);
-    panel.native_frequency = "99.1 MHz".into();
-    panel.native_step = 200_000;
-    panel.step_native_frequency(true);
-    assert_eq!(frequency_hz(&panel.native_frequency).unwrap(), 99_300_000);
-    panel.native_preset_name = "Local FM".into();
-    panel.save_native_preset();
-    let json = panel.take_fm_presets_update().unwrap();
-    assert_eq!(PresetBank::parse(&json).unwrap().stations.len(), 2);
-    assert!(panel.take_fm_presets_update().is_none());
-    let before = panel.native_presets.clone();
-    assert!(panel.load_fm_presets("invalid").is_err());
-    assert_eq!(panel.native_presets, before);
-    panel.recall_native_preset(0);
-    assert_eq!(frequency_hz(&panel.native_frequency).unwrap(), 99_500_000);
-    assert_eq!(panel.native_mode, "wfm");
-    assert!(!panel.is_active());
-    let ctx = egui::Context::default();
-    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
-    for tab in 0..4 {
-        panel.native_tab = tab;
-        let mut bounds = None;
-        for _ in 0..2 {
-            let _ = ctx.run(
-                egui::RawInput {
-                    screen_rect: Some(screen),
-                    ..Default::default()
-                },
-                |ctx| {
-                    bounds = panel.show_settings(ctx);
-                },
-            );
-        }
-        assert!(
-            screen.contains_rect(bounds.unwrap()),
-            "FM tab {tab} exceeds viewport"
-        );
-    }
-    assert!(!panel.is_active());
-}
-
-#[cfg(feature = "nrsp-native")]
-#[test]
-fn long_fm_preset_names_remain_within_small_display() {
-    let mut panel = RadioPanel::new();
-    panel.select_segment(Segment::Network, false);
-    panel.native_tab = 2;
-    for index in 0..15 {
-        panel.native_preset_name = format!("Long preset name number {index:02} for FM");
-        panel.save_native_preset();
-    }
-    assert_eq!(panel.native_presets.stations.len(), 16);
-    let ctx = egui::Context::default();
-    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(PANEL_WIDTH, PANEL_HEIGHT));
-    let mut bounds = None;
-    for _ in 0..2 {
-        let _ = ctx.run(
-            egui::RawInput {
-                screen_rect: Some(screen),
-                ..Default::default()
-            },
-            |ctx| {
-                bounds = panel.show_settings(ctx);
-            },
-        );
-    }
-    assert!(screen.contains_rect(bounds.unwrap()));
-    assert!(!panel.is_active());
-}
-
-#[cfg(feature = "nrsp-native")]
-#[test]
-fn fm_steps_reject_band_edges_without_changing_the_dial() {
-    let mut panel = RadioPanel::new();
-    panel.select_segment(Segment::Network, false);
-    for (frequency, up) in [("108 MHz", true), ("64 MHz", false)] {
-        panel.native_frequency = frequency.into();
-        panel.step_native_frequency(up);
-        assert_eq!(panel.native_frequency, frequency);
-        assert!(!panel.is_active());
-    }
 }
 
 #[test]
@@ -854,24 +545,6 @@ fn ip_menu_keyboard_navigation_keeps_selection_until_enter_and_scrolls_long_name
 }
 
 #[test]
-fn switching_input_types_preserves_the_last_saved_ip_station_without_connecting() {
-    let mut panel = RadioPanel::new();
-    panel.direct_selected = true;
-    panel.ip_station_name = "My LAN station".into();
-    panel.direct_url = "http://192.168.1.12:8000/live".into();
-    panel.save_ip_station().unwrap();
-    panel.select_segment(Segment::Network, false);
-    panel.select_segment(Segment::Ip, false);
-    assert!(panel.direct_selected);
-    assert_eq!(panel.ip_station_name(), "My LAN station");
-    assert_eq!(panel.direct_url, "http://192.168.1.12:8000/live");
-    assert!(!panel.is_active());
-    panel.apply_inputs(InputReport::default());
-    assert_eq!(panel.segment, Segment::Ip);
-    assert_eq!(panel.ip_station_name(), "My LAN station");
-}
-
-#[test]
 fn listener_status_uses_playback_state_instead_of_cached_verification() {
     let mut panel = RadioPanel::new();
     let mut report = StationValidation::unverified("skylab");
@@ -998,7 +671,7 @@ fn stream_errors_offer_listener_actions_with_original_diagnostics_retained() {
         ),
         ("Unsupported native sample format: I32", "select an output"),
         (
-            "Unsupported native receiver output: UnsupportedChannels",
+            "Unsupported audio output: UnsupportedChannels",
             "select an output",
         ),
         (

@@ -7,10 +7,6 @@ rust-version = "1.85"
 
 [features]
 default = []
-receivers = ["nrsp-native", "soapy-sdr"]
-nrsp-native = ["rust-radio-audio/nrsp-native"]
-sdrconnect = ["rust-radio-audio/sdrconnect"]
-soapy-sdr = ["rust-radio-core/sdr", "rust-radio-audio/soapy"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

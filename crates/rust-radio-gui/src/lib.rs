@@ -7,16 +7,8 @@ use rust_radio_audio::validation::StationValidationTask;
 use rust_radio_core::directory::{curated_stations, station_by_id, InternetStation};
 use rust_radio_core::validation::{FeedHealth, StationValidation, ValidationStatus};
 use std::collections::BTreeMap;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 
-#[cfg(feature = "nrsp-native")]
-mod fm_presets;
-mod inputs;
-#[cfg(feature = "nrsp-native")]
-mod native_settings;
-use inputs::Segment;
-use rust_radio_audio::discovery::{InputReport, InputScan};
-use std::time::Instant;
 mod ip_settings;
 mod ip_stations;
 mod presentation;
@@ -32,12 +24,6 @@ pub const PANEL_HEIGHT: f32 = 320.0;
 
 /// Owns one radio session. Embed with `panel.show(ui)` inside an existing HUD.
 pub struct RadioPanel {
-    segment: Segment,
-    inputs: InputReport,
-    input_scan: Option<InputScan>,
-    scan_enabled: bool,
-    source_user_selected: bool,
-    last_scan: Option<Instant>,
     station_index: usize,
     direct_selected: bool,
     direct_url: String,
@@ -49,38 +35,6 @@ pub struct RadioPanel {
     selection_check_pending: Option<Instant>,
     validation_selection: Option<String>,
     direct_validation: Option<StationValidation>,
-    #[cfg(feature = "nrsp-native")]
-    native_selected: bool,
-    #[cfg(feature = "nrsp-native")]
-    native_endpoint: String,
-    #[cfg(feature = "nrsp-native")]
-    native_frequency: String,
-    #[cfg(feature = "nrsp-native")]
-    native_mode: String,
-    #[cfg(feature = "nrsp-native")]
-    native_bandwidth: String,
-    #[cfg(feature = "nrsp-native")]
-    native_tab: u8,
-    #[cfg(feature = "nrsp-native")]
-    native_step: u64,
-    #[cfg(feature = "nrsp-native")]
-    native_fm: rust_radio_audio::playback::NativeFmSettings,
-    #[cfg(feature = "nrsp-native")]
-    native_presets: fm_presets::PresetBank,
-    #[cfg(feature = "nrsp-native")]
-    native_preset_name: String,
-    #[cfg(feature = "nrsp-native")]
-    native_presets_dirty: bool,
-    #[cfg(feature = "sdrconnect")]
-    sdr_selected: bool,
-    #[cfg(feature = "sdrconnect")]
-    sdr_endpoint: String,
-    #[cfg(feature = "soapy-sdr")]
-    usb_selected: bool,
-    #[cfg(feature = "soapy-sdr")]
-    usb_id: String,
-    #[cfg(feature = "soapy-sdr")]
-    usb_frequency: String,
     volume: u8,
     unmuted_volume: u8,
     output: String,
@@ -98,12 +52,6 @@ pub struct RadioPanel {
 impl Default for RadioPanel {
     fn default() -> Self {
         Self {
-            segment: Segment::Ip,
-            inputs: InputReport::default(),
-            input_scan: None,
-            scan_enabled: false,
-            source_user_selected: false,
-            last_scan: None,
             station_index: 0,
             direct_selected: false,
             direct_url: String::new(),
@@ -115,38 +63,6 @@ impl Default for RadioPanel {
             selection_check_pending: None,
             validation_selection: None,
             direct_validation: None,
-            #[cfg(feature = "nrsp-native")]
-            native_selected: false,
-            #[cfg(feature = "nrsp-native")]
-            native_endpoint: String::new(),
-            #[cfg(feature = "nrsp-native")]
-            native_frequency: "99.100000 MHz".into(),
-            #[cfg(feature = "nrsp-native")]
-            native_mode: "wfm".into(),
-            #[cfg(feature = "nrsp-native")]
-            native_bandwidth: "200000".into(),
-            #[cfg(feature = "nrsp-native")]
-            native_tab: 0,
-            #[cfg(feature = "nrsp-native")]
-            native_step: 200_000,
-            #[cfg(feature = "nrsp-native")]
-            native_fm: Default::default(),
-            #[cfg(feature = "nrsp-native")]
-            native_presets: Default::default(),
-            #[cfg(feature = "nrsp-native")]
-            native_preset_name: String::new(),
-            #[cfg(feature = "nrsp-native")]
-            native_presets_dirty: false,
-            #[cfg(feature = "sdrconnect")]
-            sdr_selected: false,
-            #[cfg(feature = "sdrconnect")]
-            sdr_endpoint: "127.0.0.1:5454".into(),
-            #[cfg(feature = "soapy-sdr")]
-            usb_selected: false,
-            #[cfg(feature = "soapy-sdr")]
-            usb_id: String::new(),
-            #[cfg(feature = "soapy-sdr")]
-            usb_frequency: "99100000".into(),
             volume: 60,
             unmuted_volume: 60,
             output: "system".into(),
@@ -184,15 +100,11 @@ impl RadioPanel {
     pub fn stop(&mut self) {
         self.restart_pending = false;
         self.selection_check_pending = None;
-        if let Some(scan) = &self.input_scan {
-            scan.cancel();
-            self.last_scan = Some(Instant::now());
-        }
         let active = self.is_active();
         if let Some(engine) = &self.engine {
             engine.request_stop();
             self.stopping = true;
-            self.note = "STOPPING / RELEASING RECEIVER".into();
+            self.note = "STOPPING / RELEASING AUDIO".into();
         }
         if let Some(task) = &self.validation {
             task.request_cancel();
@@ -200,16 +112,15 @@ impl RadioPanel {
         }
         if !active {
             self.last_session = None;
-            self.note = "RECEIVER STOPPED".into();
+            self.note = "STOPPED".into();
         }
         self.poll_shutdown();
     }
 
-    /// Reap finished receivers even while this panel is hidden. False means
+    /// Reap finished workers even while this panel is hidden. False means
     /// a worker still owns resources. A completed failure remains visible until
     /// the operator explicitly starts another session or clears it with Stop.
     pub fn poll_shutdown(&mut self) -> bool {
-        self.poll_inputs();
         if let Some(engine) = self.engine.as_mut() {
             if engine.try_finish() {
                 let session = engine.status();
@@ -218,7 +129,7 @@ impl RadioPanel {
                 self.note = session
                     .last_error
                     .clone()
-                    .unwrap_or_else(|| "RECEIVER STOPPED".into());
+                    .unwrap_or_else(|| "STOPPED".into());
                 self.last_session = Some(session);
             }
         }
@@ -259,7 +170,7 @@ impl RadioPanel {
                 }
             }
         }
-        if self.engine.is_none() && self.validation.is_none() && self.input_scan.is_none() {
+        if self.engine.is_none() && self.validation.is_none() {
             if self.restart_pending {
                 self.restart_pending = false;
                 self.stopping = false;
@@ -276,10 +187,7 @@ impl RadioPanel {
     }
 
     pub fn is_active(&self) -> bool {
-        self.engine.is_some()
-            || self.validation.is_some()
-            || self.input_scan.is_some()
-            || self.restart_pending
+        self.engine.is_some() || self.validation.is_some() || self.restart_pending
     }
 
     fn play(&mut self) {
@@ -287,12 +195,9 @@ impl RadioPanel {
         if self.engine.is_some() || self.restart_pending {
             return;
         }
-        if self.validation.is_some() || self.input_scan.is_some() {
+        if self.validation.is_some() {
             if let Some(task) = &self.validation {
                 task.request_cancel();
-            }
-            if let Some(scan) = &self.input_scan {
-                scan.cancel();
             }
             self.restart_pending = true;
             self.note = "CONNECTING / RELEASING PREVIOUS CHECK".into();
@@ -316,94 +221,10 @@ impl RadioPanel {
     }
 
     fn start_selected(&self) -> Result<NativeRadioEngine, String> {
-        if !self.segment_supported() {
-            return Err("This receiver type is not included in this build".into());
-        }
-        #[cfg(feature = "nrsp-native")]
-        if self.native_selected {
-            let frequency = fm_presets::frequency_hz(&self.native_frequency)?;
-            let bandwidth = self
-                .native_bandwidth
-                .parse()
-                .map_err(|_| "Enter a bandwidth in Hz")?;
-            if self.native_mode == "wfm" {
-                return NativeRadioEngine::start_nrsp_native_fm(
-                    &self.native_endpoint,
-                    frequency,
-                    bandwidth,
-                    self.native_fm,
-                    self.volume,
-                    &self.output,
-                );
-            }
-            return NativeRadioEngine::start_nrsp_native(
-                &self.native_endpoint,
-                frequency,
-                &self.native_mode,
-                bandwidth,
-                self.volume,
-                &self.output,
-            );
-        }
         if self.direct_selected {
             return NativeRadioEngine::start_stream(&self.direct_url, self.volume, &self.output);
         }
-        #[cfg(feature = "soapy-sdr")]
-        if self.usb_selected {
-            let frequency = self
-                .usb_frequency
-                .parse::<u64>()
-                .map_err(|_| "Enter a positive FM frequency in Hz")?;
-            return NativeRadioEngine::start_soapy_wfm(
-                &self.usb_id,
-                frequency,
-                rust_radio_core::sdr::wfm::Deemphasis::Us75,
-                self.volume,
-                &self.output,
-            );
-        }
-        #[cfg(feature = "sdrconnect")]
-        if self.sdr_selected {
-            return NativeRadioEngine::start_sdrconnect(
-                &self.sdr_endpoint,
-                self.volume,
-                &self.output,
-            );
-        }
         NativeRadioEngine::start_internet(self.selected_station().id, self.volume, &self.output)
-    }
-
-    #[cfg(feature = "nrsp-native")]
-    fn apply_native_tuning(&mut self) {
-        let result = (|| {
-            let frequency = fm_presets::frequency_hz(&self.native_frequency)?;
-            let bandwidth = self
-                .native_bandwidth
-                .parse::<u32>()
-                .map_err(|_| "Enter a bandwidth in Hz")?;
-            let engine = self
-                .engine
-                .as_ref()
-                .ok_or("Start the native receiver first")?;
-            self.native_fm.validate().map_err(|e| e.to_string())?;
-            if self.native_mode == "wfm"
-                && self.native_fm.stereo
-                && engine
-                    .nrsp_native_status()
-                    .is_some_and(|status| !status.stereo_allowed)
-            {
-                return Err("Receiver does not permit stereo FM; select mono".into());
-            }
-            engine.tune_nrsp_native(frequency, &self.native_mode, bandwidth)?;
-            if self.native_mode == "wfm" {
-                engine.set_nrsp_native_fm(self.native_fm)?;
-            }
-            Ok::<(), String>(())
-        })();
-        self.note = match result {
-            Ok(()) => "TUNING REQUESTED".into(),
-            Err(error) => error,
-        };
     }
 
     fn ip_target(&self) -> &str {
@@ -415,7 +236,7 @@ impl RadioPanel {
     }
 
     fn check_ip_selection(&mut self) {
-        if self.segment != Segment::Ip || self.engine.is_some() || self.validation.is_some() {
+        if self.engine.is_some() || self.validation.is_some() {
             return;
         }
         let target = self.ip_target().to_owned();
@@ -448,9 +269,6 @@ impl RadioPanel {
     }
 
     fn restart_ip_if_active(&mut self) {
-        if self.segment != Segment::Ip {
-            return;
-        }
         if let Some(engine) = &self.engine {
             engine.request_stop();
             self.restart_pending = true;
@@ -464,11 +282,7 @@ impl RadioPanel {
 
     #[cfg(test)]
     fn start_validation(&mut self) {
-        if self.is_active()
-            || self.segment != Segment::Ip
-            || self.is_receiver_selected()
-            || self.direct_selected
-        {
+        if self.is_active() || self.direct_selected {
             return;
         }
         match StationValidationTask::start(self.selected_station().id) {
@@ -487,10 +301,7 @@ impl RadioPanel {
                 .validation_selection
                 .as_deref()
                 .unwrap_or_else(|| task.station_id());
-            if self.segment != Segment::Ip
-                || self.is_receiver_selected()
-                || target != self.ip_target()
-            {
+            if target != self.ip_target() {
                 task.request_cancel();
             }
         }
@@ -539,169 +350,45 @@ impl RadioPanel {
 
     #[cfg(test)]
     fn step_station(&mut self, direction: isize) {
-        let count = curated_stations().len()
-            + usize::from(cfg!(feature = "sdrconnect"))
-            + usize::from(cfg!(feature = "soapy-sdr"))
-            + 1
-            + usize::from(cfg!(feature = "nrsp-native"));
+        let count = self.ip_station_count();
         if count == 0 {
             return;
         }
         let offset = direction.rem_euclid(count as isize) as usize;
-        let next = (self.source_index() + offset) % count;
-        self.select_source(next);
+        let next = (self.ip_station_index() + offset) % count;
+        self.select_ip_station(next);
     }
 
     fn source_index(&self) -> usize {
-        if self.is_native_selected() {
-            curated_stations().len()
-                + usize::from(cfg!(feature = "sdrconnect"))
-                + usize::from(cfg!(feature = "soapy-sdr"))
-                + 1
-        } else if self.direct_selected {
-            curated_stations().len()
-                + usize::from(cfg!(feature = "sdrconnect"))
-                + usize::from(cfg!(feature = "soapy-sdr"))
-        } else if self.is_sdr_selected() {
-            curated_stations().len()
-        } else if self.is_usb_selected() {
-            curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"))
-        } else {
-            self.station_index
+        self.ip_station_index()
+    }
+
+    fn step_station_source(&mut self, direction: isize) {
+        let count = self.ip_station_count();
+        if count == 0 {
+            return;
         }
+        let next =
+            (self.ip_station_index() + direction.rem_euclid(count as isize) as usize) % count;
+        self.select_ip_station(next);
+        self.ip_selection_changed();
     }
 
     fn select_source(&mut self, index: usize) {
         let previous = self.source_index();
-        self.source_user_selected = true;
-        #[cfg(feature = "nrsp-native")]
-        {
-            self.native_selected = index
-                == curated_stations().len()
-                    + usize::from(cfg!(feature = "sdrconnect"))
-                    + usize::from(cfg!(feature = "soapy-sdr"))
-                    + 1;
-        }
-        self.direct_selected = index
-            == curated_stations().len()
-                + usize::from(cfg!(feature = "sdrconnect"))
-                + usize::from(cfg!(feature = "soapy-sdr"));
-        #[cfg(feature = "sdrconnect")]
-        {
-            self.sdr_selected = index == curated_stations().len();
-        }
-        #[cfg(feature = "soapy-sdr")]
-        {
-            self.usb_selected =
-                index == curated_stations().len() + usize::from(cfg!(feature = "sdrconnect"));
-        }
+        self.direct_selected = index >= curated_stations().len();
         if index < curated_stations().len() {
             self.station_index = index;
         }
-        self.segment = if self.is_native_selected() || self.is_sdr_selected() {
-            Segment::Network
-        } else if self.is_usb_selected() {
-            Segment::Usb
-        } else {
-            Segment::Ip
-        };
         self.cancel_stale_validation();
-        if self.segment == Segment::Ip && previous != index {
+        if previous != index {
             self.restart_ip_if_active();
         }
     }
 
-    fn is_usb_selected(&self) -> bool {
-        #[cfg(feature = "soapy-sdr")]
-        {
-            self.usb_selected
-        }
-        #[cfg(not(feature = "soapy-sdr"))]
-        {
-            false
-        }
-    }
-
-    fn is_native_selected(&self) -> bool {
-        #[cfg(feature = "nrsp-native")]
-        {
-            self.native_selected
-        }
-        #[cfg(not(feature = "nrsp-native"))]
-        {
-            false
-        }
-    }
-
-    fn is_receiver_selected(&self) -> bool {
-        self.is_native_selected() || self.is_sdr_selected() || self.is_usb_selected()
-    }
-
-    fn is_sdr_selected(&self) -> bool {
-        #[cfg(feature = "sdrconnect")]
-        {
-            self.sdr_selected
-        }
-        #[cfg(not(feature = "sdrconnect"))]
-        {
-            false
-        }
-    }
-
     fn source_detail(&self) -> String {
-        if !self.segment_supported() {
-            return format!(
-                "{} / SUPPORT NOT INCLUDED IN THIS BUILD",
-                self.segment.label()
-            );
-        }
-        #[cfg(feature = "nrsp-native")]
-        if self.native_selected {
-            if let Some(status) = self
-                .engine
-                .as_ref()
-                .and_then(NativeRadioEngine::nrsp_native_status)
-            {
-                if status.configured_mode != Some(rust_radio_audio::playback::NativeNrspMode::Wfm) {
-                    return format!(
-                        "nRSP-ST / {} / {}",
-                        fm_presets::format_frequency(status.center_frequency_hz),
-                        status
-                            .configured_mode
-                            .map(|mode| format!("{mode:?}").to_uppercase())
-                            .unwrap_or_else(|| "NATIVE".into())
-                    );
-                }
-                let lock = if status.fm_settings.is_some_and(|settings| !settings.stereo) {
-                    "MONO"
-                } else {
-                    match status.stereo_locked {
-                        Some(true) => "STEREO LOCK",
-                        Some(false) => "NO STEREO LOCK",
-                        None => "LOCK UNKNOWN",
-                    }
-                };
-                return format!(
-                    "nRSP-ST / {} / {lock}",
-                    fm_presets::format_frequency(status.center_frequency_hz)
-                );
-            }
-            return format!(
-                "nRSP-ST / {} / {}",
-                self.native_frequency,
-                self.native_mode.to_uppercase()
-            );
-        }
         if self.direct_selected {
             return "Custom radio stream".into();
-        }
-        #[cfg(feature = "soapy-sdr")]
-        if self.usb_selected {
-            return format!("USB FM / {} Hz / MONO", self.usb_frequency);
-        }
-        #[cfg(feature = "sdrconnect")]
-        if self.sdr_selected {
-            return format!("SDRCONNECT / {}", self.sdr_endpoint);
         }
         self.selected_station().genre.replace(" / ", " · ")
     }

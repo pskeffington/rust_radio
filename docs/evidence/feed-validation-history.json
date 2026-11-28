@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "stations": {
+    "beatblender": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460094,
+      "last_decoded_at_unix": 1795460094,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "bootliquor": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460095,
+      "last_decoded_at_unix": 1795460095,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "bossa": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460095,
+      "last_decoded_at_unix": 1795460095,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "cliqhop": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460096,
+      "last_decoded_at_unix": 1795460096,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "deepspaceone": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460094,
+      "last_decoded_at_unix": 1795460094,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "defcon": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460094,
+      "last_decoded_at_unix": 1795460094,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "dronezone": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460093,
+      "last_decoded_at_unix": 1795460093,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "fluid": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460096,
+      "last_decoded_at_unix": 1795460096,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "folkfwd": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460095,
+      "last_decoded_at_unix": 1795460095,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "groovesalad": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460092,
+      "last_decoded_at_unix": 1795460092,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "illstreet": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460097,
+      "last_decoded_at_unix": 1795460097,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "indiepop": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460095,
+      "last_decoded_at_unix": 1795460095,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "leftcoast70s": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460097,
+      "last_decoded_at_unix": 1795460097,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "lush": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460093,
+      "last_decoded_at_unix": 1795460093,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "metal": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460095,
+      "last_decoded_at_unix": 1795460095,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "poptron": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460096,
+      "last_decoded_at_unix": 1795460096,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "reggae": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460095,
+      "last_decoded_at_unix": 1795460095,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "secretagent": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460092,
+      "last_decoded_at_unix": 1795460092,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "skylab": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460093,
+      "last_decoded_at_unix": 1795460093,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "sonicuniverse": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460095,
+      "last_decoded_at_unix": 1795460095,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "spacestation": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460094,
+      "last_decoded_at_unix": 1795460094,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "thetrip": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460096,
+      "last_decoded_at_unix": 1795460096,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "thistle": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460096,
+      "last_decoded_at_unix": 1795460096,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "u80s": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460094,
+      "last_decoded_at_unix": 1795460094,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    },
+    "wcrb": {
+      "attempts": 1,
+      "consecutive_failures": 0,
+      "health": "fresh",
+      "last_checked_at_unix": 1795460093,
+      "last_decoded_at_unix": 1795460093,
+      "last_stage": "decoded_audio",
+      "last_status": "decoded"
+    }
+  },
+  "updated_at_unix": 1795460097
+}

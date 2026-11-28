@@ -1,6 +1,6 @@
 # Native playback migration contract
 
-Status: implemented in the standalone module and consumed by Pip-Boy through a pinned Git dependency. Human-audible acceptance and native callback evidence are distinct; see the dated records below.
+Status: IP-streaming implementation is consumed by Pip-Boy through a pinned Git dependency. Human-audible acceptance and native callback evidence are distinct; see dated records below. This project no longer contains RF receiver paths.
 
 ## Worker ownership
 
@@ -13,11 +13,12 @@ Status: implemented in the standalone module and consumed by Pip-Boy through a p
   reached while delivering a decoded packet. A packet larger than the ring can
   therefore drain without falsely timing out on a full, still-paused output.
 - PlaybackStarted may be emitted only after a live sink has actually consumed nonempty PCM. TCP availability is not playback evidence; local mute does not erase callback evidence.
-- `NativeRadioEngine::status()` reconciles the callback's consumed-sample counter before returning a `Playing` snapshot for IP, direct nRSP-native, SDRconnect, and Soapy sources. This covers delayed callbacks while a source awaits another packet/read; each output attempt gets a fresh counter so stale progress cannot advance recovery state.
+- `NativeRadioEngine::status()` reconciles the callback's consumed-sample counter before returning a `Playing` snapshot for IP streams. This covers delayed callbacks while a stream awaits another packet/read; each output attempt gets a fresh counter so stale progress cannot advance recovery state.
+- `NativeRadioEngine::underrun_callbacks()` reports session-lifetime callback buffers that needed zero-fill because the PCM ring ran empty. It accumulates across output retries, excludes empty buffers and queued zero-valued PCM, and is gated until output startup. It is diagnostic only: callback consumption and underrun counts do not establish audible output.
 - Stop must invalidate generation **and** cancel/join receiver, decoder and output worker resources; generation filtering alone does not release sockets or devices.
 - Output-device changes are operator-driven. Bluetooth pairing remains OS-owned. Explicit failure must be surfaced instead of silently switching output.
 - Recovery uses the existing bounded policy and must not restart a stopped generation.
-- Receiver hardware support remains receive-only and behind optional feature flags.
+- RF hardware support is outside this project's scope.
 
 ## Completed port sequence
 
@@ -37,12 +38,6 @@ On 2026-10-27 Pip-Boy main integrated the standalone facade and thin compatibili
 
 A live loopback HUD run with temporary preferences exercised Skylab and Groove Salad. Both reached Playing after decoded samples were consumed by the native output callback. Volume, duplicate Play rejection, Stop-before-switch, favorites/selection and no autoplay on reads/output changes were checked. This run is not a new human listening confirmation, Bluetooth recovery test or Pi acceptance.
 
-The optional receive-only SoapySDR adapter compiles and links on this Mac; explicit discovery found no receivers. An initial mono-FM demodulation and native output path now has synthetic coverage. Its physical reception, audible audio and unplug/replug acceptance remain open; AM, SSB and FM stereo are not implemented.
-
-The selected nRSP-ST uses SDRconnect and has passed real-device PCM/native callback
-checks in standalone and Pip-Boy. The operator confirmed audible MacBook Air
-speaker playback. Explicit Play can activate a stopped selected receiver; an
-unconfirmed activation now fails once after three seconds instead of consuming
-network retries. See the [receiver evidence](NRSP_ST.md) and
-[progress notes](PROGRESS.md). The headless module cross-compiles for Pi ARM64;
-this does not establish native audio or HUD behavior on a physical Pi.
+Earlier receiver implementation evidence has been retained in dated progress
+records for historical reference. Current validation applies to IP streaming
+only; see [progress notes](PROGRESS.md) and the [current roadmap](PORTING_PLAN.md).

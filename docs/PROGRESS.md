@@ -1,5 +1,456 @@
 # Radio development progress
 
+## RR-120 source purge and RR-118 macOS relaunch — 2026-11-28
+
+- Audited the current GUI source after the relaunch exposed nSDR/USB controls.
+  The stale path was compiled from `rust-radio-gui/src/inputs.rs`, held segment
+  and input-scan state in `RadioPanel`, and was enabled by standalone startup.
+- Removed GUI input discovery and segment state, deleted `inputs.rs`, removed
+  startup discovery, and replaced receiver-oriented GUI status/error wording.
+  The streaming GUI now retains only curated/custom IP station selection and
+  ordinary playback/output controls. Historical migration documentation is
+  retained as history, not current UI behavior.
+- `cargo fmt --all --check` and `cargo check --locked --offline -p
+  rust-radio-gui --bin rust-radio-gui` passed. A fresh release build used
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-clean20`; executable SHA-256 before
+  app signing: `aea9d9fa7a339a05cad206dc1cd54cca999bf6d6380397648a5b4f38d866bebd`.
+  Its string scan found no nSDR labels, receiver status strings, or SomaFM
+  station IDs.
+- `cargo test --locked --offline -p rust-radio-gui` passed after updating two
+  stale expectations: 28 library tests and 2 standalone tests passed; one
+  hardware/audio test remains ignored. The updated assertions match the
+  receiver-free stop wording and compact category behavior.
+- Full local verification now passes on this source tree:
+  `cargo test --workspace --locked --offline` and
+  `cargo clippy --workspace --all-targets --locked --offline -- -D warnings`.
+  The suite includes 167 passed tests and one ignored native audio test.
+- Replaced stale audio/probe fixtures that still constructed the removed
+  `groovesalad` ID with the current Skylab PLS-to-Revma pipeline. The former
+  SomaFM-specific HTTP upgrade test now asserts that a plain-HTTP playlist
+  entry is rejected without requesting it. The optional reachability HEAD
+  probe now uses a neutral endpoint.
+- Restored the macOS eframe OS-default icon sentinel in standalone launch
+  options. eframe otherwise supplies its white `e`; the bundle references
+  `RustRadio.icns`. A macOS launch-options regression test checks the sentinel,
+  bundle app name and viewport sizes. The packaged and installed ICNS SHA-256
+  matches the designed source asset (`917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00`).
+- Rebuilt and relaunched the installed app from this source. Bundle identity,
+  icon resource and signature verify; the radio UI renders. Direct Dock-tile
+  visual verification timed out and remains unconfirmed.
+- Installed executable SHA-256 after local ad-hoc signing:
+  `5be116408a9d36e107a0b3e0fd0652714a9a6b821dc970ef95d7d874aa20bc50`.
+- Installed the signed build at `/Users/null/Applications/Rust Radio.app`,
+  verified its code signature, and relaunched it. Visual inspection confirmed
+  only the IP radio picker and playback controls; the curated menu includes
+  KUNC News and a separate custom-stream item. No nSDR or USB controls appeared.
+- This is source/build/UI evidence, not audible-output, hosted-CI, notarization,
+  publisher-rights, or public-distribution acceptance.
+
+## Current scope — 2026-11-23
+
+Rust Radio is scoped to receive-only internet streaming radio: curated and
+custom IP streams, MP3/AAC decode, native audio output, CLI and compact GUI.
+USB SDR and nSDR receiver implementations have moved to separate projects and
+are removed from current source, feature flags, CI and operator documentation.
+Older entries below are historical evidence for the revisions they identify;
+they do not describe the current product scope. RR-120 tracks this migration.
+
+## Operator playback controls follow-up — 2026-11-23
+
+- Operator confirms channel back/forward, Play/Stop, mute, volume, output switching, stop/restart, and audible output work in the running app. This is operator evidence, not an automated test result.
+- Existing app evidence identifies the running process as source `241976c`; current source `857bdea` is installed but has not been cleanly relaunched. These controls therefore do not qualify current-source playback.
+- Device-specific output-loss/reconnect, physical Pi, hosted CI, signing/notarization, and publisher-rights gates remain separate and open.
+
+## RR-126 preflight parser hardening — 2026-11-23
+
+- Baseline `89b8047ad9ce6abc85260fcf92d41a9950e2ea79`; code commit `976725abb53456b7fec5218be383f0c69688b62e`. Only `scripts/check_distribution_rights.py` and `scripts/test_distribution_rights.py` changed.
+- Replaced regex extraction of Rust station metadata with a bounded tokenizer that skips line and nested block comments, keeps ordinary/raw string contents atomic, and fails closed on unsupported expressions. It requires all 11 `InternetStation` metadata fields as direct literals and compares the complete ordered metadata against the JSON catalog.
+- Regression coverage includes comment/raw-string spoofing, direct-literal and exact-field requirements, ordered catalog parity, and playlist endpoint drift even when a fresh source digest is supplied.
+- Registered workflow used `pskeffington/agent_skills` revision `42cf3196122feffa8658239fe7947c033bd39913`. Invocations: `/root/rr126_release_audit` (`architecture-design`, blob `12c91c8040d13f618a209de24cbbf6e4f89830d1`); `/root/rr126_security_audit` (`security-assurance`, blob `4ad8219c8c8142a76a8ae0a33f6c39ce3214dc4a`); `/root/rr126_parser_fix` (`code-implementation`, blob `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`); `/root/rr126_test_verifier` (`test-verification`, blob `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`); `/root/rr126_parser_review` (`independent-code-review`, blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`); `/root/rr126_readiness` (`release-readiness`, blob `e294f4434df7f69cca65e0f389024a374e69a605`). Independent parser review passed; verifier independently passed 15/15 Python tests.
+- Re-run on the Research checkout: `TMPDIR="$PWD/target/rr126-final-verifier-tmp" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts.test_distribution_rights -v` — 15/15 PASS; `bash -n scripts/package_macos_app.sh` PASS; `cargo fmt --all -- --check` PASS; `git diff --check` PASS. `cargo test --workspace --locked --offline` and strict workspace Clippy are BLOCKED before compilation because Cargo cannot create its temporary build directory on the Research SMB mount (`Operation not permitted`, OS error 1). No Rust-source changes were made.
+- Current catalog policy remains `not_authorized`; the structural check is not legal permission. RR-109, signing/notarization, and release remain blocked. Security review's source-preflight/build snapshot race and symlink concerns remain open; this change does not claim race-free packaging.
+- Prior exact-head Actions run `45258002913` on `89b8047` ended `startup_failure` with zero jobs. No run was visible yet for `976725a` when checked. Hosted CI is not a local test result.
+
+## RR-102 current catalog and Skylab check — 2026-11-23
+
+- Source SHA: `b034429d1656d23fffcdd1e7ae54a92fca049eb1`. At 16:44:06 UTC,
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr102-live-final cargo run --locked
+  --offline -p rust-radio-cli -- validate-all --json --history
+  /private/tmp/rust-radio-feed-history-20261123.json` exited 0. All 25 unique
+  stations reached `decoded_audio` in one attempt each. The current Skylab
+  issue did not reproduce in this silent check.
+- Focused silent checks immediately before the sweep: Skylab decoded MP3 at
+  48 kHz stereo (1,152 frames) at 16:43:32 UTC; WCRB decoded AAC at 48 kHz
+  stereo (1,024 frames) at 16:43:38 UTC. No native audio output was opened.
+- Persisted the 6,476-byte schema-v1 endpoint-free history at
+  `docs/evidence/feed-validation-history.json` (SHA-256
+  `633a4124829dfd615736fc9aa57583d1c0b46100ca81d02a55e8b4a43f03b525`, mode
+  0600). Independent validation confirmed 25 matching station IDs/statuses,
+  timestamps, stages and attempt counts, with no endpoint/query/token fields.
+  Source and history were stored on the Research volume; build outputs and the
+  full validation report stayed in `/private/tmp`.
+- `/root/rr102_live_verifier` used `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a` at registry revision
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; independent evidence review PASS.
+- This is point-in-time network and decoded-PCM evidence only; it does not
+  establish callback consumption, audible playback, publisher rights, or
+  hardware acceptance.
+
+## RR-122 callback underrun diagnostics — 2026-11-23
+
+- Implementation/source SHA: `857bdea8f8caec1bfd757ded4c1998cafd4f1dcc`.
+  Verification commands below ran against this exact source tree before commit;
+  the subsequent documentation-only log update does not change the code SHA.
+- Task contract: `RR-122-AUDIO-UNDERRUN-01`, validated against the canonical
+  task-contract schema at registry commit `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`.
+  RR-122 adds a session-lifetime `NativeRadioEngine::underrun_callbacks()`
+  diagnostic. A count represents one nonempty callback buffer that required
+  zero-fill after output startup; queued zero PCM remains consumed PCM, not an
+  underrun. The counter spans retries. Callback-consumed samples and this
+  diagnostic do not establish human-audible output.
+- The independent verifier reran `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-verifier
+  cargo test --locked --offline -p rust-radio-audio` against the current diff:
+  PASS (35 unit and 8 integration tests; no failures or ignored tests). Coverage
+  uses synthetic buffers/transport and does not initialize an audio device.
+- Post-fix workspace validation: `cargo fmt --all -- --check` PASS;
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-final cargo test --workspace
+  --locked --offline` PASS (158 passed, 0 failed, 1 ignored);
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-final cargo test --workspace
+  --all-features --locked --offline` PASS (158 passed, 0 failed, 1 ignored);
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr122-final cargo clippy --workspace
+  --all-targets --all-features --locked --offline -- -D warnings` PASS. The ignored
+  GUI test requires native audio output and local TCP. Build output stayed in
+  `/private/tmp`.
+- Independent review found the output-start race between `play()` and opening
+  the diagnostic gate. RR-122 now arms the gate immediately before `play()` and
+  resets it on startup failure. Post-fix tests and review passed; no CPAL device
+  or audible playback was exercised.
+- Registered architecture, audio-engineering, test-verification and independent
+  review roles used canonical `agent_skills` revision
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; skill blobs were
+  `architecture-design` `12c91c8040d13f618a209de24cbbf6e4f89830d1`,
+  `audio-systems-engineering` `20b5652c462ebc0032e9f282491a14f41adc90d2`,
+  `test-verification` `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`, and
+  `independent-code-review` `e44217c9f0c2492087f8b16da94f3ca80eae4555`.
+  Agents: `/root/rr122_audio_arch` (architecture), `/root/rr122_audio_peer`
+  (audio review), `/root/rr122_verify` (independent verification),
+  `/root/rr122_impl_specialist` (implementation specialist) and
+  `/root/rr123_scope_review` (independent review). The coordinator implemented
+  the change. The implementation specialist reported PASS with no changes.
+  Independent review PASS: no actionable findings; the exact-revision review
+  read the audio skill and references and confirmed the pre-play gate correction
+  and orphan-file deletion. The focused verifier PASS was rerun on the final
+  working diff. CPAL start/race behavior and actual device output remain
+  unverified because no native audio device was opened.
+
+## RR-123 streaming-only source scope cleanup — 2026-11-23
+
+- Source audit found `crates/rust-radio-core/src/sdr/wfm.rs` was tracked but
+  not referenced by any module or build feature. Removed this orphaned mono-FM
+  demodulator. Generic OS audio output selection, including USB audio devices,
+  remains in scope. Historical receiver records stay revision-bound.
+- A search across `.github`, crate sources, manifests, README, AGENTS and
+  current-facing docs found no active SDR/nSDR/Soapy receiver code or
+  configuration. Dated progress/status and `AGENT_PROGRESS.json` remain
+  explicitly historical; no separate-project files or data were changed.
+- Canonical review used `independent-code-review`
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555` and
+  `audio-systems-engineering` `20b5652c462ebc0032e9f282491a14f41adc90d2` at
+  registry revision `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; PASS with no
+  actionable findings. Workspace tests and strict all-feature Clippy passed
+  with the scope deletion present; hosted CI remains a separate gate.
+- After pushing, exact PR head `a38e9b01fd9cac8ec164797d48af0b49533a1cf1`
+  produced Actions run `45219125732`, `startup_failure`, with zero jobs. `gh pr
+  checks 14` reports no checks. Hosted validation is blocked before repository
+  commands execute; this is not a Rust test failure.
+- Follow-up exact head `da1f26c3d624dcf1ba4846540a8e40c62268b751` produced
+  Actions run `45220851038`, also `startup_failure` with zero jobs; no PR checks
+  were reported. This remains a runner-startup blocker.
+
+- RR-123 status reconciliation at exact source baseline
+  `e9e6de349a1010195131f5e2823367f8c26f7253`: `git show` confirms removal of
+  the orphan file in `857bdea8f8caec1bfd757ded4c1998cafd4f1dcc`; current
+  code/build search finds no receiver implementation references, generic USB
+  audio-output coverage remains, and dated receiver evidence is retained.
+  Queue status is DONE; no source change was needed in this follow-up.
+- Registry roles used for this RR-123 reconciliation: architecture-design
+  (`/root/rr123_architecture`, blob
+  `12c91c8040d13f618a209de24cbbf6e4f89830d1`), documentation-maintenance
+  (`/root/rr123_docs`, blob
+  `409db01491df686901ee5f39d5705ee61b91e117`), test-verification
+  (`/root/rr123_verify`, blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`), and independent-code-review
+  (`/root/rr123_review`, blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`), all from canonical registry
+  commit `42cf3196122feffa8658239fe7947c033bd39913`.
+- On this baseline, `cargo fmt --all -- --check` and `git diff --check` PASS.
+  `CARGO_TARGET_DIR=target/rr123-verify cargo test --workspace --locked
+  --offline` and `CARGO_TARGET_DIR=target/rr123-verify cargo clippy --workspace
+  --all-targets --locked --offline -- -D warnings` are BLOCKED before
+  repository checks: the SMB-mounted target cannot execute Rust proc-macro
+  build scripts (`Permission denied`, OS error 13). No build output was moved
+  off Research. Earlier passing workspace/all-feature evidence remains
+  recorded above and is not represented as a fresh rerun.
+
+`STATUS_2026-11-05.md` and `AGENT_PROGRESS.json` are pre-migration checkpoints;
+their receiver references describe their recorded revisions. Do not interpret
+receiver hardware acceptance listed there as an open Rust Radio gate.
+
+## RR-124 Windows all-feature portability check — 2026-11-23
+
+- Source SHA: `b034429d1656d23fffcdd1e7ae54a92fca049eb1`. Ran
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-windows-check cargo check --workspace
+  --all-features --locked --offline --target x86_64-pc-windows-gnu`; PASS in
+  12.96 seconds.
+- This checks dependency and source compatibility for the complete Windows GNU
+  workspace target. It does not link/run a Windows application or verify
+  Windows audio devices, GUI behavior, installer/signing or audible output.
+  Build output remained in `/private/tmp`.
+- `/root/rr124_windows_verifier` independently reran the same locked offline
+  command using `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a` at registry revision
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; PASS. Hosted CI remains blocked
+  before job creation on the current PR head.
+
+## RR-118 macOS app package and Dock launcher — 2026-11-23
+
+- Built the `rust-radio-gui` release app bundle with
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-target bash scripts/package_macos_app.sh`.
+  The build succeeded and staged `Info.plist` passed `plutil -lint`.
+- Hardened package and per-user install replacement: each stages and validates
+  the new bundle before swapping, with rollback retained through Dock update.
+  Install normalizes encoded Dock URLs and deduplicates matching tiles.
+- Installed `/Users/null/Applications/Rust Radio.app` and confirmed bundle ID
+  `com.skeffington.rustradio`, executable `rust-radio-gui`, icon `RustRadio.icns`,
+  valid property list, and exactly one Dock tile. Installed executable and icon
+  SHA-256 values match the built package. LaunchServices `open -a` succeeded;
+  playback was not started.
+- This host reports an existing `rust-radio-gui` process but blocks process
+  enumeration. The installer retained safe replacement behavior and reported
+  that the existing process must be quit and relaunched to use the new bundle.
+  A subsequent `open -n -a "/Users/null/Applications/Rust Radio.app"` returned
+  successfully. Codex computer-use inventory exposes no native app windows, so
+  visible UI and controls remain NOT VERIFIED. The app is unsigned
+  and unnotarized; distribution signing, notarization and Gatekeeper acceptance
+  remain NOT RUN. `bash -n` for both scripts and `git diff --check` passed. No
+  cargo tests were run for this packaging task.
+- On 2026-11-23, the user reported that Rust Radio is already open and running.
+  No new instance was launched. This user observation does not verify screen
+  layout, control behavior, playback, or audible output; those gates remain
+  distinct.
+- Canonical `agent_skills` revision: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`;
+  implementer used `code-implementation` blob
+  `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; independent review used
+  `independent-code-review` blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`.
+  Review identified and the implementation fixed the package backup-cleanup
+  failure path; final re-review passed with no actionable findings. A Dock
+  rollback leaves its single absolute app URL pointing at the restored bundle.
+- Baseline: `0ae4d775d20e9ec6b2ebdafd237e341ed9c840d2`; implementation commit:
+  `241976c063a24bafb49e390187d9a7158c5f8d37`. On this source,
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-target bash
+  scripts/package_macos_app.sh` PASS; installer PASS; bundle plist lint PASS;
+  executable and icon SHA-256 match packaged copies; Dock tile count is one;
+  both shell syntax checks and `git diff --check` PASS. Exact-head Actions run
+  `45214437722` ended `startup_failure` with zero jobs; this is a runner startup
+  blocker before project checks, not a Rust failure. RR-118 remains IN_REVIEW
+  pending a successful exact-head hosted run and clean-session app relaunch.
+
+## RR-102 current curated catalog sweep — 2026-11-23
+
+- Source SHA: `7a573ee6ee802d1e918da6a1fd62ed05ce62b107` (streaming-only PR #14
+  branch). At 2026-11-23 16:18 UTC, ran
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr102-current cargo run --locked
+  --offline -p rust-radio-cli -- validate-all --json --history
+  /private/tmp/rust-radio-feed-history.json`. Command exited 0; all 25 curated
+  stations reached `decoded_audio` in one attempt (25 decoded, zero failures).
+  Skylab decoded MP3 at 48 kHz stereo (1,152 frames); WCRB decoded AAC at
+  48 kHz stereo (1,024 frames).
+- Refreshed `docs/evidence/feed-validation-history.json` from this run. The
+  schema-1 file is 6,476 bytes with 25 station entries and no URL/endpoint
+  fields. JSON parsing and `git diff --check` PASS. Build output and initial
+  run report were held in `/private/tmp`; only the endpoint-free compact history
+  was copied into the Research-volume project.
+- This confirms bounded silent decode at that time only. It does not establish
+  callback-consumed PCM, human-audible playback, publisher redistribution
+  rights, or hardware/release acceptance. No audio output was opened.
+
+## RR-107 headless AArch64 Linux portability check — 2026-11-23
+
+- Source SHA: `1d18300e4c6bde4a7515d22cffd1cc20e859e809`. Ran
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-pi-headless cargo check --locked
+  --offline -p rust-radio --no-default-features --target
+  aarch64-unknown-linux-gnu`; PASS in 2.17 seconds.
+- This checks the no-default-feature host API for AArch64 Linux compilation.
+  It does not check Pi-native audio, GUI, the physical display, Rust-Boy runtime
+  integration, thermal/power behavior, or operator acceptance. RR-107 remains
+  BLOCKED on the Pi 5 target and embedded-host run.
+
+## RR-108 local CI mirror and hosted startup diagnosis — 2026-11-23
+
+- Source SHA: `61870658af61dd2c9538c42bd12a14440cf32294`. `cargo fmt --all --
+  --check` PASS. `CARGO_TARGET_DIR=/private/tmp/rust-radio-ci-mirror cargo
+  clippy --workspace --all-targets --all-features --locked --offline --
+  -D warnings` PASS (12.08 seconds). These commands do not execute tests.
+- Exact-head Actions run `45215783618` ended `startup_failure`. The run has
+  zero jobs; check diagnostics report no checks, statuses, annotations, jobs or
+  logs. The failure is before repository commands execute, so the local checks
+  do not substitute for the required hosted run. Build output used `/private/tmp`.
+
+## RR-120 streaming-only scope migration — 2026-11-23
+
+- Baseline: `4b377519b585f0ff155e7ab9146eaa3bb822e777`; implementation commit: `36e603152e1d770014e3487c056c0cd7664acd5f` on isolated Research-volume branch `codex/rr120-ip-radio-scope`.
+- Removed the USB SDR/RF and nRSP/SDR receiver crate, APIs, features, CLI commands, GUI source/settings, receiver-only CI jobs, and current-facing receiver guides. Removed the satellite/RF model as outside the internet-streaming scope. Historical dated progress and status entries remain as revision-bound evidence.
+- Kept curated/custom IP streaming, native audio output and device selection (including OS-managed USB/Bluetooth sound devices), host integration, and standalone saved IP-station persistence. The persistence helper retains bounded reads/writes, atomic replacement, existing path override and Unix 0600 permissions.
+- Canonical `agent_skills` main: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`. Architect `/root/rr120_scope_audit` used `architecture-design` blob `12c91c8040d13f618a209de24cbbf6e4f89830d1`; implementer `/root/rr120_scope_impl` used `code-implementation` blob `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; verifier `/root/rr120_scope_verifier` used `test-verification` blob `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`; reviewer `/root/rr120_scope_review` used `independent-code-review` blob `e44217c9f0c2492087f8b16da94f3ca80eae4555`. Architecture, implementation, verification and independent review passed. Skills were read from the exact canonical registry revision; the local checkout is behind.
+- Validation: `cargo fmt --all -- --check` PASS; `cargo test --workspace --locked --offline` PASS (**148 passed, 0 failed, 1 ignored**); strict workspace Clippy PASS; all-feature workspace tests and strict Clippy PASS (**148 passed, 0 failed, 1 ignored**); `cargo check --locked -p rust-radio --no-default-features` PASS; `git diff --check` PASS. One native GUI playback test is ignored because it needs hardware and local TCP. All build outputs used `/private/tmp` due the Research SMB no-exec mount.
+- Active source, workflow and current-facing documentation search found no receiver APIs/features; remaining USB/nSDR wording identifies the scope boundary or generic sound-output devices. No physical audio was opened or tested. Hosted CI and physical audio/Pi acceptance remain open. PR #14 is open as a draft and mergeable; exact-head hosted CI has no successful status checks. RR-120 queue status is IN_REVIEW.
+
+## RR-121 scope and checkpoint reconciliation — 2026-11-23
+
+- Task RR-121 makes receiver migration status explicit: USB SDR and nSDR work
+  belongs to separate projects. Current Rust Radio gates now cover IP streaming,
+  audio output, GUI, Pi integration, publisher rights and CI; historical receiver
+  entries remain marked as evidence for their earlier revisions.
+- Source baseline: `b398535d6284f2559c8772ccd627be0457bbc218` (RR-120 branch,
+  PR #14). RR-121 documentation implementation commit:
+  `2d20e713d2ce3c3efc1e49a8ddaf889df77e85a8`. Changed files: `docs/AGENT_PROGRESS.json`,
+  `docs/CODEX_TASK_QUEUE.md`, `docs/PROGRESS.md`,
+  `docs/STATUS_2026-11-05.md`.
+- Canonical agent_skills main: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`.
+  The test-verification role used skill blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a` and reported PASS;
+  independent-code-review used `e44217c9f0c2492087f8b16da94f3ca80eae4555`
+  and reported PASS with no actionable findings. Both roles reviewed the exact
+  four-file documentation diff at baseline `b398535d6284f2559c8772ccd627be0457bbc218`.
+- Validation on the documentation diff: `cargo fmt --all -- --check` PASS;
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr121-target cargo test --workspace
+  --locked --offline` PASS (**148 passed, 0 failed, 1 ignored**);
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr121-target cargo clippy --workspace
+  --all-targets --locked --offline -- -D warnings` PASS; `python3 -m json.tool
+  docs/AGENT_PROGRESS.json` PASS; `git diff --check` PASS. The ignored GUI test
+  requires local TCP and physical audio. No audio device was opened. Hosted CI
+  for the PR head, audible playback, Pi hardware and publisher rights remain
+  unverified. Build output used `/private/tmp` because Research is no-exec.
+
+## RR-104 streaming-only GUI operator checklist — 2026-11-23
+
+- Restored an IP-radio-only Mac operator checklist after the receiver-scope
+  migration and linked it from `GUI_INTEGRATION.md`. It records explicit
+  no-autoplay, selection/keyboard, silent checks, cancellation, playback state,
+  volume/mute, Stop/Retry and output selection checks. Audible listening remains
+  a distinct human gate; physical touch and Pi rendering remain separate.
+- Corrected GUI integration text that referred to receiver setup/resources or
+  receiver cancellation. The current instructions describe IP Radio and native
+  audio playback resources only; historical receiver evidence remains in dated
+  progress entries.
+- Exact baseline: `716998bca4ce447c34bf329883298feb9f6efbf9` (RR-102 evidence
+  head). `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr104-target cargo test -p
+  rust-radio-gui --locked --offline` PASS: 28 library tests and 2 binary tests
+  passed, 0 failed; 1 native IP playback integration test ignored because it
+  requires native output and local TCP. `cargo fmt --all -- --check` and
+  `git diff --check` PASS. The interactive checklist rows remain Not run in
+  this work session; no audio device was opened.
+- Canonical `agent_skills` revision in this task record: `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; registered specialist delegation/independent review for the RR-120 scope migration is recorded above. This documentation-only RR-104 reconciliation adds no claim of human GUI, audible, Pi, hosted CI, rights or release acceptance.
+
+## RR-109 publisher rights audit — 2026-11-23
+
+- Baseline: `2253fe7b7a98a5a5b1359affd441546ade8a3c1c`. The current directory
+  contains 25 entries: 23 SomaFM, one GBH/WCRB and one Skylab Radio. NPR is not
+  in the active catalog; its earlier endpoint/permission review remains a
+  separate excluded candidate.
+- First-party review found SomaFM's Terms of Service, updated 2026-09-04,
+  expressly reject new third-party clients (including noncommercial apps) and
+  require prior written permission for app embedding. The 23 SomaFM presets
+  are blocked from a Rust Radio app release absent a documented applicable
+  rights basis. GBH's official stream page lists direct URLs and Apple Music /
+  iHeart listening, while its Terms of Use restrict use/distribution of site
+  content; that does not grant this package permission. Skylab publishes a
+  direct stream link and named listening partners, while its site copyright
+  notice does not grant Rust Radio bundle rights. For GBH and Skylab, permission
+  remains unresolved. No permission was requested or inferred.
+- Added `docs/PUBLISHER_RIGHTS_AUDIT.md` with IDs, publisher-source URLs,
+  evidence status, release decision and next actions. Updated curated-feed
+  policy, roadmap, README and queue to keep the release gate explicit. No station
+  entries, endpoints or runtime behavior were changed.
+- Specialist invocation evidence: canonical `agent_skills` main
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`; engineering-research skill blob
+  `f3c8f3c4ae99829d045ad918667c8b125e8d344c`; documentation-maintenance blob
+  `409db01491df686901ee5f39d5705ee61b91e117`; independent-code-review blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`. Independent research and review
+  both confirmed the inventory, publisher-specific distinction, and NPR
+  exclusion. The reviewer requested one precision edit to label Skylab's terms
+  as competition/site terms and say no stream/app reuse terms were found; that
+  edit is included. Sources were inspected on 2026-11-23; see the audit for
+  direct URLs.
+- Validation: manual source/inventory reconciliation PASS; JSON parser PASS;
+  `git diff --check` PASS. No tests were added or run for this documentation-only
+  task. Rights clearance, application release, hosted CI, audible playback,
+  device recovery, Pi acceptance and signing remain open or blocked separately.
+
+## RR-101 Skylab IP stream repair — 2026-11-23
+
+- Baseline `1635fc7c3bb99a15d95164a51c4b629277c9e554` reproduced Skylab as
+  `Unavailable/NotChecked/TransportUnavailable` while WCRB reached decoded
+  AAC. `NotChecked` did not identify a station-side failure. The implementation
+  commit is `f7bcae8c732141fa264f49b5a23f498bd8ab694e` on the RR-120 branch,
+  PR #14.
+- The official [Skylab listen page](https://www.skylabradio.com/listen) links
+  “High Quality Stream (Opens up External player)” to the PLS playlist
+  `https://stream.rcs.revma.com/7vs4sr22w3bwv.pls`. The PLS is publisher-linked;
+  this does not grant redistribution rights.
+- Updated the curated/runtime station catalog to that PLS. The checked endpoint
+  admits only that exact playlist host/path, the observed Revma `nNN-usN` shard
+  pattern on the exact audio path, and bounded unique `rj-ttl`/`rj-tok` query
+  fields. Signed query values are stripped from validation reports and endpoint
+  Debug output. Offline fixtures cover playlist resolution, redirect, allow and
+  deny cases, and token redaction. Generic IP streaming remains the only product
+  scope; no receiver code or features were restored.
+- Post-change silent validation at 2026-11-23 10:08 UTC decoded Skylab as MP3,
+  48 kHz stereo, 1,152 frames; WCRB decoded as AAC, 48 kHz stereo, 1,024 frames.
+  Skylab's printed endpoint omitted the signed query. These results prove
+  decoded audio only; no audio device was opened and no playback was heard.
+- Validation at this source tree: formatting PASS; default and all-feature
+  workspace tests PASS (**152 passed, 0 failed, 1 ignored** in each); strict
+  default and all-feature Clippy PASS; focused core/audio/GUI/CLI regressions
+  PASS; catalog JSON parse, task-contract schema assertions via `jq`, and
+  `git diff --check` PASS. Build output was under `/private/tmp` for the
+  Research no-exec volume. The ignored GUI playback test requires local TCP and
+  physical audio.
+- Workflow roles at canonical `agent_skills` main
+  `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`: architect
+  `/root/rr122_stack_architecture` used `architecture-design` blob
+  `12c91c8040d13f618a209de24cbbf6e4f89830d1`; audio implementer
+  `/root/rr122_audio_impl` used `audio-systems-engineering` blob
+  `20b5652c462ebc0032e9f282491a14f41adc90d2`; independent verifier
+  `/root/rr101_revmaverifier` used `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`; independent reviewer
+  `/root/rr101_revmareview` used `independent-code-review` blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`. All four reported PASS with no
+  scope or code findings. The RR-101 task contract required keys, types, enums,
+  patterns and no-extra-property constraints were checked against the registry
+  schema with `jq`; no project dependency was added.
+- Exact-head workflow run `45155794094` for `ac23d9b6108fe20b84581af8aafcde0b49f9c37e` ended `startup_failure` before job creation; GitHub returned zero jobs and logs. The retry API returned 403 (“This workflow run cannot be retried”). RR-108 is BLOCKED on Actions runner startup; this is not a repository test failure.
+- Audible output, device loss/recovery, Pi runtime, publisher redistribution rights, signing/notarization and production release remain open. RR-101 and RR-120 are IN_REVIEW.
+
+## RR-102 curated catalog sweep — 2026-11-23
+
+- Source revision: `ff5fe0a9e962e5b440c7745f15176708b738a032` (RR-120 branch,
+  PR #14), including the RR-101 Skylab route repair.
+- At 2026-11-23 10:28:16 UTC, `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr121-target
+  cargo run --locked --offline -p rust-radio-cli -- validate-all --json
+  --history docs/evidence/feed-validation-history.json` exited 0. All 25 curated
+  stations reached `decoded_audio` in one attempt each (25 decoded, zero
+  failures). Skylab decoded MP3 at 48 kHz stereo (1,152 frames); WCRB decoded
+  AAC at 48 kHz stereo (1,024 frames).
+- The persisted history is 6,476 bytes with 25 station entries. The report
+  contains no endpoint or resolved-URL fields. JSON parsing and `git diff --check`
+  passed. The initial save attempt was denied by the Research mount; the same
+  bounded sweep completed with authorized Research-volume write access.
+- This is point-in-time silent decode evidence. It does not establish
+  callback-consumed PCM, human-audible output, publisher redistribution rights,
+  or hardware/release acceptance. Hosted Actions remains blocked before job
+  creation as recorded in RR-108.
+
 ## Documentation reconciliation — 2026-11-05 (documentation-only)
 
 - Added [dated status and evidence classification](STATUS_2026-11-05.md), [agent operating doctrine](../AGENTS.md), and [Codex task queue](CODEX_TASK_QUEUE.md). These changes do not constitute executed runtime or hardware tests.
@@ -1240,3 +1691,186 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
 - The subsequent push triggered run `40772645579` on `52be452`; it again ended
   `startup_failure` with zero jobs. The latest head `1642027` has no run visible
   yet. This reproduces the runner-startup problem but still exposes no cause.
+
+## RR-126 macOS distribution rights preflight (2026-11-23)
+
+- Baseline: streaming-only PR #14 source head
+  `b5bf6e2cff0f931efbc16b3dd118cd79f5e26d81`. Code commit:
+  `6e1ddc919e44e306b497be8aebe8a32e2b1a1c7e`.
+- Added opt-in `scripts/package_macos_app.sh distribution APPROVAL_MANIFEST`.
+  It runs a read-only Python preflight before creating the target directory,
+  invoking Cargo, staging files, or replacing an existing app. Local `app` and
+  `icon` modes and runtime listening are unchanged.
+- The preflight requires catalog `policy.redistribution == "authorized"`,
+  strict bounded JSON, catalog/runtime station-ID and publisher parity, current
+  catalog and Rust-source SHA-256 values, and exactly one approval per compiled
+  station. Each approval must match its publisher, use the fixed
+  `app_distribution` scope, and include a credential-free HTTPS evidence
+  reference. Duplicate JSON keys, malformed, stale, missing, extra, or unknown
+  entries fail closed. A passing preflight is structural validation only, not
+  proof of rights or permission to publish.
+- Focused regression command
+  `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts.test_distribution_rights -v`
+  passed 10/10. Coverage includes missing/unknown/not-authorized policy,
+  absent/partial/duplicate/extra/malformed approvals, publisher/scope and digest
+  mismatch, catalog/runtime drift, and a packaging smoke test proving rejection
+  invokes no Cargo, creates no missing target, and preserves existing bundle
+  bytes. `bash -n scripts/package_macos_app.sh` and `git diff --check` passed.
+- Independent verification used
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr126-verifier`:
+  `cargo fmt --all -- --check` PASS;
+  `cargo test --workspace --locked --offline --quiet` PASS (158 passed, 1
+  ignored); strict default Clippy PASS;
+  `cargo test --workspace --all-features --locked --offline --quiet` PASS (158
+  passed, 1 ignored); strict all-feature Clippy PASS; and
+  `cargo check --workspace --all-features --locked --offline` PASS. The ignored
+  GUI playback integration requires native audio and local TCP. No audio device
+  or GUI playback was exercised.
+- Architecture `/root/rr126_architecture` used `architecture-design` blob
+  `12c91c8040d13f618a209de24cbbf6e4f89830d1`; implementation
+  `/root/rr126_implementation` used `code-implementation` blob
+  `7c46f620c3940c7b8bdf3ffdb4f8831817d08043`; independent verifier
+  `/root/rr126_test_verifier` used `test-verification` blob
+  `c15b91ca42a279ccf92d55c1e41db11655ee0b4a`; independent reviewer
+  `/root/rr126_independent_review` used `independent-code-review` blob
+  `e44217c9f0c2492087f8b16da94f3ca80eae4555`. All skills are from canonical
+  agent_skills main `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`. Architecture
+  and independent code review passed; review found no actionable defect and
+  emphasized that evidence references do not establish permission.
+- Current catalog policy remains `not_authorized`; RR-109 therefore remains
+  BLOCKED. Distribution packaging was not run to completion. Signing,
+  notarization, publication, hosted CI, Mac audible output and Pi acceptance
+  remain separate unresolved gates. The operator reported the radio app was
+  already open; this task did not launch, stop, or operate it.
+- After syncing code commit `6e1ddc919e44e306b497be8aebe8a32e2b1a1c7e` and
+  documentation commit `6e6784cb1a6737e3a4e5318b2eeae4772375909f`, exact PR
+  head `6e6784cb1a6737e3a4e5318b2eeae4772375909f` produced Actions run
+  `45239913409`, which ended `startup_failure` before job creation with zero
+  jobs. `gh pr checks 14` reported no checks. Local validation passed before
+  push; hosted CI did not execute repository commands.
+- A separate release-readiness audit of exact head
+  `f3770f699ed48ee92995ecfcd35c9409a86b2488` returned **BLOCKED for
+  distribution/release**. The current `not_authorized` catalog and publisher
+  audit prevent distribution; the structural gate does not change that. No
+  signed or notarized release artifact, detached release approval, physical Mac
+  audio recovery, or Pi runtime evidence is available. The audit used canonical
+  agent_skills main `d17f0f0d30c7d3ff4f7be2da1afa880a54d936e4`,
+  `release-readiness` blob
+  `e294f4434df7f69cca65e0f389024a374e69a605`.
+- Follow-up Actions run `45240046988` for exact head
+  `f3770f699ed48ee92995ecfcd35c9409a86b2488` also ended `startup_failure`
+  before job creation with zero jobs; `gh pr checks 14` reported no checks.
+- Current documentation head `69bcbd7807487defdbcd8296ea7dec86d1f855b7`
+  produced Actions run `45240372774`, again `startup_failure` before job
+  creation with zero jobs. No PR checks are reported. This failure did not run
+  repository tests.
+- Exact head `ead9b74b7cab0b878aaf94dc52c70b0eeae9c676` produced Actions run
+  `45240548604`, also `startup_failure` with zero jobs and no PR checks. The
+  sanitized observation was submitted to FACTORY-002 at
+  [issue comment 7110710904](https://github.com/pskeffington/agent_skills/issues/14#issuecomment-7110710904).
+- Documentation head `1bfdc69fc45cb57b4393996520a1e2c607fa818b` produced
+  Actions run `45242622210`, again `startup_failure` with zero jobs and no PR
+  checks. This runner failure occurred before repository steps.
+- Documentation head `5dfa28c05af8149b3d659a79c51ab7f66836ed46` produced
+  Actions run `45243064442` with the same `startup_failure` before job creation
+  and zero jobs. Hosted checks remain absent.
+- Documentation head `08de41a41052cf52ea5918f168fd9a2e930c814c` produced
+  Actions run `45243194703`, again `startup_failure` with zero jobs and no PR
+  checks. No repository step ran.
+- Documentation head `ec560b7fa1104799f62802f52ed0d589a399e611` produced
+  Actions run `45243715555`; `created_at` and `run_started_at` match, and the
+  completed run has zero jobs. PR #14 reports no checks, so hosted CI has not
+  executed on this evidence chain.
+
+## RR-118 live process observation (2026-11-23)
+
+- At source/documentation head `ead9b74b7cab0b878aaf94dc52c70b0eeae9c676`,
+  the local Mac app inventory listed bundle ID `com.skeffington.rustradio` as
+  running, matching the operator's report that Rust Radio was open. The native
+  accessibility read timed out; no visual window or controls were inspected.
+  No Play/Stop action, audio device, audible output, or Dock state was tested.
+
+## RR-101 Skylab and WCRB silent revalidation (2026-11-23)
+
+- Source/documentation head: `1bfdc69fc45cb57b4393996520a1e2c607fa818b`.
+- Skylab CLI validation at `2026-11-23T18:52:15Z` returned
+  `DecodedAudio`: MP3, 48 kHz, stereo, 1,152 decoded frames. The redacted
+  resolved endpoint host was `n01-us1.rcs.revma.com`; no signed query was
+  emitted. Command: `CARGO_TARGET_DIR=/private/tmp/rust-radio-rr120-skylab-check
+  cargo run --locked --offline -p rust-radio-cli -- validate skylab`.
+- WCRB validation at `2026-11-23T18:52:23Z` returned `DecodedAudio`: AAC,
+  48 kHz, stereo, 1,024 decoded frames. Command:
+  `/private/tmp/rust-radio-rr120-skylab-check/debug/rust-radio-cli validate wcrb`.
+- Both reports explicitly state that no audio output was opened. This confirms
+  current silent stream/codec decoding only; it does not verify native callback
+  consumption, a visible listener state, or audible output. The running GUI was
+  not operated.
+
+## RR-102 live catalog sweep and history refresh (2026-11-23)
+
+- On source head `1bfdc69fc45cb57b4393996520a1e2c607fa818b`, a bounded
+  `validate-all --json --history docs/evidence/feed-validation-history.json`
+  completed at `2026-11-23T18:54:57Z`. It decoded all 25 catalog IDs as
+  `decoded_audio`, one attempt each. Report schema version 1 matched the catalog
+  exactly, with unique IDs and no endpoint/query/token fields. No audio output
+  was opened.
+- The persisted endpoint-free history remains schema v1, 25 stations, 6,476
+  bytes, SHA-256
+  `4d54323a15eef0ce5c8139960483f9dfb3f678c00cde6778c8c68552e159a95d`. The
+  JSON report itself was kept in temporary storage; the repository history is
+  the durable evidence artifact.
+- This verifies current bounded stream decoding only. It does not establish
+  callback consumption, audible playback, publisher rights, or availability
+  beyond the recorded timestamp.
+
+## RR-103 / RR-118 live Mac output observation — 2026-11-23
+
+- Current source/documentation checkout: `c2a339f9156e52bf2262cf0f20a077cbc0afca69` on the Research volume. The installed app inventory listed `com.skeffington.rustradio` as running. A read-only accessibility/screenshot inspection at `2026-11-23T19:17:49Z` showed the `RUST RADIO / MICRO` window with Skylab Radio (UK) selected, status `Playing`, volume 18%, output `System default`, and Stop/Mute controls visible. No control was activated.
+- During this same observed session, the operator reported: “audio out is working fine.” Record this as operator-confirmed audible output for the active session; the installed executable’s source revision was not established. This is not acoustic instrumentation or current-build provenance.
+- Exact PR #14 head `c2a339f9156e52bf2262cf0f20a077cbc0afca69` produced Actions run `45244134588`: `startup_failure` at `2026-11-23T18:59:17Z`, with zero jobs and no logs. GitHub reports no PR checks; the workflow specifies `ubuntu-latest`, and no repository step ran.
+- RR-103 remains BLOCKED for the speaker/Bluetooth/external-output loss and recovery matrix, output switching and Stop cleanup. RR-118 remains IN_REVIEW pending running-bundle provenance/clean relaunch, control-behavior acceptance, hosted CI, signing and notarization. No playback or system setting was changed by this inspection.
+
+
+## RR-103 / RR-104 / RR-118 operator control check — 2026-11-23
+
+- At 2026-11-23 19:27 UTC, the operator reported that Stop/restart and output switching both worked. The operator also reported that channel back/forward navigation, Play/Stop, Mute and volume worked, and that channels were working so far. This is operator-reported behavior from the running app, not a fresh automated test.
+- Combined with the earlier read-only window observation and audible-output confirmation, this provides current interactive evidence for the operator's app session. The running executable's source revision and exact output device path remain unknown.
+- RR-103 remains BLOCKED for the speaker/Bluetooth/external output-loss and reconnect matrix and verified cleanup under device loss. RR-104's user controls have live operator confirmation; physical touch remains unverified. RR-118 remains IN_REVIEW pending running-bundle provenance/clean relaunch, hosted CI, signing and notarization.
+- Exact PR #14 head `cd7822a17672656461d447e780603346cfe69dfb` produced Actions run `45248110348`, `startup_failure` at `2026-11-23T19:21:36Z` with zero jobs; GitHub reported no PR checks.
+
+
+## RR-118 current-source macOS package comparison — 2026-11-23
+
+- Current audio-source SHA: `857bdea8f8caec1bfd757ded4c1998cafd4f1dcc`; documentation/PR head when the current-source bundle was built: `3d52e9f5035961f23913760fa9830f7dafd001f9`. The source diff since package source `241976c063a24bafb49e390187d9a7158c5f8d37` is `output.rs` 225 insertions/10 deletions, `playback.rs` 28 insertions, and removal of the 216-line orphan `wfm.rs`; the current build therefore covers the audio changes after the installed package.
+- Built a separate unsigned/unnotarized app bundle without installing or launching it: `CARGO_NET_OFFLINE=true CARGO_TARGET_DIR=/private/tmp/rust-radio-current-build bash scripts/package_macos_app.sh` — PASS; release build finished in 36.94 s; `plutil -lint` PASS; bundle ID `com.skeffington.rustradio`, executable `rust-radio-gui`. The 556 MB temporary target was removed after hash comparison; no generated output was committed.
+- Current-source executable SHA-256: `9d10f96111ab37a9e14cf1de9b77c5dc455f6d173449465cc82a54c80e682dfe`; installed executable SHA-256: `30d0c6218cfd043818f610b70e843e52cd7034de5e47d525502f20585db29692` (different). Both app icons match at SHA-256 `917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00`. The installed executable also matches the retained prior package in `/private/tmp/rust-radio-target`, documented as built at source `241976c`; this confirms the recent operator control/audio reports apply to that older package, not the current audio source.
+- Exact PR #14 head `b4ef5aa3adcca875c1e7dfb527d60ee69d9708ce` produced Actions run `45249315610`: `startup_failure` at `2026-11-23T19:28:31Z`, with zero jobs and no PR checks. No hosted repository command ran.
+- The staged-bundle documentation commit `d48015e30845c10458d3b7c2f320b70ba4a4e425` produced run `45251225912`: `startup_failure` at `2026-11-23T19:39:35Z`, also with zero jobs and no PR checks.
+- Rebuilt the same source bundle and staged it on Research at `target/current-source-857b/Rust Radio.app` (ignored by Git). Staged executable SHA-256 matches `9d10f96111ab37a9e14cf1de9b77c5dc455f6d173449465cc82a54c80e682dfe`; its icon matches the committed asset; Info.plist lint passes. The 556 MB temporary compiler target was removed after the copy; Research `target/` is now 36 MB.
+- The app inventory still reports `com.skeffington.rustradio` running. The staged bundle was not installed or launched, and the live session was not touched. Current-source playback, device-loss recovery, hosted CI, signing, notarization, distribution rights and Pi acceptance remain open.
+
+
+## RR-118 current-source macOS installation — 2026-11-23
+
+- At `2026-11-23T19:42Z`, installed the staged `857bdea` bundle with `bash scripts/install_macos_app.sh install "target/current-source-857b/Rust Radio.app"`. The installer completed and reported the previous process remains mapped to its older executable. No Stop, Play, launch, or relaunch action was performed.
+- Installed app path: `/Users/null/Applications/Rust Radio.app`; bundle ID `com.skeffington.rustradio`; `plutil -lint` PASS. Installed executable SHA-256 `9d10f96111ab37a9e14cf1de9b77c5dc455f6d173449465cc82a54c80e682dfe` matches the staged current-source bundle. Installed icon SHA-256 `917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00` matches the committed asset. Dock inventory contains exactly one tile for this app path.
+- App inventory still reports Rust Radio running. The running process is the older `241976c` build; operator-confirmed audible playback and control results therefore remain evidence for that process. Current-source playback requires a clean relaunch after the user's existing session ends.
+- Research `target/` remains 36 MB and contains the ignored prepared bundle at `target/current-source-857b/Rust Radio.app`. Signing, notarization, publisher rights, hosted CI, output-loss/reconnect recovery and Pi acceptance remain open.
+
+## RR-108 GitHub Actions API diagnosis at `e9e6de3`
+
+- Repository Actions are enabled. For run `45251960066`, GitHub returns zero
+  jobs, zero check runs, and no workflow log archive; the run and check suite
+  both began and ended at `2026-11-23T19:43:55Z`. The repository has no
+  self-hosted runners. These API results locate the failure before repository
+  commands, but do not identify its cause. No retry or configuration change
+  was made.
+
+## RR-127 curated IP station list — 2026-11-27
+
+- Restored the prior selected 19 station identities and added KUNC News as station 20. The IDs are `skylab`, `wcrb`, `gbh-news`, `kexp`, `radio-paradise`, `wpr-news`, `wpr-music`, `radio-swiss-jazz`, `radio-swiss-classic`, `all-classical`, `wfmt`, `kfuo`, `wrvo-news`, `wrvo-prx`, `wrvo-bbc`, `wfmu`, `wfmu-drummer`, `wfmu-rock-soul`, `wfmu-sheena`, and `kunc`.
+- Removed the additional five draft IDs `kusc`, `colorado-sound`, `kuaf`, `kuaf-classical`, and `kuaf-jazz`. This is scope curation, not a failed-feed report. Prior SomaFM receiver entries remain out of this streaming-only product.
+- Added exact per-station HTTPS origin/path allowlists, including current Skylab Revma PLS + numeric shard and signed TTL/token validation, exact Radio Paradise paths, and the KUNC MP3 path. Existing bounded redirects, public DNS/address filtering, proxy disablement, timeouts, playlist limits, and decode bounds remain in force. Signed Skylab query values are redacted in endpoint debug output.
+- Feed-history schema v1 now ignores explicitly retired IDs from the old SomaFM and five-station draft lists while continuing to reject unknown station IDs. The JSON catalog mirror and distribution preflight now include and compare third-party-player guidance and review-date metadata.
+- Verification: core unit tests passed (52/52); CLI JSON mirror parity passed; distribution-rights preflight tests passed (15/15); Rust formatting and diff checks passed. Live bounded silent validation at Unix `1795836885` decoded all 20 channels in one attempt each, rerun against the final source snapshot. This is point-in-time codec evidence, not audible playback, publisher authorization, or release approval.
+- `redistribution: not_authorized` remains unchanged. The installed macOS app has not yet been rebuilt/relaunched from this worktree; hosted exact-head CI also remains open.

@@ -154,11 +154,7 @@ impl RadioPanel {
                 self.direct_url = station.url;
                 self.ip_station_name = station.name;
             }
-            self.select_source(
-                curated_stations().len()
-                    + usize::from(cfg!(feature = "sdrconnect"))
-                    + usize::from(cfg!(feature = "soapy-sdr")),
-            );
+            self.select_source(curated_stations().len());
             // All saved entries share the Direct source index; URL changes still
             // supersede the old worker, including a switch already cleaning up.
             if changed {

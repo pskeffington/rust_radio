@@ -1,7 +1,4 @@
-//! Curated, receive-only internet radio fallback.
-//!
-//! Source selection is pure and testable. Actual SDR discovery and station
-//! playback are independently gated; TCP reachability is not stream validation.
+//! Curated, receive-only internet radio directory.
 
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
@@ -22,16 +19,19 @@ pub struct InternetStation {
     pub category: &'static str,
     pub playlist_url: &'static str,
     pub publisher_reference_url: &'static str,
+    /// Publisher page currently documents use through third-party radio players.
+    pub third_party_player_support: bool,
+    /// Date that third-party playback guidance was last reviewed.
+    pub rights_reviewed_date: &'static str,
     pub nominal_kbps: u16,
     /// Publisher-declared codec hint; runtime validation records decoded format.
     pub format: &'static str,
 }
 
-/// Curated broadcaster links checked against publisher pages 2026-10-26.
-/// Inclusion is not proof a stream is online, licensed for redistribution,
-/// or supported by the local decoder at runtime.
-/// The broadcaster's conditions allow personal listening, not rebroadcasting.
-pub const CURATED_STATIONS: [InternetStation; 25] = [
+/// Twenty selected publisher-documented internet streams. Third-party-player
+/// guidance supports listener playback only; it is not redistribution or relay
+/// permission. Decoder support and current availability require runtime checks.
+pub const CURATED_STATIONS: [InternetStation; 20] = [
     InternetStation {
         id: "skylab",
         name: "Skylab Radio (UK)",
@@ -40,8 +40,10 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
         country: "GB",
         genre: "Chillout / lounge / ambient",
         category: "CHILL",
-        playlist_url: "https://uksoutha.streaming.broadcast.radio:29690/skylab-radio-limited",
+        playlist_url: "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls",
         publisher_reference_url: "https://www.skylabradio.com/listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-11-27",
         nominal_kbps: 0,
         format: "Streaming audio (verify at runtime)",
     },
@@ -55,396 +57,290 @@ pub const CURATED_STATIONS: [InternetStation; 25] = [
         category: "CLASSICAL",
         playlist_url: "https://wgbh-live.streamguys1.com/classical-hi/",
         publisher_reference_url: "https://www.wgbh.org/help/how-to-access-live-radio-streams",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
         nominal_kbps: 0,
         format: "AAC",
     },
     InternetStation {
-        id: "groovesalad",
-        name: "Groove Salad",
-        broadcaster: "SomaFM",
+        id: "gbh-news",
+        name: "GBH 89.7 News Radio",
+        broadcaster: "GBH",
         language: "en",
         country: "US",
-        genre: "Ambient / downtempo",
-        category: "CHILL",
-        playlist_url: "https://somafm.com/m3u/groovesalad.m3u",
-        publisher_reference_url: "https://somafm.com/groovesalad/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
+        genre: "NPR / local news and public affairs",
+        category: "NEWS",
+        playlist_url: "https://wgbh-live.streamguys1.com/wgbh",
+        publisher_reference_url: "https://www.wgbh.org/help/how-to-access-live-radio-streams",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "Streaming audio (verify at runtime)",
     },
     InternetStation {
-        id: "secretagent",
-        name: "Secret Agent",
-        broadcaster: "SomaFM",
+        id: "kexp",
+        name: "KEXP 90.3 FM",
+        broadcaster: "KEXP",
         language: "en",
         country: "US",
-        genre: "Spy jazz / lounge / downtempo",
-        category: "CHILL",
-        playlist_url: "https://somafm.com/m3u/secretagent.m3u",
-        publisher_reference_url: "https://somafm.com/secretagent/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "lush",
-        name: "Lush",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Mellow vocals / electronic",
-        category: "CHILL",
-        playlist_url: "https://somafm.com/m3u/lush.m3u",
-        publisher_reference_url: "https://somafm.com/lush/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "dronezone",
-        name: "Drone Zone",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Atmospheric / ambient",
-        category: "AMBIENT",
-        playlist_url: "https://somafm.com/m3u/dronezone.m3u",
-        publisher_reference_url: "https://somafm.com/dronezone/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "deepspaceone",
-        name: "Deep Space One",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Space / experimental",
-        category: "AMBIENT",
-        playlist_url: "https://somafm.com/m3u/deepspaceone.m3u",
-        publisher_reference_url: "https://somafm.com/deepspaceone/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "spacestation",
-        name: "Space Station Soma",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Space / midtempo electronica",
-        category: "AMBIENT",
-        playlist_url: "https://somafm.com/m3u/spacestation.m3u",
-        publisher_reference_url: "https://somafm.com/spacestation/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "beatblender",
-        name: "Beat Blender",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Deep house / downtempo",
-        category: "ELECTRONIC",
-        playlist_url: "https://somafm.com/m3u/beatblender.m3u",
-        publisher_reference_url: "https://somafm.com/beatblender/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "defcon",
-        name: "DEF CON Radio",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Electronic / hacker radio",
-        category: "ELECTRONIC",
-        playlist_url: "https://somafm.com/m3u/defcon.m3u",
-        publisher_reference_url: "https://somafm.com/defcon/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "u80s",
-        name: "Underground 80s",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Synthpop / new wave",
-        category: "RETRO",
-        playlist_url: "https://somafm.com/m3u/u80s.m3u",
-        publisher_reference_url: "https://somafm.com/u80s/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "indiepop",
-        name: "Indie Pop Rocks!",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Indie pop / alternative",
+        genre: "Independent / alternative / world music",
         category: "INDIE",
-        playlist_url: "https://somafm.com/m3u/indiepop.m3u",
-        publisher_reference_url: "https://somafm.com/indiepop/directstreamlinks.html",
+        playlist_url: "https://kexp.streamguys1.com/kexp160.aac",
+        publisher_reference_url: "https://www.kexp.org/mobile/kexp-livestreams/",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 160,
+        format: "AAC",
+    },
+    InternetStation {
+        id: "radio-paradise",
+        name: "Radio Paradise Main Mix",
+        broadcaster: "Radio Paradise",
+        language: "en",
+        country: "US",
+        genre: "Eclectic commercial-free mix",
+        category: "MIXED",
+        playlist_url: "https://stream.radioparadise.com/mp3-128",
+        publisher_reference_url: "https://radioparadise.com/listen/stream-links",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
         nominal_kbps: 128,
         format: "MP3",
     },
     InternetStation {
-        id: "folkfwd",
-        name: "Folk Forward",
-        broadcaster: "SomaFM",
+        id: "wpr-news",
+        name: "WPR News",
+        broadcaster: "Wisconsin Public Radio",
         language: "en",
         country: "US",
-        genre: "Indie folk / acoustic",
-        category: "FOLK",
-        playlist_url: "https://somafm.com/m3u/folkfwd.m3u",
-        publisher_reference_url: "https://somafm.com/folkfwd/directstreamlinks.html",
-        nominal_kbps: 128,
+        genre: "News / talk / public affairs",
+        category: "NEWS",
+        playlist_url: "https://wpr-ice.streamguys1.com/wpr-ideas-mp3-64",
+        publisher_reference_url: "https://www.wpr.org/ways-to-listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 64,
         format: "MP3",
     },
     InternetStation {
-        id: "metal",
-        name: "Metal Detector",
-        broadcaster: "SomaFM",
+        id: "wpr-music",
+        name: "WPR Music",
+        broadcaster: "Wisconsin Public Radio",
         language: "en",
         country: "US",
-        genre: "Metal / hard rock",
-        category: "ROCK",
-        playlist_url: "https://somafm.com/m3u/metal.m3u",
-        publisher_reference_url: "https://somafm.com/metal/directstreamlinks.html",
-        nominal_kbps: 128,
+        genre: "Music / culture",
+        category: "MIXED",
+        playlist_url: "https://wpr-ice.streamguys1.com/wpr-music-mp3-96",
+        publisher_reference_url: "https://www.wpr.org/ways-to-listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 96,
         format: "MP3",
     },
     InternetStation {
-        id: "bootliquor",
-        name: "Boot Liquor",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Americana / roots / country",
-        category: "ROOTS",
-        playlist_url: "https://somafm.com/m3u/bootliquor.m3u",
-        publisher_reference_url: "https://somafm.com/bootliquor/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "sonicuniverse",
-        name: "Sonic Universe",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Modern jazz / avant-garde",
+        id: "radio-swiss-jazz",
+        name: "Radio Swiss Jazz",
+        broadcaster: "Swiss Satellite Radio",
+        language: "de",
+        country: "CH",
+        genre: "Jazz / blues / soul",
         category: "JAZZ",
-        playlist_url: "https://somafm.com/m3u/sonicuniverse.m3u",
-        publisher_reference_url: "https://somafm.com/sonicuniverse/directstreamlinks.html",
+        playlist_url: "https://stream.srg-ssr.ch/srgssr/rsj/mp3/128",
+        publisher_reference_url: "https://www.radioswissjazz.ch/de/empfang/internet",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
         nominal_kbps: 128,
         format: "MP3",
     },
     InternetStation {
-        id: "bossa",
-        name: "Bossa Beyond",
-        broadcaster: "SomaFM",
+        id: "radio-swiss-classic",
+        name: "Radio Swiss Classic",
+        broadcaster: "Swiss Satellite Radio",
+        language: "de",
+        country: "CH",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://stream.srg-ssr.ch/srgssr/rsc_de/mp3/128",
+        publisher_reference_url: "https://www.radioswissclassic.ch/de/empfang/internet",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "all-classical",
+        name: "All Classical Radio",
+        broadcaster: "All Classical Public Media",
         language: "en",
         country: "US",
-        genre: "Bossa nova / Brazilian",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://allclassical.streamguys1.com/ac128kmp3",
+        publisher_reference_url: "https://www.allclassical.org/contact/contact-our-technical-team/",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmt",
+        name: "WFMT Classical",
+        broadcaster: "WFMT",
+        language: "en",
+        country: "US",
+        genre: "Classical",
+        category: "CLASSICAL",
+        playlist_url: "https://wfmt-live.streamguys1.com/wfmt256-aac",
+        publisher_reference_url: "https://www.wfmt.com/how-to-listen/",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 256,
+        format: "AAC",
+    },
+    InternetStation {
+        id: "kfuo",
+        name: "KFUO Radio",
+        broadcaster: "KFUO Radio",
+        language: "en",
+        country: "US",
+        genre: "Faith / classical / talk",
+        category: "MIXED",
+        playlist_url: "https://kfuo.streamguys1.com/kfuo",
+        publisher_reference_url: "https://www.kfuo.org/listening-options/",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "Streaming audio (verify at runtime)",
+    },
+    InternetStation {
+        id: "wrvo-news",
+        name: "WRVO 1 NPR News",
+        broadcaster: "WRVO Public Media",
+        language: "en",
+        country: "US",
+        genre: "NPR News / local public affairs",
+        category: "NEWS",
+        playlist_url:
+            "https://playerservices.streamtheworld.com/api/livestream-redirect/WRVOFM.mp3",
+        publisher_reference_url: "https://www.wrvo.org/listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wrvo-prx",
+        name: "WRVO 2 PRX Remix",
+        broadcaster: "WRVO Public Media",
+        language: "en",
+        country: "US",
+        genre: "Spoken word / PRX Remix",
+        category: "TALK",
+        playlist_url:
+            "https://playerservices.streamtheworld.com/api/livestream-redirect/WRVOHD2.mp3",
+        publisher_reference_url: "https://www.wrvo.org/digital-streaming",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wrvo-bbc",
+        name: "WRVO 3 BBC World Service",
+        broadcaster: "WRVO Public Media",
+        language: "en",
+        country: "US",
+        genre: "International news / BBC World Service",
+        category: "NEWS",
+        playlist_url:
+            "https://playerservices.streamtheworld.com/api/livestream-redirect/WRVOHD3.mp3",
+        publisher_reference_url: "https://www.wrvo.org/digital-streaming",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 0,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmu",
+        name: "WFMU Freeform Radio",
+        broadcaster: "WFMU",
+        language: "en",
+        country: "US",
+        genre: "Freeform / independent",
+        category: "MIXED",
+        playlist_url: "https://stream0.wfmu.org/freeform-128k",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmu-drummer",
+        name: "Give the Drummer Radio",
+        broadcaster: "WFMU",
+        language: "en",
+        country: "US",
+        genre: "Eclectic / global / specialty",
         category: "WORLD",
-        playlist_url: "https://somafm.com/m3u/bossa.m3u",
-        publisher_reference_url: "https://somafm.com/bossa/directstreamlinks.html",
+        playlist_url: "https://stream0.wfmu.org/drummer",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
         nominal_kbps: 128,
         format: "MP3",
     },
     InternetStation {
-        id: "reggae",
-        name: "Heavyweight Reggae",
-        broadcaster: "SomaFM",
+        id: "wfmu-rock-soul",
+        name: "WFMU Rock'n'Soul Radio",
+        broadcaster: "WFMU",
         language: "en",
         country: "US",
-        genre: "Reggae / ska / rocksteady",
+        genre: "Rock / soul / rhythm and blues",
+        category: "ROCK",
+        playlist_url: "https://stream0.wfmu.org/rocknsoul",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
+        nominal_kbps: 128,
+        format: "MP3",
+    },
+    InternetStation {
+        id: "wfmu-sheena",
+        name: "Sheena's Jungle Room",
+        broadcaster: "WFMU",
+        language: "en",
+        country: "US",
+        genre: "Vintage / tropical / global",
         category: "WORLD",
-        playlist_url: "https://somafm.com/m3u/reggae.m3u",
-        publisher_reference_url: "https://somafm.com/reggae/directstreamlinks.html",
+        playlist_url: "https://stream0.wfmu.org/sheena",
+        publisher_reference_url: "https://wfmu.org/playlists/D5",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-10-28",
         nominal_kbps: 128,
         format: "MP3",
     },
     InternetStation {
-        id: "thistle",
-        name: "ThistleRadio",
-        broadcaster: "SomaFM",
+        id: "kunc",
+        name: "KUNC News",
+        broadcaster: "KUNC",
         language: "en",
         country: "US",
-        genre: "Celtic / traditional",
-        category: "WORLD",
-        playlist_url: "https://somafm.com/m3u/thistle.m3u",
-        publisher_reference_url: "https://somafm.com/thistle/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "fluid",
-        name: "Fluid",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Instrumental hip-hop / future soul",
-        category: "HIPHOP",
-        playlist_url: "https://somafm.com/m3u/fluid.m3u",
-        publisher_reference_url: "https://somafm.com/fluid/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "cliqhop",
-        name: "cliqhop idm",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "IDM / experimental electronic",
-        category: "ELECTRONIC",
-        playlist_url: "https://somafm.com/m3u/cliqhop.m3u",
-        publisher_reference_url: "https://somafm.com/cliqhop/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "thetrip",
-        name: "The Trip",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Progressive house / trance",
-        category: "DANCE",
-        playlist_url: "https://somafm.com/m3u/thetrip.m3u",
-        publisher_reference_url: "https://somafm.com/thetrip/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "poptron",
-        name: "PopTron",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Electropop / indie dance",
-        category: "POP",
-        playlist_url: "https://somafm.com/m3u/poptron.m3u",
-        publisher_reference_url: "https://somafm.com/poptron/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "leftcoast70s",
-        name: "Left Coast 70s",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "1970s album rock / soft rock",
-        category: "RETRO",
-        playlist_url: "https://somafm.com/m3u/seventies.m3u",
-        publisher_reference_url: "https://somafm.com/seventies/directstreamlinks.html",
-        nominal_kbps: 128,
-        format: "MP3",
-    },
-    InternetStation {
-        id: "illstreet",
-        name: "Illinois Street Lounge",
-        broadcaster: "SomaFM",
-        language: "en",
-        country: "US",
-        genre: "Exotica / vintage lounge",
-        category: "LOUNGE",
-        playlist_url: "https://somafm.com/m3u/illstreet.m3u",
-        publisher_reference_url: "https://somafm.com/illstreet/directstreamlinks.html",
-        nominal_kbps: 128,
+        genre: "NPR News / public affairs",
+        category: "NEWS",
+        playlist_url: "https://ais-sa1.streamon.fm/7890_96k.mp3",
+        publisher_reference_url: "https://www.kunc.org/listen",
+        third_party_player_support: true,
+        rights_reviewed_date: "2026-11-27",
+        nominal_kbps: 96,
         format: "MP3",
     },
 ];
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RadioSource {
-    HardwareSdr,
-    InternetDirectory,
-    Offline,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IpReachability {
     Reachable,
     Unreachable,
     NotChecked,
-}
-
-/// Distinguish a detected hardware device from a simulation fixture.
-pub trait RadioDiscovery {
-    fn real_receiver_available(&self) -> bool;
-}
-
-/// Availability checks may resolve and connect to *approved radio provider*
-/// hosts only. Do not use untrusted remote station-provided hostnames.
-pub trait RadioConnectivity {
-    fn approved_provider_reachable(&self) -> IpReachability;
-}
-
-pub fn select_source<D: RadioDiscovery, C: RadioConnectivity>(
-    device: &D,
-    connectivity: &C,
-) -> RadioSource {
-    if device.real_receiver_available() {
-        RadioSource::HardwareSdr
-    } else if connectivity.approved_provider_reachable() == IpReachability::Reachable {
-        RadioSource::InternetDirectory
-    } else {
-        RadioSource::Offline
-    }
-}
-
-/// The core currently has no physical SDR backend. Never report the simulator
-/// as a receiver: the eventual SoapySDR enumerator replaces this implementation.
-pub struct NoHardwareEnumerator;
-
-impl RadioDiscovery for NoHardwareEnumerator {
-    fn real_receiver_available(&self) -> bool {
-        false
-    }
-}
-
-pub struct UncheckedConnectivity;
-impl RadioConnectivity for UncheckedConnectivity {
-    fn approved_provider_reachable(&self) -> IpReachability {
-        IpReachability::NotChecked
-    }
-}
-
-/// Bounded TCP connectivity check to the publisher's HTTPS endpoint.
-/// It proves only that a TCP route exists, NOT that HTTPS, the playlist,
-/// a codec or the station stream is usable.
-pub struct PublisherTcpCheck {
-    pub timeout: Duration,
-}
-
-impl Default for PublisherTcpCheck {
-    fn default() -> Self {
-        Self {
-            timeout: Duration::from_secs(2),
-        }
-    }
-}
-
-impl RadioConnectivity for PublisherTcpCheck {
-    fn approved_provider_reachable(&self) -> IpReachability {
-        let timeout = self.timeout.min(Duration::from_secs(3));
-        let Ok(addresses) = ("somafm.com", 443).to_socket_addrs() else {
-            return IpReachability::Unreachable;
-        };
-        // Bound probe time even if DNS returns multiple addresses.
-        if let Some(address) = addresses
-            .take(2)
-            .find(|address| TcpStream::connect_timeout(address, timeout).is_ok())
-        {
-            let _ = address;
-            IpReachability::Reachable
-        } else {
-            IpReachability::Unreachable
-        }
-    }
 }
 
 /// Station-specific TCP reachability probe. Host and port are fixed by curated
@@ -490,19 +386,6 @@ pub fn station_by_id(id: &str) -> Option<&'static InternetStation> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    struct MockHardware(bool);
-    impl RadioDiscovery for MockHardware {
-        fn real_receiver_available(&self) -> bool {
-            self.0
-        }
-    }
-    struct MockIp(IpReachability);
-    impl RadioConnectivity for MockIp {
-        fn approved_provider_reachable(&self) -> IpReachability {
-            self.0
-        }
-    }
-
     #[test]
     fn lookup_is_exact_and_allowlisted() {
         assert_eq!(
@@ -516,36 +399,55 @@ mod tests {
         );
     }
     #[test]
-    fn sdr_precedes_network() {
-        assert_eq!(
-            select_source(&MockHardware(true), &MockIp(IpReachability::Unreachable)),
-            RadioSource::HardwareSdr
-        );
-    }
-    #[test]
-    fn ip_fallback_requires_reachable_provider() {
-        assert_eq!(
-            select_source(&MockHardware(false), &MockIp(IpReachability::Reachable)),
-            RadioSource::InternetDirectory
-        );
-        assert_eq!(
-            select_source(&MockHardware(false), &MockIp(IpReachability::Unreachable)),
-            RadioSource::Offline
-        );
-        assert_eq!(
-            select_source(&MockHardware(false), &UncheckedConnectivity),
-            RadioSource::Offline
-        );
-    }
-    #[test]
     fn curated_urls_have_publisher_provenance() {
-        assert_eq!(curated_stations().len(), 25);
+        const EXPECTED_IDS: [&str; 20] = [
+            "skylab",
+            "wcrb",
+            "gbh-news",
+            "kexp",
+            "radio-paradise",
+            "wpr-news",
+            "wpr-music",
+            "radio-swiss-jazz",
+            "radio-swiss-classic",
+            "all-classical",
+            "wfmt",
+            "kfuo",
+            "wrvo-news",
+            "wrvo-prx",
+            "wrvo-bbc",
+            "wfmu",
+            "wfmu-drummer",
+            "wfmu-rock-soul",
+            "wfmu-sheena",
+            "kunc",
+        ];
+        assert_eq!(curated_stations().len(), 20);
+        assert_eq!(
+            curated_stations()
+                .iter()
+                .map(|station| station.id)
+                .collect::<Vec<_>>(),
+            EXPECTED_IDS
+        );
+        for retired in [
+            "groovesalad",
+            "secretagent",
+            "kusc",
+            "colorado-sound",
+            "kuaf",
+        ] {
+            assert!(
+                station_by_id(retired).is_none(),
+                "retired station remains: {retired}"
+            );
+        }
         let mut ids = std::collections::BTreeSet::new();
         for station in curated_stations() {
             assert!(ids.insert(station.id), "duplicate station ID");
             assert!(
                 station_tcp_target(station.id).is_some(),
-                "curated station has no safe TCP probe target: {}",
+                "missing target: {}",
                 station.id
             );
             assert!(!station.broadcaster.trim().is_empty());
@@ -559,47 +461,11 @@ mod tests {
                 .country
                 .bytes()
                 .all(|byte| byte.is_ascii_uppercase()));
-            assert!([
-                "CHILL",
-                "AMBIENT",
-                "ELECTRONIC",
-                "RETRO",
-                "CLASSICAL",
-                "INDIE",
-                "FOLK",
-                "ROCK",
-                "ROOTS",
-                "JAZZ",
-                "WORLD",
-                "HIPHOP",
-                "DANCE",
-                "POP",
-                "LOUNGE"
-            ]
-            .contains(&station.category));
             assert!(!station.genre.is_empty());
             assert!(station.playlist_url.starts_with("https://"));
             assert!(station.publisher_reference_url.starts_with("https://"));
-            if station.id == "skylab" {
-                assert!(station
-                    .playlist_url
-                    .starts_with("https://uksoutha.streaming.broadcast.radio:29690/"));
-                assert_eq!(
-                    station.publisher_reference_url,
-                    "https://www.skylabradio.com/listen"
-                );
-            } else if station.id == "wcrb" {
-                assert_eq!(
-                    station.playlist_url,
-                    "https://wgbh-live.streamguys1.com/classical-hi/"
-                );
-                assert_eq!(station.format, "AAC");
-            } else {
-                assert!(station.playlist_url.starts_with("https://somafm.com/m3u/"));
-                assert!(station.playlist_url.ends_with(".m3u"));
-                assert_eq!(station.format, "MP3");
-                assert_eq!(station.nominal_kbps, 128);
-            }
+            assert!(station.third_party_player_support);
+            assert_eq!(station.rights_reviewed_date.len(), 10);
             assert!(!station.name.is_empty());
         }
     }
@@ -612,7 +478,11 @@ mod tests {
         );
         assert_eq!(
             station_tcp_target("skylab"),
-            Some(("uksoutha.streaming.broadcast.radio", 29690))
+            Some(("stream.rcs.revma.com", 443))
+        );
+        assert_eq!(
+            station_by_id("kunc").unwrap().playlist_url,
+            "https://ais-sa1.streamon.fm/7890_96k.mp3"
         );
         assert_eq!(station_tcp_target("unknown"), None);
         assert_eq!(station_tcp_target("https://attacker.test"), None);

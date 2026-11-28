@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+ <defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="#233b36"/><stop offset="1" stop-color="#101b1a"/></linearGradient><linearGradient id="glass" x2="0" y2="1"><stop stop-color="#caff8b"/><stop offset="1" stop-color="#67d96d"/></linearGradient></defs>
+ <rect x="70" y="70" width="884" height="884" rx="196" fill="url(#bg)" stroke="#63806b" stroke-width="18"/>
+ <path d="M512 176v105M512 176l-125-83M512 176l125-83" fill="none" stroke="#b4c7a4" stroke-width="22" stroke-linecap="round"/>
+ <circle cx="512" cy="169" r="31" fill="#bfff7a"/>
+ <rect x="166" y="282" width="692" height="454" rx="82" fill="#172522" stroke="#8aab7e" stroke-width="24"/>
+ <rect x="218" y="338" width="588" height="238" rx="32" fill="#0b1714" stroke="#435f4b" stroke-width="12"/>
+ <path d="M258 505h62l35-96 53 150 50-115 45 61h45l33-87 47 87h137" fill="none" stroke="url(#glass)" stroke-width="23" stroke-linecap="round" stroke-linejoin="round"/>
+ <circle cx="733" cy="645" r="30" fill="#9bf276"/><circle cx="635" cy="645" r="30" fill="#54745e"/>
+ <text x="512" y="832" text-anchor="middle" font-family="Menlo,monospace" font-size="72" font-weight="bold" letter-spacing="8" fill="#baff83">R RADIO</text>
+</svg>

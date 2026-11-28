@@ -18,7 +18,7 @@ Pip-Boy; see [current progress](PROGRESS.md) and the [roadmap](PORTING_PLAN.md).
 worker paths use the same types. The source-neutral `SessionController` remains
 available separately through the facade.
 
-`NativeRadioEngine::start_internet(station_id, volume_percent, output_id)` is the explicit action opening a selected audio output and station worker. `NativeRadioEngine::stop()` requests cancellation and joins its playback worker; GUI hosts use `request_stop()` and `try_finish()`. Offline tests cover receiver cleanup and bounded startup/stream retries; live DNS/TLS cancellation still needs field validation. Output selection is OS-managed, including already-paired Bluetooth. No microphone or RF transmission implementation.
+`NativeRadioEngine::start_internet(station_id, volume_percent, output_id)` is the explicit action opening a selected audio output and station worker. `NativeRadioEngine::stop()` requests cancellation and joins its playback worker; GUI hosts use `request_stop()` and `try_finish()`. Offline tests cover stream cleanup and bounded startup/stream retries; live DNS/TLS cancellation still needs field validation. Output selection is OS-managed, including already-paired Bluetooth. No microphone or RF implementation.
 
 ## Verification requirements
 
@@ -35,8 +35,7 @@ available separately through the facade.
 
 ## Current verification
 
-Pip-Boy's pinned Git dependency, Mac IP/native PCM checks, real nRSP-ST PCM and
-operator-confirmed MacBook Air speaker playback are recorded in
-[native playback evidence](NATIVE_PLAYBACK_CONTRACT.md) and [nRSP-ST evidence](NRSP_ST.md).
+Pip-Boy's pinned Git dependency and Mac IP/native PCM checks are recorded in
+[native playback evidence](NATIVE_PLAYBACK_CONTRACT.md).
 The checklist above retains remaining platform/field requirements. Remote CI
 success is still unestablished: observed GitHub runs fail before jobs start.

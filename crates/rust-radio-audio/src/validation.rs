@@ -199,7 +199,15 @@ where
     };
     let mut report = StationValidation::unverified(station_id);
     report.stage = ValidationStage::StreamResponse;
-    report.resolved_url = Some(stream.endpoint.url().into());
+    // Signed publisher redirects can include short-lived access tokens. Keep
+    // only the endpoint origin/path in validation reports and diagnostics.
+    let endpoint_url = stream.endpoint.url();
+    report.resolved_url = Some(
+        endpoint_url
+            .split_once('?')
+            .map_or(endpoint_url, |(base, _)| base)
+            .to_owned(),
+    );
     report.content_type = stream.content_type;
     Ok(decode_response(report, stream.reader))
 }
@@ -398,6 +406,60 @@ mod tests {
         }
     }
 
+    struct SignedRevmaFixture;
+
+    impl RadioHttp for SignedRevmaFixture {
+        type Body = io::Cursor<Vec<u8>>;
+
+        fn get(
+            &self,
+            target: &rust_radio_core::stream::ApprovedEndpoint,
+        ) -> Result<rust_radio_core::stream::HttpResponse<Self::Body>, StreamError> {
+            let (status, content_type, redirect, body) = match target.url() {
+                "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls" => (
+                    200,
+                    "audio/x-scpls",
+                    None,
+                    b"[playlist]\nFile1=https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv\nNumberOfEntries=1\nVersion=2\n".to_vec(),
+                ),
+                "https://n04-us2.rcs.revma.com:443/7vs4sr22w3bwv" => (
+                    302,
+                    "text/plain",
+                    Some("https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-tok=syntheticToken0123456789"),
+                    Vec::new(),
+                ),
+                "https://n01-us2.rcs.revma.com/7vs4sr22w3bwv?rj-ttl=3&rj-tok=syntheticToken0123456789" => (
+                    200,
+                    "audio/mpeg",
+                    None,
+                    b"invalid-mp3-fixture".to_vec(),
+                ),
+                _ => return Err(StreamError::TransportUnavailable),
+            };
+            Ok(rust_radio_core::stream::HttpResponse {
+                status,
+                content_type: Some(content_type.into()),
+                redirect_location: redirect.map(str::to_owned),
+                icy_metaint: None,
+                body: io::Cursor::new(body),
+            })
+        }
+    }
+
+    #[test]
+    fn validation_report_does_not_retain_signed_revma_query_tokens() {
+        let report = validate_with(&SignedRevmaFixture, "skylab").unwrap();
+        assert_eq!(
+            report.resolved_url.as_deref(),
+            Some("https://n01-us2.rcs.revma.com/7vs4sr22w3bwv")
+        );
+        assert!(!report
+            .resolved_url
+            .as_deref()
+            .unwrap_or_default()
+            .contains("syntheticToken"));
+    }
+
     #[test]
     fn background_worker_panics_and_wrong_station_results_are_reported_once() {
         let mut panicked =
@@ -406,10 +468,9 @@ mod tests {
             .unwrap_err()
             .contains("unexpectedly"));
         assert!(panicked.try_finish().is_none());
-        let mut wrong_station = StationValidationTask::spawn("skylab", |_| {
-            Ok(StationValidation::unverified("groovesalad"))
-        })
-        .unwrap();
+        let mut wrong_station =
+            StationValidationTask::spawn("skylab", |_| Ok(StationValidation::unverified("wcrb")))
+                .unwrap();
         assert!(finish_task(&mut wrong_station)
             .unwrap_err()
             .contains("different station"));

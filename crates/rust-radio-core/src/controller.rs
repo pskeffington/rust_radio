@@ -6,7 +6,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputKind {
     Internet,
-    Sdr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,7 +46,6 @@ impl Default for RadioSession {
 pub enum RadioCommand {
     PlayInternet { station_id: String },
     PlayStream,
-    PlaySdr,
     Stop,
     SetVolume(u8),
 }
@@ -94,13 +92,6 @@ impl RadioController {
                 self.session.generation = self.session.generation.wrapping_add(1);
                 self.session.state = PlaybackState::Connecting;
                 self.session.input = Some(InputKind::Internet);
-                self.session.station_id = None;
-                self.session.last_error = None;
-            }
-            RadioCommand::PlaySdr => {
-                self.session.generation = self.session.generation.wrapping_add(1);
-                self.session.state = PlaybackState::Connecting;
-                self.session.input = Some(InputKind::Sdr);
                 self.session.station_id = None;
                 self.session.last_error = None;
             }
@@ -220,7 +211,7 @@ mod tests {
         let mut radio = RadioController::default();
         let gen = radio
             .apply(RadioCommand::PlayInternet {
-                station_id: "dronezone".into(),
+                station_id: "skylab".into(),
             })
             .unwrap();
         assert!(!radio.event(gen, PlaybackEvent::PlaybackStarted));

@@ -91,9 +91,6 @@ impl RadioPanel {
         let raw = self
             .playback_error()
             .unwrap_or_else(|| "The station could not be opened. Retry or check setup.".into());
-        if self.segment != super::Segment::Ip {
-            return raw;
-        }
         let message = raw.to_lowercase();
         let friendly = if message.contains("hls") {
             "This station uses HLS streaming, which is not supported yet. Try an MP3 or AAC stream."
@@ -114,7 +111,6 @@ impl RadioPanel {
         } else if message.contains("audio output")
             || message.contains("audio device")
             || message.contains("native sample format")
-            || message.contains("native receiver output")
             || message.contains("cannot configure native audio stream")
         {
             "Your audio output is unavailable. Open IP Radio to select an output, then retry."

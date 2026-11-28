@@ -1,4 +1,4 @@
-use super::{RadioPanel, Segment};
+use super::RadioPanel;
 use eframe::egui;
 use rust_radio_audio::compat_controller::PlaybackState;
 impl RadioPanel {
@@ -109,7 +109,6 @@ impl RadioPanel {
                             }),
                         )
                         .clicked()
-                        && self.segment == Segment::Ip
                     {
                         self.ip_selection_changed();
                         if self.engine.is_none() {
