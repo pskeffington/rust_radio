@@ -47,6 +47,8 @@ class DistributionRightsTests(unittest.TestCase):
             "category": "CHILL",
             "playlist_url": f"https://radio.example.test/{station_id}",
             "publisher_reference_url": f"https://publisher.example.test/{station_id}",
+            "third_party_player_support": True,
+            "rights_reviewed_date": "2026-11-27",
             "nominal_kbps": 128,
             "format": "MP3",
         }
@@ -66,6 +68,8 @@ class DistributionRightsTests(unittest.TestCase):
                 value = station[field]
                 if field == "nominal_kbps":
                     fields.append(f"        {field}: {value},")
+                elif field == "third_party_player_support":
+                    fields.append(f"        {field}: {str(value).lower()},")
                 else:
                     fields.append(f'        {field}: "{value}",')
             entries.append("    InternetStation {\n" + "\n".join(fields) + "\n    }")
@@ -210,6 +214,8 @@ class DistributionRightsTests(unittest.TestCase):
             '        category: "CHILL",\n'
             '        playlist_url: "https://radio.example.test/a",\n'
             '        publisher_reference_url: "https://publisher.example.test/a",\n'
+            '        third_party_player_support: true,\n'
+            '        rights_reviewed_date: "2026-11-27",\n'
             "        nominal_kbps: 128,\n"
             '        format: "MP3",\n'
             "    },\n"
@@ -223,6 +229,8 @@ class DistributionRightsTests(unittest.TestCase):
             '        category: "CLASSICAL",\n'
             '        playlist_url: "https://radio.example.test/b",\n'
             '        publisher_reference_url: "https://publisher.example.test/b",\n'
+            '        third_party_player_support: true,\n'
+            '        rights_reviewed_date: "2026-11-27",\n'
             "        nominal_kbps: 128,\n"
             '        format: "AAC",\n'
             "    },\n"
@@ -278,7 +286,7 @@ class DistributionRightsTests(unittest.TestCase):
             for item in catalog["stations"]
         ]
         runtime_stations = gate._runtime_stations(runtime)
-        self.assertEqual(len(runtime_stations), 25)
+        self.assertEqual(len(runtime_stations), 20)
         self.assertEqual(catalog_stations, list(runtime_stations.values()))
 
     def test_duplicate_json_keys_fail_closed(self) -> None:

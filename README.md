@@ -1,6 +1,6 @@
 # rust_radio
 
-Portable, **receive-only** internet radio designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. It supports curated and custom IP audio streams, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. This project handles streaming radio; radio-frequency receiver development lives in separate projects.
+Portable, **receive-only** internet radio designed to plug into [Rust-Boy / pip_boy](https://github.com/pskeffington/pip_boy) without coupling its engine to the HUD. It supports a curated list of 20 internet stations and custom IP audio streams, MP3/AAC decoding, native audio output, a CLI and an optional 480×320 egui panel. This project handles streaming radio; radio-frequency receiver development lives in separate projects.
 
 ## Status (2026-11-23)
 
@@ -85,7 +85,7 @@ cargo run -p rust-radio-cli -- listen wcrb --seconds 30
 cargo run -p rust-radio-cli -- stream-listen 'https://example.org/live.mp3' --seconds 30
 ```
 
-Curated transport resolves bounded M3U and PLS playlists using publisher-approved URLs. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. Legacy HTTP entries inside SomaFM playlists are requested over HTTPS after the same host/port/path checks; there is no plaintext fallback. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
+Curated transport resolves bounded M3U and PLS playlists using station-specific publisher-approved URLs. Redirect targets are revalidated for the selected station at every hop; Skylab's signed Revma token values are redacted from debug output. Explicit custom streams use the same bounded parser, with HTTPS or private/loopback IPv4 HTTP validation at every hop. HLS is detected and reported as unsupported; segmented playback needs a separate transport. Temporary connection and stream failures share a maximum of three retries with 1/2/4-second delays.
 
 Check a station without opening an audio device:
 

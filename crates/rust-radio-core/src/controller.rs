@@ -211,7 +211,7 @@ mod tests {
         let mut radio = RadioController::default();
         let gen = radio
             .apply(RadioCommand::PlayInternet {
-                station_id: "dronezone".into(),
+                station_id: "skylab".into(),
             })
             .unwrap();
         assert!(!radio.event(gen, PlaybackEvent::PlaybackStarted));

@@ -191,7 +191,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             control.request_start(Source::Internet {
-                station_id: "groovesalad".into(),
+                station_id: "wcrb".into(),
             }),
             Err(RadioError::AlreadyActive)
         );

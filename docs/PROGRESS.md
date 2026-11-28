@@ -1819,3 +1819,12 @@ visible yet for `082b029`; the startup failure above belongs to the prior head.
   self-hosted runners. These API results locate the failure before repository
   commands, but do not identify its cause. No retry or configuration change
   was made.
+
+## RR-127 curated IP station list — 2026-11-27
+
+- Restored the prior selected 19 station identities and added KUNC News as station 20. The IDs are `skylab`, `wcrb`, `gbh-news`, `kexp`, `radio-paradise`, `wpr-news`, `wpr-music`, `radio-swiss-jazz`, `radio-swiss-classic`, `all-classical`, `wfmt`, `kfuo`, `wrvo-news`, `wrvo-prx`, `wrvo-bbc`, `wfmu`, `wfmu-drummer`, `wfmu-rock-soul`, `wfmu-sheena`, and `kunc`.
+- Removed the additional five draft IDs `kusc`, `colorado-sound`, `kuaf`, `kuaf-classical`, and `kuaf-jazz`. This is scope curation, not a failed-feed report. Prior SomaFM receiver entries remain out of this streaming-only product.
+- Added exact per-station HTTPS origin/path allowlists, including current Skylab Revma PLS + numeric shard and signed TTL/token validation, exact Radio Paradise paths, and the KUNC MP3 path. Existing bounded redirects, public DNS/address filtering, proxy disablement, timeouts, playlist limits, and decode bounds remain in force. Signed Skylab query values are redacted in endpoint debug output.
+- Feed-history schema v1 now ignores explicitly retired IDs from the old SomaFM and five-station draft lists while continuing to reject unknown station IDs. The JSON catalog mirror and distribution preflight now include and compare third-party-player guidance and review-date metadata.
+- Verification: core unit tests passed (52/52); CLI JSON mirror parity passed; distribution-rights preflight tests passed (15/15); Rust formatting and diff checks passed. Live bounded silent validation at Unix `1795836885` decoded all 20 channels in one attempt each, rerun against the final source snapshot. This is point-in-time codec evidence, not audible playback, publisher authorization, or release approval.
+- `redistribution: not_authorized` remains unchanged. The installed macOS app has not yet been rebuilt/relaunched from this worktree; hosted exact-head CI also remains open.

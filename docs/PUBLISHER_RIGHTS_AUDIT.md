@@ -1,6 +1,6 @@
 # Curated publisher rights audit
 
-Audit date: 2026-11-23  
+Audit date: 2026-11-27
 Repository revision reviewed: `2253fe7b7a98a5a5b1359affd441546ade8a3c1c`  
 Scope: current curated station names, publisher references and stream endpoints
 in `crates/rust-radio-core/src/directory.rs` and
@@ -24,7 +24,7 @@ its stream, station metadata, or branding in this standalone client.
 
 ## Required next actions
 
-1. Keep the curated release gate closed. The current 25-entry catalog is
+1. Keep the curated release gate closed. The current 20-entry catalog is
    development data, not a cleared release manifest.
 2. Exclude all 23 SomaFM entries from any Rust Radio application release unless
    an applicable written authorization or other documented rights basis is
@@ -35,6 +35,17 @@ its stream, station metadata, or branding in this standalone client.
 4. Preserve source URLs and station identities for auditability; never replace
    a blocked station silently. Re-run this review if terms, catalog membership,
    bundle behavior or release plans change.
+
+## Current 20-station listener catalog
+
+The current development catalog removes the prior SomaFM set and the five
+additional entries `kusc`, `colorado-sound`, `kuaf`, `kuaf-classical` and
+`kuaf-jazz`; it restores the previously selected 19 and adds `kunc`. Selection
+is product curation, not a claim that removed feeds failed. Publisher guidance
+supports listener use in third-party players, but this audit still does not
+establish permission to bundle each station or stream. The release policy
+therefore remains `not_authorized` until station-specific bundle rights are
+recorded.
 
 ## NPR candidate
 

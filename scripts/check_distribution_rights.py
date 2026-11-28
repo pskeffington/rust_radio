@@ -24,8 +24,10 @@ STATION_STRING_FIELDS = (
     "category",
     "playlist_url",
     "publisher_reference_url",
+    "rights_reviewed_date",
     "format",
 )
+STATION_BOOL_FIELDS = ("third_party_player_support",)
 STATION_FIELDS = (
     "id",
     "name",
@@ -36,6 +38,8 @@ STATION_FIELDS = (
     "category",
     "playlist_url",
     "publisher_reference_url",
+    "third_party_player_support",
+    "rights_reviewed_date",
     "nominal_kbps",
     "format",
 )
@@ -237,14 +241,14 @@ def _runtime_stations(source: str) -> dict[str, dict[str, str | int]]:
         raise GateError("compiled station declaration has an unsupported array form")
 
     cursor = suffix_start + 3
-    stations: dict[str, dict[str, str | int]] = {}
+    stations: dict[str, dict[str, str | int | bool]] = {}
     string_fields = frozenset(STATION_STRING_FIELDS)
 
     while cursor < len(tokens) and tokens[cursor][:2] != ("punctuation", "]"):
         if not _matches(tokens, cursor, (("identifier", "InternetStation"), ("punctuation", "{"))):
             raise GateError("compiled station array contains an unsupported entry")
         cursor += 2
-        fields: dict[str, str | int] = {}
+        fields: dict[str, str | int | bool] = {}
 
         while cursor < len(tokens) and tokens[cursor][:2] != ("punctuation", "}"):
             field_token = tokens[cursor]
@@ -267,6 +271,17 @@ def _runtime_stations(source: str) -> dict[str, dict[str, str | int]]:
                 ):
                     raise GateError(f"compiled station field {field_name} must be a direct string literal")
                 field_value = value_token[1]
+                cursor += 1
+            elif field_name in STATION_BOOL_FIELDS:
+                value_token = tokens[cursor] if cursor < len(tokens) else None
+                if value_token is None or value_token[0] != "identifier" or value_token[1] not in ("true", "false"):
+                    raise GateError(f"compiled station field {field_name} must be a boolean literal")
+                field_value = value_token[1] == "true"
+                if cursor + 1 >= len(tokens) or tokens[cursor + 1][:2] not in (
+                    ("punctuation", ","),
+                    ("punctuation", "}"),
+                ):
+                    raise GateError(f"compiled station field {field_name} must be a boolean literal")
                 cursor += 1
             else:
                 value_token = tokens[cursor] if cursor < len(tokens) else None
@@ -374,6 +389,8 @@ def validate(root: Path, manifest_path: Path) -> None:
             raise GateError(f"catalog station {station_id} has no publisher")
         if any(not isinstance(station[field], str) for field in STATION_STRING_FIELDS):
             raise GateError(f"catalog station {station_id} has a non-string metadata field")
+        if type(station["third_party_player_support"]) is not bool:
+            raise GateError(f"catalog station {station_id} has invalid player-guidance metadata")
         if type(station["nominal_kbps"]) is not int or not 0 <= station["nominal_kbps"] <= 65_535:
             raise GateError(f"catalog station {station_id} has an invalid nominal bitrate")
         if station_id in catalog_stations:
