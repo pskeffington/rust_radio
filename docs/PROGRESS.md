@@ -20,6 +20,25 @@
   stale expectations: 28 library tests and 2 standalone tests passed; one
   hardware/audio test remains ignored. The updated assertions match the
   receiver-free stop wording and compact category behavior.
+- Full local verification now passes on this source tree:
+  `cargo test --workspace --locked --offline` and
+  `cargo clippy --workspace --all-targets --locked --offline -- -D warnings`.
+  The suite includes 167 passed tests and one ignored native audio test.
+- Replaced stale audio/probe fixtures that still constructed the removed
+  `groovesalad` ID with the current Skylab PLS-to-Revma pipeline. The former
+  SomaFM-specific HTTP upgrade test now asserts that a plain-HTTP playlist
+  entry is rejected without requesting it. The optional reachability HEAD
+  probe now uses a neutral endpoint.
+- Restored the macOS eframe OS-default icon sentinel in standalone launch
+  options. eframe otherwise supplies its white `e`; the bundle references
+  `RustRadio.icns`. A macOS launch-options regression test checks the sentinel,
+  bundle app name and viewport sizes. The packaged and installed ICNS SHA-256
+  matches the designed source asset (`917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00`).
+- Rebuilt and relaunched the installed app from this source. Bundle identity,
+  icon resource and signature verify; the radio UI renders. Direct Dock-tile
+  visual verification timed out and remains unconfirmed.
+- Installed executable SHA-256 after local ad-hoc signing:
+  `5be116408a9d36e107a0b3e0fd0652714a9a6b821dc970ef95d7d874aa20bc50`.
 - Installed the signed build at `/Users/null/Applications/Rust Radio.app`,
   verified its code signature, and relaunched it. Visual inspection confirmed
   only the IP radio picker and playback controls; the curated menu includes

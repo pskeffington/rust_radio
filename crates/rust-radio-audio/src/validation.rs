@@ -468,10 +468,9 @@ mod tests {
             .unwrap_err()
             .contains("unexpectedly"));
         assert!(panicked.try_finish().is_none());
-        let mut wrong_station = StationValidationTask::spawn("skylab", |_| {
-            Ok(StationValidation::unverified("groovesalad"))
-        })
-        .unwrap();
+        let mut wrong_station =
+            StationValidationTask::spawn("skylab", |_| Ok(StationValidation::unverified("wcrb")))
+                .unwrap();
         assert!(finish_task(&mut wrong_station)
             .unwrap_err()
             .contains("different station"));

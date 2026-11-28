@@ -10,12 +10,15 @@
     "RR-127: added known-retired feed-history migration; unknown station IDs remain rejected.",
     "RR-127: current bounded silent sweep decoded 20/20 selected channels in one attempt each; point-in-time codec evidence only, not audible or distribution acceptance.",
     "RR-120: removed GUI input discovery, segment state, startup scan, and receiver-oriented status strings after tracing reappearing controls to compiled GUI sources.",
-    "RR-118: fresh isolated release build installed and signature-verified; relaunched Mac UI visually shows IP radio controls only and the 20 curated channels plus separate custom entry."
+    "RR-118: fresh isolated release build installed and signature-verified; relaunched Mac UI visually shows IP radio controls only and the 20 curated channels plus separate custom entry.",
+    "RR-118: restored macOS eframe OS-default icon sentinel so the designed RustRadio.icns bundle icon is not replaced by eframe's white e; launch-options regression passes and packaged/installed ICNS digest matches the source asset. Direct Dock-tile visual confirmation timed out."
   ],
   "historical_work_summary": "Historical entries from prior runs are retained in Git history and earlier progress documentation.",
   "validation": {
     "fmt": "passed on merged commit 5568fb3",
     "streaming_gui_removal": "cargo fmt --all --check, cargo check --locked --offline -p rust-radio-gui --bin rust-radio-gui, and cargo test --locked --offline -p rust-radio-gui passed; 28 library and 2 standalone tests passed, one audio/hardware test ignored; fresh isolated release build SHA-256 aea9d9fa7a339a05cad206dc1cd54cca999bf6d6380397648a5b4f38d866bebd; string scan found no nSDR labels, receiver status strings, or SomaFM station IDs",
+    "workspace_validation": "cargo test --workspace --locked --offline passed: 167 passed, 1 ignored native audio test; cargo clippy --workspace --all-targets --locked --offline -- -D warnings passed after replacing retired SomaFM fixtures/probe target; macOS launch-options icon-preservation regression passed",
+    "macos_bundle_icon": "built with scripts/package_macos_app.sh; installed CFBundleIconFile RustRadio.icns SHA-256 917c2fca7340ee9c04730912b3dbc8768bb20bea8351e025eb7ddf539930ab00 matches source asset; installed executable SHA-256 5be116408a9d36e107a0b3e0fd0652714a9a6b821dc970ef95d7d874aa20bc50; bundle identifier com.skeffington.rustradio and strict codesign verification passed; Dock tile visual inspection timed out",
     "macos_install_relaunch": "installed code-signature-verified development app at /Users/null/Applications/Rust Radio.app and relaunched; visual UI showed IP station picker/playback controls only, with KUNC News in curated menu and custom stream separate; no audible-output claim",
     "workspace_tests": "passed on merged commit 5568fb3; loopback fixtures required local-socket permission",
     "workspace_clippy_strict": "passed on merged commit 5568fb3",

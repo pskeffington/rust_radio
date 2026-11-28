@@ -4,8 +4,9 @@ use rust_radio_core::validation::{StationValidation, ValidationStage, Validation
 use std::cell::RefCell;
 use std::io::Cursor;
 
-const ROOT: &str = "https://somafm.com/m3u/groovesalad.m3u";
-const AUDIO: &str = "https://ice5.somafm.com/groovesalad-128-mp3";
+const STATION_ID: &str = "skylab";
+const ROOT: &str = "https://stream.rcs.revma.com/7vs4sr22w3bwv.pls";
+const AUDIO: &str = "https://n01-us1.rcs.revma.com/7vs4sr22w3bwv";
 const MP3: &[u8] = include_bytes!("fixtures/tone.mp3");
 const AAC: &[u8] = include_bytes!("fixtures/tone.aac");
 
@@ -22,7 +23,8 @@ impl Fixture {
         Self {
             mime,
             body: body.into(),
-            playlist: format!("#EXTM3U\n{AUDIO}\n").into_bytes(),
+            playlist: format!("[playlist]\nNumberOfEntries=1\nFile1={AUDIO}\nVersion=2\n")
+                .into_bytes(),
             status: 200,
             requests: RefCell::new(Vec::new()),
         }
@@ -35,6 +37,9 @@ impl RadioHttp for Fixture {
     fn get(&self, target: &ApprovedEndpoint) -> Result<HttpResponse<Self::Body>, StreamError> {
         self.requests.borrow_mut().push(target.url().to_owned());
         let (mime, body) = match target.url() {
+            ROOT if self.playlist.starts_with(b"[playlist]") => {
+                ("audio/x-scpls", self.playlist.clone())
+            }
             ROOT => ("audio/x-mpegurl", self.playlist.clone()),
             AUDIO => (self.mime, self.body.clone()),
             _ => panic!("Validation requested an unexpected endpoint"),
@@ -53,7 +58,7 @@ impl RadioHttp for Fixture {
 fn synthetic_mp3_and_aac_decode_without_audio_hardware() {
     for (mime, bytes, codec) in [("audio/mpeg", MP3, "mp3"), ("audio/aac", AAC, "aac")] {
         let fixture = Fixture::audio(mime, bytes);
-        let report = validate_with(&fixture, "groovesalad").unwrap();
+        let report = validate_with(&fixture, STATION_ID).unwrap();
         assert!(report.is_decoded(), "{report:?}");
         assert_eq!(report.status, ValidationStatus::Decoded);
         assert_eq!(report.stage, ValidationStage::DecodedAudio);
@@ -80,18 +85,22 @@ fn mpeg2_adts_aac_decodes_without_changing_frame_payload() {
         pos += length;
     }
     assert_eq!(pos, bytes.len());
-    let report = validate_with(&Fixture::audio("audio/aac", &bytes), "groovesalad").unwrap();
+    let report = validate_with(&Fixture::audio("audio/aac", &bytes), STATION_ID).unwrap();
     assert!(report.is_decoded(), "{report:?}");
 }
 
 #[test]
-fn legacy_http_playlist_uses_only_https_requests_and_decodes_pcm() {
+fn plain_http_playlist_is_rejected_without_requesting_its_entry() {
     let mut fixture = Fixture::audio("audio/mpeg", MP3);
-    fixture.playlist = b"#EXTM3U\nhttp://ice5.somafm.com/groovesalad-128-mp3\n".into();
-    let report = validate_with(&fixture, "groovesalad").unwrap();
-    assert!(report.is_decoded(), "{report:?}");
-    assert_eq!(fixture.requests.borrow().as_slice(), [ROOT, AUDIO]);
-    assert_eq!(report.resolved_url.as_deref(), Some(AUDIO));
+    fixture.playlist = format!(
+        "[playlist]\nNumberOfEntries=1\nFile1={}\nVersion=2\n",
+        AUDIO.replace("https://", "http://")
+    )
+    .into_bytes();
+    let report = validate_with(&fixture, STATION_ID).unwrap();
+    assert_eq!(report.status, ValidationStatus::InvalidStream, "{report:?}");
+    assert_eq!(fixture.requests.borrow().as_slice(), [ROOT]);
+    assert!(report.resolved_url.is_none());
 }
 
 #[test]
@@ -110,7 +119,7 @@ fn successful_http_and_claimed_audio_type_are_not_decode_evidence() {
         ("audio/mpeg", &MP3[..10], ValidationStatus::InvalidStream),
     ] {
         let fixture = Fixture::audio(mime, body);
-        let report = validate_with(&fixture, "groovesalad").unwrap();
+        let report = validate_with(&fixture, STATION_ID).unwrap();
         assert!(!report.is_decoded(), "{report:?}");
         assert_eq!(report.status, status, "{report:?}");
         assert_eq!(report.decoded_frames, 0);
@@ -123,28 +132,28 @@ fn unsupported_format_is_distinct_from_an_unavailable_station() {
     // A PCM WAV header: WAV support is deliberately disabled in this radio decoder.
     let mut wav = b"RIFF\x24\x10\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x10\x00\x00".to_vec();
     wav.extend_from_slice(&[0; 4096]);
-    let report = validate_with(&Fixture::audio("audio/wav", &wav), "groovesalad").unwrap();
+    let report = validate_with(&Fixture::audio("audio/wav", &wav), STATION_ID).unwrap();
     assert_eq!(report.status, ValidationStatus::Unsupported, "{report:?}");
     assert_eq!(report.stage, ValidationStage::StreamResponse);
     assert!(!report.is_decoded());
 
     let mut unavailable = Fixture::audio("audio/mpeg", MP3);
     unavailable.status = 503;
-    let report = validate_with(&unavailable, "groovesalad").unwrap();
+    let report = validate_with(&unavailable, STATION_ID).unwrap();
     assert_eq!(report.status, ValidationStatus::Unavailable);
     assert_eq!(report.stage, ValidationStage::EndpointReached);
     assert_eq!(unavailable.requests.borrow().len(), 1);
 
     let mut missing = Fixture::audio("audio/mpeg", MP3);
     missing.status = 404;
-    let report = validate_with(&missing, "groovesalad").unwrap();
+    let report = validate_with(&missing, STATION_ID).unwrap();
     assert_eq!(report.status, ValidationStatus::InvalidStream);
     assert_eq!(report.stage, ValidationStage::EndpointReached);
     assert!(report.detail.contains("404"));
 
     let mut rate_limited = Fixture::audio("audio/mpeg", MP3);
     rate_limited.status = 429;
-    let report = validate_with(&rate_limited, "groovesalad").unwrap();
+    let report = validate_with(&rate_limited, STATION_ID).unwrap();
     assert_eq!(report.status, ValidationStatus::Unavailable);
 }
 
@@ -156,13 +165,13 @@ fn unsafe_and_hls_playlists_fail_before_requesting_their_entries() {
             ValidationStatus::InvalidStream,
         ),
         (
-            "#EXTM3U\n#EXT-X-VERSION:3\nhttps://ice5.somafm.com/segment.ts",
+            "#EXTM3U\n#EXT-X-VERSION:3\nhttps://n01-us1.rcs.revma.com/segment.ts",
             ValidationStatus::Unsupported,
         ),
     ] {
         let mut fixture = Fixture::audio("audio/mpeg", MP3);
         fixture.playlist = playlist.as_bytes().into();
-        let report = validate_with(&fixture, "groovesalad").unwrap();
+        let report = validate_with(&fixture, STATION_ID).unwrap();
         assert_eq!(report.status, status);
         assert_eq!(fixture.requests.borrow().as_slice(), [ROOT]);
         assert!(!report.is_decoded());
