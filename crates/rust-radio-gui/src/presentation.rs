@@ -111,7 +111,6 @@ impl RadioPanel {
         } else if message.contains("audio output")
             || message.contains("audio device")
             || message.contains("native sample format")
-            || message.contains("native receiver output")
             || message.contains("cannot configure native audio stream")
         {
             "Your audio output is unavailable. Open IP Radio to select an output, then retry."

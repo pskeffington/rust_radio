@@ -1,5 +1,28 @@
 # Radio development progress
 
+## RR-120 source purge and RR-118 macOS relaunch — 2026-11-28
+
+- Audited the current GUI source after the relaunch exposed nSDR/USB controls.
+  The stale path was compiled from `rust-radio-gui/src/inputs.rs`, held segment
+  and input-scan state in `RadioPanel`, and was enabled by standalone startup.
+- Removed GUI input discovery and segment state, deleted `inputs.rs`, removed
+  startup discovery, and replaced receiver-oriented GUI status/error wording.
+  The streaming GUI now retains only curated/custom IP station selection and
+  ordinary playback/output controls. Historical migration documentation is
+  retained as history, not current UI behavior.
+- `cargo fmt --all --check` and `cargo check --locked --offline -p
+  rust-radio-gui --bin rust-radio-gui` passed. A fresh release build used
+  `CARGO_TARGET_DIR=/private/tmp/rust-radio-clean20`; executable SHA-256 before
+  app signing: `aea9d9fa7a339a05cad206dc1cd54cca999bf6d6380397648a5b4f38d866bebd`.
+  Its string scan found no nSDR labels, receiver status strings, or SomaFM
+  station IDs.
+- Installed the signed build at `/Users/null/Applications/Rust Radio.app`,
+  verified its code signature, and relaunched it. Visual inspection confirmed
+  only the IP radio picker and playback controls; the curated menu includes
+  KUNC News and a separate custom-stream item. No nSDR or USB controls appeared.
+- This is source/build/UI evidence, not audible-output, hosted-CI, notarization,
+  publisher-rights, or public-distribution acceptance.
+
 ## Current scope — 2026-11-23
 
 Rust Radio is scoped to receive-only internet streaming radio: curated and

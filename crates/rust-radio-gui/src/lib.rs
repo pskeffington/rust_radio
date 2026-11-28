@@ -7,12 +7,8 @@ use rust_radio_audio::validation::StationValidationTask;
 use rust_radio_core::directory::{curated_stations, station_by_id, InternetStation};
 use rust_radio_core::validation::{FeedHealth, StationValidation, ValidationStatus};
 use std::collections::BTreeMap;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 
-mod inputs;
-use inputs::Segment;
-use rust_radio_audio::discovery::{InputReport, InputScan};
-use std::time::Instant;
 mod ip_settings;
 mod ip_stations;
 mod presentation;
@@ -28,12 +24,6 @@ pub const PANEL_HEIGHT: f32 = 320.0;
 
 /// Owns one radio session. Embed with `panel.show(ui)` inside an existing HUD.
 pub struct RadioPanel {
-    segment: Segment,
-    inputs: InputReport,
-    input_scan: Option<InputScan>,
-    scan_enabled: bool,
-    source_user_selected: bool,
-    last_scan: Option<Instant>,
     station_index: usize,
     direct_selected: bool,
     direct_url: String,
@@ -62,12 +52,6 @@ pub struct RadioPanel {
 impl Default for RadioPanel {
     fn default() -> Self {
         Self {
-            segment: Segment::Ip,
-            inputs: InputReport::default(),
-            input_scan: None,
-            scan_enabled: false,
-            source_user_selected: false,
-            last_scan: None,
             station_index: 0,
             direct_selected: false,
             direct_url: String::new(),
@@ -116,15 +100,11 @@ impl RadioPanel {
     pub fn stop(&mut self) {
         self.restart_pending = false;
         self.selection_check_pending = None;
-        if let Some(scan) = &self.input_scan {
-            scan.cancel();
-            self.last_scan = Some(Instant::now());
-        }
         let active = self.is_active();
         if let Some(engine) = &self.engine {
             engine.request_stop();
             self.stopping = true;
-            self.note = "STOPPING / RELEASING RECEIVER".into();
+            self.note = "STOPPING / RELEASING AUDIO".into();
         }
         if let Some(task) = &self.validation {
             task.request_cancel();
@@ -132,16 +112,15 @@ impl RadioPanel {
         }
         if !active {
             self.last_session = None;
-            self.note = "RECEIVER STOPPED".into();
+            self.note = "STOPPED".into();
         }
         self.poll_shutdown();
     }
 
-    /// Reap finished receivers even while this panel is hidden. False means
+    /// Reap finished workers even while this panel is hidden. False means
     /// a worker still owns resources. A completed failure remains visible until
     /// the operator explicitly starts another session or clears it with Stop.
     pub fn poll_shutdown(&mut self) -> bool {
-        self.poll_inputs();
         if let Some(engine) = self.engine.as_mut() {
             if engine.try_finish() {
                 let session = engine.status();
@@ -150,7 +129,7 @@ impl RadioPanel {
                 self.note = session
                     .last_error
                     .clone()
-                    .unwrap_or_else(|| "RECEIVER STOPPED".into());
+                    .unwrap_or_else(|| "STOPPED".into());
                 self.last_session = Some(session);
             }
         }
@@ -191,7 +170,7 @@ impl RadioPanel {
                 }
             }
         }
-        if self.engine.is_none() && self.validation.is_none() && self.input_scan.is_none() {
+        if self.engine.is_none() && self.validation.is_none() {
             if self.restart_pending {
                 self.restart_pending = false;
                 self.stopping = false;
@@ -208,10 +187,7 @@ impl RadioPanel {
     }
 
     pub fn is_active(&self) -> bool {
-        self.engine.is_some()
-            || self.validation.is_some()
-            || self.input_scan.is_some()
-            || self.restart_pending
+        self.engine.is_some() || self.validation.is_some() || self.restart_pending
     }
 
     fn play(&mut self) {
@@ -219,12 +195,9 @@ impl RadioPanel {
         if self.engine.is_some() || self.restart_pending {
             return;
         }
-        if self.validation.is_some() || self.input_scan.is_some() {
+        if self.validation.is_some() {
             if let Some(task) = &self.validation {
                 task.request_cancel();
-            }
-            if let Some(scan) = &self.input_scan {
-                scan.cancel();
             }
             self.restart_pending = true;
             self.note = "CONNECTING / RELEASING PREVIOUS CHECK".into();
@@ -263,7 +236,7 @@ impl RadioPanel {
     }
 
     fn check_ip_selection(&mut self) {
-        if self.segment != Segment::Ip || self.engine.is_some() || self.validation.is_some() {
+        if self.engine.is_some() || self.validation.is_some() {
             return;
         }
         let target = self.ip_target().to_owned();
@@ -296,9 +269,6 @@ impl RadioPanel {
     }
 
     fn restart_ip_if_active(&mut self) {
-        if self.segment != Segment::Ip {
-            return;
-        }
         if let Some(engine) = &self.engine {
             engine.request_stop();
             self.restart_pending = true;
@@ -312,7 +282,7 @@ impl RadioPanel {
 
     #[cfg(test)]
     fn start_validation(&mut self) {
-        if self.is_active() || self.segment != Segment::Ip || self.direct_selected {
+        if self.is_active() || self.direct_selected {
             return;
         }
         match StationValidationTask::start(self.selected_station().id) {
@@ -393,14 +363,23 @@ impl RadioPanel {
         self.ip_station_index()
     }
 
+    fn step_station_source(&mut self, direction: isize) {
+        let count = self.ip_station_count();
+        if count == 0 {
+            return;
+        }
+        let next =
+            (self.ip_station_index() + direction.rem_euclid(count as isize) as usize) % count;
+        self.select_ip_station(next);
+        self.ip_selection_changed();
+    }
+
     fn select_source(&mut self, index: usize) {
         let previous = self.source_index();
-        self.source_user_selected = true;
         self.direct_selected = index >= curated_stations().len();
         if index < curated_stations().len() {
             self.station_index = index;
         }
-        self.segment = Segment::Ip;
         self.cancel_stale_validation();
         if previous != index {
             self.restart_ip_if_active();

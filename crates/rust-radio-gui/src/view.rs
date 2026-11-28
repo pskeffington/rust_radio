@@ -5,7 +5,6 @@ impl RadioPanel {
     /// Compact listener controls. Workers and storage stay owned by the host.
     pub fn show(&mut self, ui: &mut egui::Ui) {
         self.poll_shutdown();
-        self.maybe_scan_inputs();
         egui::Frame::new()
             .fill(theme::SCREEN)
             .stroke(egui::Stroke::new(1.0_f32, theme::BORDER))
@@ -17,7 +16,7 @@ impl RadioPanel {
                 theme::scanlines(ui);
                 ui.spacing_mut().item_spacing = egui::vec2(7.0, 6.0);
                 ui.spacing_mut().button_padding = egui::vec2(10.0, 8.0);
-                self.input_header(ui);
+                self.brand_header(ui);
                 ui.separator();
                 ui.add_space(4.0);
                 ui.label(egui::RichText::new("STATION").small().color(theme::MUTED));
@@ -59,7 +58,7 @@ impl RadioPanel {
             let enabled = if status.stop_action {
                 !self.stopping || self.restart_pending
             } else {
-                self.engine.is_none() && !self.stopping && self.segment_supported()
+                self.engine.is_none() && !self.stopping
             };
             let action = egui::Button::new(egui::RichText::new(label).strong())
                 .fill(theme::ACTION)
@@ -151,7 +150,7 @@ impl RadioPanel {
         }
     }
 
-    fn input_header(&mut self, ui: &mut egui::Ui) {
+    fn brand_header(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(

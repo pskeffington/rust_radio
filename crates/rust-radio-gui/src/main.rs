@@ -30,7 +30,6 @@ fn main() -> eframe::Result<()> {
         options,
         Box::new(|_cc| {
             let mut radio = RadioPanel::new();
-            radio.enable_input_discovery();
             let stations = station_file::StationFile::load(&mut radio);
             Ok(Box::new(StandaloneRadio { radio, stations }))
         }),

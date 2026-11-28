@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-11-27T15:30:00Z",
+  "updated_at_utc": "2026-11-28T00:00:00Z",
   "status": "in_progress",
   "branch": "codex/station-validation-workflow-recovery",
   "implementation_commit": "5568fb3d6cad9d8f44206fea1f28bebea0fba300",
@@ -8,11 +8,15 @@
     "RR-127: restored the prior selected 19 station IDs and added KUNC News for a 20-station curated IP channel list.",
     "RR-127: pinned curated redirects and playlist endpoints to exact station-specific publisher targets, refreshed Skylab Revma rules, and retained bounded transport controls.",
     "RR-127: added known-retired feed-history migration; unknown station IDs remain rejected.",
-    "RR-127: current bounded silent sweep decoded 20/20 selected channels in one attempt each; point-in-time codec evidence only, not audible or distribution acceptance."
+    "RR-127: current bounded silent sweep decoded 20/20 selected channels in one attempt each; point-in-time codec evidence only, not audible or distribution acceptance.",
+    "RR-120: removed GUI input discovery, segment state, startup scan, and receiver-oriented status strings after tracing reappearing controls to compiled GUI sources.",
+    "RR-118: fresh isolated release build installed and signature-verified; relaunched Mac UI visually shows IP radio controls only and the 20 curated channels plus separate custom entry."
   ],
   "historical_work_summary": "Historical entries from prior runs are retained in Git history and earlier progress documentation.",
   "validation": {
     "fmt": "passed on merged commit 5568fb3",
+    "streaming_gui_removal": "cargo fmt --all --check and cargo check --locked --offline -p rust-radio-gui --bin rust-radio-gui passed; fresh isolated release build SHA-256 aea9d9fa7a339a05cad206dc1cd54cca999bf6d6380397648a5b4f38d866bebd; string scan found no nSDR labels, receiver status strings, or SomaFM station IDs",
+    "macos_install_relaunch": "installed code-signature-verified development app at /Users/null/Applications/Rust Radio.app and relaunched; visual UI showed IP station picker/playback controls only, with KUNC News in curated menu and custom stream separate; no audible-output claim",
     "workspace_tests": "passed on merged commit 5568fb3; loopback fixtures required local-socket permission",
     "workspace_clippy_strict": "passed on merged commit 5568fb3",
     "all_features_tests": "passed on merged commit 5568fb3; loopback fixtures required local-socket permission; hardware-only test remains ignored",
@@ -91,15 +95,15 @@
   },
   "remaining_gates": [
     "GitHub Actions runner startup and scheduled catalog execution",
-    "Physical Bluetooth and USB output loss/recovery",
+    "Physical audio output loss/recovery",
     "Raspberry Pi native audio, display and touch acceptance",
     "Publisher distribution permissions before bundling or redistribution"
   ],
   "next_priority": "Obtain actionable GitHub Actions runner-startup diagnostics (current exact-head runs fail before jobs); then complete physical audio/output recovery, Pi runtime, and publisher-rights review as available.",
-  "current_scope_note": "As of RR-120 implementation commit 36e603152e1d770014e3487c056c0cd7664acd5f, this repository covers receive-only IP streaming radio only. Historical receiver entries in this file describe earlier revisions; USB SDR and nSDR work has moved to separate projects.",
+  "current_scope_note": "This repository covers receive-only IP streaming radio only. GUI input discovery and receiver-segment state are removed; USB SDR and nSDR implementation and hardware acceptance belong to separate repositories. Historical receiver entries in this file describe earlier revisions.",
   "next_actions": [
     "Run exact-head hosted CI and inspect its results.",
-    "Rebuild, install and relaunch the macOS app from the completed catalog source, then inspect the channel list.",
+    "Continue the exact-head remote review and retain the demonstrated IP-only macOS UI.",
     "Keep publisher redistribution rights blocked pending applicable authorization."
   ]
 }

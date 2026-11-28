@@ -19,7 +19,7 @@ impl RadioPanel {
                 .on_hover_text("Previous station")
                 .clicked()
             {
-                self.step_segment_source(-1);
+                self.step_station_source(-1);
             }
             ui.allocate_ui_with_layout(
                 egui::vec2(picker_width, 44.0),
@@ -34,7 +34,7 @@ impl RadioPanel {
                 .on_hover_text("Next station")
                 .clicked()
             {
-                self.step_segment_source(1);
+                self.step_station_source(1);
             }
         });
     }

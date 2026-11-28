@@ -671,7 +671,7 @@ fn stream_errors_offer_listener_actions_with_original_diagnostics_retained() {
         ),
         ("Unsupported native sample format: I32", "select an output"),
         (
-            "Unsupported native receiver output: UnsupportedChannels",
+            "Unsupported audio output: UnsupportedChannels",
             "select an output",
         ),
         (
