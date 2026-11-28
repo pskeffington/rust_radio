@@ -16,6 +16,10 @@
   app signing: `aea9d9fa7a339a05cad206dc1cd54cca999bf6d6380397648a5b4f38d866bebd`.
   Its string scan found no nSDR labels, receiver status strings, or SomaFM
   station IDs.
+- `cargo test --locked --offline -p rust-radio-gui` passed after updating two
+  stale expectations: 28 library tests and 2 standalone tests passed; one
+  hardware/audio test remains ignored. The updated assertions match the
+  receiver-free stop wording and compact category behavior.
 - Installed the signed build at `/Users/null/Applications/Rust Radio.app`,
   verified its code signature, and relaunched it. Visual inspection confirmed
   only the IP radio picker and playback controls; the curated menu includes

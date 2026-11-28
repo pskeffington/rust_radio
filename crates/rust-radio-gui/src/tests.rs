@@ -267,7 +267,7 @@ fn station_status_and_long_diagnostics_fit_the_micro_viewport() {
 }
 
 #[test]
-fn completed_failure_stays_visible_without_retaining_an_active_receiver() {
+fn completed_failure_stays_visible_without_retaining_an_active_worker() {
     let mut panel = RadioPanel::new();
     panel.last_session = Some(RadioSession {
         state: PlaybackState::Failed,
@@ -281,7 +281,7 @@ fn completed_failure_stays_visible_without_retaining_an_active_receiver() {
     assert_eq!(session.last_error.as_deref(), Some("Speaker disconnected"));
     panel.stop();
     assert!(panel.last_session.is_none());
-    assert_eq!(panel.note, "RECEIVER STOPPED");
+    assert_eq!(panel.note, "STOPPED");
 }
 
 #[test]

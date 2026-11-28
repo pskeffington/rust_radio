@@ -15,7 +15,7 @@
   "historical_work_summary": "Historical entries from prior runs are retained in Git history and earlier progress documentation.",
   "validation": {
     "fmt": "passed on merged commit 5568fb3",
-    "streaming_gui_removal": "cargo fmt --all --check and cargo check --locked --offline -p rust-radio-gui --bin rust-radio-gui passed; fresh isolated release build SHA-256 aea9d9fa7a339a05cad206dc1cd54cca999bf6d6380397648a5b4f38d866bebd; string scan found no nSDR labels, receiver status strings, or SomaFM station IDs",
+    "streaming_gui_removal": "cargo fmt --all --check, cargo check --locked --offline -p rust-radio-gui --bin rust-radio-gui, and cargo test --locked --offline -p rust-radio-gui passed; 28 library and 2 standalone tests passed, one audio/hardware test ignored; fresh isolated release build SHA-256 aea9d9fa7a339a05cad206dc1cd54cca999bf6d6380397648a5b4f38d866bebd; string scan found no nSDR labels, receiver status strings, or SomaFM station IDs",
     "macos_install_relaunch": "installed code-signature-verified development app at /Users/null/Applications/Rust Radio.app and relaunched; visual UI showed IP station picker/playback controls only, with KUNC News in curated menu and custom stream separate; no audible-output claim",
     "workspace_tests": "passed on merged commit 5568fb3; loopback fixtures required local-socket permission",
     "workspace_clippy_strict": "passed on merged commit 5568fb3",

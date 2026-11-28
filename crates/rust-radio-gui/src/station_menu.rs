@@ -223,7 +223,8 @@ mod label_ab_test {
                 let mut compact_width_saved = 0.0;
                 let mut current_overflows = Vec::new();
                 for station in curated_stations() {
-                    if station.id == "wcrb" {
+                    if compact_station_category(station.category) != station.category {
+                        assert_eq!(station.category, "CLASSICAL");
                         assert_eq!(compact_station_category(station.category), "CLASS");
                     } else {
                         assert_eq!(compact_station_category(station.category), station.category);
